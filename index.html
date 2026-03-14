@@ -185,7 +185,9 @@ tr:hover td{background:var(–g50)}
 const { useState, useRef, useCallback } = React;
 
 // ── LOGO ──────────────────────────────────────────────────────────────────────
-const Logo = () => (
+const Logo = () => {
+const f = “‘Segoe UI’,system-ui,sans-serif”;
+return (
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 52" width="210" height="52">
 <defs>
 <pattern id="vg" width="7" height="7" patternUnits="userSpaceOnUse">
@@ -206,17 +208,17 @@ fill="none" stroke="#CDDBA0" strokeWidth="1.8" strokeLinecap="round" strokeLinej
 <line x1="4" y1="32" x2="48" y2="32" stroke="#F5EED0" strokeWidth="0.5" opacity="0.18"/>
 <rect x="4" y="34" width="44" height="14" rx="1.5" fill="none" stroke="#F5EED0" strokeWidth="0.6" opacity="0.22"/>
 <polygon points="5,35 8,35 5,38" fill="#F5EED0" opacity="0.3"/>
-<text x="26" y="45" fontFamily="'Segoe UI',system-ui,sans-serif" fontSize="10" fontWeight="300"
-fill="#F5EED0" textAnchor="middle" letterSpacing="5" opacity="0.82">ALDA</text>
+<text x=“26” y=“45” style={{fontFamily:f,fontSize:“10px”,fontWeight:300}} fill=”#F5EED0” textAnchor=“middle” letterSpacing=“5” opacity=“0.82”>ALDA</text>
 </g>
 <rect x="0" y="0" width="52" height="52" rx="10" fill="none" stroke="#1A5040" strokeWidth="1.2"/>
-<text x="60" y="22" fontFamily="'Segoe UI',system-ui,sans-serif" fontSize="21" fontWeight="700" fill="#F5EED0" letterSpacing="-0.5">SMT</text>
-<text x="101" y="22" fontFamily="'Segoe UI',system-ui,sans-serif" fontSize="21" fontWeight="300" fill="#F5EED0" letterSpacing="-0.3">intel</text>
+<text x=“60” y=“22” style={{fontFamily:f,fontSize:“21px”,fontWeight:700}} fill=”#F5EED0” letterSpacing=”-0.5”>SMT</text>
+<text x=“101” y=“22” style={{fontFamily:f,fontSize:“21px”,fontWeight:300}} fill=”#F5EED0” letterSpacing=”-0.3”>intel</text>
 <line x1="60" y1="27" x2="208" y2="27" stroke="#8A9F5C" strokeWidth="0.8" opacity="0.6"/>
-<text x="60" y="37" fontFamily="'Segoe UI',system-ui,sans-serif" fontSize="7.5" fontWeight="500" fill="rgba(245,238,208,.75)" letterSpacing="0.2">Manufacturing Analytics</text>
-<text x="60" y="48" fontFamily="'Segoe UI',system-ui,sans-serif" fontSize="6" fontWeight="300" fill="rgba(205,219,160,.55)" letterSpacing="0.6">SMT · AOI · SPI · X-RAY · ROOT CAUSE</text>
+<text x=“60” y=“37” style={{fontFamily:f,fontSize:“7.5px”,fontWeight:500}} fill=“rgba(245,238,208,.75)” letterSpacing=“0.2”>Manufacturing Analytics</text>
+<text x=“60” y=“48” style={{fontFamily:f,fontSize:“6px”,fontWeight:300}} fill=“rgba(205,219,160,.55)” letterSpacing=“0.6”>SMT · AOI · SPI · X-RAY · ROOT CAUSE</text>
 </svg>
 );
+};
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function to24h(h,min,sec,mer){let hour=parseInt(h);const m=(mer||””).toLowerCase().replace(/[\s.]/g,””);if(m.startsWith(“p”)&&hour!==12)hour+=12;if(m.startsWith(“a”)&&hour===12)hour=0;return{hour,timeStr:`${String(hour).padStart(2,"0")}:${min}:${sec||"00"}`};}
