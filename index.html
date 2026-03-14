@@ -16,7 +16,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
@@ -145,6 +145,30 @@ tr:hover td{background:var(--g50)}
 .foot p{font-size:11.5px;color:var(--g500)}
 .foot strong{color:var(--g900)}
 
+/* ── FILTRO PERSONA ── */
+.pf-card{background:var(--w);border:1px solid var(--g200);border-radius:14px;overflow:hidden;margin-bottom:16px}
+.pf-hdr{padding:16px 20px;border-bottom:1px solid var(--g100);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pf-hdr h3{font-size:14px;font-weight:700;flex:1}
+.pf-select{border:1px solid var(--g200);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--g900);background:var(--g50);outline:none;cursor:pointer;min-width:180px}
+.pf-select:focus{border-color:var(--or)}
+.pf-clear{display:inline-flex;align-items:center;gap:5px;background:var(--g100);border:1px solid var(--g200);border-radius:7px;padding:6px 12px;font-size:11.5px;font-weight:500;color:var(--g700);cursor:pointer}
+.pf-clear:hover{background:var(--g200)}
+.pf-body{padding:16px 20px}
+.pf-profile{display:flex;gap:16px;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap}
+.pf-avatar{width:48px;height:48px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:800;flex-shrink:0}
+.pf-info{flex:1}
+.pf-name{font-size:17px;font-weight:800;color:var(--g900);margin-bottom:4px}
+.pf-dept{font-size:12px;color:var(--g500);margin-bottom:8px}
+.pf-stats{display:flex;gap:10px;flex-wrap:wrap}
+.pf-stat{background:var(--g50);border:1px solid var(--g200);border-radius:8px;padding:8px 14px;text-align:center}
+.pf-stat-val{font-size:20px;font-weight:800;color:var(--or);line-height:1}
+.pf-stat-lbl{font-size:10px;color:var(--g500);margin-top:2px}
+.pf-stat.bl .pf-stat-val{color:var(--bl)}
+.pf-stat.gr .pf-stat-val{color:var(--gr)}
+.pf-stat.re .pf-stat-val{color:var(--re)}
+.pf-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--or);margin-bottom:10px;margin-top:4px}
+.pf-empty{font-size:13px;color:var(--g500);text-align:center;padding:24px 0}
+
 .krow{display:flex;align-items:center;gap:10px;background:var(--g50);border:1px solid var(--g200);border-radius:9px;padding:9px 13px;margin-bottom:7px}
 .kval{font-size:18px;font-weight:800;color:var(--or);width:70px;flex-shrink:0}
 .kin{flex:1}.kin .nm{font-size:11.5px;font-weight:600;color:var(--g900)}
@@ -224,8 +248,14 @@ function filterByDays(msgs, days) {
 }
 
 function cleanMsgs(msgs) {
-  const skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|Se te añadió|creó este grupo|cifrados de extremo|agregó a|salió del grupo|cambió el (ícono|asunto|número)|ahora es admin|<Se editó este mensaje>/i;
-  return msgs.filter(m => m.text && m.text.trim().length > 5 && !m.text.match(skip));
+  const skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|Se te añadió|creó este grupo|cifrados de extremo|agregó a|salió del grupo|cambió el|ahora es admin|Se editó este mensaje/i;
+  const noise = /^(buenos d|buenas t|buenas n|buen d|buen día|gracias|de nada|ok\b|oki|👍|🙏|ahí paso|ahi paso|ahí van|con permiso|disculpe|perdón|por favor|porfavor|hasta luego|con gusto|claro que|sale 👍|sale$|enterado$|recibido$|entendido$|\bsi\b$|\bno\b$)/i;
+  return msgs.filter(m =>
+    m.text &&
+    m.text.trim().length > 8 &&
+    !m.text.match(skip) &&
+    !m.text.trim().match(noise)
+  );
 }
 
 async function readZip(file) {
@@ -239,61 +269,18 @@ async function readZip(file) {
 }
 
 async function analyzeWithAI(msgs, apiKey) {
-  // Limit to 250 msgs to stay well within token budget and avoid truncated JSON
-  const sample = msgs.slice(0, 250).map(m =>
-    `[${m.dateDisp} ${m.timeStr} | ${m.turno} | ${m.sender}]: ${m.text}`
+  // Limit to 150 msgs max to prevent JSON truncation on dense chats
+  const sample = msgs.slice(0, 150).map(m =>
+    `[${m.dateDisp} ${m.timeStr}|${m.turno}|${m.sender}]:${m.text}`
   ).join("\n");
 
-  const system = `Eres experto en manufactura electrónica SMT/PCB/PTH. Analiza mensajes de grupos de WhatsApp de manufactura y extrae SOLO los eventos operativos accionables.
+  const system = `Experto en manufactura SMT/PCB/PTH. Extrae SOLO eventos operativos accionables de mensajes WhatsApp de manufactura.
 
-INCLUIR: paros de línea, rechazos/defectos de calidad, equivocados de componente, cambios de modelo, problemas de FAI, LCR vencido, falta de material, rollo mal cargado, RMA, problemas de AOI/ICT, alertas de seguridad, llenado de barril bajo, inversión de componentes, ausentes en AOI, cortos, abiertos, daño físico, problemas de escáner/sistema, desabasto, clonados.
-EXCLUIR: saludos, "ok", "gracias", "buen día", confirmaciones simples sin evento, menciones puras sin descripción, mensajes vacíos, emojis solos.
+INCLUIR: paros línea, defectos calidad, equivocados componente, cambios modelo, FAI, LCR vencido, falta material, rollo mal cargado, RMA, AOI/ICT, seguridad, llenado barril, inversión componentes, daño físico, problemas sistema.
+EXCLUIR: saludos, ok, gracias, confirmaciones simples, emojis solos, mensajes sin evento.
 
-Genera un JSON válido con esta estructura EXACTA (sin markdown, sin texto extra):
-{
-  "eventos": [
-    {
-      "id": "EVT-001",
-      "fecha": "DD/MM/YYYY",
-      "hora": "HH:MM",
-      "turno": "1T|2T|3T",
-      "modelo": "número de parte o N/D",
-      "linea_estacion": "L1|L2|AOI|ICT|etc o N/D",
-      "reporta": "nombre",
-      "area_involucrada": "SMT|PTH|ICT|AOI|Kitting|Calidad|Mantenimiento|IT|etc",
-      "tipo_evento": "categoría corta del evento",
-      "evento_detectado": "descripción clara y completa del evento en español",
-      "impacto": "impacto operativo concreto",
-      "accion_requerida": "acción específica a tomar",
-      "responsable_sugerido": "área o persona responsable",
-      "estatus": "Abierto|En proceso|Cerrado",
-      "prioridad": "Crítica|Alta|Media|Baja",
-      "fuente_chat": "DD/MM/YY HH:MM remitente",
-      "notas": "contexto adicional relevante"
-    }
-  ],
-  "kpis": [
-    { "fechahora": "DD/MM/YYYY HH:MM", "indicador": "nombre del KPI", "valor": 0.0, "unidad": "%|pzas|etc", "fuente": "remitente" }
-  ],
-  "resumen": {
-    "periodo": "DD/MM/YYYY a DD/MM/YYYY",
-    "grupo": "nombre del grupo de chat",
-    "total_eventos": 0,
-    "alertas_criticas": ["máx 5 alertas críticas abiertas"],
-    "acciones_pendientes": ["máx 5 acciones prioritarias pendientes"],
-    "estatus_lineas": ["estado de líneas con actividad relevante"]
-  },
-  "directorio": [
-    {
-      "nombre": "nombre completo del participante",
-      "departamento": "Calidad|Producción|Mantenimiento|IT|Ingeniería|Materiales|PTH|SMT|Reparación",
-      "rol": "Inspector|Supervisor|Ingeniero|Técnico|Operador|Coordinador|Jefe",
-      "mensajes": 0,
-      "eventos": 0,
-      "area_owner": "área de la que es responsable principal"
-    }
-  ]
-}`;
+Máximo 15 eventos. Descripciones cortas (máx 80 chars). JSON ÚNICAMENTE sin texto extra:
+{"eventos":[{"id":"EVT-001","fecha":"DD/MM/YYYY","hora":"HH:MM","turno":"1T|2T|3T","modelo":"N/P o N/D","linea_estacion":"L1|etc","reporta":"nombre","area_involucrada":"área","tipo_evento":"categoría","evento_detectado":"descripción","impacto":"impacto","accion_requerida":"acción","responsable_sugerido":"responsable","estatus":"Abierto|En proceso|Cerrado","prioridad":"Crítica|Alta|Media|Baja","fuente_chat":"DD/MM/YY HH:MM nombre","notas":""}],"kpis":[{"fechahora":"DD/MM/YYYY HH:MM","indicador":"nombre","valor":0.0,"unidad":"%","fuente":"nombre"}],"resumen":{"periodo":"DD/MM/YYYY a DD/MM/YYYY","grupo":"nombre grupo","total_eventos":0,"alertas_criticas":["alerta"],"acciones_pendientes":["accion"],"estatus_lineas":["linea"]},"directorio":[{"nombre":"nombre","departamento":"área","rol":"rol","mensajes":0,"eventos":0,"area_owner":"área"}]}`;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -342,179 +329,275 @@ Genera un JSON válido con esta estructura EXACTA (sin markdown, sin texto extra
   }
 }
 
-function buildXlsx(result, allMsgs) {
-  const wb = XLSX.utils.book_new();
+async function buildXlsx(result, allMsgs) {
   const ev = result.eventos || [];
   const kpis = result.kpis || [];
   const res = result.resumen || {};
   const directorio = result.directorio || [];
 
-  // ── COLOR PALETTE (exact match to master template) ──
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Dashboard SMT";
+  wb.created = new Date();
+
+  // ── COLOR PALETTE ──
   const C = {
-    headerBg:   "1F4E78",  // dark blue header
-    headerFg:   "FFFFFF",  // white text
-    critica:    "F4CCCC",  // red light
-    alta:       "FCE4D6",  // orange light
-    media:      "EEF5FB",  // blue light
-    baja:       "E2F0D9",  // green light
-    cerrado:    "E2F0D9",  // green light
-    enProceso:  "FFF2CC",  // yellow light
-    abierto:    "F4CCCC",  // red light
-    rowAlt:     "EEF5FB",  // alternating row
+    hBg: "1F4E78", hFg: "FFFFFF",
+    critica: "F4CCCC", alta: "FCE4D6", media: "EEF5FB", baja: "E2F0D9",
+    cerrado: "E2F0D9", enProceso: "FFF2CC", abierto: "F4CCCC",
+    alt: "EEF5FB", titleBg: "1F4E78", subBg: "D9EAF7", subBg2: "EEF5FB",
   };
 
-  const hStyle = (ws, cellRef) => {
-    if (!ws[cellRef]) return;
-    ws[cellRef].s = {
-      fill: { fgColor: { rgb: C.headerBg } },
-      font: { bold: true, color: { rgb: C.headerFg }, sz: 11, name: "Calibri" },
-      alignment: { vertical: "center", wrapText: false },
-      border: { left:{style:"thin"}, right:{style:"thin"}, top:{style:"thin"}, bottom:{style:"thin"} }
-    };
+  const hFill  = bg => ({ type:"pattern", pattern:"solid", fgColor:{argb:"FF"+bg} });
+  const border = () => ({ top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} });
+  const hFont  = (sz=11) => ({ name:"Calibri", size:sz, bold:true, color:{argb:"FF"+C.hFg} });
+  const dFont  = () => ({ name:"Calibri", size:11 });
+  const wrap   = () => ({ wrapText:true, vertical:"top" });
+
+  const prioFill = p => ({ Crítica:C.critica, Alta:C.alta, Media:C.media, Baja:C.baja }[p]||"FFFFFF");
+  const estFill  = s => ({ Abierto:C.abierto, "En proceso":C.enProceso, Cerrado:C.cerrado }[s]||"FFFFFF");
+
+  // ── Helper: style header row ──
+  const styleHdr = (ws, cols, row=1) => {
+    const r = ws.getRow(row);
+    cols.forEach((_, i) => {
+      const cell = r.getCell(i+1);
+      cell.fill   = hFill(C.hBg);
+      cell.font   = hFont();
+      cell.border = border();
+      cell.alignment = { horizontal:"center", vertical:"middle" };
+    });
+    r.height = 18;
   };
 
-  const cellStyle = (fill, bold=false) => ({
-    fill: { fgColor: { rgb: fill } },
-    font: { sz: 11, name: "Calibri", bold },
-    alignment: { vertical: "top", wrapText: true },
+  // ── Helper: style event data rows ──
+  const styleEvents = (ws, evArr, startRow=2) => {
+    evArr.forEach((e, ri) => {
+      const r = ws.getRow(startRow + ri);
+      r.height = 45;
+      r.eachCell({ includeEmpty:false }, (cell, colNum) => {
+        cell.font = dFont();
+        cell.alignment = wrap();
+        // Col 14=Estatus, 15=Prioridad, 16=Aging
+        if (colNum === 14) {
+          cell.fill = hFill(estFill(e.estatus));
+        } else if (colNum === 15) {
+          cell.fill = hFill(prioFill(e.prioridad));
+        } else {
+          cell.fill = hFill(ri%2===0 ? "FFFFFF" : C.alt);
+        }
+      });
+    });
+  };
+
+  const colWidths = (ws, widths) => {
+    widths.forEach((w,i) => { ws.getColumn(i+1).width = w; });
+  };
+
+  // ══════════════════════════════════════════
+  // HOJA 1: BITÁCORA
+  // ══════════════════════════════════════════
+  const wsBit = wb.addWorksheet("Bitacora");
+  const H = ["ID","Fecha","Hora","Turno","Modelo","Linea_Estacion","Reporta","Area_involucrada","Tipo_evento","Evento_detectado","Impacto","Accion_requerida","Responsable_sugerido","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
+  wsBit.addRow(H);
+  styleHdr(wsBit, H);
+  ev.forEach((e, ri) => {
+    wsBit.addRow([
+      e.id, e.fecha, e.hora, e.turno, e.modelo, e.linea_estacion, e.reporta,
+      e.area_involucrada, e.tipo_evento, e.evento_detectado, e.impacto,
+      e.accion_requerida, e.responsable_sugerido, e.estatus, e.prioridad,
+      { formula: `IF(OR(N${ri+2}="Abierto",N${ri+2}="En proceso"),TODAY()-B${ri+2},"")` },
+      e.fuente_chat, e.notas
+    ]);
+  });
+  styleEvents(wsBit, ev);
+  colWidths(wsBit, [6,12,8,6,16,18,18,22,22,42,32,36,26,12,10,10,30,30]);
+  wsBit.views = [{ state:"frozen", ySplit:1 }];
+
+  // ══════════════════════════════════════════
+  // HOJA 2: PENDIENTES
+  // ══════════════════════════════════════════
+  const pend = ev.filter(e=>e.estatus!=="Cerrado");
+  const wsPend = wb.addWorksheet("Pendientes");
+  wsPend.addRow(H);
+  styleHdr(wsPend, H);
+  pend.forEach((e, ri) => {
+    wsPend.addRow([
+      e.id, e.fecha, e.hora, e.turno, e.modelo, e.linea_estacion, e.reporta,
+      e.area_involucrada, e.tipo_evento, e.evento_detectado, e.impacto,
+      e.accion_requerida, e.responsable_sugerido, e.estatus, e.prioridad,
+      { formula: `IF(OR(N${ri+2}="Abierto",N${ri+2}="En proceso"),TODAY()-B${ri+2},"")` },
+      e.fuente_chat, e.notas
+    ]);
+  });
+  styleEvents(wsPend, pend);
+  colWidths(wsPend, [6,12,8,6,16,18,18,22,22,42,32,36,26,12,10,10,30,30]);
+  wsPend.views = [{ state:"frozen", ySplit:1 }];
+
+  // ══════════════════════════════════════════
+  // HOJA 3: KPIs
+  // ══════════════════════════════════════════
+  const wsKpi = wb.addWorksheet("KPIs_chat");
+  const kH = ["FechaHora","Indicador","Valor","Unidad","Fuente_chat"];
+  wsKpi.addRow(kH);
+  styleHdr(wsKpi, kH);
+  kpis.forEach(k => {
+    const r = wsKpi.addRow([k.fechahora, k.indicador, k.valor, k.unidad, k.fuente]);
+    r.eachCell({ includeEmpty:false }, cell => { cell.font = dFont(); });
+  });
+  colWidths(wsKpi, [22,28,10,8,32]);
+
+  // ══════════════════════════════════════════
+  // HOJA 4: RESUMEN JUNTA
+  // ══════════════════════════════════════════
+  const wsRes = wb.addWorksheet("Resumen_Junta");
+  // Title row
+  wsRes.mergeCells("A1:F1");
+  const t1 = wsRes.getCell("A1");
+  t1.value = `Resumen ejecutivo de manufactura — ${res.grupo||"CALIDAD SMT/PTH"}`;
+  t1.fill = hFill(C.hBg); t1.font = hFont(14);
+  t1.alignment = { horizontal:"left", vertical:"middle" };
+  wsRes.getRow(1).height = 24;
+
+  // Row 2
+  const r2 = wsRes.getRow(2);
+  const c2a = r2.getCell(1); c2a.value = "Corte analizado";
+  c2a.fill = hFill(C.subBg); c2a.font = { name:"Calibri", size:11, bold:true };
+  const c2b = r2.getCell(2); c2b.value = res.periodo||"";
+  c2b.fill = hFill(C.subBg2); c2b.font = dFont();
+  const c2d = r2.getCell(4); c2d.value = "Eventos abiertos";
+  c2d.fill = hFill(C.subBg); c2d.font = { name:"Calibri", size:11, bold:true };
+  const c2e = r2.getCell(5);
+  c2e.value = { formula: `COUNTIF(Bitacora!N:N,"Abierto")+COUNTIF(Bitacora!N:N,"En proceso")` };
+  c2e.fill = hFill(C.subBg2); c2e.font = dFont();
+
+  wsRes.addRow([]);
+
+  // Section headers row 4
+  const r4 = wsRes.getRow(4);
+  const c4a = r4.getCell(1); c4a.value = "Estatus por línea / estación";
+  c4a.fill = hFill(C.hBg); c4a.font = hFont();
+  const c4d = r4.getCell(4); c4d.value = "KPIs de desempeño reportados en chat";
+  c4d.fill = hFill(C.hBg); c4d.font = hFont();
+
+  (res.estatus_lineas||[]).forEach((l, i) => {
+    const r = wsRes.addRow(["- "+l, "", "", kpis[i] ? `${kpis[i].indicador} - ${kpis[i].fechahora?.slice(0,10)||""}` : "", kpis[i]?.valor||""]);
+    r.eachCell({ includeEmpty:false }, cell => { cell.font = dFont(); cell.alignment = { wrapText:true }; });
   });
 
-  const prioFill = p => ({ Crítica: C.critica, Alta: C.alta, Media: C.media, Baja: C.baja }[p] || "FFFFFF");
-  const estFill  = s => ({ Abierto: C.abierto, "En proceso": C.enProceso, Cerrado: C.cerrado }[s] || "FFFFFF");
+  wsRes.addRow([]);
+  const rAl = wsRes.addRow(["Alertas críticas abiertas"]);
+  rAl.getCell(1).fill = hFill(C.hBg); rAl.getCell(1).font = hFont();
+  (res.alertas_criticas||[]).forEach(a => {
+    const r = wsRes.addRow(["- "+a]);
+    r.getCell(1).font = dFont(); r.getCell(1).alignment = { wrapText:true };
+  });
 
-  // ── Helper: apply header styles to row 1 of a sheet ──
-  const styleHeaders = (ws, cols) => {
-    cols.forEach((_, i) => {
-      const ref = XLSX.utils.encode_cell({ r: 0, c: i });
-      hStyle(ws, ref);
-    });
-  };
+  wsRes.addRow([]);
+  const rAc = wsRes.addRow(["Acciones pendientes para el equipo"]);
+  rAc.getCell(1).fill = hFill(C.hBg); rAc.getCell(1).font = hFont();
+  (res.acciones_pendientes||[]).forEach(a => {
+    const r = wsRes.addRow(["- "+a]);
+    r.getCell(1).font = dFont(); r.getCell(1).alignment = { wrapText:true };
+  });
 
-  // ── Helper: style data rows ──
-  const styleDataRows = (ws, evArr) => {
-    evArr.forEach((e, ri) => {
-      const rowIdx = ri + 1;
-      // Estatus col = N (idx 13), Prioridad col = O (idx 14)
-      [0,1,2,3,4,5,6,7,8,9,10,11,12,15,16].forEach(ci => {
-        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: ci });
-        if (ws[ref]) ws[ref].s = cellStyle(ri%2===0 ? "FFFFFF" : C.rowAlt);
-      });
-      // Estatus cell
-      const estRef = XLSX.utils.encode_cell({ r: rowIdx, c: 13 });
-      if (ws[estRef]) ws[estRef].s = cellStyle(estFill(e.estatus));
-      // Prioridad cell
-      const prioRef = XLSX.utils.encode_cell({ r: rowIdx, c: 14 });
-      if (ws[prioRef]) ws[prioRef].s = cellStyle(prioFill(e.prioridad));
-    });
-  };
+  wsRes.addRow([]);
+  const rSup = wsRes.addRow(["Supuestos / notas"]);
+  rSup.getCell(1).fill = hFill(C.hBg); rSup.getCell(1).font = hFont();
+  ["- Turnos inferidos: 1T 06:00-13:59, 2T 14:00-21:59, 3T 22:00-05:59.",
+   "- La exportación de WhatsApp omite imágenes; hallazgos visuales no corroborados."].forEach(n => {
+    const r = wsRes.addRow([n]);
+    r.getCell(1).font = dFont(); r.getCell(1).alignment = { wrapText:true };
+  });
+  colWidths(wsRes, [55,30,5,42,14,5]);
 
-  // ── BITÁCORA ──
-  const H = ["ID","Fecha","Hora","Turno","Modelo","Linea_Estacion","Reporta","Area_involucrada","Tipo_evento","Evento_detectado","Impacto","Accion_requerida","Responsable_sugerido","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
-  const row = (e, ri) => [
-    e.id, e.fecha, e.hora, e.turno, e.modelo, e.linea_estacion, e.reporta,
-    e.area_involucrada, e.tipo_evento, e.evento_detectado, e.impacto,
-    e.accion_requerida, e.responsable_sugerido, e.estatus, e.prioridad,
-    { f: `IF(OR(N${ri+2}="Abierto",N${ri+2}="En proceso"),TODAY()-B${ri+2},"")` },
-    e.fuente_chat, e.notas
-  ];
-
-  const wsBit = XLSX.utils.aoa_to_sheet([H, ...ev.map(row)]);
-  styleHeaders(wsBit, H);
-  styleDataRows(wsBit, ev);
-  wsBit['!cols'] = [5,12,8,6,16,18,18,22,22,40,30,35,25,12,10,10,30,30].map(w=>({wch:w}));
-  wsBit['!rows'] = [{ hpt: 18 }, ...ev.map(()=>({ hpt: 40 }))];
-  XLSX.utils.book_append_sheet(wb, wsBit, "Bitacora");
-
-  // ── PENDIENTES ──
-  const pend = ev.filter(e=>e.estatus!=="Cerrado");
-  const wsPend = XLSX.utils.aoa_to_sheet([H, ...pend.map(row)]);
-  styleHeaders(wsPend, H);
-  styleDataRows(wsPend, pend);
-  wsPend['!cols'] = wsBit['!cols'];
-  XLSX.utils.book_append_sheet(wb, wsPend, "Pendientes");
-
-  // ── KPIs ──
-  const kH = ["FechaHora","Indicador","Valor","Unidad","Fuente_chat"];
-  const wsKpi = XLSX.utils.aoa_to_sheet([kH, ...kpis.map(k=>[k.fechahora,k.indicador,k.valor,k.unidad,k.fuente])]);
-  styleHeaders(wsKpi, kH);
-  wsKpi['!cols'] = [20,25,8,8,30].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsKpi, "KPIs_chat");
-
-  // ── RESUMEN JUNTA ──
+  // ══════════════════════════════════════════
+  // HOJA 5: DASHBOARD BASE
+  // ══════════════════════════════════════════
+  const wsDash = wb.addWorksheet("Dashboard_Base");
+  const mods = [...new Set(ev.map(e=>e.modelo).filter(Boolean))];
   const ab = ev.filter(e=>e.estatus==="Abierto").length;
   const ep = ev.filter(e=>e.estatus==="En proceso").length;
   const ce = ev.filter(e=>e.estatus==="Cerrado").length;
-  const cr = ev.filter(e=>e.prioridad==="Crítica"&&e.estatus!=="Cerrado").length;
 
-  const wsRes = XLSX.utils.aoa_to_sheet([
-    [`Resumen ejecutivo de manufactura - ${res.grupo||"CALIDAD SMT/PTH"}`,"","","",""],
-    ["Corte analizado", res.periodo||"","","Eventos abiertos", {f:`COUNTIF(Bitacora!N:N,"Abierto")+COUNTIF(Bitacora!N:N,"En proceso")`}],
-    [],
-    ["Estatus por línea / estación","","","KPIs de desempeño reportados en chat",""],
-    ...(res.estatus_lineas||[]).map((l,i)=>["- "+l,"","", kpis[i] ? `${kpis[i].indicador} - ${kpis[i].fechahora?.slice(0,10)||""}` : "", kpis[i]?.valor||""]),
-    [],
-    ["Alertas críticas abiertas"],
-    ...(res.alertas_criticas||[]).map(a=>["- "+a]),
-    [],
-    ["Acciones pendientes para el equipo"],
-    ...(res.acciones_pendientes||[]).map(a=>["- "+a]),
-    [],
-    ["Supuestos / notas"],
-    ["- Turnos inferidos con ventanas: 1T 06:00-13:59, 2T 14:00-21:59, 3T 22:00-05:59"],
-    ["- La exportación de WhatsApp omite imágenes; hallazgos visuales no corroborados"],
-  ]);
+  wsDash.mergeCells("A1:I1");
+  const dt = wsDash.getCell("A1");
+  dt.value = "Dashboard base para junta diaria";
+  dt.fill = hFill(C.hBg); dt.font = hFont(14);
+  dt.alignment = { horizontal:"left", vertical:"middle" };
+  wsDash.getRow(1).height = 24;
+  wsDash.addRow([]);
 
-  // Style title row
-  if (wsRes["A1"]) wsRes["A1"].s = { fill:{fgColor:{rgb:C.headerBg}}, font:{bold:true,color:{rgb:C.headerFg},sz:14,name:"Calibri"} };
-  if (wsRes["A2"]) wsRes["A2"].s = { fill:{fgColor:{rgb:"D9EAF7"}}, font:{bold:true,sz:11,name:"Calibri"} };
-  if (wsRes["B2"]) wsRes["B2"].s = { fill:{fgColor:{rgb:"EEF5FB"}}, font:{sz:11,name:"Calibri"} };
-  if (wsRes["D2"]) wsRes["D2"].s = { fill:{fgColor:{rgb:"D9EAF7"}}, font:{bold:true,sz:11,name:"Calibri"} };
-  ["A4","D4"].forEach(r=>{ if(wsRes[r]) wsRes[r].s = {fill:{fgColor:{rgb:C.headerBg}},font:{bold:true,color:{rgb:C.headerFg},sz:11,name:"Calibri"}}; });
-  wsRes['!cols'] = [55,30,5,40,12].map(w=>({wch:w}));
-  wsRes['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:4} }];
-  XLSX.utils.book_append_sheet(wb, wsRes, "Resumen_Junta");
-
-  // ── DASHBOARD BASE ──
-  const mods = [...new Set(ev.map(e=>e.modelo).filter(Boolean))];
-  const wsDash = XLSX.utils.aoa_to_sheet([
-    ["Dashboard base para junta diaria","","","","","","","",""],
-    [],
-    ["KPI","Valor","Comentarios","","Resumen por estatus","","","Resumen por prioridad",""],
-    ["Total eventos",{f:"COUNTA(Bitacora!A:A)-1"},"Eventos relevantes curados del chat","","Estatus","Conteo","","Prioridad","Conteo"],
-    ["Abiertos",{f:`COUNTIF(Bitacora!N:N,"Abierto")`},"Pendientes sin cierre","","Abierto",{f:`COUNTIF(Bitacora!N:N,"Abierto")`},"","Crítica",{f:`COUNTIF(Bitacora!O:O,"Crítica")`}],
-    ["En proceso",{f:`COUNTIF(Bitacora!N:N,"En proceso")`},"Acciones con contención parcial","","En proceso",{f:`COUNTIF(Bitacora!N:N,"En proceso")`},"","Alta",{f:`COUNTIF(Bitacora!O:O,"Alta")`}],
-    ["Cerrados",{f:`COUNTIF(Bitacora!N:N,"Cerrado")`},"Eventos resueltos dentro del corte","","Cerrado",{f:`COUNTIF(Bitacora!N:N,"Cerrado")`},"","Media",{f:`COUNTIF(Bitacora!O:O,"Media")`}],
-    ["Críticos abiertos",{f:`COUNTIF(Bitacora!O:O,"Crítica")`},"Carga roja para junta","","","","","Baja",{f:`COUNTIF(Bitacora!O:O,"Baja")`}],
-    [],
-    ...mods.map(m=>["Eventos "+m, ev.filter(e=>e.modelo===m).length, ""]),
-    [],
-    ["Último FPY / KPI", kpis[kpis.length-1]?.valor||"", kpis[kpis.length-1] ? `${kpis[kpis.length-1].indicador} - ${kpis[kpis.length-1].fuente||""}` : ""],
-  ]);
-  if (wsDash["A1"]) wsDash["A1"].s = { fill:{fgColor:{rgb:C.headerBg}}, font:{bold:true,color:{rgb:C.headerFg},sz:14,name:"Calibri"} };
-  ["A3","B3","C3","E3","F3","H3","I3","A4","B4","C4","E4","F4","H4","I4"].forEach(r=>{
-    if(wsDash[r]) wsDash[r].s = {fill:{fgColor:{rgb:C.headerBg}},font:{bold:true,color:{rgb:C.headerFg},sz:11,name:"Calibri"},border:{left:{style:"thin"},right:{style:"thin"},top:{style:"thin"},bottom:{style:"thin"}}};
+  // Headers row 3
+  const dashHdrCells = [["A3","KPI"],["B3","Valor"],["C3","Comentarios"],["E3","Resumen por estatus"],["H3","Resumen por prioridad"]];
+  dashHdrCells.forEach(([addr, val]) => {
+    const c = wsDash.getCell(addr); c.value = val;
+    c.fill = hFill(C.hBg); c.font = hFont(); c.border = border();
   });
-  wsDash['!cols'] = [20,10,35,3,15,8,3,15,8].map(w=>({wch:w}));
-  wsDash['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:8} }];
-  XLSX.utils.book_append_sheet(wb, wsDash, "Dashboard_Base");
+  [["A4","B4","C4"],["E4","F4"],["H4","I4"]].forEach(group => {
+    group.forEach(addr => {
+      const c = wsDash.getCell(addr);
+      c.fill = hFill(C.hBg); c.font = hFont(); c.border = border();
+    });
+  });
+  wsDash.getCell("A4").value = "Total eventos";
+  wsDash.getCell("B4").value = { formula: "COUNTA(Bitacora!A:A)-1" };
+  wsDash.getCell("C4").value = "Eventos relevantes curados del chat";
+  wsDash.getCell("E4").value = "Estatus"; wsDash.getCell("F4").value = "Conteo";
+  wsDash.getCell("H4").value = "Prioridad"; wsDash.getCell("I4").value = "Conteo";
 
-  // ── DIRECTORIO EQUIPO ──
+  const dashData = [
+    ["Abiertos",   {formula:`COUNTIF(Bitacora!N:N,"Abierto")`},   "Pendientes sin cierre",          "Abierto",    {formula:`COUNTIF(Bitacora!N:N,"Abierto")`},    "","Crítica", {formula:`COUNTIF(Bitacora!O:O,"Crítica")`}],
+    ["En proceso", {formula:`COUNTIF(Bitacora!N:N,"En proceso")`}, "Acciones con contención parcial","En proceso", {formula:`COUNTIF(Bitacora!N:N,"En proceso")`}, "","Alta",    {formula:`COUNTIF(Bitacora!O:O,"Alta")`}],
+    ["Cerrados",   {formula:`COUNTIF(Bitacora!N:N,"Cerrado")`},    "Resueltos en el corte",          "Cerrado",    {formula:`COUNTIF(Bitacora!N:N,"Cerrado")`},    "","Media",   {formula:`COUNTIF(Bitacora!O:O,"Media")`}],
+    ["Críticos",   {formula:`COUNTIF(Bitacora!O:O,"Crítica")`},    "Carga roja para junta",          "",           "",                                             "","Baja",    {formula:`COUNTIF(Bitacora!O:O,"Baja")`}],
+  ];
+  dashData.forEach(rowData => {
+    const r = wsDash.addRow([rowData[0],rowData[1],rowData[2],"",rowData[3],rowData[4],"",rowData[6],rowData[7]]);
+    r.eachCell({ includeEmpty:false }, cell => { cell.font = dFont(); });
+  });
+
+  wsDash.addRow([]);
+  const rMod = wsDash.addRow(["Eventos por modelo"]);
+  rMod.getCell(1).fill = hFill(C.hBg); rMod.getCell(1).font = hFont();
+  mods.forEach(m => {
+    const r = wsDash.addRow([m, ev.filter(e=>e.modelo===m).length]);
+    r.eachCell({ includeEmpty:false }, cell => { cell.font = dFont(); });
+  });
+  if (kpis.length) {
+    wsDash.addRow([]);
+    const rk = wsDash.addRow(["Último KPI", kpis[kpis.length-1]?.valor||"", `${kpis[kpis.length-1]?.indicador||""} — ${kpis[kpis.length-1]?.fuente||""}`]);
+    rk.eachCell({ includeEmpty:false }, cell => { cell.font = dFont(); });
+  }
+  colWidths(wsDash, [22,10,36,3,16,8,3,16,8]);
+
+  // ══════════════════════════════════════════
+  // HOJA 6: DIRECTORIO EQUIPO
+  // ══════════════════════════════════════════
+  const wsDir = wb.addWorksheet("Directorio_Equipo");
   const dH = ["Nombre","Departamento_inferido","Rol_sugerido","Mensajes_reportados","Eventos_asignados","Área_owner"];
-  const dirRows = directorio.length > 0 ? directorio.map(d=>[d.nombre,d.departamento,d.rol,d.mensajes,d.eventos,d.area_owner])
+  wsDir.addRow(dH);
+  styleHdr(wsDir, dH);
+  const dirRows = directorio.length > 0
+    ? directorio.map(d=>[d.nombre,d.departamento,d.rol,d.mensajes,d.eventos,d.area_owner])
     : [...new Set(ev.map(e=>e.reporta).filter(Boolean))].map(nombre=>[
         nombre,
         ev.find(e=>e.reporta===nombre)?.area_involucrada?.split("/")[0]?.trim()||"",
-        "",
-        ev.filter(e=>e.reporta?.includes(nombre)).length,
-        ev.filter(e=>e.responsable_sugerido?.includes(nombre)).length,
-        ""
+        "", ev.filter(e=>e.reporta?.includes(nombre)).length,
+        ev.filter(e=>e.responsable_sugerido?.includes(nombre)).length, ""
       ]);
-  const wsDir = XLSX.utils.aoa_to_sheet([dH, ...dirRows]);
-  styleHeaders(wsDir, dH);
-  wsDir['!cols'] = [22,25,20,18,18,20].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsDir, "Directorio_Equipo");
+  dirRows.forEach((row, ri) => {
+    const r = wsDir.addRow(row);
+    r.eachCell({ includeEmpty:false }, cell => {
+      cell.font = dFont();
+      cell.fill = hFill(ri%2===0 ? "FFFFFF" : C.alt);
+    });
+  });
+  colWidths(wsDir, [24,26,20,20,20,24]);
 
-  // ── CATÁLOGOS ──
+  // ══════════════════════════════════════════
+  // HOJA 7: CATÁLOGOS
+  // ══════════════════════════════════════════
+  const wsCat = wb.addWorksheet("Catalogos_Reglas");
   const lins = [...new Set(ev.map(e=>e.linea_estacion).filter(Boolean))];
   const reglas = [
     "- Se incluyeron mensajes con modelo/línea/estación y evento operativo accionable.",
@@ -523,20 +606,29 @@ function buildXlsx(result, allMsgs) {
     "- Turnos inferidos: 1T 06:00-13:59, 2T 14:00-21:59, 3T 22:00-05:59.",
     "- Dashboard base usa hoja Bitacora como fuente para pivotes o Power BI.",
   ];
-  const maxCat = Math.max(mods.length, lins.length, reglas.length);
-  const wsCat = XLSX.utils.aoa_to_sheet([
-    ["Catálogos detectados y reglas aplicadas","","","","",""],
-    [],
-    ["Modelos detectados","","Líneas / estaciones detectadas","","Reglas operativas usadas",""],
-    ...[...Array(maxCat)].map((_,i)=>[mods[i]||"","",lins[i]||"","",(reglas[i]||""),""]),
-  ]);
-  if (wsCat["A1"]) wsCat["A1"].s = { fill:{fgColor:{rgb:C.headerBg}}, font:{bold:true,color:{rgb:C.headerFg},sz:14,name:"Calibri"} };
-  ["A3","C3","E3"].forEach(r=>{ if(wsCat[r]) wsCat[r].s = {fill:{fgColor:{rgb:C.headerBg}},font:{bold:true,color:{rgb:C.headerFg},sz:11,name:"Calibri"}}; });
-  wsCat['!cols'] = [20,2,28,2,60,2].map(w=>({wch:w}));
-  wsCat['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:5} }];
-  XLSX.utils.book_append_sheet(wb, wsCat, "Catalogos_Reglas");
+  wsCat.mergeCells("A1:F1");
+  const ct = wsCat.getCell("A1");
+  ct.value = "Catálogos detectados y reglas aplicadas";
+  ct.fill = hFill(C.hBg); ct.font = hFont(14);
+  ct.alignment = { horizontal:"left", vertical:"middle" };
+  wsCat.getRow(1).height = 24;
+  wsCat.addRow([]);
 
-  return XLSX.write(wb, { bookType:"xlsx", type:"array", cellStyles: true });
+  const catHdr = wsCat.getRow(3);
+  [["A3","Modelos detectados"],["C3","Líneas / estaciones detectadas"],["E3","Reglas operativas usadas"]].forEach(([addr,val])=>{
+    const c = wsCat.getCell(addr); c.value = val;
+    c.fill = hFill(C.hBg); c.font = hFont();
+  });
+  const maxCat = Math.max(mods.length, lins.length, reglas.length);
+  for(let i=0;i<maxCat;i++){
+    const r = wsCat.addRow([mods[i]||"","",lins[i]||"",(reglas[i]||"")]);
+    r.eachCell({ includeEmpty:false }, cell => { cell.font = dFont(); });
+  }
+  colWidths(wsCat, [22,3,30,3,62,3]);
+
+  // ── Generate buffer ──
+  const buffer = await wb.xlsx.writeBuffer();
+  return buffer;
 }
 
 // ── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
@@ -552,6 +644,7 @@ function App() {
   const [errMsg, setErrMsg] = useState("");
   const [drag, setDrag] = useState(false);
   const [msgStats, setMsgStats] = useState(null);
+  const [personaFiltro, setPersonaFiltro] = useState("");
   const fileRef = useRef();
 
   const saveKey = (k) => { setApiKey(k); localStorage.setItem("smt_apikey", k); };
@@ -575,7 +668,7 @@ function App() {
       setProgStep(3); setProg(55);
       const res = await analyzeWithAI(clean, apiKey.trim());
       setProgStep(4); setProg(82);
-      const bytes = buildXlsx(res, clean);
+      const bytes = await buildXlsx(res, clean);
       setProg(100); setResult(res); setXlsxBytes(bytes); setState("done");
     } catch(e) { setErrMsg(e.message || String(e)); setState("error"); }
   }, [days, apiKey]);
@@ -587,9 +680,10 @@ function App() {
     a.href = URL.createObjectURL(blob);
     a.download = `Bitacora_SMT_${new Date().toISOString().slice(0,10)}.xlsx`;
     a.click();
+    URL.revokeObjectURL(a.href);
   };
 
-  const reset = () => { setState("idle"); setResult(null); setXlsxBytes(null); setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); };
+  const reset = () => { setState("idle"); setResult(null); setXlsxBytes(null); setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); setPersonaFiltro(""); };
 
   const ev = result?.eventos || [];
   const kpis = result?.kpis || [];
@@ -745,6 +839,86 @@ function App() {
               ))}
             </div>
           </div>
+
+          {/* ── FILTRO POR PERSONA ── */}
+          {(() => {
+            const personas = [...new Set([
+              ...ev.map(e=>e.reporta),
+              ...ev.map(e=>e.responsable_sugerido)
+            ].filter(p=>p&&p!=="N/D"&&p.length>1))].sort();
+            const evReportados  = personaFiltro ? ev.filter(e=>e.reporta?.toLowerCase().includes(personaFiltro.toLowerCase())) : [];
+            const evResponsable = personaFiltro ? ev.filter(e=>e.responsable_sugerido?.toLowerCase().includes(personaFiltro.toLowerCase())&&!evReportados.includes(e)) : [];
+            const dirInfo = result?.directorio?.find(d=>d.nombre?.toLowerCase().includes(personaFiltro.toLowerCase()));
+            const criticos = evReportados.filter(e=>e.prioridad==="Crítica").length;
+            const abiertos = [...evReportados,...evResponsable].filter(e=>e.estatus!=="Cerrado").length;
+            return (
+              <div className="pf-card">
+                <div className="pf-hdr">
+                  <h3>👤 Filtro por persona</h3>
+                  <select className="pf-select" value={personaFiltro} onChange={e=>setPersonaFiltro(e.target.value)}>
+                    <option value="">— Selecciona una persona —</option>
+                    {personas.map((p,i)=><option key={i} value={p}>{p}</option>)}
+                  </select>
+                  {personaFiltro&&<button className="pf-clear" onClick={()=>setPersonaFiltro("")}>✕ Limpiar</button>}
+                </div>
+                {personaFiltro ? (
+                  <div className="pf-body">
+                    <div className="pf-profile">
+                      <div className="pf-avatar">{personaFiltro.charAt(0).toUpperCase()}</div>
+                      <div className="pf-info">
+                        <div className="pf-name">{personaFiltro}</div>
+                        <div className="pf-dept">{dirInfo?`${dirInfo.departamento} · ${dirInfo.rol}${dirInfo.area_owner?` · Owner: ${dirInfo.area_owner}`:""}` : "Participante del chat"}</div>
+                        <div className="pf-stats">
+                          <div className="pf-stat"><div className="pf-stat-val">{evReportados.length}</div><div className="pf-stat-lbl">Reportó</div></div>
+                          <div className="pf-stat bl"><div className="pf-stat-val">{evResponsable.length}</div><div className="pf-stat-lbl">Es responsable</div></div>
+                          <div className="pf-stat re"><div className="pf-stat-val">{criticos}</div><div className="pf-stat-lbl">Críticos</div></div>
+                          <div className="pf-stat gr"><div className="pf-stat-val">{abiertos}</div><div className="pf-stat-lbl">Abiertos</div></div>
+                        </div>
+                      </div>
+                    </div>
+                    {evReportados.length>0&&(<>
+                      <div className="pf-section-title">Eventos que reportó ({evReportados.length})</div>
+                      <div className="plist" style={{padding:0,marginBottom:14}}>
+                        {evReportados.map((e,i)=>(
+                          <div key={i} className={`pitem ${e.prioridad==="Crítica"?"cr":e.prioridad==="Alta"?"al":""}`}>
+                            <div className="pitem-top"><span className="pitem-id">{e.id} · {e.fecha} · {e.turno}</span><span className={bprio(e.prioridad)}>{e.prioridad}</span></div>
+                            <h4>{e.evento_detectado}</h4><p>{e.accion_requerida}</p>
+                            <div className="pmeta">
+                              <span className="ptag">📍 {e.linea_estacion}</span>
+                              {e.modelo!=="N/D"&&<span className="ptag">{e.modelo}</span>}
+                              <span className={best(e.estatus)}>{e.estatus}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>)}
+                    {evResponsable.length>0&&(<>
+                      <div className="pf-section-title">Eventos donde es responsable ({evResponsable.length})</div>
+                      <div className="plist" style={{padding:0}}>
+                        {evResponsable.map((e,i)=>(
+                          <div key={i} className={`pitem ${e.prioridad==="Crítica"?"cr":e.prioridad==="Alta"?"al":""}`} style={{borderLeftColor:"var(--bl)"}}>
+                            <div className="pitem-top"><span className="pitem-id">{e.id} · {e.fecha} · {e.turno}</span><span className={bprio(e.prioridad)}>{e.prioridad}</span></div>
+                            <h4>{e.evento_detectado}</h4><p>{e.accion_requerida}</p>
+                            <div className="pmeta">
+                              <span className="ptag">📍 {e.linea_estacion}</span>
+                              {e.modelo!=="N/D"&&<span className="ptag">{e.modelo}</span>}
+                              <span className="ptag">Reportó: {e.reporta}</span>
+                              <span className={best(e.estatus)}>{e.estatus}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>)}
+                    {evReportados.length===0&&evResponsable.length===0&&(
+                      <div className="pf-empty">Sin eventos registrados para esta persona en el periodo</div>
+                    )}
+                  </div>
+                ):(
+                  <div className="pf-body"><div className="pf-empty">Selecciona una persona para ver su actividad operativa del periodo</div></div>
+                )}
+              </div>
+            );
+          })()}
 
           <div className="tcard">
             <div className="tcard-hdr"><h3>Bitácora de eventos ({ev.length})</h3></div>
