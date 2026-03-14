@@ -1,21 +1,38 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Dashboard SMT — CALIDAD SMT/PTH</title>
+
+<!-- ── DEPENDENCIAS CDN (sin instalación) ── -->
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#F7F5F2;--w:#fff;--g50:#F9F8F6;--g100:#F0EDE9;--g200:#E2DDD7;--g300:#C8C2BA;--g500:#8A847C;--g700:#4A4540;--g900:#1E1B18;--or:#E8621A;--ol:#FFF0E8;--om:#FFD4B8;--bl:#2563EB;--bll:#EFF4FF;--blm:#BFCFFE;--gr:#16A34A;--grl:#F0FDF4;--re:#DC2626;--rel:#FEF2F2;}
+:root{
+  --bg:#F7F5F2;--w:#fff;--g50:#F9F8F6;--g100:#F0EDE9;--g200:#E2DDD7;
+  --g300:#C8C2BA;--g500:#8A847C;--g700:#4A4540;--g900:#1E1B18;
+  --or:#E8621A;--ol:#FFF0E8;--om:#FFD4B8;
+  --bl:#2563EB;--bll:#EFF4FF;--blm:#BFCFFE;
+  --gr:#16A34A;--grl:#F0FDF4;--re:#DC2626;--rel:#FEF2F2;
+}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--g900);min-height:100vh}
 #root{max-width:900px;margin:0 auto;padding:28px 16px 60px}
+
 .hdr{background:var(--g900);border-radius:18px;padding:36px 44px;margin-bottom:20px;position:relative;overflow:hidden}
 .hdr::before{content:'';position:absolute;top:-50px;right:-50px;width:220px;height:220px;background:radial-gradient(circle,rgba(232,98,26,.25),transparent 70%);border-radius:50%}
 .hdr::after{content:'';position:absolute;bottom:-30px;left:80px;width:160px;height:160px;background:radial-gradient(circle,rgba(37,99,235,.18),transparent 70%);border-radius:50%}
@@ -23,12 +40,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--g900);min-h
 .hdr h1{font-size:28px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:8px;position:relative;z-index:1}
 .hdr h1 span{color:#F4915A}
 .hdr p{font-size:13px;color:#A09890;position:relative;z-index:1;max-width:520px}
+
 .api-bar{background:var(--w);border:1px solid var(--g200);border-radius:12px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .api-bar label{font-size:12px;font-weight:600;color:var(--g700);white-space:nowrap}
 .api-input{flex:1;min-width:200px;border:1px solid var(--g200);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--g900);font-family:monospace;background:var(--g50);outline:none}
 .api-input:focus{border-color:var(--or)}
 .api-note{font-size:10.5px;color:var(--g500);width:100%}
 .api-note a{color:var(--bl);text-decoration:none}
+.api-note a:hover{text-decoration:underline}
+
 .up{background:var(--w);border:2px dashed var(--g200);border-radius:14px;margin-bottom:20px;overflow:hidden;cursor:pointer;transition:border-color .2s,background .2s}
 .up:hover,.up.drag{border-color:var(--or);background:var(--ol)}
 .up-top{padding:36px 36px 28px;text-align:center}
@@ -37,12 +57,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--g900);min-h
 .up p{font-size:13px;color:var(--g500);margin-bottom:14px}
 .chip{display:inline-block;background:var(--g100);border:1px solid var(--g200);border-radius:6px;padding:3px 10px;font-size:10.5px;color:var(--g700);font-weight:500;margin:3px}
 .up-btn{display:inline-flex;align-items:center;gap:7px;background:var(--or);color:#fff;border:none;border-radius:9px;padding:11px 22px;font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;transition:opacity .2s}
+.up-btn:hover{opacity:.88}
 .filter-bar{background:var(--g50);border-top:1px solid var(--g200);padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .filter-bar label{font-size:12px;font-weight:600;color:var(--g700)}
 .day-btns{display:flex;gap:6px}
 .day-btn{border:1px solid var(--g200);background:var(--w);border-radius:7px;padding:5px 12px;font-size:12px;font-weight:500;color:var(--g700);cursor:pointer;transition:all .15s}
+.day-btn:hover{border-color:var(--or);color:var(--or)}
 .day-btn.active{background:var(--or);border-color:var(--or);color:#fff;font-weight:700}
 .filter-note{font-size:11px;color:var(--g500);margin-left:auto}
+
 .prog{background:var(--w);border:1px solid var(--g200);border-radius:14px;padding:32px 36px;text-align:center;margin-bottom:20px}
 .prog h3{font-size:17px;font-weight:700;margin-bottom:5px}
 .prog p{font-size:12.5px;color:var(--g500);margin-bottom:20px}
@@ -52,17 +75,21 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--g900);min-h
 .pstep{font-size:10.5px;color:var(--g300);font-weight:500;text-align:center;flex:1}
 .pstep.on{color:var(--or);font-weight:700}
 .pstep.ok{color:var(--gr)}
+
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
 .scard{background:var(--w);border:1px solid var(--g200);border-radius:11px;padding:14px 16px}
 .sval{font-size:26px;font-weight:800;line-height:1}
 .sval.or{color:var(--or)}.sval.re{color:var(--re)}.sval.bl{color:var(--bl)}.sval.gr{color:var(--gr)}
 .slb{font-size:10.5px;color:var(--g500);margin-top:3px}
+
 .dlc{background:var(--g900);border-radius:14px;padding:28px 36px;display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:16px}
 .dlc-txt h3{font-size:17px;font-weight:700;color:#fff;margin-bottom:4px}
 .dlc-txt p{font-size:12px;color:#A09890}
 .dlc-sheets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .dlc-sh{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 10px;font-size:10.5px;color:#C8C2BA}
 .dlbtn{display:inline-flex;align-items:center;gap:7px;background:var(--or);color:#fff;border:none;border-radius:10px;padding:13px 24px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .2s}
+.dlbtn:hover{opacity:.88}
+
 .tcard{background:var(--w);border:1px solid var(--g200);border-radius:14px;overflow:hidden;margin-bottom:16px}
 .tcard-hdr{padding:16px 20px;border-bottom:1px solid var(--g100);display:flex;align-items:center;justify-content:space-between}
 .tcard-hdr h3{font-size:14px;font-weight:700}
@@ -78,6 +105,7 @@ tr:hover td{background:var(--g50)}
 .bo{background:#FFF7ED;color:#9A3412;border:1px solid #FED7AA}
 .be{background:var(--bll);color:#1E40AF;border:1px solid var(--blm)}
 .bce{background:var(--grl);color:#14532D;border:1px solid #BBF7D0}
+
 .plist{display:flex;flex-direction:column;gap:7px;padding:14px 16px}
 .pitem{background:var(--g50);border:1px solid var(--g200);border-left:3px solid var(--or);border-radius:0 9px 9px 0;padding:10px 14px}
 .pitem.cr{border-left-color:var(--re)}.pitem.al{border-left-color:#F59E0B}
@@ -87,6 +115,7 @@ tr:hover td{background:var(--g50)}
 .pitem p{font-size:11px;color:var(--g500);line-height:1.4}
 .pmeta{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .ptag{font-size:9.5px;background:var(--w);border:1px solid var(--g200);border-radius:4px;padding:2px 7px;color:var(--g700)}
+
 .charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
 .crt{background:var(--w);border:1px solid var(--g200);border-radius:12px;padding:16px 18px}
 .crt h4{font-size:12.5px;font-weight:700;margin-bottom:12px}
@@ -96,6 +125,7 @@ tr:hover td{background:var(--g50)}
 .bfil{height:7px;border-radius:4px;background:var(--or)}
 .bfil.bl{background:var(--bl)}.bfil.re{background:var(--re)}.bfil.gr{background:var(--gr)}.bfil.ye{background:#F59E0B}
 .bnum{font-size:10.5px;font-weight:600;color:var(--g700);width:18px;text-align:right}
+
 .cmp{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--g200);border-radius:14px;overflow:hidden;margin-bottom:16px}
 .cmpc{padding:22px 26px;background:var(--w)}
 .cmpc.aft{background:var(--g50);border-left:1px solid var(--g200)}
@@ -107,37 +137,688 @@ tr:hover td{background:var(--g50)}
 .cmic{width:20px;height:20px;border-radius:5px;background:var(--rel);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--re);font-size:10px;font-weight:700}
 .cmic.g{background:var(--grl);color:var(--gr)}
 .cmrow p{font-size:12px;color:var(--g700);line-height:1.4;padding-top:1px}
+
 .resetbtn{display:inline-flex;align-items:center;gap:6px;background:var(--g100);border:1px solid var(--g200);border-radius:7px;padding:7px 14px;font-size:11.5px;font-weight:500;color:var(--g700);cursor:pointer;margin-bottom:16px}
+.resetbtn:hover{background:var(--g200)}
 .errc{background:var(--rel);border:1px solid #FECACA;border-radius:11px;padding:16px 20px;margin-bottom:16px;color:var(--re);font-size:12.5px}
 .foot{background:var(--w);border:1px solid var(--g200);border-radius:14px;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;margin-top:16px}
 .foot p{font-size:11.5px;color:var(--g500)}
 .foot strong{color:var(--g900)}
+
 .krow{display:flex;align-items:center;gap:10px;background:var(--g50);border:1px solid var(--g200);border-radius:9px;padding:9px 13px;margin-bottom:7px}
 .kval{font-size:18px;font-weight:800;color:var(--or);width:70px;flex-shrink:0}
 .kin{flex:1}.kin .nm{font-size:11.5px;font-weight:600;color:var(--g900)}
 .kin .ts{font-size:10px;color:var(--g500)}
 .kbar{width:100px;height:6px;background:var(--g200);border-radius:99px;flex-shrink:0}
 .kbf{height:6px;border-radius:99px;background:var(--or)}
-@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}.cmp{grid-template-columns:1fr}.cmpc.aft{border-left:none;border-top:1px solid var(--g200)}.hdr{padding:24px 20px}.hdr h1{font-size:22px}.dlc{flex-direction:column;align-items:flex-start}#root{padding:16px 12px 40px}}
+
+@media(max-width:600px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .charts{grid-template-columns:1fr}
+  .cmp{grid-template-columns:1fr}
+  .cmpc.aft{border-left:none;border-top:1px solid var(--g200)}
+  .hdr{padding:24px 20px}.hdr h1{font-size:22px}
+  .dlc{flex-direction:column;align-items:flex-start}
+  #root{padding:16px 12px 40px}
+}
 </style>
+
 </head>
 <body>
 <div id="root"></div>
+
 <script type="text/babel">
 const { useState, useRef, useCallback } = React;
-function to24h(h,min,sec,mer){let hour=parseInt(h);const m=(mer||"").toLowerCase().replace(/[\s.]/g,"");if(m.startsWith("p")&&hour!==12)hour+=12;if(m.startsWith("a")&&hour===12)hour=0;return{hour,timeStr:`${String(hour).padStart(2,"0")}:${min}:${sec||"00"}`};}
-function parseTurno(h){if(h>=6&&h<14)return"1T";if(h>=14&&h<22)return"2T";return"3T";}
-function parseWhatsApp(txt){const lines=txt.split(/\r?\n/);const msgs=[];const reA=/^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;const reB=/^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|a\.m\.|p\.m\.)?\s*[-–]\s*([^:]+?):\s*(.*)$/i;let cur=null;for(const raw of lines){const line=raw.replace(/[\u200e\u200f\u202a-\u202e]/g,"").trim();const m=line.match(reA)||line.match(reB);if(m){if(cur)msgs.push(cur);const[,d,mo,yr,h,min,sec,mer,sender,text]=m;let year=parseInt(yr);if(year<100)year+=2000;const{hour,timeStr}=to24h(h,min,sec,mer||"");const dateIso=`${year}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;const dateDisp=`${String(d).padStart(2,"0")}/${String(mo).padStart(2,"0")}/${year}`;cur={dateIso,dateDisp,timeStr,hour,turno:parseTurno(hour),sender:sender.replace(/^~/,"").trim(),text:text.trim()};}else if(cur&&line&&!line.startsWith("[")){cur.text+=" "+line;}}if(cur)msgs.push(cur);return msgs;}
-function filterByDays(msgs,days){if(!msgs.length)return msgs;const sorted=[...msgs].sort((a,b)=>a.dateIso.localeCompare(b.dateIso));const last=new Date(sorted[sorted.length-1].dateIso);const cutoff=new Date(last);cutoff.setDate(cutoff.getDate()-days+1);const cutStr=cutoff.toISOString().slice(0,10);return sorted.filter(m=>m.dateIso>=cutStr);}
-function cleanMsgs(msgs){const skip=/imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|Se te añadió|creó este grupo|cifrados de extremo|agregó a|salió del grupo|cambió el|ahora es admin|Se editó este mensaje/i;return msgs.filter(m=>m.text&&m.text.trim().length>5&&!m.text.match(skip));}
-async function readZip(file){const zip=await JSZip.loadAsync(file);for(const name of Object.keys(zip.files)){if(name.endsWith(".txt")&&!name.startsWith("__MACOSX")){return await zip.files[name].async("string");}}throw new Error("No se encontró .txt en el ZIP");}
-async function analyzeWithAI(msgs,apiKey){const sample=msgs.slice(0,250).map(m=>`[${m.dateDisp} ${m.timeStr} | ${m.turno} | ${m.sender}]: ${m.text}`).join("\n");const system=`Eres experto en manufactura electrónica SMT/PCB/PTH. Analiza mensajes de WhatsApp de manufactura y extrae SOLO eventos operativos accionables.\nINCLUIR: paros de línea, rechazos, defectos, equivocados de componente, cambios de modelo, FAI, LCR vencido, falta de material, rollo mal cargado, RMA, AOI, ICT, seguridad, llenado de barril, inversión de componentes, ausentes, cortos, abiertos, daño físico, escáner.\nEXCLUIR: saludos, ok, gracias, buen día, confirmaciones simples, emojis solos.\nResponde ÚNICAMENTE con este JSON exacto sin texto extra:\n{"eventos":[{"id":"EVT-001","fecha":"DD/MM/YYYY","hora":"HH:MM","turno":"1T|2T|3T","modelo":"N/P o N/D","linea_estacion":"L1|AOI|etc","reporta":"nombre","area_involucrada":"SMT|PTH|ICT|etc","tipo_evento":"categoría","evento_detectado":"descripción completa","impacto":"impacto operativo","accion_requerida":"acción concreta","responsable_sugerido":"área o persona","estatus":"Abierto|En proceso|Cerrado","prioridad":"Crítica|Alta|Media|Baja","fuente_chat":"DD/MM/YY HH:MM nombre","notas":"contexto extra"}],"kpis":[{"fechahora":"DD/MM/YYYY HH:MM","indicador":"nombre","valor":0.0,"unidad":"%","fuente":"nombre"}],"resumen":{"periodo":"DD/MM/YYYY a DD/MM/YYYY","grupo":"nombre grupo","total_eventos":0,"alertas_criticas":["alerta1"],"acciones_pendientes":["accion1"],"estatus_lineas":["linea1"]}}`;const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:6000,system,messages:[{role:"user",content:`Analiza estos ${msgs.length} mensajes. Responde ÚNICAMENTE con JSON:\n\n${sample}`},{role:"assistant",content:"{"}]})});if(!resp.ok){const err=await resp.json().catch(()=>({}));if(resp.status===401)throw new Error("API Key inválida. Verifica en console.anthropic.com");if(resp.status===429)throw new Error("Límite de uso alcanzado. Espera e intenta de nuevo.");throw new Error(err.error?.message||`Error API ${resp.status}`);}const data=await resp.json();if(!data.content?.length)throw new Error("Respuesta vacía. Intenta de nuevo.");const txt="{"+data.content.map(b=>b.text||"").join("");const stripped=txt.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();const start=stripped.indexOf("{");const end=stripped.lastIndexOf("}");if(start===-1||end===-1)throw new Error("JSON inválido. Reduce el rango de días e intenta.");const jsonStr=stripped.slice(start,end+1);try{return JSON.parse(jsonStr);}catch{const fixed=jsonStr.replace(/,\s*$/,"").replace(/,\s*\]/,"]").replace(/,\s*\}/,"}")+(jsonStr.split("{").length>jsonStr.split("}").length?"}":"")+(jsonStr.split("[").length>jsonStr.split("]").length?"]}":"");try{return JSON.parse(fixed);}catch{throw new Error("Error procesando respuesta. Intenta con 1 o 3 días.");}}}
-function buildXlsx(result){const wb=XLSX.utils.book_new();const ev=result.eventos||[];const kpis=result.kpis||[];const res=result.resumen||{};const H=["ID","Fecha","Hora","Turno","Modelo","Linea_Estacion","Reporta","Area_involucrada","Tipo_evento","Evento_detectado","Impacto","Accion_requerida","Responsable_sugerido","Estatus","Prioridad","Fuente_chat","Notas"];const row=e=>[e.id,e.fecha,e.hora,e.turno,e.modelo,e.linea_estacion,e.reporta,e.area_involucrada,e.tipo_evento,e.evento_detectado,e.impacto,e.accion_requerida,e.responsable_sugerido,e.estatus,e.prioridad,e.fuente_chat,e.notas];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([H,...ev.map(row)]),"Bitacora");XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([H,...ev.filter(e=>e.estatus!=="Cerrado").map(row)]),"Pendientes");XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["FechaHora","Indicador","Valor","Unidad","Fuente_chat"],...kpis.map(k=>[k.fechahora,k.indicador,k.valor,k.unidad,k.fuente])]),"KPIs_chat");const ab=ev.filter(e=>e.estatus==="Abierto").length;const ep=ev.filter(e=>e.estatus==="En proceso").length;const ce=ev.filter(e=>e.estatus==="Cerrado").length;const cr=ev.filter(e=>e.prioridad==="Crítica"&&e.estatus!=="Cerrado").length;const mods=[...new Set(ev.map(e=>e.modelo).filter(Boolean))];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Resumen ejecutivo de manufactura"],["Periodo",res.periodo||""],["Grupo",res.grupo||""],[],["=== ESTATUS POR LÍNEA ==="],...(res.estatus_lineas||[]).map(l=>["- "+l]),[]  ,["=== ALERTAS CRÍTICAS ==="],...(res.alertas_criticas||[]).map(a=>["- "+a]),[]  ,["=== ACCIONES PENDIENTES ==="],...(res.acciones_pendientes||[]).map(a=>["- "+a]),[]  ,["=== KPIs ==="],...kpis.map(k=>[k.indicador,k.valor,k.unidad,k.fechahora]),[]  ,["=== RESUMEN ==="],["Total eventos",ev.length],["Abiertos",ab],["En proceso",ep],["Cerrados",ce],["Críticos activos",cr]]),"Resumen_Junta");XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Dashboard base"],[],["KPI","Valor"],["Total eventos",ev.length],["Abiertos",ab],["En proceso",ep],["Cerrados",ce],["Críticos activos",cr],[],["Por modelo",""],...mods.map(m=>["Eventos "+m,ev.filter(e=>e.modelo===m).length])]),"Dashboard_Base");const lins=[...new Set(ev.map(e=>e.linea_estacion).filter(Boolean))];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Catálogos detectados"],[],["Modelos","","Líneas / Estaciones"],...[...Array(Math.max(mods.length,lins.length))].map((_,i)=>[mods[i]||"","",lins[i]||""])]),"Catalogos_Reglas");return XLSX.write(wb,{bookType:"xlsx",type:"array"});}
-function App(){const[apiKey,setApiKey]=useState(localStorage.getItem("smt_apikey")||"");const[state,setState]=useState("idle");const[prog,setProg]=useState(0);const[progStep,setProgStep]=useState(0);const[days,setDays]=useState(3);const[result,setResult]=useState(null);const[xlsxBytes,setXlsxBytes]=useState(null);const[errMsg,setErrMsg]=useState("");const[drag,setDrag]=useState(false);const[msgStats,setMsgStats]=useState(null);const fileRef=useRef();const saveKey=(k)=>{setApiKey(k);localStorage.setItem("smt_apikey",k);};const STEPS=["Leyendo ZIP","Parseando mensajes","Filtrando eventos","Analizando con IA","Generando Excel"];const handle=useCallback(async(file)=>{if(!file||!file.name.endsWith(".zip")){setErrMsg("Sube un archivo .zip exportado de WhatsApp");setState("error");return;}if(!apiKey.trim()){setErrMsg("Ingresa tu API Key de Anthropic para continuar");setState("error");return;}setState("loading");setProg(8);setProgStep(0);try{const txt=await readZip(file);setProgStep(1);setProg(22);const all=parseWhatsApp(txt);if(!all.length)throw new Error("No se encontraron mensajes con formato WhatsApp.");setProgStep(2);setProg(38);const filtered=filterByDays(all,days);const clean=cleanMsgs(filtered);setMsgStats({total:all.length,filtered:filtered.length,clean:clean.length});if(!clean.length)throw new Error(`No hay mensajes operativos en los últimos ${days} días. Aumenta el rango.`);setProgStep(3);setProg(55);const res=await analyzeWithAI(clean,apiKey.trim());setProgStep(4);setProg(82);const bytes=buildXlsx(res);setProg(100);setResult(res);setXlsxBytes(bytes);setState("done");}catch(e){setErrMsg(e.message||String(e));setState("error");}},[days,apiKey]);const download=()=>{if(!xlsxBytes)return;const blob=new Blob([xlsxBytes],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`Bitacora_SMT_${new Date().toISOString().slice(0,10)}.xlsx`;a.click();};const reset=()=>{setState("idle");setResult(null);setXlsxBytes(null);setProg(0);setProgStep(0);setMsgStats(null);setErrMsg("");};const ev=result?.eventos||[];const kpis=result?.kpis||[];const res=result?.resumen||{};const pend=ev.filter(e=>e.estatus!=="Cerrado");const crit=ev.filter(e=>e.prioridad==="Crítica"&&e.estatus!=="Cerrado");const cerr=ev.filter(e=>e.estatus==="Cerrado");const byMod=[...new Set(ev.map(e=>e.modelo))].map(m=>({l:m,n:ev.filter(e=>e.modelo===m).length})).sort((a,b)=>b.n-a.n).slice(0,5);const mxM=Math.max(...byMod.map(x=>x.n),1);const byLin=[...new Set(ev.map(e=>e.linea_estacion).filter(x=>x&&x!=="N/D"))].map(l=>({l,n:ev.filter(e=>e.linea_estacion===l).length})).sort((a,b)=>b.n-a.n).slice(0,5);const mxL=Math.max(...byLin.map(x=>x.n),1);const byPrio=[{l:"Crítica",n:ev.filter(e=>e.prioridad==="Crítica").length,c:"re"},{l:"Alta",n:ev.filter(e=>e.prioridad==="Alta").length,c:"ye"},{l:"Media",n:ev.filter(e=>e.prioridad==="Media").length,c:"bl"},{l:"Baja",n:ev.filter(e=>e.prioridad==="Baja").length,c:"gr"}];const mxP=Math.max(...byPrio.map(x=>x.n),1);const bprio=p=>({Crítica:"badge bc",Alta:"badge ba",Media:"badge bm",Baja:"badge bb"}[p]||"badge");const best=s=>({Abierto:"badge bo","En proceso":"badge be",Cerrado:"badge bce"}[s]||"badge");
-return(<><div className="hdr"><div className="hdr-badge">⚙ Herramienta Operativa · SMT Manufacturing</div><h1>Chat de manufactura → <span>Dashboard SMT</span></h1><p>Sube el .zip de WhatsApp · Selecciona el rango · Descarga la bitácora Excel lista para junta</p></div><div className="api-bar"><label>🔑 API Key de Anthropic:</label><input className="api-input" type="password" placeholder="sk-ant-api03-..." value={apiKey} onChange={e=>saveKey(e.target.value)}/><div className="api-note">Tu clave se guarda solo en este navegador. Consíguela en <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a></div></div>{state==="idle"&&(<div className={`up ${drag?"drag":""}`} onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0])}} onClick={()=>fileRef.current.click()}><div className="up-top"><input ref={fileRef} type="file" accept=".zip" style={{display:"none"}} onChange={e=>handle(e.target.files[0])}/><div className="up-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></div><h3>Sube el archivo .zip de WhatsApp</h3><p>Arrastra aquí o haz clic — funciona con cualquier grupo de manufactura</p><div>{["CALIDAD SMT/PTH","SMT Output","ERBU CRBU PCBA","Cualquier grupo"].map(t=><span key={t} className="chip">{t}</span>)}</div><button className="up-btn" onClick={e=>{e.stopPropagation();fileRef.current.click()}}>Seleccionar archivo .zip</button></div><div className="filter-bar" onClick={e=>e.stopPropagation()}><label>Analizar los últimos:</label><div className="day-btns">{[1,3,7,14,30].map(d=>(<button key={d} className={`day-btn ${days===d?"active":""}`} onClick={()=>setDays(d)}>{d} día{d>1?"s":""}</button>))}</div><div className="filter-note">El chat puede tener años de historial</div></div></div>)}{state==="loading"&&(<div className="prog"><h3>Procesando chat de manufactura...</h3><p>{msgStats?`${msgStats.clean} mensajes relevantes de ${msgStats.filtered} en los últimos ${days} días`:"Leyendo archivo ZIP..."}</p><div className="pbar"><div className="pfill" style={{width:`${prog}%`}}/></div><div className="psteps">{STEPS.map((s,i)=><div key={i} className={`pstep ${i===progStep?"on":i<progStep?"ok":""}`}>{i<progStep?"✓ ":""}{s}</div>)}</div></div>)}{state==="error"&&(<><div className="errc">⚠ {errMsg}</div><button className="resetbtn" onClick={reset}>← Intentar de nuevo</button></>)}{state==="done"&&result&&(<><button className="resetbtn" onClick={reset}>← Analizar otro chat</button><div className="dlc"><div className="dlc-txt"><h3>Excel listo para junta ✓</h3><p>{res.periodo||""} · {ev.length} eventos · {msgStats?.clean||0} mensajes analizados</p><div className="dlc-sheets">{["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Catalogos_Reglas"].map(s=>(<div key={s} className="dlc-sh">▪ {s}</div>))}</div></div><button className="dlbtn" onClick={download}>⬇ Descargar .xlsx</button></div><div className="stats"><div className="scard"><div className="sval or">{ev.length}</div><div className="slb">Total eventos</div></div><div className="scard"><div className="sval re">{crit.length}</div><div className="slb">Críticos activos</div></div><div className="scard"><div className="sval bl">{pend.length}</div><div className="slb">Pendientes</div></div><div className="scard"><div className="sval gr">{cerr.length}</div><div className="slb">Cerrados</div></div></div>{kpis.length>0&&(<div className="tcard"><div className="tcard-hdr"><h3>KPIs reportados en chat</h3></div><div style={{padding:"12px 16px"}}>{kpis.map((k,i)=>(<div key={i} className="krow"><div className="kval">{k.valor}<span style={{fontSize:11}}>{k.unidad}</span></div><div className="kin"><div className="nm">{k.indicador}</div><div className="ts">{k.fechahora} · {k.fuente}</div></div><div className="kbar"><div className="kbf" style={{width:`${Math.min(100,k.valor<2?k.valor*100:k.valor)}%`}}/></div></div>))}</div></div>)}<div className="charts"><div className="crt"><h4>Por modelo / N/P</h4>{byMod.map((x,i)=><div key={i} className="brow"><div className="blbl" title={x.l}>{x.l}</div><div className="btrk"><div className="bfil" style={{width:`${(x.n/mxM)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}</div><div className="crt"><h4>Por línea / estación</h4>{byLin.map((x,i)=><div key={i} className="brow"><div className="blbl" title={x.l}>{x.l}</div><div className="btrk"><div className="bfil bl" style={{width:`${(x.n/mxL)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}</div><div className="crt"><h4>Por prioridad</h4>{byPrio.map((x,i)=><div key={i} className="brow"><div className="blbl">{x.l}</div><div className="btrk"><div className={`bfil ${x.c}`} style={{width:`${(x.n/mxP)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}</div><div className="crt"><h4>Por estatus</h4>{[{l:"Abiertos",n:ev.filter(e=>e.estatus==="Abierto").length,c:"re"},{l:"En proceso",n:ev.filter(e=>e.estatus==="En proceso").length,c:"ye"},{l:"Cerrados",n:cerr.length,c:"gr"}].map((x,i)=>(<div key={i} className="brow"><div className="blbl">{x.l}</div><div className="btrk"><div className={`bfil ${x.c}`} style={{width:`${(x.n/Math.max(ev.length,1))*100}%`}}/></div><div className="bnum">{x.n}</div></div>))}</div></div><div className="tcard"><div className="tcard-hdr"><h3>Bitácora de eventos ({ev.length})</h3></div><div className="tscroll"><table><thead><tr><th>ID</th><th>Fecha</th><th>T</th><th>Modelo</th><th>Línea</th><th>Tipo evento</th><th>Prioridad</th><th>Estatus</th></tr></thead><tbody>{ev.map((e,i)=>(<tr key={i}><td><strong>{e.id}</strong></td><td style={{whiteSpace:"nowrap"}}>{e.fecha}</td><td>{e.turno}</td><td style={{maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.modelo}</td><td>{e.linea_estacion}</td><td style={{maxWidth:150}}>{e.tipo_evento}</td><td><span className={bprio(e.prioridad)}>{e.prioridad}</span></td><td><span className={best(e.estatus)}>{e.estatus}</span></td></tr>))}</tbody></table></div></div>{pend.length>0&&(<div className="tcard" style={{marginTop:16}}><div className="tcard-hdr"><h3>Pendientes operativos ({pend.length})</h3></div><div className="plist">{pend.map((e,i)=>(<div key={i} className={`pitem ${e.prioridad==="Crítica"?"cr":e.prioridad==="Alta"?"al":""}`}><div className="pitem-top"><span className="pitem-id">{e.id} · {e.fecha} · {e.turno}</span><span className={bprio(e.prioridad)}>{e.prioridad}</span></div><h4>{e.evento_detectado}</h4><p>{e.accion_requerida}</p><div className="pmeta"><span className="ptag">📍 {e.linea_estacion}</span><span className="ptag">👤 {e.responsable_sugerido}</span>{e.modelo!=="N/D"&&<span className="ptag">{e.modelo}</span>}<span className={best(e.estatus)}>{e.estatus}</span></div></div>))}</div></div>)}<div className="cmp"><div className="cmpc"><div className="cmplbl"><div className="cmpdot"></div><span>Antes — Chat disperso</span></div>{["Información sin estructura","Sin trazabilidad de pendientes","Eventos críticos mezclados con ruido","Juntas sin datos claros"].map((t,i)=>(<div key={i} className="cmrow"><div className="cmic">✕</div><p>{t}</p></div>))}</div><div className="cmpc aft"><div className="cmplbl"><div className="cmpdot g"></div><span>Después — Dashboard SMT</span></div><div className="cmrow"><div className="cmic g">✓</div><p><strong>{ev.length} eventos</strong> clasificados por turno y prioridad</p></div><div className="cmrow"><div className="cmic g">✓</div><p><strong>{pend.length} pendientes</strong> con responsable y acción</p></div><div className="cmrow"><div className="cmic g">✓</div><p><strong>{crit.length} críticos</strong> para atención inmediata</p></div><div className="cmrow"><div className="cmic g">✓</div><p>Excel con 6 hojas listo en minutos</p></div></div></div><div className="foot"><p><strong>Dashboard SMT</strong> · Claude AI · {new Date().toLocaleDateString("es-MX")}</p><button className="dlbtn" style={{padding:"9px 18px",fontSize:12}} onClick={download}>⬇ Descargar Excel</button></div></>)}</>);
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+
+function to24h(h, min, sec, mer) {
+  let hour = parseInt(h);
+  const m = (mer || "").toLowerCase().replace(/[\s.]/g, "");
+  if (m.startsWith("p") && hour !== 12) hour += 12;
+  if (m.startsWith("a") && hour === 12) hour = 0;
+  return { hour, timeStr: `${String(hour).padStart(2,"0")}:${min}:${sec||"00"}` };
 }
+
+function parseTurno(h) {
+  if (h >= 6 && h < 14) return "1T";
+  if (h >= 14 && h < 22) return "2T";
+  return "3T";
+}
+
+function parseWhatsApp(txt) {
+  const lines = txt.split(/\r?\n/);
+  const msgs = [];
+  // Format A: [DD/MM/YY, H:MM:SS a.m.] Name: text
+  const reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
+  // Format B: DD/MM/YYYY, HH:MM - Name: text
+  const reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|a\.m\.|p\.m\.)?\s*[-–]\s*([^:]+?):\s*(.*)$/i;
+  let cur = null;
+  for (const raw of lines) {
+    const line = raw.replace(/[\u200e\u200f\u202a-\u202e‎]/g, "").trim();
+    const m = line.match(reA) || line.match(reB);
+    if (m) {
+      if (cur) msgs.push(cur);
+      const [, d, mo, yr, h, min, sec, mer, sender, text] = m;
+      let year = parseInt(yr); if (year < 100) year += 2000;
+      const { hour, timeStr } = to24h(h, min, sec, mer || "");
+      const dateIso = `${year}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const dateDisp = `${String(d).padStart(2,"0")}/${String(mo).padStart(2,"0")}/${year}`;
+      cur = { dateIso, dateDisp, timeStr, hour, turno: parseTurno(hour), sender: sender.replace(/^~/,"").trim(), text: text.trim() };
+    } else if (cur && line && !line.startsWith("[")) {
+      cur.text += " " + line;
+    }
+  }
+  if (cur) msgs.push(cur);
+  return msgs;
+}
+
+function filterByDays(msgs, days) {
+  if (!msgs.length) return msgs;
+  const sorted = [...msgs].sort((a,b) => a.dateIso.localeCompare(b.dateIso));
+  const last = new Date(sorted[sorted.length-1].dateIso);
+  const cutoff = new Date(last);
+  cutoff.setDate(cutoff.getDate() - days + 1);
+  const cutStr = cutoff.toISOString().slice(0,10);
+  return sorted.filter(m => m.dateIso >= cutStr);
+}
+
+function cleanMsgs(msgs) {
+  const skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|Se te añadió|creó este grupo|cifrados de extremo|agregó a|salió del grupo|cambió el (ícono|asunto|número)|ahora es admin|<Se editó este mensaje>/i;
+  return msgs.filter(m => m.text && m.text.trim().length > 5 && !m.text.match(skip));
+}
+
+async function readZip(file) {
+  const zip = await JSZip.loadAsync(file);
+  for (const name of Object.keys(zip.files)) {
+    if (name.endsWith(".txt") && !name.startsWith("__MACOSX")) {
+      return await zip.files[name].async("string");
+    }
+  }
+  throw new Error("No se encontró archivo .txt dentro del ZIP. Verifica que sea una exportación de WhatsApp.");
+}
+
+async function analyzeWithAI(msgs, apiKey) {
+  // Limit to 250 msgs to stay well within token budget and avoid truncated JSON
+  const sample = msgs.slice(0, 250).map(m =>
+    `[${m.dateDisp} ${m.timeStr} | ${m.turno} | ${m.sender}]: ${m.text}`
+  ).join("\n");
+
+  const system = `Eres experto en manufactura electrónica SMT/PCB/PTH. Analiza mensajes de grupos de WhatsApp de manufactura y extrae SOLO los eventos operativos accionables.
+
+INCLUIR: paros de línea, rechazos/defectos de calidad, equivocados de componente, cambios de modelo, problemas de FAI, LCR vencido, falta de material, rollo mal cargado, RMA, problemas de AOI/ICT, alertas de seguridad, llenado de barril bajo, inversión de componentes, ausentes en AOI, cortos, abiertos, daño físico, problemas de escáner/sistema, desabasto, clonados.
+EXCLUIR: saludos, "ok", "gracias", "buen día", confirmaciones simples sin evento, menciones puras sin descripción, mensajes vacíos, emojis solos.
+
+Genera un JSON válido con esta estructura EXACTA (sin markdown, sin texto extra):
+{
+  "eventos": [
+    {
+      "id": "EVT-001",
+      "fecha": "DD/MM/YYYY",
+      "hora": "HH:MM",
+      "turno": "1T|2T|3T",
+      "modelo": "número de parte o N/D",
+      "linea_estacion": "L1|L2|AOI|ICT|etc o N/D",
+      "reporta": "nombre",
+      "area_involucrada": "SMT|PTH|ICT|AOI|Kitting|Calidad|Mantenimiento|IT|etc",
+      "tipo_evento": "categoría corta del evento",
+      "evento_detectado": "descripción clara y completa del evento en español",
+      "impacto": "impacto operativo concreto",
+      "accion_requerida": "acción específica a tomar",
+      "responsable_sugerido": "área o persona responsable",
+      "estatus": "Abierto|En proceso|Cerrado",
+      "prioridad": "Crítica|Alta|Media|Baja",
+      "fuente_chat": "DD/MM/YY HH:MM remitente",
+      "notas": "contexto adicional relevante"
+    }
+  ],
+  "kpis": [
+    { "fechahora": "DD/MM/YYYY HH:MM", "indicador": "nombre del KPI", "valor": 0.0, "unidad": "%|pzas|etc", "fuente": "remitente" }
+  ],
+  "resumen": {
+    "periodo": "DD/MM/YYYY a DD/MM/YYYY",
+    "grupo": "nombre del grupo de chat",
+    "total_eventos": 0,
+    "alertas_criticas": ["máx 5 alertas críticas abiertas"],
+    "acciones_pendientes": ["máx 5 acciones prioritarias pendientes"],
+    "estatus_lineas": ["estado de líneas con actividad relevante"]
+  },
+  "directorio": [
+    {
+      "nombre": "nombre completo del participante",
+      "departamento": "Calidad|Producción|Mantenimiento|IT|Ingeniería|Materiales|PTH|SMT|Reparación",
+      "rol": "Inspector|Supervisor|Ingeniero|Técnico|Operador|Coordinador|Jefe",
+      "mensajes": 0,
+      "eventos": 0,
+      "area_owner": "área de la que es responsable principal"
+    }
+  ]
+}`;
+
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 6000,
+      system,
+      messages: [
+        { role: "user", content: `Analiza estos ${msgs.length} mensajes del grupo de manufactura. Responde ÚNICAMENTE con el JSON, sin texto antes ni después:\n\n${sample}` },
+        { role: "assistant", content: "{" }
+      ]
+    })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(()=>({}));
+    const msg = err.error?.message || `Error API ${resp.status}`;
+    if (resp.status === 401) throw new Error("API Key inválida. Verifica tu clave en console.anthropic.com");
+    if (resp.status === 429) throw new Error("Límite de uso alcanzado. Espera un momento e intenta de nuevo.");
+    throw new Error(msg);
+  }
+  const data = await resp.json();
+  if (!data.content?.length) throw new Error("Respuesta vacía de la API. Intenta de nuevo.");
+  const txt = "{" + data.content.map(b => b.text || "").join("");
+  // Robust JSON extraction: strip markdown fences, find outermost { }
+  const stripped = txt.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const start = stripped.indexOf("{");
+  const end = stripped.lastIndexOf("}");
+  if (start === -1 || end === -1) throw new Error("La IA no devolvió JSON válido. Intenta de nuevo o reduce el rango de días.");
+  const jsonStr = stripped.slice(start, end + 1);
+  try {
+    return JSON.parse(jsonStr);
+  } catch(parseErr) {
+    // Try to salvage truncated JSON by closing open structures
+    const fixed = jsonStr
+      .replace(/,\s*$/, "")           // trailing comma
+      .replace(/,\s*\]/, "]")          // trailing comma in array
+      .replace(/,\s*\}/, "}")          // trailing comma in object
+      + (jsonStr.split("{").length > jsonStr.split("}").length ? "}" : "")
+      + (jsonStr.split("[").length > jsonStr.split("]").length ? "]}" : "");
+    try {
+      return JSON.parse(fixed);
+    } catch {
+      throw new Error("Error al procesar la respuesta. Intenta con menos días (1 o 3) para reducir el tamaño.");
+    }
+  }
+}
+
+function buildXlsx(result, allMsgs) {
+  const wb = XLSX.utils.book_new();
+  const ev = result.eventos || [];
+  const kpis = result.kpis || [];
+  const res = result.resumen || {};
+  const directorio = result.directorio || [];
+
+  // ── COLOR PALETTE (exact match to master template) ──
+  const C = {
+    headerBg:   "1F4E78",  // dark blue header
+    headerFg:   "FFFFFF",  // white text
+    critica:    "F4CCCC",  // red light
+    alta:       "FCE4D6",  // orange light
+    media:      "EEF5FB",  // blue light
+    baja:       "E2F0D9",  // green light
+    cerrado:    "E2F0D9",  // green light
+    enProceso:  "FFF2CC",  // yellow light
+    abierto:    "F4CCCC",  // red light
+    rowAlt:     "EEF5FB",  // alternating row
+  };
+
+  const hStyle = (ws, cellRef) => {
+    if (!ws[cellRef]) return;
+    ws[cellRef].s = {
+      fill: { fgColor: { rgb: C.headerBg } },
+      font: { bold: true, color: { rgb: C.headerFg }, sz: 11, name: "Calibri" },
+      alignment: { vertical: "center", wrapText: false },
+      border: { left:{style:"thin"}, right:{style:"thin"}, top:{style:"thin"}, bottom:{style:"thin"} }
+    };
+  };
+
+  const cellStyle = (fill, bold=false) => ({
+    fill: { fgColor: { rgb: fill } },
+    font: { sz: 11, name: "Calibri", bold },
+    alignment: { vertical: "top", wrapText: true },
+  });
+
+  const prioFill = p => ({ Crítica: C.critica, Alta: C.alta, Media: C.media, Baja: C.baja }[p] || "FFFFFF");
+  const estFill  = s => ({ Abierto: C.abierto, "En proceso": C.enProceso, Cerrado: C.cerrado }[s] || "FFFFFF");
+
+  // ── Helper: apply header styles to row 1 of a sheet ──
+  const styleHeaders = (ws, cols) => {
+    cols.forEach((_, i) => {
+      const ref = XLSX.utils.encode_cell({ r: 0, c: i });
+      hStyle(ws, ref);
+    });
+  };
+
+  // ── Helper: style data rows ──
+  const styleDataRows = (ws, evArr) => {
+    evArr.forEach((e, ri) => {
+      const rowIdx = ri + 1;
+      // Estatus col = N (idx 13), Prioridad col = O (idx 14)
+      [0,1,2,3,4,5,6,7,8,9,10,11,12,15,16].forEach(ci => {
+        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: ci });
+        if (ws[ref]) ws[ref].s = cellStyle(ri%2===0 ? "FFFFFF" : C.rowAlt);
+      });
+      // Estatus cell
+      const estRef = XLSX.utils.encode_cell({ r: rowIdx, c: 13 });
+      if (ws[estRef]) ws[estRef].s = cellStyle(estFill(e.estatus));
+      // Prioridad cell
+      const prioRef = XLSX.utils.encode_cell({ r: rowIdx, c: 14 });
+      if (ws[prioRef]) ws[prioRef].s = cellStyle(prioFill(e.prioridad));
+    });
+  };
+
+  // ── BITÁCORA ──
+  const H = ["ID","Fecha","Hora","Turno","Modelo","Linea_Estacion","Reporta","Area_involucrada","Tipo_evento","Evento_detectado","Impacto","Accion_requerida","Responsable_sugerido","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
+  const row = (e, ri) => [
+    e.id, e.fecha, e.hora, e.turno, e.modelo, e.linea_estacion, e.reporta,
+    e.area_involucrada, e.tipo_evento, e.evento_detectado, e.impacto,
+    e.accion_requerida, e.responsable_sugerido, e.estatus, e.prioridad,
+    { f: `IF(OR(N${ri+2}="Abierto",N${ri+2}="En proceso"),TODAY()-B${ri+2},"")` },
+    e.fuente_chat, e.notas
+  ];
+
+  const wsBit = XLSX.utils.aoa_to_sheet([H, ...ev.map(row)]);
+  styleHeaders(wsBit, H);
+  styleDataRows(wsBit, ev);
+  wsBit['!cols'] = [5,12,8,6,16,18,18,22,22,40,30,35,25,12,10,10,30,30].map(w=>({wch:w}));
+  wsBit['!rows'] = [{ hpt: 18 }, ...ev.map(()=>({ hpt: 40 }))];
+  XLSX.utils.book_append_sheet(wb, wsBit, "Bitacora");
+
+  // ── PENDIENTES ──
+  const pend = ev.filter(e=>e.estatus!=="Cerrado");
+  const wsPend = XLSX.utils.aoa_to_sheet([H, ...pend.map(row)]);
+  styleHeaders(wsPend, H);
+  styleDataRows(wsPend, pend);
+  wsPend['!cols'] = wsBit['!cols'];
+  XLSX.utils.book_append_sheet(wb, wsPend, "Pendientes");
+
+  // ── KPIs ──
+  const kH = ["FechaHora","Indicador","Valor","Unidad","Fuente_chat"];
+  const wsKpi = XLSX.utils.aoa_to_sheet([kH, ...kpis.map(k=>[k.fechahora,k.indicador,k.valor,k.unidad,k.fuente])]);
+  styleHeaders(wsKpi, kH);
+  wsKpi['!cols'] = [20,25,8,8,30].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsKpi, "KPIs_chat");
+
+  // ── RESUMEN JUNTA ──
+  const ab = ev.filter(e=>e.estatus==="Abierto").length;
+  const ep = ev.filter(e=>e.estatus==="En proceso").length;
+  const ce = ev.filter(e=>e.estatus==="Cerrado").length;
+  const cr = ev.filter(e=>e.prioridad==="Crítica"&&e.estatus!=="Cerrado").length;
+
+  const wsRes = XLSX.utils.aoa_to_sheet([
+    [`Resumen ejecutivo de manufactura - ${res.grupo||"CALIDAD SMT/PTH"}`,"","","",""],
+    ["Corte analizado", res.periodo||"","","Eventos abiertos", {f:`COUNTIF(Bitacora!N:N,"Abierto")+COUNTIF(Bitacora!N:N,"En proceso")`}],
+    [],
+    ["Estatus por línea / estación","","","KPIs de desempeño reportados en chat",""],
+    ...(res.estatus_lineas||[]).map((l,i)=>["- "+l,"","", kpis[i] ? `${kpis[i].indicador} - ${kpis[i].fechahora?.slice(0,10)||""}` : "", kpis[i]?.valor||""]),
+    [],
+    ["Alertas críticas abiertas"],
+    ...(res.alertas_criticas||[]).map(a=>["- "+a]),
+    [],
+    ["Acciones pendientes para el equipo"],
+    ...(res.acciones_pendientes||[]).map(a=>["- "+a]),
+    [],
+    ["Supuestos / notas"],
+    ["- Turnos inferidos con ventanas: 1T 06:00-13:59, 2T 14:00-21:59, 3T 22:00-05:59"],
+    ["- La exportación de WhatsApp omite imágenes; hallazgos visuales no corroborados"],
+  ]);
+
+  // Style title row
+  if (wsRes["A1"]) wsRes["A1"].s = { fill:{fgColor:{rgb:C.headerBg}}, font:{bold:true,color:{rgb:C.headerFg},sz:14,name:"Calibri"} };
+  if (wsRes["A2"]) wsRes["A2"].s = { fill:{fgColor:{rgb:"D9EAF7"}}, font:{bold:true,sz:11,name:"Calibri"} };
+  if (wsRes["B2"]) wsRes["B2"].s = { fill:{fgColor:{rgb:"EEF5FB"}}, font:{sz:11,name:"Calibri"} };
+  if (wsRes["D2"]) wsRes["D2"].s = { fill:{fgColor:{rgb:"D9EAF7"}}, font:{bold:true,sz:11,name:"Calibri"} };
+  ["A4","D4"].forEach(r=>{ if(wsRes[r]) wsRes[r].s = {fill:{fgColor:{rgb:C.headerBg}},font:{bold:true,color:{rgb:C.headerFg},sz:11,name:"Calibri"}}; });
+  wsRes['!cols'] = [55,30,5,40,12].map(w=>({wch:w}));
+  wsRes['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:4} }];
+  XLSX.utils.book_append_sheet(wb, wsRes, "Resumen_Junta");
+
+  // ── DASHBOARD BASE ──
+  const mods = [...new Set(ev.map(e=>e.modelo).filter(Boolean))];
+  const wsDash = XLSX.utils.aoa_to_sheet([
+    ["Dashboard base para junta diaria","","","","","","","",""],
+    [],
+    ["KPI","Valor","Comentarios","","Resumen por estatus","","","Resumen por prioridad",""],
+    ["Total eventos",{f:"COUNTA(Bitacora!A:A)-1"},"Eventos relevantes curados del chat","","Estatus","Conteo","","Prioridad","Conteo"],
+    ["Abiertos",{f:`COUNTIF(Bitacora!N:N,"Abierto")`},"Pendientes sin cierre","","Abierto",{f:`COUNTIF(Bitacora!N:N,"Abierto")`},"","Crítica",{f:`COUNTIF(Bitacora!O:O,"Crítica")`}],
+    ["En proceso",{f:`COUNTIF(Bitacora!N:N,"En proceso")`},"Acciones con contención parcial","","En proceso",{f:`COUNTIF(Bitacora!N:N,"En proceso")`},"","Alta",{f:`COUNTIF(Bitacora!O:O,"Alta")`}],
+    ["Cerrados",{f:`COUNTIF(Bitacora!N:N,"Cerrado")`},"Eventos resueltos dentro del corte","","Cerrado",{f:`COUNTIF(Bitacora!N:N,"Cerrado")`},"","Media",{f:`COUNTIF(Bitacora!O:O,"Media")`}],
+    ["Críticos abiertos",{f:`COUNTIF(Bitacora!O:O,"Crítica")`},"Carga roja para junta","","","","","Baja",{f:`COUNTIF(Bitacora!O:O,"Baja")`}],
+    [],
+    ...mods.map(m=>["Eventos "+m, ev.filter(e=>e.modelo===m).length, ""]),
+    [],
+    ["Último FPY / KPI", kpis[kpis.length-1]?.valor||"", kpis[kpis.length-1] ? `${kpis[kpis.length-1].indicador} - ${kpis[kpis.length-1].fuente||""}` : ""],
+  ]);
+  if (wsDash["A1"]) wsDash["A1"].s = { fill:{fgColor:{rgb:C.headerBg}}, font:{bold:true,color:{rgb:C.headerFg},sz:14,name:"Calibri"} };
+  ["A3","B3","C3","E3","F3","H3","I3","A4","B4","C4","E4","F4","H4","I4"].forEach(r=>{
+    if(wsDash[r]) wsDash[r].s = {fill:{fgColor:{rgb:C.headerBg}},font:{bold:true,color:{rgb:C.headerFg},sz:11,name:"Calibri"},border:{left:{style:"thin"},right:{style:"thin"},top:{style:"thin"},bottom:{style:"thin"}}};
+  });
+  wsDash['!cols'] = [20,10,35,3,15,8,3,15,8].map(w=>({wch:w}));
+  wsDash['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:8} }];
+  XLSX.utils.book_append_sheet(wb, wsDash, "Dashboard_Base");
+
+  // ── DIRECTORIO EQUIPO ──
+  const dH = ["Nombre","Departamento_inferido","Rol_sugerido","Mensajes_reportados","Eventos_asignados","Área_owner"];
+  const dirRows = directorio.length > 0 ? directorio.map(d=>[d.nombre,d.departamento,d.rol,d.mensajes,d.eventos,d.area_owner])
+    : [...new Set(ev.map(e=>e.reporta).filter(Boolean))].map(nombre=>[
+        nombre,
+        ev.find(e=>e.reporta===nombre)?.area_involucrada?.split("/")[0]?.trim()||"",
+        "",
+        ev.filter(e=>e.reporta?.includes(nombre)).length,
+        ev.filter(e=>e.responsable_sugerido?.includes(nombre)).length,
+        ""
+      ]);
+  const wsDir = XLSX.utils.aoa_to_sheet([dH, ...dirRows]);
+  styleHeaders(wsDir, dH);
+  wsDir['!cols'] = [22,25,20,18,18,20].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsDir, "Directorio_Equipo");
+
+  // ── CATÁLOGOS ──
+  const lins = [...new Set(ev.map(e=>e.linea_estacion).filter(Boolean))];
+  const reglas = [
+    "- Se incluyeron mensajes con modelo/línea/estación y evento operativo accionable.",
+    "- Se excluyeron mensajes solo informativos, saludos o sin impacto accionable.",
+    "- Las imágenes omitidas se marcaron como limitante cuando afectaban la interpretación.",
+    "- Turnos inferidos: 1T 06:00-13:59, 2T 14:00-21:59, 3T 22:00-05:59.",
+    "- Dashboard base usa hoja Bitacora como fuente para pivotes o Power BI.",
+  ];
+  const maxCat = Math.max(mods.length, lins.length, reglas.length);
+  const wsCat = XLSX.utils.aoa_to_sheet([
+    ["Catálogos detectados y reglas aplicadas","","","","",""],
+    [],
+    ["Modelos detectados","","Líneas / estaciones detectadas","","Reglas operativas usadas",""],
+    ...[...Array(maxCat)].map((_,i)=>[mods[i]||"","",lins[i]||"","",(reglas[i]||""),""]),
+  ]);
+  if (wsCat["A1"]) wsCat["A1"].s = { fill:{fgColor:{rgb:C.headerBg}}, font:{bold:true,color:{rgb:C.headerFg},sz:14,name:"Calibri"} };
+  ["A3","C3","E3"].forEach(r=>{ if(wsCat[r]) wsCat[r].s = {fill:{fgColor:{rgb:C.headerBg}},font:{bold:true,color:{rgb:C.headerFg},sz:11,name:"Calibri"}}; });
+  wsCat['!cols'] = [20,2,28,2,60,2].map(w=>({wch:w}));
+  wsCat['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:5} }];
+  XLSX.utils.book_append_sheet(wb, wsCat, "Catalogos_Reglas");
+
+  return XLSX.write(wb, { bookType:"xlsx", type:"array", cellStyles: true });
+}
+
+// ── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
+
+function App() {
+  const [apiKey, setApiKey] = useState(localStorage.getItem("smt_apikey") || "");
+  const [state, setState] = useState("idle");
+  const [prog, setProg] = useState(0);
+  const [progStep, setProgStep] = useState(0);
+  const [days, setDays] = useState(3);
+  const [result, setResult] = useState(null);
+  const [xlsxBytes, setXlsxBytes] = useState(null);
+  const [errMsg, setErrMsg] = useState("");
+  const [drag, setDrag] = useState(false);
+  const [msgStats, setMsgStats] = useState(null);
+  const fileRef = useRef();
+
+  const saveKey = (k) => { setApiKey(k); localStorage.setItem("smt_apikey", k); };
+
+  const STEPS = ["Leyendo ZIP","Parseando mensajes","Filtrando eventos","Analizando con IA","Generando Excel"];
+
+  const handle = useCallback(async (file) => {
+    if (!file || !file.name.endsWith(".zip")) { setErrMsg("Sube un archivo .zip exportado de WhatsApp"); setState("error"); return; }
+    if (!apiKey.trim()) { setErrMsg("Ingresa tu API Key de Anthropic para continuar"); setState("error"); return; }
+    setState("loading"); setProg(8); setProgStep(0);
+    try {
+      const txt = await readZip(file);
+      setProgStep(1); setProg(22);
+      const all = parseWhatsApp(txt);
+      if (!all.length) throw new Error("No se encontraron mensajes con formato WhatsApp estándar.");
+      setProgStep(2); setProg(38);
+      const filtered = filterByDays(all, days);
+      const clean = cleanMsgs(filtered);
+      setMsgStats({ total: all.length, filtered: filtered.length, clean: clean.length });
+      if (!clean.length) throw new Error(`No hay mensajes operativos en los últimos ${days} días. Aumenta el rango.`);
+      setProgStep(3); setProg(55);
+      const res = await analyzeWithAI(clean, apiKey.trim());
+      setProgStep(4); setProg(82);
+      const bytes = buildXlsx(res, clean);
+      setProg(100); setResult(res); setXlsxBytes(bytes); setState("done");
+    } catch(e) { setErrMsg(e.message || String(e)); setState("error"); }
+  }, [days, apiKey]);
+
+  const download = () => {
+    if (!xlsxBytes) return;
+    const blob = new Blob([xlsxBytes], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `Bitacora_SMT_${new Date().toISOString().slice(0,10)}.xlsx`;
+    a.click();
+  };
+
+  const reset = () => { setState("idle"); setResult(null); setXlsxBytes(null); setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); };
+
+  const ev = result?.eventos || [];
+  const kpis = result?.kpis || [];
+  const res = result?.resumen || {};
+  const pend = ev.filter(e=>e.estatus!=="Cerrado");
+  const crit = ev.filter(e=>e.prioridad==="Crítica"&&e.estatus!=="Cerrado");
+  const cerr = ev.filter(e=>e.estatus==="Cerrado");
+
+  const byMod = [...new Set(ev.map(e=>e.modelo))].map(m=>({l:m,n:ev.filter(e=>e.modelo===m).length})).sort((a,b)=>b.n-a.n).slice(0,5);
+  const mxM = Math.max(...byMod.map(x=>x.n),1);
+  const byLin = [...new Set(ev.map(e=>e.linea_estacion).filter(x=>x&&x!=="N/D"))].map(l=>({l,n:ev.filter(e=>e.linea_estacion===l).length})).sort((a,b)=>b.n-a.n).slice(0,5);
+  const mxL = Math.max(...byLin.map(x=>x.n),1);
+  const byPrio = [{l:"Crítica",n:ev.filter(e=>e.prioridad==="Crítica").length,c:"re"},{l:"Alta",n:ev.filter(e=>e.prioridad==="Alta").length,c:"ye"},{l:"Media",n:ev.filter(e=>e.prioridad==="Media").length,c:"bl"},{l:"Baja",n:ev.filter(e=>e.prioridad==="Baja").length,c:"gr"}];
+  const mxP = Math.max(...byPrio.map(x=>x.n),1);
+
+  const bprio = p => ({Crítica:"badge bc",Alta:"badge ba",Media:"badge bm",Baja:"badge bb"}[p]||"badge");
+  const best = s => ({Abierto:"badge bo","En proceso":"badge be",Cerrado:"badge bce"}[s]||"badge");
+
+  return (
+    <>
+      {/* HEADER */}
+      <div className="hdr">
+        <div className="hdr-badge">⚙ Herramienta Operativa · SMT Manufacturing</div>
+        <h1>Chat de manufactura → <span>Dashboard SMT</span></h1>
+        <p>Sube el .zip de WhatsApp · Selecciona el rango · Descarga la bitácora Excel lista para junta</p>
+      </div>
+
+      {/* API KEY */}
+      <div className="api-bar">
+        <label>🔑 API Key de Anthropic:</label>
+        <input
+          className="api-input"
+          type="password"
+          placeholder="sk-ant-api03-..."
+          value={apiKey}
+          onChange={e=>saveKey(e.target.value)}
+        />
+        <div className="api-note">
+          Tu clave se guarda solo en este navegador (localStorage). Consíguela en{" "}
+          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a>
+        </div>
+      </div>
+
+      {/* IDLE */}
+      {state === "idle" && (
+        <div
+          className={`up ${drag?"drag":""}`}
+          onDragOver={e=>{e.preventDefault();setDrag(true)}}
+          onDragLeave={()=>setDrag(false)}
+          onDrop={e=>{e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0])}}
+          onClick={()=>fileRef.current.click()}
+        >
+          <div className="up-top">
+            <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}} onChange={e=>handle(e.target.files[0])} />
+            <div className="up-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            </div>
+            <h3>Sube el archivo .zip de WhatsApp</h3>
+            <p>Arrastra aquí o haz clic — funciona con cualquier grupo de manufactura</p>
+            <div>
+              {["CALIDAD SMT/PTH","SMT Output","ERBU CRBU PCBA","Cualquier grupo"].map(t=><span key={t} className="chip">{t}</span>)}
+            </div>
+            <button className="up-btn" onClick={e=>{e.stopPropagation();fileRef.current.click()}}>
+              Seleccionar archivo .zip
+            </button>
+          </div>
+          <div className="filter-bar" onClick={e=>e.stopPropagation()}>
+            <label>Analizar los últimos:</label>
+            <div className="day-btns">
+              {[1,3,7,14,30].map(d=>(
+                <button key={d} className={`day-btn ${days===d?"active":""}`} onClick={()=>setDays(d)}>{d} día{d>1?"s":""}</button>
+              ))}
+            </div>
+            <div className="filter-note">El chat puede tener años de historial — filtra solo el periodo relevante</div>
+          </div>
+        </div>
+      )}
+
+      {/* LOADING */}
+      {state === "loading" && (
+        <div className="prog">
+          <h3>Procesando chat de manufactura...</h3>
+          <p>{msgStats ? `${msgStats.clean} mensajes relevantes de ${msgStats.filtered} en los últimos ${days} días` : "Leyendo archivo ZIP..."}</p>
+          <div className="pbar"><div className="pfill" style={{width:`${prog}%`}} /></div>
+          <div className="psteps">
+            {STEPS.map((s,i)=><div key={i} className={`pstep ${i===progStep?"on":i<progStep?"ok":""}`}>{i<progStep?"✓ ":""}{s}</div>)}
+          </div>
+        </div>
+      )}
+
+      {/* ERROR */}
+      {state === "error" && (
+        <><div className="errc">⚠ {errMsg}</div><button className="resetbtn" onClick={reset}>← Intentar de nuevo</button></>
+      )}
+
+      {/* DONE */}
+      {state === "done" && result && (
+        <>
+          <button className="resetbtn" onClick={reset}>← Analizar otro chat</button>
+
+          <div className="dlc">
+            <div className="dlc-txt">
+              <h3>Excel listo para junta ✓</h3>
+              <p>{res.periodo||""} · {ev.length} eventos · {msgStats?.clean||0} mensajes analizados</p>
+              <div className="dlc-sheets">
+                {["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio_Equipo","Catalogos_Reglas"].map(s=>(
+                  <div key={s} className="dlc-sh">▪ {s}</div>
+                ))}
+              </div>
+            </div>
+            <button className="dlbtn" onClick={download}>⬇ Descargar .xlsx</button>
+          </div>
+
+          <div className="stats">
+            <div className="scard"><div className="sval or">{ev.length}</div><div className="slb">Total eventos</div></div>
+            <div className="scard"><div className="sval re">{crit.length}</div><div className="slb">Críticos activos</div></div>
+            <div className="scard"><div className="sval bl">{pend.length}</div><div className="slb">Pendientes</div></div>
+            <div className="scard"><div className="sval gr">{cerr.length}</div><div className="slb">Cerrados</div></div>
+          </div>
+
+          {kpis.length > 0 && (
+            <div className="tcard">
+              <div className="tcard-hdr"><h3>KPIs reportados en chat</h3></div>
+              <div style={{padding:"12px 16px"}}>
+                {kpis.map((k,i)=>(
+                  <div key={i} className="krow">
+                    <div className="kval">{k.valor}<span style={{fontSize:11}}>{k.unidad}</span></div>
+                    <div className="kin"><div className="nm">{k.indicador}</div><div className="ts">{k.fechahora} · {k.fuente}</div></div>
+                    <div className="kbar"><div className="kbf" style={{width:`${Math.min(100,k.valor<2?k.valor*100:k.valor)}%`}} /></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="charts">
+            <div className="crt">
+              <h4>Por modelo / N/P</h4>
+              {byMod.map((x,i)=><div key={i} className="brow"><div className="blbl" title={x.l}>{x.l}</div><div className="btrk"><div className="bfil" style={{width:`${(x.n/mxM)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}
+            </div>
+            <div className="crt">
+              <h4>Por línea / estación</h4>
+              {byLin.map((x,i)=><div key={i} className="brow"><div className="blbl" title={x.l}>{x.l}</div><div className="btrk"><div className="bfil bl" style={{width:`${(x.n/mxL)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}
+            </div>
+            <div className="crt">
+              <h4>Por prioridad</h4>
+              {byPrio.map((x,i)=><div key={i} className="brow"><div className="blbl">{x.l}</div><div className="btrk"><div className={`bfil ${x.c}`} style={{width:`${(x.n/mxP)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}
+            </div>
+            <div className="crt">
+              <h4>Por estatus</h4>
+              {[{l:"Abiertos",n:ev.filter(e=>e.estatus==="Abierto").length,c:"re"},{l:"En proceso",n:ev.filter(e=>e.estatus==="En proceso").length,c:"ye"},{l:"Cerrados",n:cerr.length,c:"gr"}].map((x,i)=>(
+                <div key={i} className="brow"><div className="blbl">{x.l}</div><div className="btrk"><div className={`bfil ${x.c}`} style={{width:`${(x.n/Math.max(ev.length,1))*100}%`}}/></div><div className="bnum">{x.n}</div></div>
+              ))}
+            </div>
+          </div>
+
+          <div className="tcard">
+            <div className="tcard-hdr"><h3>Bitácora de eventos ({ev.length})</h3></div>
+            <div className="tscroll">
+              <table>
+                <thead><tr><th>ID</th><th>Fecha</th><th>T</th><th>Modelo</th><th>Línea</th><th>Tipo evento</th><th>Prioridad</th><th>Estatus</th></tr></thead>
+                <tbody>
+                  {ev.map((e,i)=>(
+                    <tr key={i}>
+                      <td><strong>{e.id}</strong></td>
+                      <td style={{whiteSpace:"nowrap"}}>{e.fecha}</td>
+                      <td>{e.turno}</td>
+                      <td style={{maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.modelo}</td>
+                      <td>{e.linea_estacion}</td>
+                      <td style={{maxWidth:150}}>{e.tipo_evento}</td>
+                      <td><span className={bprio(e.prioridad)}>{e.prioridad}</span></td>
+                      <td><span className={best(e.estatus)}>{e.estatus}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {pend.length > 0 && (
+            <div className="tcard" style={{marginTop:16}}>
+              <div className="tcard-hdr"><h3>Pendientes operativos ({pend.length})</h3></div>
+              <div className="plist">
+                {pend.map((e,i)=>(
+                  <div key={i} className={`pitem ${e.prioridad==="Crítica"?"cr":e.prioridad==="Alta"?"al":""}`}>
+                    <div className="pitem-top"><span className="pitem-id">{e.id} · {e.fecha} · {e.turno}</span><span className={bprio(e.prioridad)}>{e.prioridad}</span></div>
+                    <h4>{e.evento_detectado}</h4>
+                    <p>{e.accion_requerida}</p>
+                    <div className="pmeta">
+                      <span className="ptag">📍 {e.linea_estacion}</span>
+                      <span className="ptag">👤 {e.responsable_sugerido}</span>
+                      {e.modelo !== "N/D" && <span className="ptag">{e.modelo}</span>}
+                      <span className={best(e.estatus)}>{e.estatus}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{marginTop:16,marginBottom:8}} className="tcard-hdr"><h3 style={{color:"var(--or)",fontSize:11,letterSpacing:".08em",textTransform:"uppercase"}}>● Resultado del análisis</h3></div>
+          <div className="cmp">
+            <div className="cmpc">
+              <div className="cmplbl"><div className="cmpdot"></div><span>Antes — Chat disperso</span></div>
+              {["Información sin estructura ni trazabilidad","Imposible identificar qué sigue pendiente","Eventos críticos mezclados con ruido","Juntas sin datos claros ni historial"].map((t,i)=>(
+                <div key={i} className="cmrow"><div className="cmic">✕</div><p>{t}</p></div>
+              ))}
+            </div>
+            <div className="cmpc aft">
+              <div className="cmplbl"><div className="cmpdot g"></div><span>Después — Dashboard SMT</span></div>
+              <div className="cmrow"><div className="cmic g">✓</div><p><strong>{ev.length} eventos</strong> clasificados por turno, línea y prioridad</p></div>
+              <div className="cmrow"><div className="cmic g">✓</div><p><strong>{pend.length} pendientes</strong> con responsable y acción concreta</p></div>
+              <div className="cmrow"><div className="cmic g">✓</div><p><strong>{crit.length} críticos</strong> identificados para atención inmediata</p></div>
+              <div className="cmrow"><div className="cmic g">✓</div><p>Excel con 6 hojas listo en minutos, no horas</p></div>
+            </div>
+          </div>
+
+          <div className="foot">
+            <p><strong>Dashboard SMT</strong> · Powered by Claude AI · {new Date().toLocaleDateString("es-MX")}</p>
+            <button className="dlbtn" style={{padding:"9px 18px",fontSize:12}} onClick={download}>⬇ Descargar Excel</button>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
+
 </body>
 </html>
-
