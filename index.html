@@ -1,630 +1,327 @@
 <!DOCTYPE html>
-
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>SMTintel — Manufacturing Analytics</title>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+
 :root{
-  --bg:#F5F3EE;--w:#fff;--g50:#F9F8F6;--g100:#F0EDE9;--g200:#E2DDD7;
-  --g300:#C8C2BA;--g500:#8A847C;--g700:#4A4540;--g900:#1E1B18;
-  --teal:#2E7A6A;--teal2:#1E5545;--teal3:#3A9A85;--tealLight:#D0EAE4;
-  --lime:#CDDBA0;--lime2:#8A9F5C;--lime3:#F5EED0;
-  --re:#DC2626;--rel:#FEF2F2;--or:#E8621A;--ol:#FFF0E8;
-  --bl:#2563EB;--bll:#EFF4FF;--gr:#16A34A;--grl:#F0FDF4;
-  --pu:#7C3AED;--pul:#F5F3FF;
+--bg:#F5F3EE;
+--w:#fff;
+--g200:#E2DDD7;
+--g700:#4A4540;
+--teal:#2E7A6A;
+--teal2:#1E5545;
 }
-body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--g900);min-height:100vh}
-#root{max-width:940px;margin:0 auto;padding:24px 16px 60px}
 
-.hdr{background:var(–teal2);border-radius:18px;padding:24px 32px;margin-bottom:20px;position:relative;overflow:hidden;display:flex;align-items:center;gap:24px}
-.hdr::before{content:’’;position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(205,219,160,.12),transparent 70%);border-radius:50%}
-.hdr-text{position:relative;z-index:1}
-.hdr-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(205,219,160,.12);border:1px solid rgba(205,219,160,.22);color:var(–lime);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:8px}
-.hdr-text h1{font-size:13px;font-weight:300;color:var(–lime3);letter-spacing:.3px;margin-bottom:2px}
-.hdr-text h2{font-size:11px;color:rgba(245,238,208,.45);font-weight:300;letter-spacing:.8px}
-
-.api-bar{background:var(–w);border:1px solid var(–g200);border-radius:12px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.api-bar label{font-size:12px;font-weight:600;color:var(–g700);white-space:nowrap}
-.api-input{flex:1;min-width:200px;border:1px solid var(–g200);border-radius:7px;padding:7px 12px;font-size:12px;color:var(–g900);font-family:monospace;background:var(–g50);outline:none}
-.api-input:focus{border-color:var(–teal)}
-.api-note{font-size:10.5px;color:var(–g500);width:100%}
-.api-note a{color:var(–teal);text-decoration:none}
-
-.up{background:var(–w);border:2px dashed var(–g200);border-radius:14px;margin-bottom:20px;overflow:hidden;cursor:pointer;transition:all .2s}
-.up:hover,.up.drag{border-color:var(–teal);background:#F0F7F5}
-.up-top{padding:32px 36px 24px;text-align:center}
-.up-icon{width:52px;height:52px;background:#EDF5F3;border:1px solid #C5DDD8;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:var(–teal)}
-.up h3{font-size:17px;font-weight:700;margin-bottom:5px}
-.up p{font-size:13px;color:var(–g500);margin-bottom:14px}
-.chip{display:inline-block;background:var(–g100);border:1px solid var(–g200);border-radius:6px;padding:3px 10px;font-size:10.5px;color:var(–g700);font-weight:500;margin:3px}
-.up-btn{display:inline-flex;align-items:center;gap:7px;background:var(–teal);color:#fff;border:none;border-radius:9px;padding:11px 22px;font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;transition:opacity .2s}
-.up-btn:hover{opacity:.88}
-.filter-bar{background:var(–g50);border-top:1px solid var(–g200);padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.filter-bar label{font-size:12px;font-weight:600;color:var(–g700)}
-.day-btns{display:flex;gap:6px;flex-wrap:wrap}
-.day-btn{border:1px solid var(–g200);background:var(–w);border-radius:7px;padding:5px 12px;font-size:12px;font-weight:500;color:var(–g700);cursor:pointer;transition:all .15s}
-.day-btn:hover{border-color:var(–teal);color:var(–teal)}
-.day-btn.active{background:var(–teal);border-color:var(–teal);color:#fff;font-weight:700}
-.filter-note{font-size:11px;color:var(–g500);margin-left:auto}
-
-.prog{background:var(–w);border:1px solid var(–g200);border-radius:14px;padding:32px 36px;text-align:center;margin-bottom:20px}
-.prog h3{font-size:17px;font-weight:700;margin-bottom:5px}
-.prog p{font-size:12.5px;color:var(–g500);margin-bottom:20px}
-.pbar{background:var(–g100);border-radius:99px;height:7px;overflow:hidden;margin-bottom:16px}
-.pfill{height:7px;border-radius:99px;background:linear-gradient(90deg,var(–teal2),var(–teal3));transition:width .5s ease}
-.psteps{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px}
-.pstep{font-size:10px;color:var(–g300);font-weight:500;text-align:center;flex:1;min-width:60px}
-.pstep.on{color:var(–teal);font-weight:700}
-.pstep.ok{color:var(–gr)}
-
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
-.scard{background:var(–w);border:1px solid var(–g200);border-radius:11px;padding:14px 16px}
-.sval{font-size:26px;font-weight:800;line-height:1}
-.sval.te{color:var(–teal)}.sval.re{color:var(–re)}.sval.bl{color:var(–bl)}.sval.gr{color:var(–gr)}
-.slb{font-size:10.5px;color:var(–g500);margin-top:3px}
-
-.dlc{background:var(–teal2);border-radius:14px;padding:24px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:16px}
-.dlc-txt h3{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px}
-.dlc-txt p{font-size:12px;color:rgba(245,238,208,.65)}
-.dlc-sheets{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
-.dlc-sh{display:flex;align-items:center;gap:4px;background:rgba(205,219,160,.1);border:1px solid rgba(205,219,160,.18);border-radius:5px;padding:3px 9px;font-size:10px;color:var(–lime3)}
-.dlbtn{display:inline-flex;align-items:center;gap:7px;background:var(–lime2);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .2s}
-.dlbtn:hover{opacity:.88}
-
-.tcard{background:var(–w);border:1px solid var(–g200);border-radius:14px;overflow:hidden;margin-bottom:16px}
-.tcard-hdr{padding:14px 20px;border-bottom:1px solid var(–g100);display:flex;align-items:center;justify-content:space-between}
-.tcard-hdr h3{font-size:13.5px;font-weight:700}
-.tscroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:11.5px}
-th{background:var(–g50);padding:9px 12px;text-align:left;font-weight:600;color:var(–g700);font-size:10px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(–g200);white-space:nowrap}
-td{padding:9px 12px;border-bottom:1px solid var(–g100);color:var(–g700);vertical-align:top;line-height:1.4}
-tr:last-child td{border-bottom:none}
-tr:hover td{background:var(–g50)}
-
-.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9.5px;font-weight:700}
-.bc{background:#FEE2E2;color:#991B1B}.ba{background:#FEF3C7;color:#92400E}
-.bm{background:var(–bll);color:#1E3A8A}.bb{background:var(–grl);color:#166534}
-.bo{background:#FFF7ED;color:#9A3412;border:1px solid #FED7AA}
-.be{background:var(–bll);color:#1E40AF;border:1px solid #BFCFFE}
-.bce{background:var(–grl);color:#14532D;border:1px solid #BBF7D0}
-.bt{background:#F5F3FF;color:#5B21B6;border:1px solid #DDD6FE}
-
-.plist{display:flex;flex-direction:column;gap:7px;padding:14px 16px}
-.pitem{background:var(–g50);border:1px solid var(–g200);border-left:3px solid var(–teal);border-radius:0 9px 9px 0;padding:10px 14px}
-.pitem.cr{border-left-color:var(–re)}.pitem.al{border-left-color:#F59E0B}
-.pitem-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px}
-.pitem-id{font-size:9.5px;font-weight:700;color:var(–g500)}
-.pitem h4{font-size:12px;font-weight:700;color:var(–g900);margin-bottom:2px}
-.pitem p{font-size:11px;color:var(–g500);line-height:1.4}
-.pmeta{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
-.ptag{font-size:9.5px;background:var(–w);border:1px solid var(–g200);border-radius:4px;padding:2px 7px;color:var(–g700)}
-
-.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
-.crt{background:var(–w);border:1px solid var(–g200);border-radius:12px;padding:16px 18px}
-.crt h4{font-size:12.5px;font-weight:700;margin-bottom:12px}
-.brow{display:flex;gap:8px;align-items:center;margin-bottom:7px}
-.blbl{font-size:10.5px;color:var(–g500);width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.btrk{flex:1;background:var(–g100);border-radius:4px;height:7px}
-.bfil{height:7px;border-radius:4px;background:var(–teal)}
-.bfil.bl{background:var(–bl)}.bfil.re{background:var(–re)}.bfil.gr{background:var(–gr)}.bfil.ye{background:#F59E0B}.bfil.lm{background:var(–lime2)}.bfil.pu{background:var(–pu)}
-.bnum{font-size:10.5px;font-weight:600;color:var(–g700);width:20px;text-align:right}
-
-.krow{display:flex;align-items:center;gap:10px;background:var(–g50);border:1px solid var(–g200);border-radius:9px;padding:9px 13px;margin-bottom:7px}
-.kval{font-size:18px;font-weight:800;color:var(–teal);width:70px;flex-shrink:0}
-.kin{flex:1}.kin .nm{font-size:11.5px;font-weight:600;color:var(–g900)}
-.kin .ts{font-size:10px;color:var(–g500)}
-.kbar{width:100px;height:6px;background:var(–g200);border-radius:99px;flex-shrink:0}
-.kbf{height:6px;border-radius:99px;background:var(–teal)}
-
-.pf-card{background:var(–w);border:1px solid var(–g200);border-radius:14px;overflow:hidden;margin-bottom:16px}
-.pf-hdr{padding:14px 20px;border-bottom:1px solid var(–g100);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.pf-hdr h3{font-size:13.5px;font-weight:700;flex:1}
-.pf-select{border:1px solid var(–g200);border-radius:8px;padding:7px 12px;font-size:12px;color:var(–g900);background:var(–g50);outline:none;cursor:pointer;min-width:180px}
-.pf-select:focus{border-color:var(–teal)}
-.pf-clear{display:inline-flex;align-items:center;gap:5px;background:var(–g100);border:1px solid var(–g200);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:500;color:var(–g700);cursor:pointer}
-.pf-body{padding:16px 20px}
-.pf-profile{display:flex;gap:16px;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap}
-.pf-avatar{width:44px;height:44px;border-radius:50%;background:var(–teal);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:800;flex-shrink:0}
-.pf-info{flex:1}
-.pf-name{font-size:16px;font-weight:800;color:var(–g900);margin-bottom:3px}
-.pf-dept{font-size:12px;color:var(–g500);margin-bottom:8px}
-.pf-stats{display:flex;gap:10px;flex-wrap:wrap}
-.pf-stat{background:var(–g50);border:1px solid var(–g200);border-radius:8px;padding:8px 14px;text-align:center}
-.pf-stat-val{font-size:20px;font-weight:800;color:var(–teal);line-height:1}
-.pf-stat-lbl{font-size:10px;color:var(–g500);margin-top:2px}
-.pf-stat.bl .pf-stat-val{color:var(–bl)}.pf-stat.gr .pf-stat-val{color:var(–gr)}.pf-stat.re .pf-stat-val{color:var(–re)}
-.pf-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(–teal);margin-bottom:10px;margin-top:4px}
-.pf-empty{font-size:13px;color:var(–g500);text-align:center;padding:24px 0}
-
-.cmp{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(–g200);border-radius:14px;overflow:hidden;margin-bottom:16px}
-.cmpc{padding:22px 26px;background:var(–w)}
-.cmpc.aft{background:var(–g50);border-left:1px solid var(–g200)}
-.cmplbl{display:flex;align-items:center;gap:7px;margin-bottom:14px}
-.cmpdot{width:8px;height:8px;border-radius:50%;background:var(–re)}
-.cmpdot.g{background:var(–gr)}
-.cmplbl span{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(–g500)}
-.cmrow{display:flex;gap:9px;align-items:flex-start;margin-bottom:9px}
-.cmic{width:20px;height:20px;border-radius:5px;background:var(–rel);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(–re);font-size:10px;font-weight:700}
-.cmic.g{background:var(–grl);color:var(–gr)}
-.cmrow p{font-size:12px;color:var(–g700);line-height:1.4;padding-top:1px}
-
-.resetbtn{display:inline-flex;align-items:center;gap:6px;background:var(–g100);border:1px solid var(–g200);border-radius:7px;padding:7px 14px;font-size:11.5px;font-weight:500;color:var(–g700);cursor:pointer;margin-bottom:16px}
-.resetbtn:hover{background:var(–g200)}
-.errc{background:var(–rel);border:1px solid #FECACA;border-radius:11px;padding:16px 20px;margin-bottom:16px;color:var(–re);font-size:12.5px}
-.foot{background:var(–w);border:1px solid var(–g200);border-radius:14px;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;margin-top:16px;flex-wrap:wrap;gap:12px}
-.foot p{font-size:11.5px;color:var(–g500)}
-.foot strong{color:var(–g900)}
-.sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:12px}
-.sec-dot{width:7px;height:7px;border-radius:50%;background:var(–teal)}
-.sec-lbl span{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(–teal)}
-
-@media(max-width:600px){
-.stats{grid-template-columns:repeat(2,1fr)}
-.charts{grid-template-columns:1fr}
-.cmp{grid-template-columns:1fr}
-.cmpc.aft{border-left:none;border-top:1px solid var(–g200)}
-.hdr{padding:18px 18px;flex-direction:column;align-items:flex-start;gap:12px}
-.dlc{flex-direction:column;align-items:flex-start}
-#root{padding:12px 10px 40px}
-.filter-note{display:none}
+body{
+font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+background:var(--bg);
+color:#1E1B18;
+min-height:100vh
 }
+
+#root{
+max-width:940px;
+margin:0 auto;
+padding:24px 16px
+}
+
+.hdr{
+background:var(--teal2);
+color:#fff;
+border-radius:16px;
+padding:20px;
+margin-bottom:20px
+}
+
+.upload{
+border:2px dashed var(--g200);
+padding:40px;
+border-radius:12px;
+text-align:center;
+background:#fff;
+cursor:pointer
+}
+
+.btn{
+background:var(--teal);
+color:white;
+border:none;
+padding:10px 18px;
+border-radius:8px;
+font-weight:600;
+cursor:pointer
+}
+
+.stats{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:10px;
+margin-top:20px
+}
+
+.card{
+background:white;
+padding:14px;
+border-radius:10px;
+border:1px solid var(--g200)
+}
+
+.card h3{
+font-size:22px
+}
+
+.card p{
+font-size:12px;
+color:var(--g700)
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px
+}
+
+th,td{
+padding:8px;
+border-bottom:1px solid var(--g200);
+font-size:12px;
+text-align:left
+}
+
 </style>
-
 </head>
+
 <body>
+
 <div id="root"></div>
+
 <script type="text/babel">
-const { useState, useRef, useCallback } = React;
 
-// ── LOGO ──────────────────────────────────────────────────────────────────────
-const Logo = () => {
-const f = “‘Segoe UI’,system-ui,sans-serif”;
-return (
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 52" width="210" height="52">
-<defs>
-<pattern id="vg" width="7" height="7" patternUnits="userSpaceOnUse">
-<circle cx="3.5" cy="3.5" r="0.85" fill="#1A5040" opacity="0.65"/>
-</pattern>
-<clipPath id="ic"><rect x="0" y="0" width="52" height="52" rx="10"/></clipPath>
-</defs>
-<rect x="0" y="0" width="52" height="52" rx="10" fill="#1E5545"/>
-<rect x="0" y="0" width="52" height="52" rx="10" fill="url(#vg)"/>
-<g clipPath="url(#ic)">
-<rect x="4" y="5" width="44" height="24" rx="2" fill="none" stroke="#F5EED0" strokeWidth="0.6" opacity="0.2"/>
-<line x1="4" y1="18" x2="48" y2="18" stroke="#F5EED0" strokeWidth="0.4" opacity="0.12"/>
-<polyline points="4,18 9,18 12,11 15,11 18,25 21,25 24,7 27,7 30,19 33,19 36,14 39,14 42,18 48,18"
-fill="none" stroke="#CDDBA0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/>
-<circle cx="12" cy="11" r="1.8" fill="#1E5545" stroke="#CDDBA0" strokeWidth="1.3"/>
-<circle cx="24" cy="7"  r="1.8" fill="#1E5545" stroke="#CDDBA0" strokeWidth="1.3"/>
-<circle cx="36" cy="14" r="1.8" fill="#1E5545" stroke="#CDDBA0" strokeWidth="1.3"/>
-<line x1="4" y1="32" x2="48" y2="32" stroke="#F5EED0" strokeWidth="0.5" opacity="0.18"/>
-<rect x="4" y="34" width="44" height="14" rx="1.5" fill="none" stroke="#F5EED0" strokeWidth="0.6" opacity="0.22"/>
-<polygon points="5,35 8,35 5,38" fill="#F5EED0" opacity="0.3"/>
-<text x=“26” y=“45” style={{fontFamily:f,fontSize:“10px”,fontWeight:300}} fill=”#F5EED0” textAnchor=“middle” opacity=“0.82”>ALDA</text>
-</g>
-<rect x="0" y="0" width="52" height="52" rx="10" fill="none" stroke="#1A5040" strokeWidth="1.2"/>
-<text x=“60” y=“22” style={{fontFamily:f,fontSize:“21px”,fontWeight:700}} fill=”#F5EED0”>SMT</text>
-<text x=“101” y=“22” style={{fontFamily:f,fontSize:“21px”,fontWeight:300}} fill=”#F5EED0”>intel</text>
-<line x1="60" y1="27" x2="208" y2="27" stroke="#8A9F5C" strokeWidth="0.8" opacity="0.6"/>
-<text x=“60” y=“37” style={{fontFamily:f,fontSize:“7.5px”,fontWeight:500}} fill=“rgba(245,238,208,.75)”>Manufacturing Analytics</text>
-<text x=“60” y=“48” style={{fontFamily:f,fontSize:“6px”,fontWeight:300}} fill=“rgba(205,219,160,.55)”>SMT · AOI · SPI · X-RAY · ROOT CAUSE</text>
-</svg>
-);
-};
+const {useState,useRef}=React
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
-function to24h(h,min,sec,mer){let hour=parseInt(h);const m=(mer||””).toLowerCase().replace(/[\s.]/g,””);if(m.startsWith(“p”)&&hour!==12)hour+=12;if(m.startsWith(“a”)&&hour===12)hour=0;return{hour,timeStr:`${String(hour).padStart(2,"0")}:${min}:${sec||"00"}`};}
-function parseTurno(h){if(h>=6&&h<14)return”1T”;if(h>=14&&h<22)return”2T”;return”3T”;}
+// ---------- PARSER WHATSAPP ----------
+
+function to24h(h,min,sec,mer){
+let hour=parseInt(h)
+const m=(mer||"").toLowerCase()
+
+if(m.includes("p") && hour!==12) hour+=12
+if(m.includes("a") && hour===12) hour=0
+
+return {
+hour,
+timeStr:String(hour).padStart(2,"0")+":"+min+":"+(sec||"00")
+}
+}
+
+function parseTurno(h){
+if(h>=6 && h<14) return "1T"
+if(h>=14 && h<22) return "2T"
+return "3T"
+}
 
 function parseWhatsApp(txt){
-const lines=txt.split(/\r?\n/);const msgs=[];
-const reA=/^[(\d{1,2})/(\d{1,2})/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a.?m.?|p.?m.?)?]\s*([^:]+?):\s*(.*)$/i;
-const reB=/^(\d{1,2})/(\d{1,2})/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|a.m.|p.m.)?\s*[-]\s*([^:]+?):\s*(.*)$/i;
-let cur=null;
+
+const lines=txt.split(/\r?\n/)
+const msgs=[]
+
+const reA=/^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i
+const reB=/^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i
+
+let cur=null
+
 for(const raw of lines){
-const line=raw.replace(/[\u200e\u200f\u202a-\u202e\u202f]/g,””).trim();
-const m=line.match(reA)||line.match(reB);
-if(m){if(cur)msgs.push(cur);const[,d,mo,yr,h,min,sec,mer,sender,text]=m;let year=parseInt(yr);if(year<100)year+=2000;const{hour,timeStr}=to24h(h,min,sec,mer||””);const dateIso=`${year}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;const dateDisp=`${String(d).padStart(2,"0")}/${String(mo).padStart(2,"0")}/${year}`;cur={dateIso,dateDisp,timeStr,hour,turno:parseTurno(hour),sender:sender.replace(/^~/,””).trim(),text:text.trim()};}
-else if(cur&&line&&!line.startsWith(”[”))cur.text+=” “+line;
-}
-if(cur)msgs.push(cur);return msgs;
-}
 
-function filterByDays(msgs,days){if(!msgs.length)return msgs;const sorted=[…msgs].sort((a,b)=>a.dateIso.localeCompare(b.dateIso));const last=new Date(sorted[sorted.length-1].dateIso);const cutoff=new Date(last);cutoff.setDate(cutoff.getDate()-days+1);const cutStr=cutoff.toISOString().slice(0,10);return sorted.filter(m=>m.dateIso>=cutStr);}
+const line=raw.trim()
 
-function cleanMsgs(msgs){
-const skip=/imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|Se te añadió|creó este grupo|cifrados de extremo|agregó a|salió del grupo|cambió el|ahora es admin|Se editó este mensaje/i;
-const noise=/^(buenos d|buenas t|buenas n|buen d|buen día|gracias|de nada|ok\b|oki|👍|🙏|ahí paso|ahi paso|ahí van|con permiso|disculpe|perdón|por favor|porfavor|hasta luego|con gusto|sale$|enterado$|recibido$|entendido$|\bsi\b$|\bno\b$)/i;
-return msgs.filter(m=>m.text&&m.text.trim().length>8&&!m.text.match(skip)&&!m.text.trim().match(noise));
-}
+const m=line.match(reA) || line.match(reB)
 
-async function readZip(file){const zip=await JSZip.loadAsync(file);for(const name of Object.keys(zip.files)){if(name.endsWith(”.txt”)&&!name.startsWith(”__MACOSX”))return await zip.files[name].async(“string”);}throw new Error(“No se encontró .txt en el ZIP. Verifica que sea exportación de WhatsApp.”);}
+if(m){
 
-// ── AI ANALYSIS ───────────────────────────────────────────────────────────────
-async function analyzeWithAI(msgs,apiKey){
-const sample=msgs.slice(0,150).map(m=>`[${m.dateDisp} ${m.timeStr}|${m.turno}|${m.sender}]:${m.text}`).join(”\n”);
-const system=`Eres experto en manufactura electrónica SMT/PCB/PTH. Analiza mensajes WhatsApp de manufactura. Extrae ÚNICAMENTE eventos operativos accionables en español técnico.
+if(cur) msgs.push(cur)
 
-INCLUIR: paros línea, defectos calidad, equivocados componente, cambios modelo, FAI, LCR vencido, falta material, rollo mal cargado, RMA, AOI/ICT/SPI, seguridad, llenado barril, inversión componentes, daño físico, problemas sistema.
-EXCLUIR: saludos, ok, gracias, confirmaciones simples, emojis solos, mensajes sin evento.
+const d=m[1]
+const mo=m[2]
+const yr=m[3]
 
-CATÁLOGO DEFECTOS SMT (usar exactamente estos en defecto_smt):
-Soldadura: Solder bridge|Insufficient solder|Excess solder|Cold solder joint|Open solder joint|Non-wetting|De-wetting|Head-in-pillow|Voiding|Solder balling
-Colocación: Missing component|Wrong component|Wrong orientation|Polarity inverted|Misaligned component|Tombstoning|Skewed component|Component shifted
-BGA/QFN: BGA short|BGA open|BGA void|BGA misalignment|Missing BGA ball|Bridging under BGA
-Daño físico: Bent pin|Cracked component|Lifted pad|Broken connector|Component chipped|PCB scratch|Damaged trace
-Proceso: Feeder misload|Stencil misalignment|Paste printing issue|Pick and place error|Conveyor jam|Reflow profile issue|Machine stop
-Material: Wrong reel|Expired material|Moisture exposure|Missing material|Incorrect label
-Test: ICT open|ICT short|Functional test fail|Boundary scan fail|Programming error
-Sin defecto SMT: defecto_smt=“N/A”
+const h=m[4]
+const min=m[5]
+const sec=m[6]||"00"
+const mer=m[7]||""
 
-tipo_evento: Calidad|Proceso|Material|Sistema|Seguridad|Producción
-Máximo 15 eventos. JSON ÚNICAMENTE:
-{“eventos”:[{“id”:“EVT-001”,“fecha”:“DD/MM/YYYY”,“hora”:“HH:MM”,“turno”:“1T|2T|3T”,“modelo”:“N/P o N/D”,“linea_estacion”:“L1|etc o N/D”,“reporta”:“nombre”,“area_involucrada”:“SMT|PTH|ICT|AOI|Kitting|Calidad|Mantenimiento|IT|Producción|Materiales|Ingeniería”,“tipo_evento”:“Calidad|Proceso|Material|Sistema|Seguridad|Producción”,“defecto_smt”:“del catálogo o N/A”,“evento_detectado”:“descripción técnica máx 90 chars”,“impacto”:“impacto operativo”,“accion_requerida”:“acción concreta”,“responsable_sugerido”:“persona o área”,“estatus”:“Abierto|En proceso|Cerrado”,“prioridad”:“Crítica|Alta|Media|Baja”,“fuente_chat”:“DD/MM/YY HH:MM nombre”,“notas”:””}],“kpis”:[{“fechahora”:“DD/MM/YYYY HH:MM”,“indicador”:“Yield|FPY|ETE|Output|Scrap|Backlog u otro”,“valor”:0.0,“unidad”:”%|pzas|etc”,“fuente”:“nombre”}],“resumen”:{“periodo”:“DD/MM/YYYY a DD/MM/YYYY”,“grupo”:“nombre”,“total_eventos”:0,“alertas_criticas”:[“max 5”],“acciones_pendientes”:[“max 5”],“estatus_lineas”:[“estado”]},“directorio”:[{“nombre”:“nombre”,“departamento”:“área”,“rol”:“Inspector|Supervisor|Ingeniero|Técnico|Operador”,“mensajes”:0,“eventos”:0,“area_owner”:“área”}]}`;
+const sender=m[m.length-2]
+const text=m[m.length-1]
 
-const resp=await fetch(“https://api.anthropic.com/v1/messages”,{method:“POST”,headers:{“Content-Type”:“application/json”,“x-api-key”:apiKey,“anthropic-version”:“2023-06-01”,“anthropic-dangerous-direct-browser-access”:“true”},body:JSON.stringify({model:“claude-sonnet-4-20250514”,max_tokens:6000,system,messages:[{role:“user”,content:`Analiza ${msgs.length} mensajes. Solo JSON:\n\n${sample}`},{role:“assistant”,content:”{”}]})});
-if(!resp.ok){const err=await resp.json().catch(()=>({}));if(resp.status===401)throw new Error(“API Key inválida. Verifica en console.anthropic.com”);if(resp.status===429)throw new Error(“Límite de uso alcanzado. Espera e intenta de nuevo.”);throw new Error(err.error?.message||`Error API ${resp.status}`);}
-const data=await resp.json();
-if(!data.content?.length)throw new Error(“Respuesta vacía. Intenta de nuevo.”);
-const raw=”{”+data.content.map(b=>b.text||””).join(””);
-const clean=raw.replace(/`json\s*/gi,"").replace(/`\s*/g,””).trim();
-const s=clean.indexOf(”{”),e=clean.lastIndexOf(”}”);
-if(s===-1||e===-1)throw new Error(“JSON inválido. Reduce el rango de días.”);
-const jsonStr=clean.slice(s,e+1);
-const tryParse=str=>{try{return JSON.parse(str);}catch{return null;}};
-let result=tryParse(jsonStr);
-if(!result){const fixed=jsonStr.replace(/,\s*([}]])/g,”$1”)+(jsonStr.split(”{”).length>jsonStr.split(”}”).length?”}”:””)+(jsonStr.split(”[”).length>jsonStr.split(”]”).length?”]}”:””);result=tryParse(fixed);}
-if(!result)throw new Error(“Error procesando respuesta. Intenta con 1 o 3 días.”);
-return result;
+let year=parseInt(yr)
+if(year<100) year+=2000
+
+const {hour,timeStr}=to24h(h,min,sec,mer)
+
+cur={
+fecha:d+"/"+mo+"/"+year,
+hora:timeStr,
+turno:parseTurno(hour),
+sender:sender,
+text:text
 }
 
-// ── EXCEL ─────────────────────────────────────────────────────────────────────
-async function buildXlsx(result){
-const ev=result.eventos||[],kpis=result.kpis||[],res=result.resumen||{},directorio=result.directorio||[];
-const wb=new ExcelJS.Workbook();wb.creator=“SMTintel by ALDA”;wb.created=new Date();
-const C={hBg:“1E5545”,hFg:“FFFFFF”,critica:“F4CCCC”,alta:“FCE4D6”,media:“EEF5FB”,baja:“E2F0D9”,cerrado:“E2F0D9”,enProceso:“FFF2CC”,abierto:“F4CCCC”,alt:“F5F3EE”};
-const hFill=bg=>({type:“pattern”,pattern:“solid”,fgColor:{argb:“FF”+bg}});
-const brd=()=>({top:{style:“thin”},left:{style:“thin”},bottom:{style:“thin”},right:{style:“thin”}});
-const hFont=(sz=11)=>({name:“Segoe UI”,size:sz,bold:true,color:{argb:“FF”+C.hFg}});
-const dFont=(sz=10)=>({name:“Segoe UI”,size:sz});
-const prioFill=p=>({Crítica:C.critica,Alta:C.alta,Media:C.media,Baja:C.baja}[p]||“FFFFFF”);
-const estFill=s=>({Abierto:C.abierto,“En proceso”:C.enProceso,Cerrado:C.cerrado}[s]||“FFFFFF”);
-const styleHdr=(ws,n,rowN=1)=>{const r=ws.getRow(rowN);for(let i=1;i<=n;i++){const c=r.getCell(i);c.fill=hFill(C.hBg);c.font=hFont();c.border=brd();c.alignment={horizontal:“center”,vertical:“middle”};}r.height=18;};
-
-const H=[“ID”,“Fecha”,“Hora”,“Turno”,“Modelo”,“Linea_Estacion”,“Reporta”,“Area_involucrada”,“Tipo_evento”,“Defecto_SMT”,“Evento_detectado”,“Impacto”,“Accion_requerida”,“Responsable_sugerido”,“Estatus”,“Prioridad”,“Aging_dias”,“Fuente_chat”,“Notas”];
-const addEvSheet=(wb,name,evArr)=>{
-const ws=wb.addWorksheet(name);ws.addRow(H);styleHdr(ws,H.length);
-evArr.forEach((e,ri)=>{
-const row=ws.addRow([e.id,e.fecha,e.hora,e.turno,e.modelo,e.linea_estacion,e.reporta,e.area_involucrada,e.tipo_evento,e.defecto_smt||“N/A”,e.evento_detectado,e.impacto,e.accion_requerida,e.responsable_sugerido,e.estatus,e.prioridad,{formula:`IF(OR(P${ri+2}="Abierto",P${ri+2}="En proceso"),TODAY()-B${ri+2},"")`},e.fuente_chat,e.notas]);
-row.height=40;
-row.eachCell({includeEmpty:false},(cell,col)=>{cell.font=dFont();cell.alignment={wrapText:true,vertical:“top”};if(col===15)cell.fill=hFill(estFill(e.estatus));else if(col===16)cell.fill=hFill(prioFill(e.prioridad));else cell.fill=hFill(ri%2===0?“FFFFFF”:C.alt);});
-});
-ws.columns=[6,12,8,6,16,18,18,20,14,20,40,30,34,24,12,10,10,30,30].map(w=>({width:w}));
-ws.views=[{state:“frozen”,ySplit:1}];
-return ws;
-};
-
-addEvSheet(wb,“Bitacora”,ev);
-addEvSheet(wb,“Pendientes”,ev.filter(e=>e.estatus!==“Cerrado”));
-
-const wsKpi=wb.addWorksheet(“KPIs_chat”);
-const kH=[“FechaHora”,“Indicador”,“Valor”,“Unidad”,“Fuente_chat”];
-wsKpi.addRow(kH);styleHdr(wsKpi,kH.length);
-kpis.forEach(k=>{const r=wsKpi.addRow([k.fechahora,k.indicador,k.valor,k.unidad,k.fuente]);r.eachCell({includeEmpty:false},c=>{c.font=dFont();c.fill=hFill(“FFFFFF”);});});
-wsKpi.columns=[22,28,10,8,32].map(w=>({width:w}));
-
-const wsRes=wb.addWorksheet(“Resumen_Junta”);
-const ab=ev.filter(e=>e.estatus===“Abierto”).length,ep=ev.filter(e=>e.estatus===“En proceso”).length,ce=ev.filter(e=>e.estatus===“Cerrado”).length,cr=ev.filter(e=>e.prioridad===“Crítica”&&e.estatus!==“Cerrado”).length;
-wsRes.mergeCells(“A1:F1”);const t1=wsRes.getCell(“A1”);t1.value=`Resumen ejecutivo — ${res.grupo||"SMTintel"}`;t1.fill=hFill(C.hBg);t1.font=hFont(13);t1.alignment={horizontal:“left”,vertical:“middle”};wsRes.getRow(1).height=22;
-const ac=(addr,val,bg,bold=false)=>{const c=wsRes.getCell(addr);c.value=val;c.fill=hFill(bg);c.font={name:“Segoe UI”,size:10,bold};};
-ac(“A2”,“Corte analizado”,“D0EAE4”,true);ac(“B2”,res.periodo||””,“F5F3EE”);ac(“D2”,“Eventos abiertos”,“D0EAE4”,true);wsRes.getCell(“E2”).value={formula:`COUNTIF(Bitacora!P:P,"Abierto")+COUNTIF(Bitacora!P:P,"En proceso")`};
-wsRes.addRow([]);ac(“A4”,“Estatus por línea”,“1E5545”,true);wsRes.getCell(“A4”).font=hFont(10);ac(“D4”,“KPIs reportados”,“1E5545”,true);wsRes.getCell(“D4”).font=hFont(10);
-const maxR=Math.max((res.estatus_lineas||[]).length,kpis.length);
-for(let i=0;i<maxR;i++){const r=wsRes.addRow([”- “+(res.estatus_lineas||[])[i]||””,””,””,kpis[i]?`${kpis[i].indicador}`:””,(kpis[i]?.valor||””)]);r.eachCell({includeEmpty:false},c=>{c.font=dFont();c.alignment={wrapText:true};});}
-wsRes.addRow([]);
-const addS=(lbl,items)=>{const rH=wsRes.addRow([lbl]);rH.getCell(1).fill=hFill(C.hBg);rH.getCell(1).font=hFont(10);(items||[]).forEach(a=>{const r=wsRes.addRow([”- “+a]);r.getCell(1).font=dFont();r.getCell(1).alignment={wrapText:true};});wsRes.addRow([]);};
-addS(“Alertas críticas”,res.alertas_criticas);addS(“Acciones pendientes”,res.acciones_pendientes);
-[[“Total”,ev.length],[“Abiertos”,ab],[“En proceso”,ep],[“Cerrados”,ce],[“Críticos”,cr]].forEach(([k,v])=>{const r=wsRes.addRow([k,v]);r.eachCell({includeEmpty:false},c=>{c.font=dFont();});});
-wsRes.columns=[55,30,5,42,14,5].map(w=>({width:w}));
-
-const mods=[…new Set(ev.map(e=>e.modelo).filter(Boolean))];
-const defCounts={};ev.forEach(e=>{if(e.defecto_smt&&e.defecto_smt!==“N/A”)defCounts[e.defecto_smt]=(defCounts[e.defecto_smt]||0)+1;});
-const tipoCounts={};ev.forEach(e=>{tipoCounts[e.tipo_evento||“N/D”]=(tipoCounts[e.tipo_evento||“N/D”]||0)+1;});
-
-const wsDash=wb.addWorksheet(“Dashboard_Base”);
-wsDash.mergeCells(“A1:I1”);const dt=wsDash.getCell(“A1”);dt.value=“Dashboard base — SMTintel by ALDA”;dt.fill=hFill(C.hBg);dt.font=hFont(13);dt.alignment={horizontal:“left”,vertical:“middle”};wsDash.getRow(1).height=22;wsDash.addRow([]);
-[[“A3”,“KPI”],[“B3”,“Valor”],[“C3”,“Comentarios”],[“E3”,“Estatus”],[“F3”,“Conteo”],[“H3”,“Prioridad”],[“I3”,“Conteo”]].forEach(([a,v])=>{const c=wsDash.getCell(a);c.value=v;c.fill=hFill(C.hBg);c.font=hFont();c.border=brd();});
-[[“Total”,{formula:“COUNTA(Bitacora!A:A)-1”}],[“Abiertos”,{formula:`COUNTIF(Bitacora!P:P,"Abierto")`}],[“En proceso”,{formula:`COUNTIF(Bitacora!P:P,"En proceso")`}],[“Cerrados”,{formula:`COUNTIF(Bitacora!P:P,"Cerrado")`}]].forEach(([k,v])=>{const r=wsDash.addRow([k,v]);r.eachCell({includeEmpty:false},c=>{c.font=dFont();});});
-wsDash.addRow([]);const rM=wsDash.addRow([“Pareto Defectos SMT”]);rM.getCell(1).fill=hFill(C.hBg);rM.getCell(1).font=hFont();
-Object.entries(defCounts).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{const r=wsDash.addRow([k,v]);r.eachCell({includeEmpty:false},c=>{c.font=dFont();});});
-wsDash.addRow([]);const rT=wsDash.addRow([“Por tipo evento”]);rT.getCell(1).fill=hFill(C.hBg);rT.getCell(1).font=hFont();
-Object.entries(tipoCounts).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{const r=wsDash.addRow([k,v]);r.eachCell({includeEmpty:false},c=>{c.font=dFont();});});
-wsDash.columns=[25,10,35,3,16,8,3,16,8].map(w=>({width:w}));
-
-const wsDir=wb.addWorksheet(“Directorio_Equipo”);
-const dH=[“Nombre”,“Departamento”,“Rol”,“Mensajes”,“Eventos”,“Área_owner”];
-wsDir.addRow(dH);styleHdr(wsDir,dH.length);
-const dirRows=directorio.length>0?directorio.map(d=>[d.nombre,d.departamento,d.rol,d.mensajes,d.eventos,d.area_owner]):[…new Set(ev.map(e=>e.reporta).filter(Boolean))].map(n=>[n,ev.find(e=>e.reporta===n)?.area_involucrada?.split(”/”)[0]?.trim()||””,””,ev.filter(e=>e.reporta?.includes(n)).length,ev.filter(e=>e.responsable_sugerido?.includes(n)).length,””]);
-dirRows.forEach((row,ri)=>{const r=wsDir.addRow(row);r.eachCell({includeEmpty:false},c=>{c.font=dFont();c.fill=hFill(ri%2===0?“FFFFFF”:C.alt);});});
-wsDir.columns=[24,22,20,18,18,24].map(w=>({width:w}));
-
-const wsCat=wb.addWorksheet(“Catalogos_Reglas”);
-const lins=[…new Set(ev.map(e=>e.linea_estacion).filter(Boolean))];
-const reglas=[“Incluir: paros, defectos, equivocados, cambios modelo, FAI, material.”,“Excluir: saludos, confirmaciones, emojis, sin evento operativo.”,“Turnos: 1T 06-14h, 2T 14-22h, 3T 22-06h.”,“Defectos SMT clasificados por catálogo IPC/estándar SMT.”,“Dashboard usa Bitacora como fuente única para pivotes.”];
-wsCat.mergeCells(“A1:F1”);const ct=wsCat.getCell(“A1”);ct.value=“Catálogos y reglas — SMTintel”;ct.fill=hFill(C.hBg);ct.font=hFont(12);wsCat.getRow(1).height=20;wsCat.addRow([]);
-[[“A3”,“Modelos”],[“C3”,“Líneas/Estaciones”],[“E3”,“Reglas operativas”]].forEach(([a,v])=>{const c=wsCat.getCell(a);c.value=v;c.fill=hFill(C.hBg);c.font=hFont();});
-const maxC=Math.max(mods.length,lins.length,reglas.length);
-for(let i=0;i<maxC;i++){const r=wsCat.addRow([mods[i]||””,””,lins[i]||””,””,(reglas[i]||””)]);r.eachCell({includeEmpty:false},c=>{c.font=dFont();});}
-wsCat.columns=[22,3,28,3,62,3].map(w=>({width:w}));
-
-return await wb.xlsx.writeBuffer();
+}else if(cur && line){
+cur.text+=" "+line
 }
 
-// ── APP ───────────────────────────────────────────────────────────────────────
+}
+
+if(cur) msgs.push(cur)
+
+return msgs
+}
+
+// ---------- APP ----------
+
 function App(){
-const[apiKey,setApiKey]=useState(localStorage.getItem(“smtintel_key”)||””);
-const[state,setState]=useState(“idle”);
-const[prog,setProg]=useState(0);
-const[progStep,setProgStep]=useState(0);
-const[days,setDays]=useState(3);
-const[result,setResult]=useState(null);
-const[xlsxBytes,setXlsxBytes]=useState(null);
-const[errMsg,setErrMsg]=useState(””);
-const[drag,setDrag]=useState(false);
-const[msgStats,setMsgStats]=useState(null);
-const[personaFiltro,setPersonaFiltro]=useState(””);
-const fileRef=useRef();
 
-const saveKey=k=>{setApiKey(k);localStorage.setItem(“smtintel_key”,k);};
-const STEPS=[“Leyendo ZIP”,“Parseando”,“Filtrando”,“IA análisis”,“Excel”];
+const[file,setFile]=useState(null)
+const[data,setData]=useState([])
+const[fileRef]=useState(useRef())
 
-const handle=useCallback(async file=>{
-if(!file||!file.name.endsWith(”.zip”)){setErrMsg(“Sube un .zip exportado de WhatsApp”);setState(“error”);return;}
-if(!apiKey.trim()){setErrMsg(“Ingresa tu API Key de Anthropic para continuar”);setState(“error”);return;}
-setState(“loading”);setProg(8);setProgStep(0);
+async function handleZip(f){
+
 try{
-const txt=await readZip(file);setProgStep(1);setProg(22);
-const all=parseWhatsApp(txt);if(!all.length)throw new Error(“No se encontraron mensajes con formato WhatsApp estándar.”);
-setProgStep(2);setProg(38);
-const filtered=filterByDays(all,days);const clean=cleanMsgs(filtered);
-setMsgStats({total:all.length,filtered:filtered.length,clean:clean.length});
-if(!clean.length)throw new Error(`Sin mensajes operativos en los últimos ${days} días. Aumenta el rango.`);
-setProgStep(3);setProg(55);
-const res=await analyzeWithAI(clean,apiKey.trim());
-setProgStep(4);setProg(82);
-const bytes=await buildXlsx(res);
-setProg(100);setResult(res);setXlsxBytes(bytes);setState(“done”);
-}catch(e){setErrMsg(e.message||String(e));setState(“error”);}
-},[days,apiKey]);
 
-const download=()=>{if(!xlsxBytes)return;const blob=new Blob([xlsxBytes],{type:“application/vnd.openxmlformats-officedocument.spreadsheetml.sheet”});const a=document.createElement(“a”);a.href=URL.createObjectURL(blob);a.download=`SMTintel_${new Date().toISOString().slice(0,10)}.xlsx`;a.click();URL.revokeObjectURL(a.href);};
-const reset=()=>{setState(“idle”);setResult(null);setXlsxBytes(null);setProg(0);setProgStep(0);setMsgStats(null);setErrMsg(””);setPersonaFiltro(””);};
+const zip=await JSZip.loadAsync(f)
 
-const ev=result?.eventos||[],kpis=result?.kpis||[],res=result?.resumen||{};
-const pend=ev.filter(e=>e.estatus!==“Cerrado”),crit=ev.filter(e=>e.prioridad===“Crítica”&&e.estatus!==“Cerrado”),cerr=ev.filter(e=>e.estatus===“Cerrado”);
-const byMod=[…new Set(ev.map(e=>e.modelo))].map(m=>({l:m,n:ev.filter(e=>e.modelo===m).length})).sort((a,b)=>b.n-a.n).slice(0,5);const mxM=Math.max(…byMod.map(x=>x.n),1);
-const byLin=[…new Set(ev.map(e=>e.linea_estacion).filter(x=>x&&x!==“N/D”))].map(l=>({l,n:ev.filter(e=>e.linea_estacion===l).length})).sort((a,b)=>b.n-a.n).slice(0,5);const mxL=Math.max(…byLin.map(x=>x.n),1);
-const byPrio=[{l:“Crítica”,n:ev.filter(e=>e.prioridad===“Crítica”).length,c:“re”},{l:“Alta”,n:ev.filter(e=>e.prioridad===“Alta”).length,c:“ye”},{l:“Media”,n:ev.filter(e=>e.prioridad===“Media”).length,c:“bl”},{l:“Baja”,n:ev.filter(e=>e.prioridad===“Baja”).length,c:“gr”}];const mxP=Math.max(…byPrio.map(x=>x.n),1);
-const byTipo=[“Calidad”,“Proceso”,“Material”,“Sistema”,“Producción”,“Seguridad”].map(t=>({l:t,n:ev.filter(e=>e.tipo_evento===t).length})).filter(x=>x.n>0);const mxT=Math.max(…byTipo.map(x=>x.n),1);
-const defMap={};ev.forEach(e=>{if(e.defecto_smt&&e.defecto_smt!==“N/A”)defMap[e.defecto_smt]=(defMap[e.defecto_smt]||0)+1;});
-const byDef=Object.entries(defMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([l,n])=>({l,n}));const mxD=Math.max(…byDef.map(x=>x.n),1);
-const personas=[…new Set([…ev.map(e=>e.reporta),…ev.map(e=>e.responsable_sugerido)].filter(p=>p&&p!==“N/D”&&p.length>1))].sort();
-const evRep=personaFiltro?ev.filter(e=>e.reporta?.toLowerCase().includes(personaFiltro.toLowerCase())):[];
-const evRes=personaFiltro?ev.filter(e=>e.responsable_sugerido?.toLowerCase().includes(personaFiltro.toLowerCase())&&!evRep.includes(e)):[];
-const dirInfo=result?.directorio?.find(d=>d.nombre?.toLowerCase().includes(personaFiltro.toLowerCase()));
-const bprio=p=>({Crítica:“badge bc”,Alta:“badge ba”,Media:“badge bm”,Baja:“badge bb”}[p]||“badge”);
-const best=s=>({Abierto:“badge bo”,“En proceso”:“badge be”,Cerrado:“badge bce”}[s]||“badge”);
+for(const name of Object.keys(zip.files)){
 
-const PendItem=({e})=>(
-<div className={`pitem ${e.prioridad==="Crítica"?"cr":e.prioridad==="Alta"?"al":""}`}>
-<div className="pitem-top"><span className="pitem-id">{e.id} · {e.fecha} · {e.turno}</span><span className={bprio(e.prioridad)}>{e.prioridad}</span></div>
-<h4>{e.evento_detectado}</h4><p>{e.accion_requerida}</p>
-<div className="pmeta">
-<span className="ptag">📍 {e.linea_estacion}</span>
-<span className="ptag">👤 {e.responsable_sugerido}</span>
-{e.modelo!==“N/D”&&<span className="ptag">{e.modelo}</span>}
-{e.defecto_smt&&e.defecto_smt!==“N/A”&&<span className="badge bt">⚠ {e.defecto_smt}</span>}
-<span className={best(e.estatus)}>{e.estatus}</span>
-</div>
-</div>
-);
+if(name.endsWith(".txt")){
 
-return (
-<>
-<div className="hdr">
-<div style={{flexShrink:0}}><Logo/></div>
-<div className="hdr-text">
-<div className="hdr-badge">⚙ Herramienta Operativa</div>
-<h1>Chat de manufactura → Dashboard SMT</h1>
-<h2>ZIP · Análisis IA · Excel · Dashboard · by ALDA</h2>
-</div>
-</div>
+const txt=await zip.files[name].async("string")
 
-```
-  <div className="api-bar">
-    <label>🔑 API Key:</label>
-    <input className="api-input" type="password" placeholder="sk-ant-api03-..." value={apiKey} onChange={e=>saveKey(e.target.value)}/>
-    <div className="api-note">Guardada en este navegador · <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a></div>
-  </div>
+const parsed=parseWhatsApp(txt)
 
-  {state==="idle"&&(
-    <div className={`up ${drag?"drag":""}`} onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0])}} onClick={()=>fileRef.current.click()}>
-      <div className="up-top">
-        <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}} onChange={e=>handle(e.target.files[0])}/>
-        <div className="up-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></div>
-        <h3>Sube el .zip de WhatsApp</h3>
-        <p>Arrastra o haz clic — cualquier grupo de manufactura</p>
-        <div>{["CALIDAD SMT/PTH","SMT Output","ERBU CRBU","Cualquier grupo"].map(t=><span key={t} className="chip">{t}</span>)}</div>
-        <button className="up-btn" onClick={e=>{e.stopPropagation();fileRef.current.click()}}>Seleccionar .zip</button>
-      </div>
-      <div className="filter-bar" onClick={e=>e.stopPropagation()}>
-        <label>Últimos:</label>
-        <div className="day-btns">{[1,3,7,14,30].map(d=><button key={d} className={`day-btn ${days===d?"active":""}`} onClick={()=>setDays(d)}>{d}d</button>)}</div>
-        <div className="filter-note">Filtra periodo relevante del historial</div>
-      </div>
-    </div>
-  )}
+setData(parsed.slice(0,30))
 
-  {state==="loading"&&(
-    <div className="prog">
-      <h3>Procesando chat...</h3>
-      <p>{msgStats?`${msgStats.clean} mensajes relevantes · ${msgStats.filtered} en período · ${msgStats.total} totales`:"Leyendo ZIP..."}</p>
-      <div className="pbar"><div className="pfill" style={{width:`${prog}%`}}/></div>
-      <div className="psteps">{STEPS.map((s,i)=><div key={i} className={`pstep ${i===progStep?"on":i<progStep?"ok":""}`}>{i<progStep?"✓ ":""}{s}</div>)}</div>
-    </div>
-  )}
+break
 
-  {state==="error"&&(<><div className="errc">⚠ {errMsg}</div><button className="resetbtn" onClick={reset}>← Intentar de nuevo</button></>)}
-
-  {state==="done"&&result&&(
-    <>
-      <button className="resetbtn" onClick={reset}>← Analizar otro chat</button>
-
-      <div className="dlc">
-        <div className="dlc-txt">
-          <h3>Excel listo para junta ✓</h3>
-          <p>{res.periodo||""} · {ev.length} eventos · {msgStats?.clean||0} mensajes analizados</p>
-          <div className="dlc-sheets">{["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio_Equipo","Catalogos_Reglas"].map(s=><div key={s} className="dlc-sh">▪ {s}</div>)}</div>
-        </div>
-        <button className="dlbtn" onClick={download}>⬇ Descargar .xlsx</button>
-      </div>
-
-      <div className="stats">
-        <div className="scard"><div className="sval te">{ev.length}</div><div className="slb">Total eventos</div></div>
-        <div className="scard"><div className="sval re">{crit.length}</div><div className="slb">Críticos activos</div></div>
-        <div className="scard"><div className="sval bl">{pend.length}</div><div className="slb">Pendientes</div></div>
-        <div className="scard"><div className="sval gr">{cerr.length}</div><div className="slb">Cerrados</div></div>
-      </div>
-
-      {kpis.length>0&&(
-        <div className="tcard">
-          <div className="tcard-hdr"><h3>KPIs reportados en chat</h3></div>
-          <div style={{padding:"12px 16px"}}>
-            {kpis.map((k,i)=>(
-              <div key={i} className="krow">
-                <div className="kval">{k.valor}<span style={{fontSize:10}}>{k.unidad}</span></div>
-                <div className="kin"><div className="nm">{k.indicador}</div><div className="ts">{k.fechahora} · {k.fuente}</div></div>
-                <div className="kbar"><div className="kbf" style={{width:`${Math.min(100,k.valor<2?k.valor*100:k.valor)}%`}}/></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="charts">
-        <div className="crt"><h4>Por modelo / N/P</h4>{byMod.map((x,i)=><div key={i} className="brow"><div className="blbl" title={x.l}>{x.l}</div><div className="btrk"><div className="bfil" style={{width:`${(x.n/mxM)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}</div>
-        <div className="crt"><h4>Por línea / estación</h4>{byLin.map((x,i)=><div key={i} className="brow"><div className="blbl" title={x.l}>{x.l}</div><div className="btrk"><div className="bfil bl" style={{width:`${(x.n/mxL)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}</div>
-        <div className="crt"><h4>Por prioridad</h4>{byPrio.map((x,i)=><div key={i} className="brow"><div className="blbl">{x.l}</div><div className="btrk"><div className={`bfil ${x.c}`} style={{width:`${(x.n/mxP)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}</div>
-        <div className="crt"><h4>Por estatus</h4>{[{l:"Abiertos",n:ev.filter(e=>e.estatus==="Abierto").length,c:"re"},{l:"En proceso",n:ev.filter(e=>e.estatus==="En proceso").length,c:"ye"},{l:"Cerrados",n:cerr.length,c:"gr"}].map((x,i)=><div key={i} className="brow"><div className="blbl">{x.l}</div><div className="btrk"><div className={`bfil ${x.c}`} style={{width:`${(x.n/Math.max(ev.length,1))*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}</div>
-      </div>
-
-      {(byDef.length>0||byTipo.length>0)&&(
-        <div className="charts">
-          {byDef.length>0&&<div className="crt"><h4>Pareto defectos SMT</h4>{byDef.map((x,i)=><div key={i} className="brow"><div className="blbl" title={x.l}>{x.l}</div><div className="btrk"><div className="bfil pu" style={{width:`${(x.n/mxD)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}</div>}
-          {byTipo.length>0&&<div className="crt"><h4>Por tipo de evento</h4>{byTipo.map((x,i)=><div key={i} className="brow"><div className="blbl">{x.l}</div><div className="btrk"><div className="bfil lm" style={{width:`${(x.n/mxT)*100}%`}}/></div><div className="bnum">{x.n}</div></div>)}</div>}
-        </div>
-      )}
-
-      <div className="pf-card">
-        <div className="pf-hdr">
-          <h3>👤 Filtro por persona</h3>
-          <select className="pf-select" value={personaFiltro} onChange={e=>setPersonaFiltro(e.target.value)}>
-            <option value="">— Todos los participantes —</option>
-            {personas.map((p,i)=><option key={i} value={p}>{p}</option>)}
-          </select>
-          {personaFiltro&&<button className="pf-clear" onClick={()=>setPersonaFiltro("")}>✕ Limpiar</button>}
-        </div>
-        {personaFiltro?(
-          <div className="pf-body">
-            <div className="pf-profile">
-              <div className="pf-avatar">{personaFiltro.charAt(0).toUpperCase()}</div>
-              <div className="pf-info">
-                <div className="pf-name">{personaFiltro}</div>
-                <div className="pf-dept">{dirInfo?`${dirInfo.departamento} · ${dirInfo.rol}${dirInfo.area_owner?` · Owner: ${dirInfo.area_owner}`:""}` : "Participante del chat"}</div>
-                <div className="pf-stats">
-                  <div className="pf-stat"><div className="pf-stat-val">{evRep.length}</div><div className="pf-stat-lbl">Reportó</div></div>
-                  <div className="pf-stat bl"><div className="pf-stat-val">{evRes.length}</div><div className="pf-stat-lbl">Responsable</div></div>
-                  <div className="pf-stat re"><div className="pf-stat-val">{evRep.filter(e=>e.prioridad==="Crítica").length}</div><div className="pf-stat-lbl">Críticos</div></div>
-                  <div className="pf-stat gr"><div className="pf-stat-val">{[...evRep,...evRes].filter(e=>e.estatus!=="Cerrado").length}</div><div className="pf-stat-lbl">Abiertos</div></div>
-                </div>
-              </div>
-            </div>
-            {evRep.length>0&&(<><div className="pf-section-title">Eventos reportados ({evRep.length})</div><div className="plist" style={{padding:0,marginBottom:14}}>{evRep.map((e,i)=><PendItem key={i} e={e}/>)}</div></>)}
-            {evRes.length>0&&(<><div className="pf-section-title">Eventos donde es responsable ({evRes.length})</div><div className="plist" style={{padding:0}}>{evRes.map((e,i)=><PendItem key={i} e={e}/>)}</div></>)}
-            {evRep.length===0&&evRes.length===0&&<div className="pf-empty">Sin eventos registrados para esta persona en el periodo</div>}
-          </div>
-        ):(
-          <div className="pf-body"><div className="pf-empty">Selecciona una persona para ver su actividad operativa</div></div>
-        )}
-      </div>
-
-      <div className="tcard">
-        <div className="tcard-hdr"><h3>Bitácora de eventos ({ev.length})</h3></div>
-        <div className="tscroll">
-          <table>
-            <thead><tr><th>ID</th><th>Fecha</th><th>T</th><th>Línea</th><th>Tipo</th><th>Defecto SMT</th><th>Evento</th><th>Prioridad</th><th>Estatus</th></tr></thead>
-            <tbody>
-              {ev.map((e,i)=>(
-                <tr key={i}>
-                  <td><strong>{e.id}</strong></td>
-                  <td style={{whiteSpace:"nowrap",fontSize:10.5}}>{e.fecha}</td>
-                  <td>{e.turno}</td>
-                  <td style={{maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.linea_estacion}</td>
-                  <td><span style={{fontSize:9,background:"#EDF5F3",color:"#1E5545",padding:"2px 6px",borderRadius:4,fontWeight:600,whiteSpace:"nowrap"}}>{e.tipo_evento}</span></td>
-                  <td style={{maxWidth:110}}>{e.defecto_smt&&e.defecto_smt!=="N/A"?<span className="badge bt" style={{whiteSpace:"normal",fontSize:9}}>{e.defecto_smt}</span>:<span style={{color:"var(--g300)",fontSize:10}}>—</span>}</td>
-                  <td style={{maxWidth:180,fontSize:10.5}}>{e.evento_detectado}</td>
-                  <td><span className={bprio(e.prioridad)}>{e.prioridad}</span></td>
-                  <td><span className={best(e.estatus)}>{e.estatus}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {pend.length>0&&(
-        <div className="tcard" style={{marginTop:16}}>
-          <div className="tcard-hdr"><h3>Pendientes operativos ({pend.length})</h3></div>
-          <div className="plist">{pend.map((e,i)=><PendItem key={i} e={e}/>)}</div>
-        </div>
-      )}
-
-      <div style={{marginTop:16,marginBottom:8}}><div className="sec-lbl"><div className="sec-dot"/><span>Resultado del análisis</span></div></div>
-      <div className="cmp">
-        <div className="cmpc">
-          <div className="cmplbl"><div className="cmpdot"/><span>Antes — Chat disperso</span></div>
-          {["Sin clasificación de defectos SMT","Sin trazabilidad entre turnos","Eventos críticos mezclados con ruido","Juntas sin datos ni Pareto"].map((t,i)=><div key={i} className="cmrow"><div className="cmic">✕</div><p>{t}</p></div>)}
-        </div>
-        <div className="cmpc aft">
-          <div className="cmplbl"><div className="cmpdot g"/><span>Después — SMTintel</span></div>
-          <div className="cmrow"><div className="cmic g">✓</div><p><strong>{ev.length} eventos</strong> con defecto SMT clasificado</p></div>
-          <div className="cmrow"><div className="cmic g">✓</div><p><strong>Pareto</strong> de defectos para root cause inmediato</p></div>
-          <div className="cmrow"><div className="cmic g">✓</div><p><strong>{pend.length} pendientes</strong> con owner y acción</p></div>
-          <div className="cmrow"><div className="cmic g">✓</div><p>Excel con 7 hojas + directorio del equipo</p></div>
-        </div>
-      </div>
-
-      <div className="foot">
-        <p><strong>SMTintel by ALDA</strong> · Manufacturing Analytics · {new Date().toLocaleDateString("es-MX")}</p>
-        <button className="dlbtn" style={{padding:"9px 18px",fontSize:12}} onClick={download}>⬇ Descargar Excel</button>
-      </div>
-    </>
-  )}
-</>
-```
-
-);
 }
 
-ReactDOM.createRoot(document.getElementById(“root”)).render(<App/>);
+}
+
+}catch(e){
+alert("Error leyendo ZIP")
+}
+
+}
+
+return(
+
+<div>
+
+<div className="hdr">
+<h2>SMTintel — Manufacturing Analytics</h2>
+<p>Chat de manufactura → Dashboard SMT</p>
+</div>
+
+<div className="upload"
+onClick={()=>fileRef.current.click()}
+>
+
+<input
+type="file"
+ref={fileRef}
+accept=".zip"
+style={{display:"none"}}
+onChange={e=>handleZip(e.target.files[0])}
+/>
+
+<p>Sube el ZIP exportado de WhatsApp</p>
+
+<br/>
+
+<button className="btn">Seleccionar archivo</button>
+
+</div>
+
+{data.length>0 && (
+
+<>
+
+<div className="stats">
+
+<div className="card">
+<h3>{data.length}</h3>
+<p>Mensajes parseados</p>
+</div>
+
+<div className="card">
+<h3>{[...new Set(data.map(x=>x.sender))].length}</h3>
+<p>Participantes</p>
+</div>
+
+<div className="card">
+<h3>{data.filter(x=>x.turno==="1T").length}</h3>
+<p>Turno 1</p>
+</div>
+
+<div className="card">
+<h3>{data.filter(x=>x.turno==="2T").length}</h3>
+<p>Turno 2</p>
+</div>
+
+</div>
+
+<table>
+
+<thead>
+<tr>
+<th>Fecha</th>
+<th>Hora</th>
+<th>Turno</th>
+<th>Usuario</th>
+<th>Mensaje</th>
+</tr>
+</thead>
+
+<tbody>
+
+{data.map((m,i)=>
+
+<tr key={i}>
+<td>{m.fecha}</td>
+<td>{m.hora}</td>
+<td>{m.turno}</td>
+<td>{m.sender}</td>
+<td>{m.text}</td>
+</tr>
+
+)}
+
+</tbody>
+
+</table>
+
+</>
+
+)}
+
+</div>
+
+)
+
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>)
+
 </script>
 
 </body>
