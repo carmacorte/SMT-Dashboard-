@@ -208,14 +208,14 @@ fill="none" stroke="#CDDBA0" strokeWidth="1.8" strokeLinecap="round" strokeLinej
 <line x1="4" y1="32" x2="48" y2="32" stroke="#F5EED0" strokeWidth="0.5" opacity="0.18"/>
 <rect x="4" y="34" width="44" height="14" rx="1.5" fill="none" stroke="#F5EED0" strokeWidth="0.6" opacity="0.22"/>
 <polygon points="5,35 8,35 5,38" fill="#F5EED0" opacity="0.3"/>
-<text x=“26” y=“45” style={{fontFamily:f,fontSize:“10px”,fontWeight:300}} fill=”#F5EED0” textAnchor=“middle” letterSpacing=“5” opacity=“0.82”>ALDA</text>
+<text x=“26” y=“45” style={{fontFamily:f,fontSize:“10px”,fontWeight:300}} fill=”#F5EED0” textAnchor=“middle” opacity=“0.82”>ALDA</text>
 </g>
 <rect x="0" y="0" width="52" height="52" rx="10" fill="none" stroke="#1A5040" strokeWidth="1.2"/>
-<text x=“60” y=“22” style={{fontFamily:f,fontSize:“21px”,fontWeight:700}} fill=”#F5EED0” letterSpacing=”-0.5”>SMT</text>
-<text x=“101” y=“22” style={{fontFamily:f,fontSize:“21px”,fontWeight:300}} fill=”#F5EED0” letterSpacing=”-0.3”>intel</text>
+<text x=“60” y=“22” style={{fontFamily:f,fontSize:“21px”,fontWeight:700}} fill=”#F5EED0”>SMT</text>
+<text x=“101” y=“22” style={{fontFamily:f,fontSize:“21px”,fontWeight:300}} fill=”#F5EED0”>intel</text>
 <line x1="60" y1="27" x2="208" y2="27" stroke="#8A9F5C" strokeWidth="0.8" opacity="0.6"/>
-<text x=“60” y=“37” style={{fontFamily:f,fontSize:“7.5px”,fontWeight:500}} fill=“rgba(245,238,208,.75)” letterSpacing=“0.2”>Manufacturing Analytics</text>
-<text x=“60” y=“48” style={{fontFamily:f,fontSize:“6px”,fontWeight:300}} fill=“rgba(205,219,160,.55)” letterSpacing=“0.6”>SMT · AOI · SPI · X-RAY · ROOT CAUSE</text>
+<text x=“60” y=“37” style={{fontFamily:f,fontSize:“7.5px”,fontWeight:500}} fill=“rgba(245,238,208,.75)”>Manufacturing Analytics</text>
+<text x=“60” y=“48” style={{fontFamily:f,fontSize:“6px”,fontWeight:300}} fill=“rgba(205,219,160,.55)”>SMT · AOI · SPI · X-RAY · ROOT CAUSE</text>
 </svg>
 );
 };
@@ -227,7 +227,7 @@ function parseTurno(h){if(h>=6&&h<14)return”1T”;if(h>=14&&h<22)return”2T�
 function parseWhatsApp(txt){
 const lines=txt.split(/\r?\n/);const msgs=[];
 const reA=/^[(\d{1,2})/(\d{1,2})/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a.?m.?|p.?m.?)?]\s*([^:]+?):\s*(.*)$/i;
-const reB=/^(\d{1,2})/(\d{1,2})/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|a.m.|p.m.)?\s*[-–]\s*([^:]+?):\s*(.*)$/i;
+const reB=/^(\d{1,2})/(\d{1,2})/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|a.m.|p.m.)?\s*[-]\s*([^:]+?):\s*(.*)$/i;
 let cur=null;
 for(const raw of lines){
 const line=raw.replace(/[\u200e\u200f\u202a-\u202e\u202f]/g,””).trim();
