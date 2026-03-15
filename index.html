@@ -554,6 +554,8 @@ async function readZip(file) {
       txt = await zip.files[name].async("string");
     }
     if (/\.(jpe?g|png|webp)$/i.test(base)) {
+      imgNames.push(base);
+    }
   }
   if (!txt) throw new Error("No se encontro .txt en el ZIP");
 
