@@ -1472,62 +1472,183 @@ function App() {
     );
   }
 
+  // ── Helper: generate smart RCCA_ID from event data ──
+  function genRccaId(eventIds, evList) {
+    // RCCA-{EVT_ID}-{DEFECTO_SHORT}-{LINEA_SHORT}-{FECHA_SHORT}
+    var parts = ["RCCA"];
+    var firstId = eventIds && eventIds.length > 0 ? eventIds[0] : null;
+    if (firstId) {
+      parts.push(firstId.replace("EVT-","E").replace("-",""));
+      var evData = evList.find(function(e){ return e.id === firstId; });
+      if (evData) {
+        // Defecto short (first word, max 6 chars, no spaces)
+        if (evData.defecto_smt && evData.defecto_smt !== "N/A") {
+          var defShort = evData.defecto_smt.split(" ")[0].slice(0,6).toUpperCase();
+          parts.push(defShort);
+        } else if (evData.tipo_evento) {
+          parts.push(evData.tipo_evento.slice(0,4).toUpperCase());
+        }
+        // Linea short
+        if (evData.linea_estacion && evData.linea_estacion !== "N/D") {
+          parts.push(evData.linea_estacion.replace(/[^A-Za-z0-9]/g,"").slice(0,5).toUpperCase());
+        }
+        // Date short YYYYMMDD
+        if (evData.fecha) {
+          var dp = evData.fecha.split("/");
+          if (dp.length === 3) parts.push(dp[2].slice(2) + dp[1] + dp[0]);
+        }
+      }
+    } else {
+      parts.push(String(Date.now()).slice(-6));
+    }
+    return parts.join("-");
+  }
+
   // ── RccaForm: modal form to create/edit RCCA ──
   function RccaForm(props) {
     var init = props.init || {};
     var onSave = props.onSave; var onClose = props.onClose;
     var fields = [
-      {key:"problema",        label:"Problema",           rows:2, required:true},
-      {key:"causa_raiz",      label:"Causa Raiz",         rows:3, required:true},
-      {key:"contencion",      label:"Contencion",         rows:2},
-      {key:"accion_correctiva",label:"Accion Correctiva", rows:2},
-      {key:"accion_preventiva",label:"Accion Preventiva", rows:2},
-      {key:"patron_detectado",label:"Patron Detectado",   rows:1},
-      {key:"leccion_aprendida",label:"Leccion Aprendida", rows:2},
+      {key:"problema",         label:"Problema",           rows:2, required:true},
+      {key:"causa_raiz",       label:"Causa Raiz",         rows:3, required:true},
+      {key:"contencion",       label:"Contencion",         rows:2},
+      {key:"accion_correctiva",label:"Accion Correctiva",  rows:2},
+      {key:"accion_preventiva",label:"Accion Preventiva",  rows:2},
+      {key:"patron_detectado", label:"Patron Detectado",   rows:1},
+      {key:"leccion_aprendida",label:"Leccion Aprendida",  rows:2},
     ];
-    var formArr = _useState(Object.assign({
-      rcca_id: "RCCA-" + String(Date.now()).slice(-6),
-      event_ids: init.event_ids || [],
-      modelo: init.modelo || "",
-      linea: init.linea || "",
-      fecha: init.fecha || new Date().toISOString().slice(0,10),
-      problema:"",causa_raiz:"",contencion:"",
-      accion_correctiva:"",accion_preventiva:"",
-      patron_detectado:"",leccion_aprendida:""
-    }, init));
+
+    // Build initial event_ids from prefill
+    var initIds = init.event_ids || [];
+
+    var formArr = _useState(function(){
+      var ids = initIds;
+      return Object.assign({
+        rcca_id: genRccaId(ids, ev),
+        event_ids: ids,
+        modelo: init.modelo || "",
+        linea: init.linea || "",
+        fecha: init.fecha || new Date().toISOString().slice(0,10),
+        problema: init.problema || "",
+        causa_raiz:"", contencion:"",
+        accion_correctiva:"", accion_preventiva:"",
+        patron_detectado:"", leccion_aprendida:""
+      }, {});
+    });
     var form = formArr[0]; var setForm = formArr[1];
+
     function upd(k, v) {
       var n = {}; Object.keys(form).forEach(function(fk){ n[fk]=form[fk]; }); n[k]=v; setForm(n);
     }
+
+    // Toggle event selection and regenerate RCCA_ID
+    function toggleEvent(evId) {
+      var cur = form.event_ids;
+      var newIds = cur.indexOf(evId) >= 0
+        ? cur.filter(function(x){ return x !== evId; })
+        : cur.concat([evId]);
+      // Auto-fill modelo/linea/fecha from first selected event
+      var firstEv = newIds.length > 0 ? ev.find(function(e){ return e.id === newIds[0]; }) : null;
+      var n = {}; Object.keys(form).forEach(function(fk){ n[fk]=form[fk]; });
+      n.event_ids = newIds;
+      n.rcca_id = genRccaId(newIds, ev);
+      if (firstEv) {
+        if (!form.modelo || form.modelo === init.modelo) n.modelo = firstEv.modelo || "";
+        if (!form.linea || form.linea === init.linea) n.linea = firstEv.linea_estacion || "";
+        if (!form.fecha || form.fecha === init.fecha) {
+          var dp = (firstEv.fecha||"").split("/");
+          n.fecha = dp.length===3 ? dp[2]+"-"+dp[1].padStart(2,"0")+"-"+dp[0].padStart(2,"0") : form.fecha;
+        }
+        if (!form.problema && firstEv.evento_detectado) n.problema = firstEv.evento_detectado;
+      }
+      setForm(n);
+    }
+
     return (
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9998,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0"}}>
-        <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:820,maxHeight:"90vh",overflow:"auto",padding:"0 0 32px"}}>
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9998,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+        <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:820,maxHeight:"90vh",overflow:"auto",paddingBottom:32}}>
+
           {/* Header */}
           <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",zIndex:1}}>
             <div>
               <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>Nueva RCCA</div>
-              <div style={{fontSize:10,color:"#8A8580",fontFamily:"monospace"}}>{form.rcca_id}</div>
+              <div style={{fontSize:10,fontFamily:"monospace",color:"#2A7A60",fontWeight:600,marginTop:2}}>{form.rcca_id}</div>
             </div>
             <button onClick={onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cancelar</button>
           </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
-            {/* Event IDs linked */}
-            <div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"8px 12px"}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#2A7A60",marginBottom:4}}>Eventos vinculados</div>
-              <div style={{fontSize:11,color:"#1E5C48",fontFamily:"monospace"}}>{form.event_ids.length > 0 ? form.event_ids.join(", ") : "Ninguno"}</div>
+
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
+
+            {/* Event selector */}
+            <div>
+              <div style={{fontSize:10,fontWeight:700,color:"#2A7A60",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>
+                Vincular a eventos ({form.event_ids.length} seleccionados)
+              </div>
+              {ev.length === 0 ? (
+                <div style={{fontSize:11,color:"#8A8580",fontStyle:"italic"}}>No hay eventos cargados en esta sesion</div>
+              ) : (
+                <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:200,overflowY:"auto",border:"1px solid #EEECEA",borderRadius:8,padding:8}}>
+                  {ev.map(function(e){
+                    var selected = form.event_ids.indexOf(e.id) >= 0;
+                    return (
+                      <div key={e.id}
+                        onClick={function(){ toggleEvent(e.id); }}
+                        style={{
+                          display:"flex",alignItems:"center",gap:10,
+                          background: selected ? "#EAF5F0" : "#F8F7F5",
+                          border:"1.5px solid " + (selected ? "#2A7A60" : "#DDDBD7"),
+                          borderRadius:7,padding:"8px 11px",cursor:"pointer",transition:"all .15s"
+                        }}>
+                        {/* Checkbox */}
+                        <div style={{
+                          width:16,height:16,borderRadius:4,flexShrink:0,
+                          background: selected ? "#1E5C48" : "#fff",
+                          border:"1.5px solid " + (selected ? "#1E5C48" : "#C8C4BE"),
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          color:"#fff",fontSize:10,fontWeight:700
+                        }}>{selected ? "v" : ""}</div>
+                        {/* Event info */}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6}}>
+                            <span style={{fontSize:9.5,fontWeight:700,fontFamily:"monospace",color: selected?"#1E5C48":"#8A8580"}}>{e.id}</span>
+                            <span style={{fontSize:9,color:"#8A8580"}}>{e.fecha} {e.turno}</span>
+                            {e.linea_estacion && e.linea_estacion !== "N/D" && (
+                              <span style={{fontSize:9,background:"#F0F4F8",color:"#6A6560",borderRadius:3,padding:"1px 5px"}}>{e.linea_estacion}</span>
+                            )}
+                          </div>
+                          <div style={{fontSize:10.5,color:"#1A1714",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            {e.evento_detectado ? e.evento_detectado.slice(0,60) : ""}
+                          </div>
+                          {e.defecto_smt && e.defecto_smt !== "N/A" && (
+                            <span style={{fontSize:8.5,color:"#6B2DA8",background:"#F5F0FE",borderRadius:3,padding:"1px 6px",marginTop:2,display:"inline-block"}}>{e.defecto_smt}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
+            {/* RCCA_ID preview */}
+            <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:9.5,color:"#8A8580",fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>RCCA ID:</span>
+              <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:"#1E5C48"}}>{form.rcca_id}</span>
+            </div>
+
             {/* Modelo + Linea + Fecha */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
               {[{k:"modelo",l:"Modelo/N-P"},{k:"linea",l:"Linea"},{k:"fecha",l:"Fecha"}].map(function(f){
                 return (
                   <div key={f.k}>
                     <div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.l}</div>
-                    <input value={form[f.k]} onChange={function(ev){ upd(f.k, ev.target.value); }}
+                    <input value={form[f.k]} onChange={function(e){ upd(f.k, e.target.value); }}
                       style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/>
                   </div>
                 );
               })}
             </div>
+
             {/* Text fields */}
             {fields.map(function(f){
               return (
@@ -1536,18 +1657,19 @@ function App() {
                     {f.label}{f.required && <span style={{color:"#C0392B"}}> *</span>}
                   </div>
                   <textarea value={form[f.key]} rows={f.rows}
-                    onChange={function(ev){ upd(f.key, ev.target.value); }}
+                    onChange={function(e){ upd(f.key, e.target.value); }}
                     style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
                 </div>
               );
             })}
+
             {/* Save */}
             <button
               onClick={function(){
                 if (!form.problema || !form.causa_raiz) { alert("Completa Problema y Causa Raiz"); return; }
                 onSave(form); onClose();
               }}
-              style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>
+              style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>
               Guardar RCCA
             </button>
           </div>
@@ -1555,6 +1677,7 @@ function App() {
       </div>
     );
   }
+
 
   // ── RccaCard: compact card for a RCCA record ──
   function RccaCard(props) {
