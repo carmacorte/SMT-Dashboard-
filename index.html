@@ -553,9 +553,7 @@ async function readZip(file) {
     if (!txt && base.endsWith(".txt")) {
       txt = await zip.files[name].async("string");
     }
-    if (/\.(jpe?g|png|gif|webp)$/i.test(base)) {
-      imgNames.push(base);
-    }
+    if (/\.(jpe?g|png|webp)$/i.test(base)) {
   }
   if (!txt) throw new Error("No se encontro .txt en el ZIP");
 
@@ -581,7 +579,7 @@ async function readZip(file) {
         sender:(sender||"").replace(/^~/,"").trim()
       };
     }
-    var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|gif|webp))\s*>/i);
+    var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
     if (adj && lastMeta) {
       imgMeta[adj[1].trim()] = {
         dateIso:lastMeta.dateIso, timeStr:lastMeta.timeStr, sender:lastMeta.sender
