@@ -1119,7 +1119,91 @@ function App() {
   var galPage = galPageArr[0]; var setGalPage = galPageArr[1];
   var GAL_PAGE_SIZE = 48;
 
-  // ── HISTORIAL ──
+  // ── RCCA_MEMORY ──────────────────────────────────────────────────────────────
+  var RCCA_KEY = "opstrace_rcca";
+
+  var rccaArr = _useState(function(){
+    try { var raw = localStorage.getItem(RCCA_KEY); return raw ? JSON.parse(raw) : []; }
+    catch(_) { return []; }
+  });
+  var rccaList = rccaArr[0]; var setRccaList = rccaArr[1];
+
+  // Active RCCA form: null | { eventId, prefill }
+  var rccaFormArr = _useState(null);
+  var rccaForm = rccaFormArr[0]; var setRccaForm = rccaFormArr[1];
+
+  // Active RCCA detail view
+  var rccaDetailArr = _useState(null);
+  var rccaDetail = rccaDetailArr[0]; var setRccaDetail = rccaDetailArr[1];
+
+  // RCCA filter
+  var rccaFilterArr = _useState("");
+  var rccaFilter = rccaFilterArr[0]; var setRccaFilter = rccaFilterArr[1];
+
+  function saveRcca(rcca) {
+    var updated = rccaList.filter(function(r){ return r.rcca_id !== rcca.rcca_id; });
+    updated = [rcca].concat(updated);
+    try { localStorage.setItem(RCCA_KEY, JSON.stringify(updated)); } catch(_) {}
+    setRccaList(updated);
+  }
+
+  function deleteRcca(rcca_id) {
+    var updated = rccaList.filter(function(r){ return r.rcca_id !== rcca_id; });
+    try { localStorage.setItem(RCCA_KEY, JSON.stringify(updated)); } catch(_) {}
+    setRccaList(updated);
+  }
+
+  function exportRcca() {
+    var blob = new Blob([JSON.stringify(rccaList, null, 2)], {type:"application/json"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "OpsTrace_RCCA_" + new Date().toISOString().slice(0,10) + ".json";
+    a.click(); URL.revokeObjectURL(a.href);
+  }
+
+  // Similarity score between an event and a RCCA (0-100)
+  function rccaSimilarity(ev, rcca) {
+    var score = 0;
+    if (!ev || !rcca) return 0;
+    var evModelo = (ev.modelo||"").toLowerCase().trim();
+    var rcModelo = (rcca.modelo||"").toLowerCase().trim();
+    var evLinea = (ev.linea_estacion||"").toLowerCase().trim();
+    var rcLinea = (rcca.linea||"").toLowerCase().trim();
+    var evDef = (ev.defecto_smt||"").toLowerCase().trim();
+    var rcProb = (rcca.problema||"").toLowerCase().trim();
+    var evTipo = (ev.tipo_evento||"").toLowerCase().trim();
+
+    // Exact modelo match = 40pts
+    if (evModelo && rcModelo && evModelo !== "n/d" && evModelo === rcModelo) score += 40;
+    // Partial modelo
+    else if (evModelo && rcModelo && evModelo !== "n/d" && (rcModelo.indexOf(evModelo) >= 0 || evModelo.indexOf(rcModelo) >= 0)) score += 20;
+
+    // Linea match = 25pts
+    if (evLinea && rcLinea && evLinea !== "n/d" && evLinea === rcLinea) score += 25;
+    else if (evLinea && rcLinea && evLinea !== "n/d" && (rcLinea.indexOf(evLinea) >= 0 || evLinea.indexOf(rcLinea) >= 0)) score += 12;
+
+    // Defecto / problema match = 25pts
+    if (evDef && evDef !== "n/a" && rcProb && rcProb.indexOf(evDef) >= 0) score += 25;
+    else if (evDef && evDef !== "n/a" && rcProb && evDef.split(" ").some(function(w){ return w.length > 3 && rcProb.indexOf(w) >= 0; })) score += 12;
+
+    // Tipo match in patron = 10pts
+    if (evTipo && rcca.patron_detectado && rcca.patron_detectado.toLowerCase().indexOf(evTipo) >= 0) score += 10;
+
+    return Math.min(score, 100);
+  }
+
+  // Get top matches for an event (score >= 30)
+  function getMatches(ev) {
+    return rccaList
+      .map(function(r){ return {rcca: r, score: rccaSimilarity(ev, r)}; })
+      .filter(function(x){ return x.score >= 30; })
+      .sort(function(a,b){ return b.score - a.score; })
+      .slice(0, 3);
+  }
+
+  // Auto-suggestions: computed after ev is available (guarded)
+  var autoSuggestions = [];
+
   var HIST_KEY = "opstrace_history";
   var HIST_MAX = 10; // keep last 10 analyses
 
@@ -1257,6 +1341,14 @@ function App() {
   var crit = ev.filter(function(e){ return e.prioridad === "Critica" && e.estatus !== "Cerrado"; });
   var cerr = ev.filter(function(e){ return e.estatus === "Cerrado"; });
 
+  // RCCA auto-suggestions (safe: ev is guaranteed array here)
+  var autoSuggestions = ev.filter(function(e){
+    var linked = rccaList.some(function(r){
+      return r.event_ids && r.event_ids.indexOf(e.id) >= 0;
+    });
+    return !linked && getMatches(e).length > 0;
+  });
+
   // Charts
   var modMap = {};
   ev.forEach(function(e){ if(e.modelo) modMap[e.modelo] = (modMap[e.modelo]||0)+1; });
@@ -1376,6 +1468,160 @@ function App() {
           {e.defecto_smt && e.defecto_smt !== "N/A" && <span className="badge bt">{e.defecto_smt}</span>}
           <span className={best(e.estatus)}>{e.estatus}</span>
         </div>
+      </div>
+    );
+  }
+
+  // ── RccaForm: modal form to create/edit RCCA ──
+  function RccaForm(props) {
+    var init = props.init || {};
+    var onSave = props.onSave; var onClose = props.onClose;
+    var fields = [
+      {key:"problema",        label:"Problema",           rows:2, required:true},
+      {key:"causa_raiz",      label:"Causa Raiz",         rows:3, required:true},
+      {key:"contencion",      label:"Contencion",         rows:2},
+      {key:"accion_correctiva",label:"Accion Correctiva", rows:2},
+      {key:"accion_preventiva",label:"Accion Preventiva", rows:2},
+      {key:"patron_detectado",label:"Patron Detectado",   rows:1},
+      {key:"leccion_aprendida",label:"Leccion Aprendida", rows:2},
+    ];
+    var formArr = _useState(Object.assign({
+      rcca_id: "RCCA-" + String(Date.now()).slice(-6),
+      event_ids: init.event_ids || [],
+      modelo: init.modelo || "",
+      linea: init.linea || "",
+      fecha: init.fecha || new Date().toISOString().slice(0,10),
+      problema:"",causa_raiz:"",contencion:"",
+      accion_correctiva:"",accion_preventiva:"",
+      patron_detectado:"",leccion_aprendida:""
+    }, init));
+    var form = formArr[0]; var setForm = formArr[1];
+    function upd(k, v) {
+      var n = {}; Object.keys(form).forEach(function(fk){ n[fk]=form[fk]; }); n[k]=v; setForm(n);
+    }
+    return (
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9998,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0"}}>
+        <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:820,maxHeight:"90vh",overflow:"auto",padding:"0 0 32px"}}>
+          {/* Header */}
+          <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",zIndex:1}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>Nueva RCCA</div>
+              <div style={{fontSize:10,color:"#8A8580",fontFamily:"monospace"}}>{form.rcca_id}</div>
+            </div>
+            <button onClick={onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cancelar</button>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+            {/* Event IDs linked */}
+            <div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"8px 12px"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#2A7A60",marginBottom:4}}>Eventos vinculados</div>
+              <div style={{fontSize:11,color:"#1E5C48",fontFamily:"monospace"}}>{form.event_ids.length > 0 ? form.event_ids.join(", ") : "Ninguno"}</div>
+            </div>
+            {/* Modelo + Linea + Fecha */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+              {[{k:"modelo",l:"Modelo/N-P"},{k:"linea",l:"Linea"},{k:"fecha",l:"Fecha"}].map(function(f){
+                return (
+                  <div key={f.k}>
+                    <div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.l}</div>
+                    <input value={form[f.k]} onChange={function(ev){ upd(f.k, ev.target.value); }}
+                      style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Text fields */}
+            {fields.map(function(f){
+              return (
+                <div key={f.key}>
+                  <div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>
+                    {f.label}{f.required && <span style={{color:"#C0392B"}}> *</span>}
+                  </div>
+                  <textarea value={form[f.key]} rows={f.rows}
+                    onChange={function(ev){ upd(f.key, ev.target.value); }}
+                    style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
+                </div>
+              );
+            })}
+            {/* Save */}
+            <button
+              onClick={function(){
+                if (!form.problema || !form.causa_raiz) { alert("Completa Problema y Causa Raiz"); return; }
+                onSave(form); onClose();
+              }}
+              style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>
+              Guardar RCCA
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── RccaCard: compact card for a RCCA record ──
+  function RccaCard(props) {
+    var r = props.r; var evMatch = props.evMatch; var score = props.score;
+    return (
+      <div style={{background:"#fff",border:"1.5px solid " + (score >= 70 ? "#B8DECE" : score >= 50 ? "#F5E4A0" : "#DDDBD7"),borderRadius:10,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:8}}>
+          <div>
+            <span style={{fontSize:9,fontWeight:700,fontFamily:"monospace",color:"#2A7A60"}}>{r.rcca_id}</span>
+            {score > 0 && (
+              <span style={{marginLeft:6,fontSize:9,fontWeight:700,color: score>=70?"#1A7A3C":score>=50?"#B87820":"#8A8580",background:score>=70?"#EBF8EE":score>=50?"#FEF9E8":"#F8F7F5",borderRadius:99,padding:"1px 7px"}}>
+                {score}% coincide
+              </span>
+            )}
+          </div>
+          <div style={{display:"flex",gap:5,flexShrink:0}}>
+            <button onClick={function(){ setRccaDetail(r); }}
+              style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E5C48",cursor:"pointer"}}>
+              Ver
+            </button>
+            <button onClick={function(){ deleteRcca(r.rcca_id); }}
+              style={{background:"none",border:"1px solid #DDDBD7",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>x</button>
+          </div>
+        </div>
+        <div style={{fontSize:11.5,fontWeight:600,color:"#1A1714",marginBottom:5,lineHeight:1.3}}>{r.problema}</div>
+        <div style={{fontSize:10,color:"#2A7A60",background:"#EAF5F0",borderRadius:4,padding:"3px 8px",marginBottom:6,lineHeight:1.4}}>{r.causa_raiz ? r.causa_raiz.slice(0,80) + (r.causa_raiz.length > 80 ? "..." : "") : ""}</div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          {r.modelo && <span style={{fontSize:9,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:4,padding:"2px 7px",color:"#6A6560"}}>{r.modelo}</span>}
+          {r.linea && <span style={{fontSize:9,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:4,padding:"2px 7px",color:"#6A6560"}}>{r.linea}</span>}
+          {r.fecha && <span style={{fontSize:9,color:"#8A8580"}}>{r.fecha}</span>}
+          {r.event_ids && r.event_ids.length > 0 && r.event_ids.map(function(id){
+            return <span key={id} style={{fontSize:9,fontFamily:"monospace",background:"#EAF5F0",color:"#2A7A60",borderRadius:4,padding:"2px 6px"}}>{id}</span>;
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── RccaCell: inline cell for bitacora table ──
+  function RccaCell(props) {
+    var evId = props.evId;
+    var linked = rccaList.filter(function(r){ return r.event_ids && r.event_ids.indexOf(evId) >= 0; });
+    var fakeEv = {id:evId, modelo:props.modelo, linea_estacion:props.linea, defecto_smt:"", tipo_evento:""};
+    var matches = getMatches(fakeEv);
+    return (
+      <div style={{display:"flex",flexDirection:"column",gap:3}}>
+        {linked.map(function(r){
+          return (
+            <span key={r.rcca_id} onClick={function(){ setRccaDetail(r); }}
+              style={{fontSize:8.5,fontFamily:"monospace",color:"#2A7A60",background:"#EAF5F0",borderRadius:4,padding:"2px 6px",cursor:"pointer",whiteSpace:"nowrap"}}>
+              {r.rcca_id}
+            </span>
+          );
+        })}
+        {linked.length === 0 && matches.length > 0 && (
+          <span style={{fontSize:8,color:"#B87820",background:"#FEF9E8",borderRadius:4,padding:"2px 5px",whiteSpace:"nowrap"}}>
+            {matches[0].score}% sim
+          </span>
+        )}
+        <button onClick={function(){ setRccaForm({
+            event_ids:[evId], modelo:props.modelo||"",
+            linea:props.linea||"", fecha:props.fecha||new Date().toISOString().slice(0,10),
+            problema:props.problema||""
+          }); }}
+          style={{background:"none",border:"1px solid #DDDBD7",borderRadius:5,padding:"2px 7px",fontSize:9,color:"#6A6560",cursor:"pointer",marginTop:2}}>
+          +RCCA
+        </button>
       </div>
     );
   }
@@ -2501,6 +2747,162 @@ function App() {
             </div>
           )}
 
+          {/* ── RCCA FORM MODAL ── */}
+          {rccaForm && (
+            <RccaForm
+              init={rccaForm}
+              onSave={saveRcca}
+              onClose={function(){ setRccaForm(null); }}
+            />
+          )}
+
+          {/* ── RCCA DETAIL MODAL ── */}
+          {rccaDetail && (
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9997,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+              <div style={{background:"#fff",borderRadius:16,maxWidth:680,width:"100%",maxHeight:"85vh",overflow:"auto",padding:0}}>
+                <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>RCCA Detail</div>
+                    <div style={{fontSize:10,color:"#2A7A60",fontFamily:"monospace"}}>{rccaDetail.rcca_id}</div>
+                  </div>
+                  <button onClick={function(){ setRccaDetail(null); }} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cerrar</button>
+                </div>
+                <div style={{padding:"18px 20px",display:"flex",flexDirection:"column",gap:12}}>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {rccaDetail.modelo && <span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"3px 9px",fontWeight:600}}>{rccaDetail.modelo}</span>}
+                    {rccaDetail.linea && <span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"3px 9px",fontWeight:600}}>{rccaDetail.linea}</span>}
+                    <span style={{fontSize:10,color:"#8A8580"}}>{rccaDetail.fecha}</span>
+                  </div>
+                  {[
+                    {l:"Problema",v:rccaDetail.problema,color:"#C0392B",bg:"#FEF0EE"},
+                    {l:"Causa Raiz",v:rccaDetail.causa_raiz,color:"#2952A3",bg:"#EBF0FC"},
+                    {l:"Contencion",v:rccaDetail.contencion,color:"#B87820",bg:"#FEF9E8"},
+                    {l:"Accion Correctiva",v:rccaDetail.accion_correctiva,color:"#1A7A3C",bg:"#EBF8EE"},
+                    {l:"Accion Preventiva",v:rccaDetail.accion_preventiva,color:"#2A7A60",bg:"#EAF5F0"},
+                    {l:"Patron Detectado",v:rccaDetail.patron_detectado,color:"#6B2DA8",bg:"#F5F0FE"},
+                    {l:"Leccion Aprendida",v:rccaDetail.leccion_aprendida,color:"#1A1714",bg:"#F8F7F5"},
+                  ].filter(function(f){ return f.v; }).map(function(f){
+                    return (
+                      <div key={f.l} style={{background:f.bg,border:"1px solid "+f.color+"30",borderRadius:8,padding:"10px 14px"}}>
+                        <div style={{fontSize:9.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:f.color,marginBottom:5}}>{f.l}</div>
+                        <div style={{fontSize:12,color:"#1A1714",lineHeight:1.5}}>{f.v}</div>
+                      </div>
+                    );
+                  })}
+                  {rccaDetail.event_ids && rccaDetail.event_ids.length > 0 && (
+                    <div>
+                      <div style={{fontSize:9.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:"#2A7A60",marginBottom:5}}>Eventos vinculados</div>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        {rccaDetail.event_ids.map(function(id){
+                          return <span key={id} style={{fontSize:11,fontFamily:"monospace",background:"#EAF5F0",color:"#2A7A60",borderRadius:6,padding:"3px 9px",fontWeight:600}}>{id}</span>;
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── RCCA_MEMORY SECTION ── */}
+          <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
+            <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+              <div>
+                <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>RCCA Memory</h3>
+                <span style={{fontSize:10,color:"#8A8580"}}>Antecedentes de causa raiz vinculados a eventos</span>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:9.5,color:"#6B2DA8",fontWeight:600,background:"#F5F0FE",borderRadius:4,padding:"3px 8px"}}>{rccaList.length} RCCA guardadas</span>
+                {rccaList.length > 0 && (
+                  <button onClick={exportRcca} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:7,padding:"4px 11px",fontSize:10,color:"#6A6560",cursor:"pointer"}}>Exportar JSON</button>
+                )}
+                <button onClick={function(){ setRccaForm({event_ids:[],modelo:"",linea:"",fecha:new Date().toISOString().slice(0,10)}); }}
+                  style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:7,padding:"6px 14px",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                  + Nueva RCCA
+                </button>
+              </div>
+            </div>
+
+            {/* Auto-suggestions: events with matching RCCA */}
+            {autoSuggestions.length > 0 && (
+              <div style={{padding:"12px 16px",borderBottom:"1px solid #EEECEA",background:"#FEF9E8"}}>
+                <div style={{fontSize:10.5,fontWeight:700,color:"#B87820",marginBottom:8}}>
+                  Antecedentes detectados — {autoSuggestions.length} evento{autoSuggestions.length>1?"s":""} con RCCA similar
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {autoSuggestions.map(function(e){
+                    var matches = getMatches(e);
+                    return (
+                      <div key={e.id} style={{background:"#fff",border:"1px solid #F5E4A0",borderRadius:8,padding:"10px 12px"}}>
+                        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginBottom:6}}>
+                          <div>
+                            <span style={{fontSize:9.5,fontWeight:700,fontFamily:"monospace",color:"#B87820",marginRight:6}}>{e.id}</span>
+                            <span style={{fontSize:10.5,fontWeight:600,color:"#1A1714"}}>{e.evento_detectado ? e.evento_detectado.slice(0,60) : ""}</span>
+                          </div>
+                          <button onClick={function(){
+                            setRccaForm({
+                              event_ids:[e.id],
+                              modelo:e.modelo||"",
+                              linea:e.linea_estacion||"",
+                              fecha:e.fecha||new Date().toISOString().slice(0,10),
+                              problema:e.evento_detectado||""
+                            });
+                          }}
+                            style={{background:"#B87820",color:"#fff",border:"none",borderRadius:6,padding:"4px 12px",fontSize:10,fontWeight:600,cursor:"pointer",flexShrink:0}}>
+                            Crear RCCA
+                          </button>
+                        </div>
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                          {matches.map(function(m){
+                            return (
+                              <div key={m.rcca.rcca_id} style={{display:"flex",alignItems:"center",gap:5,background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:6,padding:"3px 9px",cursor:"pointer"}}
+                                onClick={function(){ setRccaDetail(m.rcca); }}>
+                                <span style={{fontSize:9,fontFamily:"monospace",color:"#B87820",fontWeight:700}}>{m.rcca.rcca_id}</span>
+                                <span style={{fontSize:8.5,color:"#B87820"}}>{m.score}%</span>
+                                <span style={{fontSize:8.5,color:"#6A6560",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.rcca.problema}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* RCCA list + search */}
+            <div style={{padding:"12px 16px"}}>
+              {rccaList.length === 0 ? (
+                <div style={{textAlign:"center",padding:"28px 0",color:"#B8B4AE",fontSize:13}}>
+                  <div style={{fontSize:24,marginBottom:8}}>0</div>
+                  No hay RCCA guardadas. Crea la primera desde un evento de la bitacora.
+                </div>
+              ) : (
+                <div>
+                  {/* Search */}
+                  <input placeholder="Buscar por modelo, linea, problema..."
+                    value={rccaFilter}
+                    onChange={function(e){ setRccaFilter(e.target.value); }}
+                    style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#1A1714",outline:"none",marginBottom:10}}/>
+                  {/* Filtered list */}
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {rccaList.filter(function(r){
+                      if (!rccaFilter) return true;
+                      var q = rccaFilter.toLowerCase();
+                      return (r.modelo||"").toLowerCase().indexOf(q) >= 0
+                        || (r.linea||"").toLowerCase().indexOf(q) >= 0
+                        || (r.problema||"").toLowerCase().indexOf(q) >= 0
+                        || (r.rcca_id||"").toLowerCase().indexOf(q) >= 0;
+                    }).map(function(r){
+                      return <RccaCard key={r.rcca_id} r={r} score={0}/>;
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Bitacora table */}
           <div className="tcard">
             <div className="tcard-hdr">
@@ -2519,6 +2921,7 @@ function App() {
                     <th>ID</th><th>Fecha</th><th>T</th><th>Linea</th>
                     <th>Tipo</th><th>Defecto SMT</th><th>Evento</th>
                     <th>Prioridad</th><th>Estatus</th>
+                    <th>RCCA</th>
                     {imgNames.length > 0 && <th>Evidencia</th>}
                   </tr>
                 </thead>
@@ -2539,6 +2942,9 @@ function App() {
                         <td style={{maxWidth:170,fontSize:10.5}}>{e.evento_detectado}</td>
                         <td><span className={bprio(e.prioridad)}>{e.prioridad}</span></td>
                         <td><span className={best(e.estatus)}>{e.estatus}</span></td>
+                        <td style={{verticalAlign:"top",paddingTop:8}}>
+                          <RccaCell evId={e.id} modelo={e.modelo} linea={e.linea_estacion} fecha={e.fecha} problema={e.evento_detectado}/>
+                        </td>
                         {imgNames.length > 0 && <EvidenceCell e={e}/>}
                       </tr>
                     );
