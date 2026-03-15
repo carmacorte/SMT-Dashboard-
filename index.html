@@ -466,12 +466,20 @@ function cleanMsgs(msgs) {
   });
 }
 
+// _zipRef: holds JSZip object for lazy per-image loading
+var _zipRef = null;
+// _imgCache: { fname: dataURL } - grows on demand
+var _imgCache = {};
+
 async function readZip(file) {
   var zip = await JSZip.loadAsync(file);
+  _zipRef = zip;
+  _imgCache = {};
+
   var names = Object.keys(zip.files);
   var txt = null;
-  var imgs = {};    // { filename: dataURL }
-  var imgMeta = {}; // { filename: {dateIso, timeStr, sender} }
+  var imgNames = [];  // only filenames — no base64 yet
+  var imgMeta = {};
 
   for (var i = 0; i < names.length; i++) {
     var name = names[i];
@@ -481,21 +489,15 @@ async function readZip(file) {
       txt = await zip.files[name].async("string");
     }
     if (/\.(jpe?g|png|gif|webp)$/i.test(base)) {
-      try {
-        var b64 = await zip.files[name].async("base64");
-        var ext = base.split(".").pop().toLowerCase().replace("jpg","jpeg");
-        imgs[base] = "data:image/" + ext + ";base64," + b64;
-      } catch(_) {}
+      imgNames.push(base);
     }
   }
   if (!txt) throw new Error("No se encontro .txt en el ZIP");
 
-  // Extract image references from TXT with timestamp context
   var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
   var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
   var lastMeta = null;
-  var txtLines = txt.split(/\r?\n/);
-  txtLines.forEach(function(rawLine) {
+  txt.split(/\r?\n/).forEach(function(rawLine) {
     var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g,"").trim();
     var m = line.match(reA) || line.match(reB);
     if (m) {
@@ -508,23 +510,37 @@ async function readZip(file) {
       var mlow=(mer||"").toLowerCase().replace(/[\s.]/g,"");
       if(mlow.indexOf("p")===0 && hour!==12) hour+=12;
       if(mlow.indexOf("a")===0 && hour===12) hour=0;
-      lastMeta = {
-        dateIso: year+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0"),
-        timeStr: String(hour).padStart(2,"0")+":"+min2,
-        sender: (sender||"").replace(/^~/,"").trim()
+      lastMeta={
+        dateIso:year+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0"),
+        timeStr:String(hour).padStart(2,"0")+":"+min2,
+        sender:(sender||"").replace(/^~/,"").trim()
       };
     }
-    var adjMatch = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|gif|webp))\s*>/i);
-    if (adjMatch && lastMeta) {
-      imgMeta[adjMatch[1].trim()] = {
-        dateIso: lastMeta.dateIso,
-        timeStr: lastMeta.timeStr,
-        sender: lastMeta.sender
+    var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|gif|webp))\s*>/i);
+    if (adj && lastMeta) {
+      imgMeta[adj[1].trim()] = {
+        dateIso:lastMeta.dateIso, timeStr:lastMeta.timeStr, sender:lastMeta.sender
       };
     }
   });
 
-  return { txt: txt, imgs: imgs, imgMeta: imgMeta };
+  return { txt:txt, imgNames:imgNames, imgMeta:imgMeta };
+}
+
+// Load one image on demand — result cached in _imgCache
+async function loadImg(fname) {
+  if (_imgCache[fname]) return _imgCache[fname];
+  if (!_zipRef) return null;
+  var allNames = Object.keys(_zipRef.files);
+  var match = allNames.find(function(n){ return n.split("/").pop() === fname; });
+  if (!match) return null;
+  try {
+    var b64 = await _zipRef.files[match].async("base64");
+    var ext = fname.split(".").pop().toLowerCase().replace("jpg","jpeg");
+    var url = "data:image/"+ext+";base64,"+b64;
+    _imgCache[fname] = url;
+    return url;
+  } catch(_) { return null; }
 }
 
 
@@ -938,8 +954,8 @@ function App() {
   var pfArr = _useState("");
   var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
 
-  var imgsArr = _useState({});
-  var zipImgs = imgsArr[0]; var setZipImgs = imgsArr[1];
+  var imgsArr = _useState([]);
+  var zipImgNames = imgsArr[0]; var setZipImgNames = imgsArr[1];
 
   var imgMetaArr = _useState({});
   var imgMeta = imgMetaArr[0]; var setImgMeta = imgMetaArr[1];
@@ -965,20 +981,17 @@ function App() {
     try {
       var zipData = await readZip(file);
       var txt = zipData.txt;
-      var imgs = zipData.imgs;
-      var meta = zipData.imgMeta;
-      setZipImgs(imgs);
+      var meta = zipData.imgMeta || {};
+      setZipImgNames(zipData.imgNames || []);
       setImgMeta(meta);
 
-      // Auto-suggest: attach images to events that share the same date
-      // (done after AI analysis below)
       setProgStep(1); setProg(22);
       var all = parseWhatsApp(txt);
       if (!all.length) throw new Error("No se encontraron mensajes con formato WhatsApp.");
       setProgStep(2); setProg(38);
       var filtered = filterByDays(all, days);
       var clean = cleanMsgs(filtered);
-      setMsgStats({total: all.length, filtered: filtered.length, clean: clean.length, imgs: Object.keys(imgs).length});
+      setMsgStats({total: all.length, filtered: filtered.length, clean: clean.length, imgs: (zipData.imgNames||[]).length});
       if (!clean.length) throw new Error("Sin mensajes operativos en el periodo. Aumenta el rango.");
       setProgStep(3); setProg(55);
       var res = await analyzeWithAI(clean, apiKey.trim());
@@ -1005,7 +1018,7 @@ function App() {
   function reset() {
     setState("idle"); setResult(null); setXlsxBytes(null);
     setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); setPersonaFiltro("");
-    setZipImgs({}); setImgMeta({}); setEvImgs({}); setLightbox(null);
+    setZipImgNames([]); setImgMeta({}); setEvImgs({}); setLightbox(null);
   }
 
   // Derived data
@@ -1139,6 +1152,44 @@ function App() {
     );
   }
 
+  // ── LazyImg: loads image from ZIP on mount ──
+  function LazyImg(props) {
+    var fname = props.fname;
+    var className = props.className || "";
+    var style = props.style || {};
+    var onClick = props.onClick;
+    var srcArr = _useState(null);
+    var src = srcArr[0]; var setSrc = srcArr[1];
+    var loadingArr = _useState(false);
+    var loading = loadingArr[0]; var setLoading = loadingArr[1];
+
+    // Load on first render
+    var loadedRef = _useRef(false);
+    if (!loadedRef.current && !src && !loading) {
+      loadedRef.current = true;
+      setLoading(true);
+      loadImg(fname).then(function(url) {
+        setSrc(url);
+        setLoading(false);
+      });
+    }
+
+    if (!src) {
+      return (
+        <div className={className} style={Object.assign({
+          background:"#EEECEA",display:"flex",alignItems:"center",
+          justifyContent:"center",color:"#B8B4AE",fontSize:10
+        }, style)}>
+          {loading ? "..." : "?"}
+        </div>
+      );
+    }
+    return (
+      <img className={className} src={src} alt={fname} style={style}
+        onClick={onClick ? function(){ onClick(src); } : undefined}/>
+    );
+  }
+
   // ── Evidencias helpers ──
   function toggleImg(evId, fname) {
     var cur = evImgs[evId] || [];
@@ -1151,7 +1202,7 @@ function App() {
     setEvImgs(updated);
   }
 
-  var imgNames = Object.keys(zipImgs).sort();
+  var imgNames = zipImgNames;
 
   // ── Components ──
   function Lightbox(props) {
@@ -1188,11 +1239,9 @@ function App() {
       <td style={{verticalAlign:"top",paddingTop:8,minWidth:80}}>
         <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
           {attached.map(function(fname){
-            var src = zipImgs[fname];
-            if (!src) return null;
             return (
-              <img key={fname} className="ev-thumb" src={src} alt={fname}
-                onClick={function(){ setLightbox({src:src,name:fname}); }}/>
+              <LazyImg key={fname} fname={fname} className="ev-thumb"
+                onClick={function(src){ setLightbox({src:src,name:fname,meta:imgMeta[fname]}); }}/>
             );
           })}
           {imgNames.length > 0 && (
@@ -1211,7 +1260,7 @@ function App() {
                 return (
                   <div key={fname} className={"img-pick-item" + (sel?" selected":"")}
                     onClick={function(){ toggleImg(e.id, fname); }}>
-                    <img src={zipImgs[fname]} alt={fname}/>
+                    <LazyImg fname={fname} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
                   </div>
                 );
               })}
@@ -1449,7 +1498,6 @@ function App() {
               </div>
               <div style={{padding:"12px 16px",display:"flex",gap:10,flexWrap:"wrap"}}>
                 {imgNames.map(function(fname){
-                  var src = zipImgs[fname];
                   var meta2 = imgMeta[fname];
                   var attachedTo = Object.keys(evImgs).filter(function(id){
                     return (evImgs[id]||[]).indexOf(fname) >= 0;
@@ -1463,13 +1511,14 @@ function App() {
                   });
                   return (
                     <div key={fname} style={{cursor:"pointer",textAlign:"center",width:68}}
-                      onClick={function(){ setLightbox({src:src,name:fname,meta:meta2}); }}>
+                      onClick={function(e){ /* handled by LazyImg */ }}>
                       <div style={{position:"relative"}}>
-                        <img src={src} alt={fname}
+                        <LazyImg fname={fname}
                           style={{width:64,height:64,objectFit:"cover",borderRadius:8,
                             border: attachedTo.length>0 ? "2px solid #2A7A60" : isSuggested ? "2px solid #B87820" : "1.5px solid #DDDBD7",
-                            display:"block"}}/>
-                        {attachedTo.length > 0 && (
+                            display:"block",cursor:"pointer"}}
+                          onClick={function(src){ setLightbox({src:src,name:fname,meta:meta2}); }}
+                        />                        {attachedTo.length > 0 && (
                           <div style={{position:"absolute",top:3,right:3,background:"#1E5C48",color:"#fff",borderRadius:99,fontSize:8,fontWeight:700,padding:"1px 5px",lineHeight:1.5}}>
                             {attachedTo.length}
                           </div>
