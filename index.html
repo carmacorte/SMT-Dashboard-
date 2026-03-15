@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SMTintel v2</title>
+<title>SMTintel</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -875,12 +875,12 @@ function App() {
   return (
     <div>
       {/* HEADER */}
-      <div className="hdr">
+      <div className="hdr" style={{background:"linear-gradient(135deg,#1A4F3E 0%,#0F3328 100%)",borderRadius:20,padding:"24px 28px",marginBottom:18,display:"flex",alignItems:"center",gap:20,position:"relative",overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.06)"}}>
         <div className="hdr-logo"><LogoSVG/></div>
-        <div className="hdr-info">
-          <div className="hdr-badge">Herramienta Operativa</div>
-          <h1>Chat de manufactura a Dashboard SMT</h1>
-          <h2>ZIP - Analisis IA - Excel - by ALDA</h2>
+        <div className="hdr-info" style={{position:"relative",zIndex:1}}>
+          <div className="hdr-badge" style={{display:"inline-flex",alignItems:"center",background:"rgba(200,216,150,.14)",border:"1px solid rgba(200,216,150,.28)",color:"#C8D896",fontSize:8.5,fontWeight:700,letterSpacing:".14em",textTransform:"uppercase",padding:"3px 10px",borderRadius:20,marginBottom:8}}>Herramienta Operativa</div>
+          <h1 style={{fontSize:13.5,fontWeight:400,color:"rgba(242,236,200,.9)",marginBottom:3}}>Chat de manufactura a Dashboard SMT</h1>
+          <h2 style={{fontSize:10.5,color:"rgba(242,236,200,.35)",fontWeight:300}}>ZIP - Analisis IA - Excel - by ALDA</h2>
         </div>
       </div>
 
