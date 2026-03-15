@@ -238,14 +238,79 @@ border:1px solid #C0DECE;border-radius:10px;padding:11px 15px;margin-bottom:7px
 .foot p{font-size:11px;color:var(–g500)}
 .foot strong{color:var(–g900)}
 
+/* ── EVIDENCIAS ── */
+.ev-gallery{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.ev-thumb{
+width:48px;height:48px;border-radius:7px;object-fit:cover;
+border:1.5px solid var(–g200);cursor:pointer;
+transition:all .15s;flex-shrink:0
+}
+.ev-thumb:hover{transform:scale(1.08);border-color:var(–green);box-shadow:0 2px 8px rgba(30,92,72,.2)}
+.ev-add-btn{
+width:48px;height:48px;border-radius:7px;
+border:1.5px dashed var(–g300);background:var(–g50);
+display:flex;align-items:center;justify-content:center;
+cursor:pointer;color:var(–g500);font-size:18px;flex-shrink:0;
+transition:all .15s
+}
+.ev-add-btn:hover{border-color:var(–green);color:var(–green);background:var(–grL)}
+.ev-count{
+font-size:9px;font-weight:700;color:var(–green);
+background:#EAF5F0;border:1px solid #B8DECE;
+border-radius:99px;padding:1px 7px;margin-left:4px;vertical-align:middle
+}
+
+/* ── LIGHTBOX ── */
+.lb-overlay{
+position:fixed;inset:0;background:rgba(0,0,0,.85);
+z-index:9999;display:flex;align-items:center;justify-content:center;
+padding:20px
+}
+.lb-box{
+background:#fff;border-radius:16px;overflow:hidden;
+max-width:90vw;max-height:90vh;
+display:flex;flex-direction:column;
+box-shadow:0 24px 80px rgba(0,0,0,.4)
+}
+.lb-hdr{
+padding:12px 16px;background:var(–g50);border-bottom:1px solid var(–g200);
+display:flex;align-items:center;justify-content:space-between;gap:10px
+}
+.lb-hdr span{font-size:12px;font-weight:600;color:var(–g700);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-close{
+width:28px;height:28px;border-radius:50%;background:var(–g100);border:none;
+cursor:pointer;font-size:14px;color:var(–g700);display:flex;align-items:center;justify-content:center;
+flex-shrink:0
+}
+.lb-img-wrap{overflow:auto;display:flex;align-items:center;justify-content:center;padding:12px}
+.lb-img-wrap img{max-width:80vw;max-height:70vh;border-radius:8px;display:block}
+
+/* ── IMG PICKER PANEL ── */
+.img-panel{
+background:var(–g50);border:1px solid var(–g200);border-radius:10px;
+padding:12px;margin-top:8px
+}
+.img-panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(–green);margin-bottom:8px}
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px}
+.img-pick-item{position:relative;cursor:pointer;border-radius:7px;overflow:hidden;aspect-ratio:1}
+.img-pick-item img{width:100%;height:100%;object-fit:cover;display:block}
+.img-pick-item.selected::after{
+content:””;position:absolute;inset:0;
+background:rgba(30,92,72,.4);border:2px solid var(–green);border-radius:7px
+}
+.img-pick-item.selected::before{
+content:“✓”;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+color:#fff;font-size:18px;font-weight:700;z-index:1
+}
+
 @media(max-width:600px){
 .cmp{grid-template-columns:1fr}
 .cmpc.aft{border-left:none;border-top:1px solid var(–g200)}
 .hdr{padding:20px 18px;flex-direction:column;gap:14px}
 #root{padding:14px 12px 60px}
+.lb-img-wrap img{max-width:90vw;max-height:60vh}
 }
 
-/* ── SOLENOID ANIMATION — continuous loop ── */
 @keyframes trace-loop {
 0%   { stroke-dashoffset: 400; opacity:0; }
 8%   { opacity:1; }
@@ -404,14 +469,64 @@ function cleanMsgs(msgs) {
 async function readZip(file) {
   var zip = await JSZip.loadAsync(file);
   var names = Object.keys(zip.files);
+  var txt = null;
+  var imgs = {};    // { filename: dataURL }
+  var imgMeta = {}; // { filename: {dateIso, timeStr, sender} }
+
   for (var i = 0; i < names.length; i++) {
     var name = names[i];
-    if (name.endsWith(".txt") && !name.startsWith("__MACOSX")) {
-      return await zip.files[name].async("string");
+    if (name.startsWith("__MACOSX")) continue;
+    var base = name.split("/").pop();
+    if (!txt && base.endsWith(".txt")) {
+      txt = await zip.files[name].async("string");
+    }
+    if (/\.(jpe?g|png|gif|webp)$/i.test(base)) {
+      try {
+        var b64 = await zip.files[name].async("base64");
+        var ext = base.split(".").pop().toLowerCase().replace("jpg","jpeg");
+        imgs[base] = "data:image/" + ext + ";base64," + b64;
+      } catch(_) {}
     }
   }
-  throw new Error("No se encontro .txt en el ZIP");
+  if (!txt) throw new Error("No se encontro .txt en el ZIP");
+
+  // Extract image references from TXT with timestamp context
+  var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
+  var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
+  var lastMeta = null;
+  var txtLines = txt.split(/\r?\n/);
+  txtLines.forEach(function(rawLine) {
+    var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g,"").trim();
+    var m = line.match(reA) || line.match(reB);
+    if (m) {
+      var isA = !!line.match(reA);
+      var d=m[1],mo=m[2],yr=m[3],h2=m[4],min2=m[5];
+      var mer=isA?(m[7]||""):"";
+      var sender=isA?m[8]:m[6];
+      var year=parseInt(yr); if(year<100) year+=2000;
+      var hour=parseInt(h2);
+      var mlow=(mer||"").toLowerCase().replace(/[\s.]/g,"");
+      if(mlow.indexOf("p")===0 && hour!==12) hour+=12;
+      if(mlow.indexOf("a")===0 && hour===12) hour=0;
+      lastMeta = {
+        dateIso: year+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0"),
+        timeStr: String(hour).padStart(2,"0")+":"+min2,
+        sender: (sender||"").replace(/^~/,"").trim()
+      };
+    }
+    var adjMatch = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|gif|webp))\s*>/i);
+    if (adjMatch && lastMeta) {
+      imgMeta[adjMatch[1].trim()] = {
+        dateIso: lastMeta.dateIso,
+        timeStr: lastMeta.timeStr,
+        sender: lastMeta.sender
+      };
+    }
+  });
+
+  return { txt: txt, imgs: imgs, imgMeta: imgMeta };
 }
+
 
 // ── AI ────────────────────────────────────────────────────────────────────────
 
@@ -726,6 +841,20 @@ function App() {
   var pfArr = _useState("");
   var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
 
+  var imgsArr = _useState({});
+  var zipImgs = imgsArr[0]; var setZipImgs = imgsArr[1];
+
+  var imgMetaArr = _useState({});
+  var imgMeta = imgMetaArr[0]; var setImgMeta = imgMetaArr[1];
+
+  // evImgs: { "EVT-001": ["filename.jpg", ...] }
+  var evImgsArr = _useState({});
+  var evImgs = evImgsArr[0]; var setEvImgs = evImgsArr[1];
+
+  // lightbox
+  var lbArr = _useState(null);
+  var lightbox = lbArr[0]; var setLightbox = lbArr[1];
+
   var fileRef = _useRef();
 
   function saveKey(k) { setApiKey(k); localStorage.setItem("smtintel_key", k); }
@@ -737,18 +866,46 @@ function App() {
     if (!apiKey.trim()) { setErrMsg("Ingresa tu API Key de Anthropic"); setState("error"); return; }
     setState("loading"); setProg(8); setProgStep(0);
     try {
-      var txt = await readZip(file);
+      var zipData = await readZip(file);
+      var txt = zipData.txt;
+      var imgs = zipData.imgs;
+      var meta = zipData.imgMeta;
+      setZipImgs(imgs);
+      setImgMeta(meta);
+
+      // Auto-suggest: attach images to events that share the same date
+      // (done after AI analysis below)
       setProgStep(1); setProg(22);
       var all = parseWhatsApp(txt);
       if (!all.length) throw new Error("No se encontraron mensajes con formato WhatsApp.");
       setProgStep(2); setProg(38);
       var filtered = filterByDays(all, days);
       var clean = cleanMsgs(filtered);
-      setMsgStats({total: all.length, filtered: filtered.length, clean: clean.length});
+      setMsgStats({total: all.length, filtered: filtered.length, clean: clean.length, imgs: Object.keys(imgs).length});
       if (!clean.length) throw new Error("Sin mensajes operativos en el periodo. Aumenta el rango.");
       setProgStep(3); setProg(55);
       var res = await analyzeWithAI(clean, apiKey.trim());
       setProgStep(4); setProg(82);
+
+      // Auto-suggest: pre-attach images that share date with an event
+      var autoEvImgs = {};
+      if (res.eventos) {
+        res.eventos.forEach(function(ev) {
+          var evDate = ev.fecha; // DD/MM/YYYY
+          // Convert event date to ISO for comparison
+          var evParts = evDate ? evDate.split("/") : [];
+          var evIso = evParts.length===3
+            ? evParts[2]+"-"+evParts[1].padStart(2,"0")+"-"+evParts[0].padStart(2,"0")
+            : null;
+          if (!evIso) return;
+          var matches = Object.keys(meta).filter(function(fname){
+            return meta[fname] && meta[fname].dateIso === evIso;
+          });
+          if (matches.length) autoEvImgs[ev.id] = matches;
+        });
+      }
+      setEvImgs(autoEvImgs);
+
       var bytes = await buildXlsx(res);
       setProg(100); setResult(res); setXlsxBytes(bytes); setState("done");
     } catch(e) { setErrMsg(e.message || String(e)); setState("error"); }
@@ -767,6 +924,7 @@ function App() {
   function reset() {
     setState("idle"); setResult(null); setXlsxBytes(null);
     setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); setPersonaFiltro("");
+    setZipImgs({}); setImgMeta({}); setEvImgs({}); setLightbox(null);
   }
 
   // Derived data
@@ -900,8 +1058,95 @@ function App() {
     );
   }
 
+  // ── Evidencias helpers ──
+  function toggleImg(evId, fname) {
+    var cur = evImgs[evId] || [];
+    var next = cur.indexOf(fname) >= 0
+      ? cur.filter(function(f){ return f !== fname; })
+      : cur.concat([fname]);
+    var updated = {};
+    Object.keys(evImgs).forEach(function(k){ updated[k] = evImgs[k]; });
+    updated[evId] = next;
+    setEvImgs(updated);
+  }
+
+  var imgNames = Object.keys(zipImgs).sort();
+
+  // ── Components ──
+  function Lightbox(props) {
+    var src = props.src; var name = props.name;
+    var meta2 = props.meta; var onClose = props.onClose;
+    return (
+      <div className="lb-overlay" onClick={onClose}>
+        <div className="lb-box" onClick={function(e){e.stopPropagation();}}>
+          <div className="lb-hdr">
+            <div style={{flex:1,overflow:"hidden"}}>
+              <div style={{fontSize:12,fontWeight:600,color:"#3D3A36",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</div>
+              {meta2 && (
+                <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>
+                  {meta2.timeStr} — {meta2.sender}
+                </div>
+              )}
+            </div>
+            <button className="lb-close" onClick={onClose}>x</button>
+          </div>
+          <div className="lb-img-wrap">
+            <img src={src} alt={name}/>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function EvidenceCell(props) {
+    var e = props.e;
+    var attached = evImgs[e.id] || [];
+    var showPickArr = _useState(false);
+    var showPick = showPickArr[0]; var setShowPick = showPickArr[1];
+    return (
+      <td style={{verticalAlign:"top",paddingTop:8,minWidth:80}}>
+        <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+          {attached.map(function(fname){
+            var src = zipImgs[fname];
+            if (!src) return null;
+            return (
+              <img key={fname} className="ev-thumb" src={src} alt={fname}
+                onClick={function(){ setLightbox({src:src,name:fname}); }}/>
+            );
+          })}
+          {imgNames.length > 0 && (
+            <div className="ev-add-btn" title="Adjuntar imagen"
+              onClick={function(){ setShowPick(!showPick); }}>
+              {showPick ? "-" : "+"}
+            </div>
+          )}
+        </div>
+        {showPick && imgNames.length > 0 && (
+          <div className="img-panel">
+            <div className="img-panel-title">{imgNames.length} imagenes disponibles</div>
+            <div className="img-grid">
+              {imgNames.map(function(fname){
+                var sel = attached.indexOf(fname) >= 0;
+                return (
+                  <div key={fname} className={"img-pick-item" + (sel?" selected":"")}
+                    onClick={function(){ toggleImg(e.id, fname); }}>
+                    <img src={zipImgs[fname]} alt={fname}/>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </td>
+    );
+  }
+
   return (
     <div>
+      {/* LIGHTBOX */}
+      {lightbox && (
+        <Lightbox src={lightbox.src} name={lightbox.name} onClose={function(){ setLightbox(null); }}/>
+      )}
       {/* HEADER — Casper style */}
       <div style={{marginBottom:32,paddingTop:8}}>
         {/* Logo row */}
@@ -1103,6 +1348,52 @@ function App() {
               Descargar .xlsx
             </button>
           </div>
+
+          {/* Galeria de imagenes del ZIP */}
+          {imgNames.length > 0 && (
+            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
+              <div style={{padding:"12px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                <div>
+                  <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Evidencias del chat</h3>
+                  <span style={{fontSize:10,color:"#8A8580"}}>{imgNames.length} imagen{imgNames.length!==1?"es":""} extraidas del ZIP — toca para ver, adjunta desde la Bitacora</span>
+                </div>
+                <span style={{fontSize:10,fontWeight:600,color:"#2A7A60"}}>
+                  {Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas a eventos
+                </span>
+              </div>
+              <div style={{padding:"12px 16px",display:"flex",gap:10,flexWrap:"wrap"}}>
+                {imgNames.map(function(fname){
+                  var src = zipImgs[fname];
+                  var meta2 = imgMeta[fname];
+                  var attachedTo = Object.keys(evImgs).filter(function(id){
+                    return (evImgs[id]||[]).indexOf(fname) >= 0;
+                  });
+                  return (
+                    <div key={fname} style={{cursor:"pointer",textAlign:"center",width:68}}
+                      onClick={function(){ setLightbox({src:src,name:fname,meta:meta2}); }}>
+                      <div style={{position:"relative"}}>
+                        <img src={src} alt={fname}
+                          style={{width:64,height:64,objectFit:"cover",borderRadius:8,
+                            border: attachedTo.length>0 ? "2px solid #2A7A60" : "1.5px solid #DDDBD7",
+                            display:"block"}}/>
+                        {attachedTo.length > 0 && (
+                          <div style={{position:"absolute",top:3,right:3,background:"#1E5C48",color:"#fff",borderRadius:99,fontSize:8,fontWeight:700,padding:"1px 5px",lineHeight:1.5}}>
+                            {attachedTo.length}
+                          </div>
+                        )}
+                      </div>
+                      {meta2 && (
+                        <div style={{fontSize:7.5,color:"#8A8580",marginTop:3,lineHeight:1.3,overflow:"hidden"}}>
+                          <div>{meta2.timeStr}</div>
+                          <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:68}}>{meta2.sender.split(" ")[0]}</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Stats cards */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
@@ -1442,7 +1733,15 @@ function App() {
 
           {/* Bitacora table */}
           <div className="tcard">
-            <div className="tcard-hdr"><h3>Bitacora de eventos ({ev.length})</h3></div>
+            <div className="tcard-hdr">
+                <h3>Bitacora de eventos ({ev.length})</h3>
+                {imgNames.length > 0 && (
+                  <span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>
+                    {imgNames.length} imagen{imgNames.length!==1?"es":""} disponibles
+                    <span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span>
+                  </span>
+                )}
+              </div>
             <div className="tscroll">
               <table>
                 <thead>
@@ -1450,6 +1749,7 @@ function App() {
                     <th>ID</th><th>Fecha</th><th>T</th><th>Linea</th>
                     <th>Tipo</th><th>Defecto SMT</th><th>Evento</th>
                     <th>Prioridad</th><th>Estatus</th>
+                    {imgNames.length > 0 && <th>Evidencia</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1469,6 +1769,7 @@ function App() {
                         <td style={{maxWidth:170,fontSize:10.5}}>{e.evento_detectado}</td>
                         <td><span className={bprio(e.prioridad)}>{e.prioridad}</span></td>
                         <td><span className={best(e.estatus)}>{e.estatus}</span></td>
+                        {imgNames.length > 0 && <EvidenceCell e={e}/>}
                       </tr>
                     );
                   })}
