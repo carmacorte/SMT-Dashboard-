@@ -842,6 +842,29 @@ function App() {
   var turnoColor = {"1T":"#2A7A60","2T":"#2952A3","3T":"#6B2DA8"};
 
 
+  // ── HEATMAP hora x turno ──
+  var hmMap = {};
+  ev.forEach(function(e) {
+    if (!e.hora) return;
+    var hParsed = parseInt(e.hora.split(":")[0]);
+    if (isNaN(hParsed)) return;
+    var hh = String(hParsed).padStart(2,"0");
+    var turno = e.turno || "";
+    // Normalize turno to base category
+    var cat = "t1";
+    if (turno.indexOf("3T") === 0) cat = "t3";
+    else if (turno.indexOf("2T") === 0) cat = "t2";
+    else if (turno.indexOf("1T") === 0) cat = "t1";
+    if (!hmMap[hh]) hmMap[hh] = {t3:0, t1:0, t2:0};
+    hmMap[hh][cat]++;
+  });
+  var hmRows = Object.keys(hmMap).sort().map(function(h){
+    return { h:h, t3:hmMap[h].t3, t1:hmMap[h].t1, t2:hmMap[h].t2 };
+  });
+  var hmMax = 1;
+  hmRows.forEach(function(r){ hmMax = Math.max(hmMax, r.t3, r.t1, r.t2); });
+
+
   var personaSet = {};
   ev.forEach(function(e){
     if(e.reporta && e.reporta !== "N/D") personaSet[e.reporta] = true;
@@ -1187,6 +1210,84 @@ function App() {
                     Pico: {byHora.reduce(function(a,b){return a.n>=b.n?a:b;},byHora[0]).h}:00h - {byHora.length} horas con actividad
                   </span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── MAPA DE CALOR hora x turno ── */}
+          {hmRows.length >= 2 && (
+            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
+              <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                <div>
+                  <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Mapa termico de eventos por turno</h3>
+                  <span style={{fontSize:10,color:"#8A8580"}}>Intensidad por hora y turno — mas oscuro = mas eventos</span>
+                </div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <span style={{fontSize:9,color:"#8A8580"}}>0</span>
+                  {[0.2,0.4,0.6,0.8,1].map(function(v,i){
+                    var alpha = Math.round(v*100);
+                    return <div key={i} style={{width:14,height:14,borderRadius:3,background:"rgba(30,92,72,"+v+")"}}></div>;
+                  })}
+                  <span style={{fontSize:9,color:"#8A8580"}}>max</span>
+                </div>
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:220}}>
+                  <thead>
+                    <tr>
+                      <th style={{padding:"8px 12px",textAlign:"center",background:"#F8F7F5",fontWeight:600,color:"#8A8580",fontSize:10,textTransform:"uppercase",letterSpacing:".05em",borderBottom:"1.5px solid #DDDBD7",width:48}}>Hora</th>
+                      {[["3T","#6B2DA8"],["1T","#1E5C48"],["2T","#2952A3"]].map(function(t){
+                        return (
+                          <th key={t[0]} style={{padding:"8px 14px",textAlign:"center",background:"#F8F7F5",fontWeight:700,color:t[1],fontSize:11,letterSpacing:".05em",borderBottom:"1.5px solid #DDDBD7"}}>
+                            {t[0]}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hmRows.map(function(row, i) {
+                      function cell(val, baseColor) {
+                        var pct = val / hmMax;
+                        var bg = val === 0
+                          ? "#F8F7F5"
+                          : "rgba(" + (baseColor === "green" ? "30,92,72" : baseColor === "purple" ? "107,45,168" : "41,82,163") + "," + (0.1 + pct * 0.85) + ")";
+                        var textColor = val === 0
+                          ? "#DDDBD7"
+                          : pct > 0.5 ? "#fff" : (baseColor === "green" ? "#1E5C48" : baseColor === "purple" ? "#6B2DA8" : "#2952A3");
+                        return (
+                          <td style={{padding:"7px 14px",textAlign:"center",background:bg,color:textColor,fontWeight:val>0?700:400,fontSize:12,borderBottom:"1px solid #EEECEA",transition:"background .2s"}}>
+                            {val > 0 ? val : ""}
+                          </td>
+                        );
+                      }
+                      return (
+                        <tr key={i} style={{borderBottom:"1px solid #EEECEA"}}>
+                          <td style={{padding:"7px 12px",textAlign:"center",fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,color:"#3D3A36",background: i%2===0?"#fff":"#FAFAF9",borderBottom:"1px solid #EEECEA"}}>{row.h}</td>
+                          {cell(row.t3,"purple")}
+                          {cell(row.t1,"green")}
+                          {cell(row.t2,"blue")}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {/* Summary row */}
+              <div style={{padding:"10px 20px",borderTop:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",gap:16,flexWrap:"wrap"}}>
+                {[
+                  {label:"3T",val:hmRows.reduce(function(a,r){return a+r.t3;},0),c:"#6B2DA8"},
+                  {label:"1T",val:hmRows.reduce(function(a,r){return a+r.t1;},0),c:"#1E5C48"},
+                  {label:"2T",val:hmRows.reduce(function(a,r){return a+r.t2;},0),c:"#2952A3"}
+                ].map(function(s){
+                  return (
+                    <div key={s.label} style={{display:"flex",alignItems:"center",gap:6}}>
+                      <div style={{width:8,height:8,borderRadius:2,background:s.c}}/>
+                      <span style={{fontSize:10.5,fontWeight:600,color:s.c}}>{s.label}</span>
+                      <span style={{fontSize:10.5,color:"#8A8580"}}>{s.val} evento{s.val!==1?"s":""}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
