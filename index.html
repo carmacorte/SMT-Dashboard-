@@ -927,9 +927,7 @@ async function buildXlsx(result) {
   }
   wsCat.columns = [24,28,60,3].map(function(w){ return {width:w}; });
 
-  return await wb.xlsx.writeBuffer();
-}
-
+  return await wb.xlsx.writeBuffer();}
 </script>
 
 <script type="text/babel">
