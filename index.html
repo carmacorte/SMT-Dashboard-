@@ -1502,14 +1502,228 @@ function App() {
   }
 
   function InvestigationCarousel(props) {
-    if (!props.cards || props.cards.length === 0) return null;
-    return (
-      <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:16,marginBottom:14}}>
-        <div style={{fontSize:12,fontWeight:700,color:"#1A1714"}}>Investigation Carousel</div>
-        <div style={{fontSize:10,color:"#8A8580"}}>{props.cards.length} cases in memory</div>
+var cards = props.cards;
+var allRcca = props.allRcca || [];
+var idxArr = _useState(0);
+var idx = idxArr[0]; var setIdx = idxArr[1];
+var tabArr = _useState(0);
+var tab = tabArr[0]; var setTab = tabArr[1];
+
+```
+if (!cards || cards.length === 0) return null;
+
+var safeIdx = Math.min(idx, cards.length - 1);
+var cur = cards[safeIdx];
+
+var TABS = [
+  "Identification","Hypothesis","Exposure","Material",
+  "Correction","Pattern","Actions","Evidence"
+];
+
+function getCardClass(i) {
+  var diff = i - safeIdx;
+  if (diff === 0) return "ic-card active";
+  if (diff === -1) return "ic-card prev";
+  if (diff === 1) return "ic-card next";
+  if (diff === -2) return "ic-card far-prev";
+  if (diff === 2) return "ic-card far-next";
+  return "ic-card far-prev";
+}
+
+function Field(p) {
+  return (
+    <div className="ic-field">
+      <div className="ic-field-label">{p.label}</div>
+      {p.value
+        ? <div className="ic-field-val">{p.value}</div>
+        : <div className="ic-field-val empty">-</div>}
+    </div>
+  );
+}
+
+var evIds = cur.event_ids && cur.event_ids.length > 0 ? cur.event_ids.join(", ") : null;
+var actions = [
+  {l:"Immediate / Containment", v:cur.contencion,         color:"#B87820", bg:"#FEF9E8"},
+  {l:"Corrective Action",        v:cur.accion_correctiva,  color:"#2952A3", bg:"#EBF0FC"},
+  {l:"Preventive Action",        v:cur.accion_preventiva,  color:"#1A7A3C", bg:"#EBF8EE"},
+  {l:"Structural / Lesson",      v:cur.leccion_aprendida,  color:"#6B2DA8", bg:"#F5F0FE"},
+];
+
+var related = allRcca.filter(function(r) {
+  if (!r || r.rcca_id === cur.rcca_id) return false;
+  return (r.modelo && cur.modelo && r.modelo.toLowerCase() === cur.modelo.toLowerCase()) ||
+         (r.linea && cur.linea && r.linea.toLowerCase() === cur.linea.toLowerCase()) ||
+         (r.patron_detectado && cur.patron_detectado && r.patron_detectado.toLowerCase().indexOf((cur.patron_detectado||"").split(" ")[0].toLowerCase()) >= 0);
+}).slice(0, 3);
+
+var sevColor = cur.prioridad === "Critica" ? "#C0392B"
+  : cur.prioridad === "Alta" ? "#B87820"
+  : cur.prioridad === "Media" ? "#2952A3" : "#2A7A60";
+
+return (
+  <div className="ic-wrap">
+
+    <div style={{padding:"0 20px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+      <div>
+        <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>Investigation Carousel</div>
+        <div style={{fontSize:10,color:"#8A8580"}}>{cards.length} case{cards.length!==1?"s":""} en memoria RCCA</div>
       </div>
-    );
-  }
+      <div style={{fontSize:9,color:sevColor,fontWeight:700,background:sevColor+"14",borderRadius:99,padding:"3px 10px",border:"1px solid "+sevColor+"30"}}>
+        {cur.rcca_id}
+      </div>
+    </div>
+
+    <div className="ic-stage" style={{perspective:"1200px"}}>
+      {cards.map(function(card, i) {
+        var diff = i - safeIdx;
+        if (Math.abs(diff) > 2) return null;
+        return (
+          <div key={card.rcca_id || i}
+            className={getCardClass(i)}
+            onClick={function(){ if (i !== safeIdx) { setIdx(i); setTab(0); } }}
+            style={{position: i === safeIdx ? "relative" : "absolute"}}>
+
+            <div className="ic-card-head">
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#2A7A60",marginBottom:3}}>{card.rcca_id}</div>
+                <div style={{fontSize:11,fontWeight:600,color:"#1A1714",lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.problema || "-"}</div>
+                <div style={{display:"flex",gap:5,marginTop:4,flexWrap:"wrap"}}>
+                  {card.modelo && <span style={{fontSize:8.5,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"1px 6px"}}>{card.modelo}</span>}
+                  {card.linea && <span style={{fontSize:8.5,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"1px 6px"}}>{card.linea}</span>}
+                  {card.fecha && <span style={{fontSize:8.5,color:"#8A8580"}}>{card.fecha}</span>}
+                </div>
+              </div>
+            </div>
+
+            {i === safeIdx && (
+              <div>
+                <div className="ic-tabs">
+                  {TABS.map(function(tlabel, ti) {
+                    return (
+                      <button key={ti} className={"ic-tab" + (tab===ti?" on":"")}
+                        onClick={function(){ setTab(ti); }}>
+                        {tlabel}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="ic-body">
+                  {tab === 0 && <div>
+                    <Field label="RCCA ID" value={cur.rcca_id}/>
+                    <Field label="Model / Part Number" value={cur.modelo}/>
+                    <Field label="Line / Station" value={cur.linea}/>
+                    <Field label="Date" value={cur.fecha}/>
+                    <Field label="Problem Statement" value={cur.problema}/>
+                    <Field label="Linked Events" value={evIds}/>
+                  </div>}
+                  {tab === 1 && <div>
+                    <div className="ic-field"><div className="ic-field-label">Root Cause Hypothesis</div>{cur.causa_raiz ? <div className="ic-field-val">{cur.causa_raiz}</div> : <div className="ic-field-val empty">-</div>}</div>
+                    <div className="ic-field"><div className="ic-field-label">Pattern Detected</div>{cur.patron_detectado ? <div className="ic-field-val">{cur.patron_detectado}</div> : <div className="ic-field-val empty">-</div>}</div>
+                    <div className="ic-field"><div className="ic-field-label">Problem Context</div>{cur.problema ? <div className="ic-field-val">{cur.problema}</div> : <div className="ic-field-val empty">-</div>}</div>
+                  </div>}
+                  {tab === 2 && <div>
+                    <div style={{background:"#FEF0EE",border:"1px solid #F4CCCC",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
+                      <div className="ic-field-label" style={{color:"#C0392B"}}>Exposure Window</div>
+                      <div className="ic-field-val">{cur.patron_detectado || "-"}</div>
+                    </div>
+                    <Field label="Detection Point" value={cur.contencion}/>
+                    <Field label="Confirmed With" value={cur.causa_raiz}/>
+                  </div>}
+                  {tab === 3 && <div>
+                    <Field label="Material / Components Affected" value={cur.modelo}/>
+                    <Field label="Scope Estimate" value={cur.problema}/>
+                    <Field label="Containment Coverage" value={cur.contencion}/>
+                  </div>}
+                  {tab === 4 && <div>
+                    <div style={{background:"#EBF8EE",border:"1px solid #A0DEB4",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
+                      <div className="ic-field-label" style={{color:"#1A7A3C"}}>Containment Action</div>
+                      <div className="ic-field-val">{cur.contencion || "-"}</div>
+                    </div>
+                    <Field label="Corrective Action" value={cur.accion_correctiva}/>
+                    <Field label="Correction Status" value={cur.accion_correctiva ? "Implemented" : "Pending"}/>
+                  </div>}
+                  {tab === 5 && <div>
+                    <div style={{background:"#F5F0FE",border:"1px solid #C8A8F8",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
+                      <div className="ic-field-label" style={{color:"#6B2DA8"}}>Pattern / Error Mechanism</div>
+                      <div className="ic-field-val">{cur.patron_detectado || "-"}</div>
+                    </div>
+                    <Field label="System Weakness" value={cur.causa_raiz}/>
+                    <Field label="Recurrence Risk" value={cur.leccion_aprendida}/>
+                  </div>}
+                  {tab === 6 && <div>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {actions.map(function(a){
+                        return (
+                          <div key={a.l} style={{background:a.bg,border:"1px solid "+a.color+"40",borderRadius:7,padding:"9px 12px"}}>
+                            <div className="ic-field-label" style={{color:a.color}}>{a.l}</div>
+                            <div className="ic-field-val">{a.v || "-"}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>}
+                  {tab === 7 && <div>
+                    <Field label="Linked Event IDs" value={evIds}/>
+                    <Field label="Traceability / Records" value={cur.contencion}/>
+                    <Field label="Lesson Learned" value={cur.leccion_aprendida}/>
+                    {cur.event_ids && cur.event_ids.length > 0 && (
+                      <div style={{marginTop:8}}>
+                        <div className="ic-field-label">Linked Incidents</div>
+                        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>
+                          {cur.event_ids.map(function(id){
+                            return <span key={id} className="ic-badge" style={{background:"#EAF5F0",color:"#2A7A60"}}>{id}</span>;
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>}
+
+                  {related.length > 0 && (
+                    <div className="ic-related" style={{marginTop:12}}>
+                      <div style={{fontSize:9,fontWeight:700,color:"#B87820",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Casos relacionados</div>
+                      {related.map(function(r){
+                        var ri = cards.findIndex(function(c){ return c.rcca_id === r.rcca_id; });
+                        return (
+                          <div key={r.rcca_id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,cursor: ri>=0?"pointer":"default"}}
+                            onClick={function(){ if(ri>=0){setIdx(ri);setTab(0);} }}>
+                            <span style={{fontSize:9,fontFamily:"monospace",color:"#B87820",fontWeight:700}}>{r.rcca_id}</span>
+                            <span style={{fontSize:9,color:"#6A6560",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.problema}</span>
+                            {ri >= 0 && <span style={{fontSize:8,color:"#2A7A60",fontWeight:600}}>Go</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+
+    <div className="ic-nav">
+      <button className="ic-nav-btn" disabled={safeIdx===0}
+        onClick={function(){ if(safeIdx>0){setIdx(safeIdx-1);setTab(0);} }}>
+        &#8249;
+      </button>
+      <div className="ic-dots">
+        {cards.map(function(_, i){
+          return <div key={i} className={"ic-dot"+(i===safeIdx?" on":"")}/>;
+        })}
+      </div>
+      <button className="ic-nav-btn" disabled={safeIdx===cards.length-1}
+        onClick={function(){ if(safeIdx<cards.length-1){setIdx(safeIdx+1);setTab(0);} }}>
+        &#8250;
+      </button>
+    </div>
+
+  </div>
+);
+```
+
+}
 
   function RccaForm(props) {
     var init = props.init || {};
@@ -3153,4 +3367,4 @@ window.addEventListener('unhandledrejection', function(e) {
 });
 </script></body>
 
-</html> 
+</html>
