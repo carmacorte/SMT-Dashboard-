@@ -676,7 +676,7 @@ async function analyzeWithAI(msgs, apiKey) {
   if (!data.content || !data.content.length) throw new Error("Respuesta vacia. Intenta de nuevo.");
 
   var raw = "{" + data.content.map(function(b){ return b.text || ""; }).join("");
-  var clean = raw.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();
+  var clean = raw.replace(/json\s*/gi,"").replace(/\s*/g,"").trim();
   var s = clean.indexOf("{");
   var e = clean.lastIndexOf("}");
   if (s === -1 || e === -1) throw new Error("JSON invalido. Reduce el rango de dias.");
@@ -1720,7 +1720,7 @@ return (
 
   </div>
 );
-```
+
 
 }
 
