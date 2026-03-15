@@ -417,9 +417,9 @@ function parseTurno(h, min, dateIso) {
   }
 
   if (dow === 6) {
+    if (h >= 0 && h < 9) return "3T";      // 3T del viernes termina 09:00 sábado
     if (h >= 9 && h < 18) return "1T-Sab";
-    if (h >= 18) return "2T-Sab";
-    return "FS-Sab";
+    return "2T-Sab";
   }
 
   if (dow === 0) {
@@ -427,13 +427,7 @@ function parseTurno(h, min, dateIso) {
     return "2T-Dom";
   }
 
-  if (dow === 5) {
-    if (h >= 0 && h < 6) return "3T";
-    if (h === 6 || h === 7 || h === 8) return "3T"; // Fri 3T extends to 09:00
-    if (h < 15 || (h === 15 && m < 15)) return "1T";
-    return "2T";
-  }
-
+  // Lun–Vie: mismo patrón, el 3T es la madrugada del día actual
   if (h >= 0 && h < 6) return "3T";
   if (h < 15 || (h === 15 && m < 15)) return "1T";
   return "2T";
