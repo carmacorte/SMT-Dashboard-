@@ -57,12 +57,12 @@ position:relative;overflow:hidden;
 box-shadow:0 4px 20px rgba(30,92,72,.25)
 }
 .hdr::before{
-content:’’;position:absolute;inset:0;
+content:'';position:absolute;inset:0;
 background:linear-gradient(135deg,rgba(255,255,255,.06) 0%,transparent 60%);
 pointer-events:none
 }
 .hdr::after{
-content:’’;position:absolute;right:-40px;top:-40px;
+content:'';position:absolute;right:-40px;top:-40px;
 width:200px;height:200px;border-radius:50%;
 background:radial-gradient(circle,rgba(255,255,255,.08),transparent 70%)
 }
@@ -87,7 +87,7 @@ box-shadow:var(--shadow-sm)
 .api-bar label{font-size:12px;font-weight:600;color:var(--g700);white-space:nowrap}
 .api-input{
 flex:1;min-width:180px;border:1.5px solid var(--g200);border-radius:var(--radius-sm);
-padding:8px 12px;font-size:12px;color:var(--g900);font-family:‘Courier New’,monospace;
+padding:8px 12px;font-size:12px;color:var(--g900);font-family:'Courier New',monospace;
 background:var(--g50);outline:none;transition:border-color .15s,box-shadow .15s
 }
 .api-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(30,92,72,.1)}
@@ -304,11 +304,11 @@ padding:12px;margin-top:8px
 .img-pick-item{position:relative;cursor:pointer;border-radius:7px;overflow:hidden;aspect-ratio:1}
 .img-pick-item img{width:100%;height:100%;object-fit:cover;display:block}
 .img-pick-item.selected::after{
-content:””;position:absolute;inset:0;
+content:"";position:absolute;inset:0;
 background:rgba(30,92,72,.4);border:2px solid var(--green);border-radius:7px
 }
 .img-pick-item.selected::before{
-content:“v”;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+content:"v";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
 color:#fff;font-size:18px;font-weight:700;z-index:1
 }
 
@@ -554,8 +554,10 @@ async function readZip(file) {
       txt = await zip.files[name].async("string");
     }
     if (/\.(jpe?g|png|webp)$/i.test(base)) {
-  imgNames.push(base);
-}
+      imgNames.push(base);
+    }
+  }
+
   if (!txt) throw new Error("No se encontro .txt en el ZIP");
 
   var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
@@ -929,6 +931,7 @@ async function buildXlsx(result) {
 
   return await wb.xlsx.writeBuffer();
 }
+
 </script>
 
 <script type="text/babel">
@@ -1069,15 +1072,6 @@ function LogoSVG() {
 function App() {
   var stateArr = _useState("idle");
   var state = stateArr[0]; var setState = stateArr[1];
-  React.useEffect(function(){
-  try {
-    var saved = sessionStorage.getItem("opstrace_last_result");
-    if(saved){
-    setResult(JSON.parse(saved));
-      setState("done");
-    }
-  } catch(e){}
-}, []);
 
   var apiKeyArr = _useState(localStorage.getItem("opstrace_key") || "");
   var apiKey = apiKeyArr[0]; var setApiKey = apiKeyArr[1];
@@ -1120,6 +1114,25 @@ function App() {
 
   var statsArr = _useState(null);
   var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
+
+  React.useEffect(function(){
+    try {
+      var saved = sessionStorage.getItem("opstrace_last_result");
+      if (!saved) return;
+
+      var payload = JSON.parse(saved);
+      var savedResult = payload && payload.result ? payload.result : payload;
+      var savedStats = payload && payload.msgStats ? payload.msgStats : null;
+
+      setResult(savedResult);
+      if (savedStats) setMsgStats(savedStats);
+      setState("done");
+
+      buildXlsx(savedResult).then(function(bytes){
+        setXlsxBytes(bytes);
+      }).catch(function(){});
+    } catch(e){}
+  }, []);
 
   var pfArr = _useState("");
   var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
@@ -1257,10 +1270,19 @@ function App() {
       } catch(_) {}
   }
   function loadFromHistory(entry) {
+    var restoredStats = {total: entry.msgs, filtered: entry.msgs, clean: entry.msgs, imgs: entry.imgs};
     setResult(entry.result);
-    setMsgStats({total: entry.msgs, filtered: entry.msgs, clean: entry.msgs, imgs: entry.imgs});
+    setMsgStats(restoredStats);
     setEvImgs({});
     setState("done");
+    buildXlsx(entry.result).then(function(bytes){
+      setXlsxBytes(bytes);
+    }).catch(function(){
+      setXlsxBytes(null);
+    });
+    try {
+      sessionStorage.setItem("opstrace_last_result", JSON.stringify({result: entry.result, msgStats: restoredStats}));
+    } catch(e){}
   }
 
   var fileRef = _useRef();
@@ -1308,7 +1330,8 @@ function App() {
       setProgStep(2); setProg(38);
       var filtered = filterMsgs(all, filterMode, days, dateFrom, dateTo, weekNum, weekYear);
       var clean = cleanMsgs(filtered);
-      setMsgStats({total: all.length, filtered: filtered.length, clean: clean.length, imgs: (zipData.imgNames||[]).length});
+      var statsPayload = {total: all.length, filtered: filtered.length, clean: clean.length, imgs: (zipData.imgNames||[]).length};
+      setMsgStats(statsPayload);
       if (!clean.length) throw new Error("Sin mensajes operativos en el periodo. Aumenta el rango.");
       setProgStep(3); setProg(55);
       var res = await analyzeWithAI(clean, apiKey.trim());
@@ -1318,15 +1341,14 @@ function App() {
 
       var bytes = await buildXlsx(res);
       var totalSecs = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      setProg(100); 
-setResult(res); 
-setXlsxBytes(bytes); 
-setState("done");
-
-try {
-  sessionStorage.setItem("opstrace_last_result", JSON.stringify(res));
-} catch(e){}
-      saveToHistory(res, {total: all.length, filtered: filtered.length, clean: clean.length, imgs: (zipData.imgNames||[]).length}, fileNameRef.current, totalSecs);
+      setProg(100);
+      setResult(res);
+      setXlsxBytes(bytes);
+      setState("done");
+      try {
+        sessionStorage.setItem("opstrace_last_result", JSON.stringify({result: res, msgStats: statsPayload}));
+      } catch(e){}
+      saveToHistory(res, statsPayload, fileNameRef.current, totalSecs);
     } catch(e) { setErrMsg(e.message || String(e)); setState("error"); }
   }
 
@@ -1341,8 +1363,8 @@ try {
   }
 
   function reset() {
+    try { sessionStorage.removeItem("opstrace_last_result"); } catch(e){}
     setState("idle"); setResult(null); setXlsxBytes(null);
-sessionStorage.removeItem("opstrace_last_result");
     setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); setPersonaFiltro("");
     setZipImgNames([]); setImgMeta({}); setEvImgs({}); setLightbox(null); setGalPage(0);
     setFilterMode("quick"); setDateFrom(""); setDateTo(""); setWeekNum(""); setWeekYear(new Date().getFullYear());
@@ -2445,7 +2467,7 @@ return (
                 {dateFrom && dateTo && (
                   <div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"7px 12px",display:"inline-flex",alignItems:"center",gap:6}}>
                     <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateFrom}</span>
-                    <span style={{fontSize:10,color:"#8A8580"}}>-></span>
+                    <span style={{fontSize:10,color:"#8A8580"}}>→</span>
                     <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateTo}</span>
                     <span style={{fontSize:9,color:"#6A8060",marginLeft:4}}>
                       {Math.round(Math.abs(new Date(dateTo)-new Date(dateFrom))/86400000)+1} dias
