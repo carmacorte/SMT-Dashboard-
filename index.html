@@ -553,10 +553,9 @@ async function readZip(file) {
     if (!txt && base.endsWith(".txt")) {
       txt = await zip.files[name].async("string");
     }
-    if (/\.(jpe?g|png)$/i.test(base)) {
+    if (/\.(jpe?g|png|webp)$/i.test(base)) {
   imgNames.push(base);
 }
-  }
   if (!txt) throw new Error("No se encontro .txt en el ZIP");
 
   var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
@@ -581,7 +580,7 @@ async function readZip(file) {
         sender:(sender||"").replace(/^~/,"").trim()
       };
     }
-    var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png))\s*>/i);
+    var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
     if (adj && lastMeta) {
       imgMeta[adj[1].trim()] = {
         dateIso:lastMeta.dateIso, timeStr:lastMeta.timeStr, sender:lastMeta.sender
@@ -1069,12 +1068,17 @@ function LogoSVG() {
 }
 
 function App() {
-  var stateArr = _useState(function(){
+  var stateArr = _useState("idle");
+  var state = stateArr[0]; var setState = stateArr[1];
+  React.useEffect(function(){
   try {
-    var last = localStorage.getItem("opstrace_last_result");
-    return last ? "done" : "idle";
-  } catch(_) { return "idle"; }
-});
+    var saved = sessionStorage.getItem("opstrace_last_result");
+    if(saved){
+    setResult(JSON.parse(saved));
+      setState("done");
+    }
+  } catch(e){}
+}, []);
 
   var apiKeyArr = _useState(localStorage.getItem("opstrace_key") || "");
   var apiKey = apiKeyArr[0]; var setApiKey = apiKeyArr[1];
@@ -1103,12 +1107,8 @@ function App() {
   var fYearArr = _useState(new Date().getFullYear());
   var weekYear = fYearArr[0]; var setWeekYear = fYearArr[1];
 
-  var resultArr = _useState(function(){
-  try {
-    var last = localStorage.getItem("opstrace_last_result");
-    return last ? JSON.parse(last) : null;
-  } catch(_) { return null; }
-});
+  var resultArr = _useState(null);
+  var result = resultArr[0]; var setResult = resultArr[1];
 
   var xlsxArr = _useState(null);
   var xlsxBytes = xlsxArr[0]; var setXlsxBytes = xlsxArr[1];
@@ -1319,7 +1319,14 @@ function App() {
 
       var bytes = await buildXlsx(res);
       var totalSecs = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      setProg(100); setResult(res); setXlsxBytes(bytes); setState("done");
+      setProg(100); 
+setResult(res); 
+setXlsxBytes(bytes); 
+setState("done");
+
+try {
+  sessionStorage.setItem("opstrace_last_result", JSON.stringify(res));
+} catch(e){}
       saveToHistory(res, {total: all.length, filtered: filtered.length, clean: clean.length, imgs: (zipData.imgNames||[]).length}, fileNameRef.current, totalSecs);
     } catch(e) { setErrMsg(e.message || String(e)); setState("error"); }
   }
@@ -1336,7 +1343,7 @@ function App() {
 
   function reset() {
     setState("idle"); setResult(null); setXlsxBytes(null);
-try { localStorage.removeItem("opstrace_last_result"); } catch(_) {}
+sessionStorage.removeItem("opstrace_last_result");
     setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); setPersonaFiltro("");
     setZipImgNames([]); setImgMeta({}); setEvImgs({}); setLightbox(null); setGalPage(0);
     setFilterMode("quick"); setDateFrom(""); setDateTo(""); setWeekNum(""); setWeekYear(new Date().getFullYear());
