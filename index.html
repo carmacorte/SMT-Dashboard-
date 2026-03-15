@@ -458,6 +458,53 @@ function filterByDays(msgs, days) {
   return sorted.filter(function(m){ return m.dateIso >= cutStr; });
 }
 
+// Get ISO week number for a Date
+function getISOWeek(d) {
+  var date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  var yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+}
+
+// Get Mon-Sun date range for ISO week number + year
+function getWeekRange(weekN, year) {
+  var jan4 = new Date(Date.UTC(year, 0, 4));
+  var day = jan4.getUTCDay() || 7;
+  var monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - day + 1 + (weekN - 1) * 7);
+  var sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  return {
+    from: monday.toISOString().slice(0,10),
+    to: sunday.toISOString().slice(0,10)
+  };
+}
+
+function filterMsgs(msgs, mode, days, dateFrom, dateTo, weekNum, weekYear) {
+  if (!msgs.length) return msgs;
+  var sorted = msgs.slice().sort(function(a,b){ return a.dateIso.localeCompare(b.dateIso); });
+
+  if (mode === "range" && dateFrom && dateTo) {
+    var f = dateFrom <= dateTo ? dateFrom : dateTo;
+    var t = dateFrom <= dateTo ? dateTo : dateFrom;
+    return sorted.filter(function(m){ return m.dateIso >= f && m.dateIso <= t; });
+  }
+
+  if (mode === "week" && weekNum && weekYear) {
+    var wr = getWeekRange(parseInt(weekNum), parseInt(weekYear));
+    return sorted.filter(function(m){ return m.dateIso >= wr.from && m.dateIso <= wr.to; });
+  }
+
+  // default: quick (last N days)
+  var last = new Date(sorted[sorted.length-1].dateIso);
+  var cutoff = new Date(last);
+  cutoff.setDate(cutoff.getDate() - days + 1);
+  var cutStr = cutoff.toISOString().slice(0,10);
+  return sorted.filter(function(m){ return m.dateIso >= cutStr; });
+}
+
+
 function cleanMsgs(msgs) {
   var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|cifrados de extremo|ahora es admin/i;
   var noise = /^(buenos d|buenas t|buen d|gracias|de nada|enterado|recibido|entendido)/i;
@@ -936,6 +983,22 @@ function App() {
   var daysArr = _useState(3);
   var days = daysArr[0]; var setDays = daysArr[1];
 
+  // Slicer: "quick" | "range" | "week"
+  var fmodeArr = _useState("quick");
+  var filterMode = fmodeArr[0]; var setFilterMode = fmodeArr[1];
+
+  var fFromArr = _useState("");
+  var dateFrom = fFromArr[0]; var setDateFrom = fFromArr[1];
+
+  var fToArr = _useState("");
+  var dateTo = fToArr[0]; var setDateTo = fToArr[1];
+
+  var fWeekArr = _useState("");
+  var weekNum = fWeekArr[0]; var setWeekNum = fWeekArr[1];
+
+  var fYearArr = _useState(new Date().getFullYear());
+  var weekYear = fYearArr[0]; var setWeekYear = fYearArr[1];
+
   var resultArr = _useState(null);
   var result = resultArr[0]; var setResult = resultArr[1];
 
@@ -989,7 +1052,7 @@ function App() {
       var all = parseWhatsApp(txt);
       if (!all.length) throw new Error("No se encontraron mensajes con formato WhatsApp.");
       setProgStep(2); setProg(38);
-      var filtered = filterByDays(all, days);
+      var filtered = filterMsgs(all, filterMode, days, dateFrom, dateTo, weekNum, weekYear);
       var clean = cleanMsgs(filtered);
       setMsgStats({total: all.length, filtered: filtered.length, clean: clean.length, imgs: (zipData.imgNames||[]).length});
       if (!clean.length) throw new Error("Sin mensajes operativos en el periodo. Aumenta el rango.");
@@ -1019,6 +1082,7 @@ function App() {
     setState("idle"); setResult(null); setXlsxBytes(null);
     setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); setPersonaFiltro("");
     setZipImgNames([]); setImgMeta({}); setEvImgs({}); setLightbox(null);
+    setFilterMode("quick"); setDateFrom(""); setDateTo(""); setWeekNum(""); setWeekYear(new Date().getFullYear());
   }
 
   // Derived data
@@ -1147,6 +1211,49 @@ function App() {
           {e.modelo !== "N/D" && <span className="ptag">{e.modelo}</span>}
           {e.defecto_smt && e.defecto_smt !== "N/A" && <span className="badge bt">{e.defecto_smt}</span>}
           <span className={best(e.estatus)}>{e.estatus}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── WeekPreview: shows date range + shortcuts for week slicer ──
+  function WeekPreview(props) {
+    var wn = props.weekNum; var wy = props.weekYear;
+    var setWN = props.setWeekNum; var setWY = props.setWeekYear;
+    var now = new Date();
+    var thisWeek = getISOWeek(now);
+    var yr = now.getFullYear();
+    var shortcuts = [
+      {label:"Esta sem", w:thisWeek, y:yr},
+      {label:"Sem ant", w:thisWeek-1>0?thisWeek-1:52, y:thisWeek-1>0?yr:yr-1},
+      {label:"-2 sem", w:thisWeek-2>0?thisWeek-2:51, y:thisWeek-2>0?yr:yr-1}
+    ];
+    var wr = null;
+    if (wn && wy) {
+      try { wr = getWeekRange(parseInt(wn), parseInt(wy)); } catch(_) {}
+    }
+    return (
+      <div>
+        {wr && (
+          <div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"7px 12px",display:"inline-flex",alignItems:"center",gap:6,marginBottom:10}}>
+            <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{wr.from}</span>
+            <span style={{fontSize:10,color:"#8A8580"}}>to</span>
+            <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{wr.to}</span>
+            <span style={{fontSize:9,color:"#6A8060",marginLeft:4}}>Sem {wn} / {wy}</span>
+          </div>
+        )}
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:10.5,color:"#8A8580"}}>Ir a:</span>
+          {shortcuts.map(function(s){
+            var active = parseInt(wn)===s.w && parseInt(wy)===s.y;
+            return (
+              <button key={s.label}
+                style={{border: active?"none":"1px solid #DDDBD7",background: active?"#1E5C48":"#fff",color: active?"#fff":"#6A6560",borderRadius:99,padding:"4px 12px",fontSize:11,fontWeight: active?700:500,cursor:"pointer"}}
+                onClick={function(){ setWN(String(s.w)); setWY(String(s.y)); }}>
+                {s.label} (S{s.w})
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -1403,27 +1510,92 @@ function App() {
             </div>
           </div>
 
-          {/* Days filter — clean pill row */}
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,paddingLeft:4}}>
-            <span style={{fontSize:12,fontWeight:500,color:"#8A8580"}}>Analizar ultimos:</span>
-            <div style={{display:"flex",gap:6}}>
-              {[1,3,7,14,30].map(function(d){
+          {/* ── SLICER DE FECHAS ── */}
+          <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.04)"}}>
+            {/* Mode tabs */}
+            <div style={{display:"flex",borderBottom:"1px solid #EEECEA"}}>
+              {[["quick","Rapido"],["week","Por semana"],["range","Rango"]].map(function(tab){
+                var active = filterMode === tab[0];
                 return (
-                  <button key={d}
-                    style={{
-                      border: days===d ? "none" : "1.5px solid #DDDBD7",
-                      background: days===d ? "#1E5C48" : "#fff",
-                      color: days===d ? "#fff" : "#6A6560",
-                      borderRadius:99,padding:"5px 14px",fontSize:12,
-                      fontWeight: days===d ? 700 : 500,cursor:"pointer",
-                      transition:"all .15s"
-                    }}
-                    onClick={function(){ setDays(d); }}>
-                    {d}d
+                  <button key={tab[0]}
+                    style={{flex:1,padding:"10px 6px",border:"none",borderBottom: active ? "2px solid #1E5C48" : "2px solid transparent",background:"transparent",fontSize:12,fontWeight: active ? 700 : 500,color: active ? "#1E5C48" : "#8A8580",cursor:"pointer",transition:"all .15s"}}
+                    onClick={function(){ setFilterMode(tab[0]); }}>
+                    {tab[1]}
                   </button>
                 );
               })}
             </div>
+
+            {/* Quick mode */}
+            {filterMode === "quick" && (
+              <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <span style={{fontSize:11.5,fontWeight:500,color:"#8A8580",marginRight:4}}>Ultimos:</span>
+                {[1,3,7,14,30].map(function(d){
+                  return (
+                    <button key={d}
+                      style={{border: days===d ? "none" : "1.5px solid #DDDBD7",background: days===d ? "#1E5C48" : "#fff",color: days===d ? "#fff" : "#6A6560",borderRadius:99,padding:"5px 14px",fontSize:12,fontWeight: days===d ? 700 : 500,cursor:"pointer",transition:"all .15s"}}
+                      onClick={function(){ setDays(d); }}>
+                      {d}d
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Week mode */}
+            {filterMode === "week" && (
+              <div style={{padding:"12px 16px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:12,fontWeight:500,color:"#8A8580"}}>Semana</span>
+                    <input type="number" min="1" max="53" placeholder="10"
+                      value={weekNum}
+                      onChange={function(e){ setWeekNum(e.target.value); }}
+                      style={{width:60,border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:13,fontWeight:700,color:"#1A1714",textAlign:"center",outline:"none"}}/>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:12,fontWeight:500,color:"#8A8580"}}>Ano</span>
+                    <input type="number" min="2020" max="2030" placeholder={weekYear}
+                      value={weekYear}
+                      onChange={function(e){ setWeekYear(e.target.value); }}
+                      style={{width:76,border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:13,color:"#1A1714",textAlign:"center",outline:"none"}}/>
+                  </div>
+                </div>
+                <WeekPreview weekNum={weekNum} weekYear={weekYear} setWeekNum={setWeekNum} setWeekYear={setWeekYear}/>
+              </div>
+            )}
+
+            {/* Range mode */}
+            {filterMode === "range" && (
+              <div style={{padding:"12px 16px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:12,fontWeight:500,color:"#8A8580"}}>Desde</span>
+                    <input type="date"
+                      value={dateFrom}
+                      onChange={function(e){ setDateFrom(e.target.value); }}
+                      style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:12,fontWeight:500,color:"#8A8580"}}>Hasta</span>
+                    <input type="date"
+                      value={dateTo}
+                      onChange={function(e){ setDateTo(e.target.value); }}
+                      style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/>
+                  </div>
+                </div>
+                {dateFrom && dateTo && (
+                  <div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"7px 12px",display:"inline-flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateFrom}</span>
+                    <span style={{fontSize:10,color:"#8A8580"}}>→</span>
+                    <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateTo}</span>
+                    <span style={{fontSize:9,color:"#6A8060",marginLeft:4}}>
+                      {Math.round(Math.abs(new Date(dateTo)-new Date(dateFrom))/86400000)+1} dias
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
