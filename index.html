@@ -1777,33 +1777,31 @@ function App() {
 
       {/* LOADING */}
       {state === "loading" && (
-        <div style={{background:"#0F1A0F",borderRadius:16,overflow:"hidden",marginBottom:16,boxShadow:"0 4px 24px rgba(0,0,0,.3)"}}>
+        <div style={{background:"#fff",border:"1.5px solid #DDDBD7",borderRadius:16,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
 
-          {/* DAW-style top bar */}
-          <div style={{background:"#0A120A",borderBottom:"1px solid #1A2E1A",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:9,fontFamily:"monospace",color:"#3A6A3A",letterSpacing:".15em",textTransform:"uppercase"}}>SMTintel Processing Engine</span>
+          {/* Top bar */}
+          <div style={{background:"#F8F7F5",borderBottom:"1px solid #EEECEA",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>SMTintel Processing Engine</span>
             <div style={{display:"flex",gap:6}}>
-              <div style={{width:8,height:8,borderRadius:50,background:"#C0392B",opacity:.7}}/>
-              <div style={{width:8,height:8,borderRadius:50,background:"#B87820",opacity:.7}}/>
-              <div style={{width:8,height:8,borderRadius:50,background:"#1A7A3C",opacity:.9}}/>
+              <div style={{width:8,height:8,borderRadius:50,background:"#C0392B",opacity:.6}}/>
+              <div style={{width:8,height:8,borderRadius:50,background:"#B87820",opacity:.6}}/>
+              <div style={{width:8,height:8,borderRadius:50,background:"#1A7A3C"}}/>
             </div>
           </div>
 
-          {/* Main timer display */}
-          <div style={{padding:"24px 20px 16px",display:"flex",alignItems:"flex-end",justifyContent:"center",gap:0}}>
-            {/* H:MM:SS large */}
-            <div style={{fontFamily:"'Courier New',monospace",fontSize:68,fontWeight:700,color:"#4DB896",lineHeight:1,letterSpacing:"-3px",textShadow:"0 0 20px rgba(77,184,150,.4)"}}>
+          {/* Main timer */}
+          <div style={{padding:"28px 20px 16px",display:"flex",alignItems:"flex-end",justifyContent:"center",gap:0}}>
+            <div style={{fontFamily:"'Courier New',monospace",fontSize:68,fontWeight:700,color:"#1E5C48",lineHeight:1,letterSpacing:"-3px"}}>
               {String(Math.floor(elapsed/3600)).padStart(1,"0")}:{String(Math.floor((elapsed%3600)/60)).padStart(2,"0")}:{String(elapsed%60).padStart(2,"0")}
             </div>
-            {/* Centiseconds small */}
-            <div style={{fontFamily:"'Courier New',monospace",fontSize:22,fontWeight:700,color:"#2A7A60",lineHeight:1,marginBottom:8,marginLeft:3,letterSpacing:"-1px"}}>
+            <div style={{fontFamily:"'Courier New',monospace",fontSize:22,fontWeight:700,color:"#8A8580",lineHeight:1,marginBottom:8,marginLeft:3,letterSpacing:"-1px"}}>
               {String(Math.floor((elapsedMs%1000)/10)).padStart(2,"0")}
             </div>
           </div>
 
           {/* Step label */}
           <div style={{textAlign:"center",marginBottom:16,padding:"0 20px"}}>
-            <div style={{fontSize:11,fontFamily:"monospace",color:"#6A9E6A",letterSpacing:".08em"}}>
+            <div style={{fontSize:11,fontFamily:"monospace",color:"#2A7A60",letterSpacing:".08em"}}>
               {progStep === 0 && "> READING_ZIP..."}
               {progStep === 1 && "> PARSING_WHATSAPP_MESSAGES..."}
               {progStep === 2 && "> FILTERING_OPERATIONAL_EVENTS..."}
@@ -1811,49 +1809,49 @@ function App() {
               {progStep === 4 && "> BUILDING_XLSX_7_SHEETS..."}
             </div>
             {msgStats && (
-              <div style={{fontSize:10,color:"#3A6A3A",marginTop:4,fontFamily:"monospace"}}>
+              <div style={{fontSize:10,color:"#8A8580",marginTop:4,fontFamily:"monospace"}}>
                 {msgStats.clean} / {msgStats.total} msgs
               </div>
             )}
           </div>
 
-          {/* Progress bar - dark style */}
+          {/* Progress bar */}
           <div style={{padding:"0 20px",marginBottom:10}}>
-            <div style={{background:"#1A2E1A",borderRadius:3,height:8,overflow:"hidden",border:"1px solid #2A4A2A"}}>
+            <div style={{background:"#EEECEA",borderRadius:3,height:7,overflow:"hidden"}}>
               <div style={{
-                height:8,borderRadius:3,
-                background:"linear-gradient(90deg,#1E5C48,#4DB896)",
+                height:7,borderRadius:3,
+                background:"linear-gradient(90deg,#1E5C48,#48A882)",
                 width: prog + "%",
-                transition:"width .5s ease",
-                boxShadow:"0 0 8px rgba(77,184,150,.5)"
+                transition:"width .5s ease"
               }}/>
             </div>
             <div style={{display:"flex",justifyContent:"space-between",marginTop:5}}>
-              <span style={{fontSize:9,fontFamily:"monospace",color:"#3A6A3A"}}>{prog}%</span>
-              <span style={{fontSize:9,fontFamily:"monospace",color:"#3A6A3A"}}>
-                {prog > 5 && prog < 100 ? "ETA ~" + Math.max(1, Math.round((elapsed / Math.max(prog,1)) * (100-prog))) + "s" : prog >= 100 ? "DONE" : "..."}
+              <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580"}}>{prog}%</span>
+              <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580"}}>
+                {prog > 5 && prog < 100 ? "ETA ~" + Math.max(1,Math.round((elapsed/Math.max(prog,1))*(100-prog))) + "s" : prog >= 100 ? "DONE" : "..."}
               </span>
             </div>
           </div>
 
-          {/* Step indicators - horizontal track */}
-          <div style={{display:"flex",borderTop:"1px solid #1A2E1A",background:"#0A120A"}}>
+          {/* Step indicators */}
+          <div style={{display:"flex",borderTop:"1px solid #EEECEA",background:"#F8F7F5"}}>
             {STEPS.map(function(s, i){
               var done = i < progStep;
               var active = i === progStep;
               return (
                 <div key={i} style={{
                   flex:1,padding:"8px 4px",textAlign:"center",
-                  borderRight: i<STEPS.length-1 ? "1px solid #1A2E1A" : "none",
-                  background: active ? "rgba(77,184,150,.08)" : "transparent"
+                  borderRight: i<STEPS.length-1 ? "1px solid #EEECEA" : "none",
+                  background: active ? "#EAF5F0" : "transparent"
                 }}>
-                  <div style={{fontSize:8,fontFamily:"monospace",letterSpacing:".05em",
-                    color: done ? "#4DB896" : active ? "#8ADEC0" : "#2A4A2A",
+                  <div style={{fontSize:9,fontFamily:"monospace",letterSpacing:".04em",
+                    color: done ? "#1A7A3C" : active ? "#1E5C48" : "#C8C4BE",
                     fontWeight: active ? 700 : 400
                   }}>
                     {done ? "[v]" : active ? "[>]" : "[ ]"}
                   </div>
-                  <div style={{fontSize:8,fontFamily:"monospace",color: done?"#3A8A6A":active?"#6ABA9A":"#2A4A2A",marginTop:2}}>
+                  <div style={{fontSize:9,fontFamily:"monospace",
+                    color: done ? "#2A7A60" : active ? "#1E5C48" : "#B8B4AE",marginTop:2}}>
                     {s}
                   </div>
                 </div>
