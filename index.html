@@ -1069,8 +1069,12 @@ function LogoSVG() {
 }
 
 function App() {
-  var stateArr = _useState("idle");
-  var state = stateArr[0]; var setState = stateArr[1];
+  var stateArr = _useState(function(){
+  try {
+    var last = localStorage.getItem("opstrace_last_result");
+    return last ? "done" : "idle";
+  } catch(_) { return "idle"; }
+});
 
   var apiKeyArr = _useState(localStorage.getItem("opstrace_key") || "");
   var apiKey = apiKeyArr[0]; var setApiKey = apiKeyArr[1];
@@ -1099,8 +1103,12 @@ function App() {
   var fYearArr = _useState(new Date().getFullYear());
   var weekYear = fYearArr[0]; var setWeekYear = fYearArr[1];
 
-  var resultArr = _useState(null);
-  var result = resultArr[0]; var setResult = resultArr[1];
+  var resultArr = _useState(function(){
+  try {
+    var last = localStorage.getItem("opstrace_last_result");
+    return last ? JSON.parse(last) : null;
+  } catch(_) { return null; }
+});
 
   var xlsxArr = _useState(null);
   var xlsxBytes = xlsxArr[0]; var setXlsxBytes = xlsxArr[1];
@@ -1328,6 +1336,7 @@ function App() {
 
   function reset() {
     setState("idle"); setResult(null); setXlsxBytes(null);
+try { localStorage.removeItem("opstrace_last_result"); } catch(_) {}
     setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); setPersonaFiltro("");
     setZipImgNames([]); setImgMeta({}); setEvImgs({}); setLightbox(null); setGalPage(0);
     setFilterMode("quick"); setDateFrom(""); setDateTo(""); setWeekNum(""); setWeekYear(new Date().getFullYear());
