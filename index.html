@@ -606,13 +606,19 @@ async function analyzeWithAI(msgs, apiKey) {
     "Misaligned component|BGA short|BGA open|Lifted pad|Feeder misload|Machine stop|Wrong reel|Missing material|" +
     "ICT open|ICT short|Functional test fail|N/A. " +
     "tipo_evento: Calidad|Proceso|Material|Sistema|Seguridad|Produccion. " +
+    "actor_area: Produccion|Calidad|Proceso|Mantenimiento|Materiales|Ingenieria|PTH|SMT|AOI|ICT. " +
+    "estado_historia: Detectado|Contenido|Corregido|Validado|Cerrado. " +
+    "Para cada evento extrae: quien detecto, que accion se tomo, que actores participaron, cual es el estado real del ciclo de vida. " +
     "Maximo 15 eventos. Solo JSON sin texto extra:" +
     '{"eventos":[{"id":"EVT-001","fecha":"DD/MM/YYYY","hora":"HH:MM","turno":"1T|2T|3T",' +
     '"modelo":"N/P o N/D","linea_estacion":"L1 o N/D","reporta":"nombre",' +
     '"area_involucrada":"SMT|PTH|ICT|AOI|Calidad|Mantenimiento|Materiales|Produccion",' +
     '"tipo_evento":"Calidad|Proceso|Material|Sistema|Seguridad|Produccion",' +
     '"defecto_smt":"del catalogo o N/A","evento_detectado":"descripcion","impacto":"impacto",' +
-    '"accion_requerida":"accion","responsable_sugerido":"responsable",' +
+    '"accion_requerida":"accion","accion_ejecutada":"accion tomada o vacia si no hay",' +
+    '"responsable_sugerido":"responsable",' +
+    '"actores":["area1","area2"],' +
+    '"estado_historia":"Detectado|Contenido|Corregido|Validado|Cerrado",' +
     '"estatus":"Abierto|En proceso|Cerrado","prioridad":"Critica|Alta|Media|Baja",' +
     '"fuente_chat":"DD/MM/YY HH:MM nombre","notas":""}],' +
     '"kpis":[{"fechahora":"DD/MM/YYYY HH:MM","indicador":"nombre","valor":0.0,"unidad":"%","fuente":"nombre"}],' +
@@ -701,36 +707,114 @@ async function buildXlsx(result) {
   }
 
   var H = ["ID","Fecha","Hora","Turno","Modelo","Linea_Estacion","Reporta","Area_involucrada",
-           "Tipo_evento","Defecto_SMT","Evento_detectado","Impacto","Accion_requerida",
-           "Responsable_sugerido","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
+           "Tipo_evento","Defecto_SMT","Evento_detectado","Impacto","Accion_requerida","Accion_ejecutada",
+           "Actores","Responsable_sugerido","Estado_historia","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
 
   function addEvSheet(name, evArr) {
     var ws = wb.addWorksheet(name);
     ws.addRow(H);
     styleHdr(ws, H.length);
     evArr.forEach(function(e, ri) {
+      var actoresStr = Array.isArray(e.actores) ? e.actores.join(", ") : (e.actores || "");
       var row = ws.addRow([
         e.id, e.fecha, e.hora, e.turno, e.modelo, e.linea_estacion, e.reporta,
         e.area_involucrada, e.tipo_evento, e.defecto_smt || "N/A", e.evento_detectado,
-        e.impacto, e.accion_requerida, e.responsable_sugerido, e.estatus, e.prioridad,
-        {formula: "IF(OR(P"+(ri+2)+"=\"Abierto\",P"+(ri+2)+"=\"En proceso\"),TODAY()-B"+(ri+2)+",\"\")"},
+        e.impacto, e.accion_requerida, e.accion_ejecutada || "",
+        actoresStr, e.responsable_sugerido,
+        e.estado_historia || "Detectado",
+        e.estatus, e.prioridad,
+        {formula: "IF(OR(R"+(ri+2)+"=\"Abierto\",R"+(ri+2)+"=\"En proceso\"),TODAY()-B"+(ri+2)+",\"\")"},
         e.fuente_chat, e.notas
       ]);
       row.height = 38;
       row.eachCell({includeEmpty:false}, function(cell, col) {
         cell.font = dFont();
         cell.alignment = {wrapText:true, vertical:"top"};
-        if (col === 15) cell.fill = hFill(estFill(e.estatus));
-        else if (col === 16) cell.fill = hFill(prioFill(e.prioridad));
+        if (col === 17) {  // Estado_historia
+          var ehFill = ({
+            Detectado:"FCE8D0", Contenido:"FFF2CC", Corregido:"D0E8FC",
+            Validado:"D0F0D8", Cerrado:"E2F0D9"
+          })[e.estado_historia] || "FFFFFF";
+          cell.fill = hFill(ehFill);
+        } else if (col === 18) cell.fill = hFill(estFill(e.estatus));
+        else if (col === 19) cell.fill = hFill(prioFill(e.prioridad));
         else cell.fill = hFill(ri % 2 === 0 ? "FFFFFF" : C.alt);
       });
     });
-    ws.columns = [6,12,8,6,16,18,18,20,14,20,40,30,34,24,12,10,10,30,30].map(function(w){ return {width:w}; });
+    ws.columns = [6,12,8,6,16,18,18,20,14,20,40,26,30,30,24,22,14,12,10,10,28,28].map(function(w){ return {width:w}; });
     ws.views = [{state:"frozen",ySplit:1}];
   }
 
   addEvSheet("Bitacora", ev);
   addEvSheet("Pendientes", ev.filter(function(e){ return e.estatus !== "Cerrado"; }));
+
+  // ── Incident_Stories sheet ──
+  var wsIS = wb.addWorksheet("Incident_Stories");
+  wsIS.mergeCells("A1:H1");
+  var isT = wsIS.getCell("A1");
+  isT.value = "Incident Story Model - SMTintel by ALDA";
+  isT.fill = hFill(C.hBg); isT.font = hFont(12);
+  wsIS.getRow(1).height = 22;
+
+  // Estado funnel header
+  var ESTADOS = ["Detectado","Contenido","Corregido","Validado","Cerrado"];
+  var eColors = {Detectado:"FCE8D0",Contenido:"FFF2CC",Corregido:"D0E8FC",Validado:"D0F0D8",Cerrado:"E2F0D9"};
+  var eRow = wsIS.addRow(ESTADOS);
+  eRow.height = 16;
+  ESTADOS.forEach(function(est, ci) {
+    var cell = eRow.getCell(ci+1);
+    cell.fill = hFill(eColors[est] || "FFFFFF");
+    cell.font = {name:"Segoe UI",size:10,bold:true};
+    cell.alignment = {horizontal:"center"};
+  });
+
+  // Count per estado
+  var countRow = wsIS.addRow(ESTADOS.map(function(est){
+    return ev.filter(function(e){ return (e.estado_historia||"Detectado") === est; }).length;
+  }));
+  countRow.height = 14;
+  ESTADOS.forEach(function(est, ci) {
+    var cell = countRow.getCell(ci+1);
+    cell.font = {name:"Segoe UI",size:11,bold:true};
+    cell.alignment = {horizontal:"center"};
+  });
+
+  wsIS.addRow([]);
+
+  // Full story per event
+  var storyH = ["ID","Fecha","Linea","Modelo","Evento_detectado","Actor_reporta","Actores_involucrados","Accion_ejecutada","Estado_historia","Impacto","Prioridad","Notas"];
+  var shRow = wsIS.addRow(storyH);
+  shRow.height = 16;
+  for (var ci2 = 1; ci2 <= storyH.length; ci2++) {
+    var sc = shRow.getCell(ci2);
+    sc.fill = hFill(C.hBg); sc.font = hFont(); sc.border = brd();
+    sc.alignment = {horizontal:"center",vertical:"middle"};
+  }
+
+  ev.forEach(function(e, ri) {
+    var actoresStr2 = Array.isArray(e.actores) ? e.actores.join(", ") : (e.actores || "");
+    var r = wsIS.addRow([
+      e.id, e.fecha, e.linea_estacion, e.modelo,
+      e.evento_detectado, e.reporta, actoresStr2,
+      e.accion_ejecutada || e.accion_requerida,
+      e.estado_historia || "Detectado",
+      e.impacto, e.prioridad, e.notas
+    ]);
+    r.height = 36;
+    r.eachCell({includeEmpty:false}, function(cell, col) {
+      cell.font = dFont();
+      cell.alignment = {wrapText:true,vertical:"top"};
+      if (col === 9) {
+        var ef = eColors[e.estado_historia] || "FFFFFF";
+        cell.fill = hFill(ef);
+      } else {
+        cell.fill = hFill(ri%2===0 ? "FFFFFF" : C.alt);
+      }
+    });
+  });
+
+  wsIS.columns = [8,12,16,18,40,20,28,36,16,26,10,30].map(function(w){ return {width:w}; });
+  wsIS.views = [{state:"frozen",ySplit:4}];
 
   // KPIs sheet
   var wsKpi = wb.addWorksheet("KPIs_chat");
@@ -1887,7 +1971,7 @@ function App() {
                 </span>
               </div>
               <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>
-                {["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos"].map(function(s){
+                {["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){
                   return <span key={s} style={{background:"rgba(200,216,150,.12)",border:"1px solid rgba(200,216,150,.2)",borderRadius:4,padding:"2px 8px",fontSize:9,color:"#F2ECC8"}}>{s}</span>;
                 })}
               </div>
@@ -2324,6 +2408,98 @@ function App() {
               </div>
             )}
           </div>
+
+          {/* ── INCIDENT STORY KANBAN ── */}
+          {ev.length > 0 && (
+            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
+              <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                <div>
+                  <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Incident Story Model</h3>
+                  <span style={{fontSize:10,color:"#8A8580"}}>Ciclo de vida de los incidentes operativos</span>
+                </div>
+                <span style={{fontSize:9.5,color:"#2A7A60",fontWeight:600,background:"#EAF5F0",borderRadius:4,padding:"3px 8px"}}>{ev.length} incidentes</span>
+              </div>
+              {/* Kanban columns */}
+              <div style={{display:"flex",overflowX:"auto",padding:"14px 12px",gap:8,minHeight:120}}>
+                {[
+                  {key:"Detectado",color:"#E8A050",bg:"#FEF6ED",border:"#F5D0A0"},
+                  {key:"Contenido",color:"#B87820",bg:"#FEF9E8",border:"#F5E4A0"},
+                  {key:"Corregido",color:"#2952A3",bg:"#EBF0FC",border:"#BDD0F8"},
+                  {key:"Validado",color:"#1A7A3C",bg:"#EBF8EE",border:"#A0DEB4"},
+                  {key:"Cerrado",color:"#6A6560",bg:"#F8F7F5",border:"#DDDBD7"}
+                ].map(function(col){
+                  var colEvs = ev.filter(function(e){
+                    return (e.estado_historia || "Detectado") === col.key;
+                  });
+                  return (
+                    <div key={col.key} style={{flex:"0 0 160px",minWidth:160,background:col.bg,border:"1px solid "+col.border,borderRadius:10,overflow:"hidden"}}>
+                      <div style={{padding:"8px 10px",borderBottom:"1px solid "+col.border,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <span style={{fontSize:10.5,fontWeight:700,color:col.color}}>{col.key}</span>
+                        <span style={{fontSize:10,fontWeight:800,color:"#fff",background:col.color,borderRadius:99,width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center"}}>{colEvs.length}</span>
+                      </div>
+                      <div style={{padding:"7px",display:"flex",flexDirection:"column",gap:5}}>
+                        {colEvs.length === 0 && (
+                          <div style={{fontSize:9,color:col.color,opacity:.4,textAlign:"center",padding:"10px 0",fontStyle:"italic"}}>vacio</div>
+                        )}
+                        {colEvs.map(function(e){
+                          var actors = Array.isArray(e.actores) ? e.actores : (e.actores ? [e.actores] : []);
+                          return (
+                            <div key={e.id} style={{background:"#fff",borderRadius:7,border:"1px solid "+col.border,padding:"8px 9px",boxShadow:"0 1px 3px rgba(0,0,0,.05)"}}>
+                              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                                <span style={{fontSize:8.5,fontWeight:700,color:col.color,fontFamily:"monospace"}}>{e.id}</span>
+                                <span style={{fontSize:7.5,color:"#8A8580"}}>{e.hora}</span>
+                              </div>
+                              <div style={{fontSize:10,fontWeight:600,color:"#1A1714",lineHeight:1.3,marginBottom:5}}>
+                                {e.evento_detectado ? e.evento_detectado.slice(0,55)+(e.evento_detectado.length>55?"...":"") : ""}
+                              </div>
+                              {e.accion_ejecutada && (
+                                <div style={{fontSize:8.5,color:"#2A7A60",background:"#EAF5F0",borderRadius:4,padding:"2px 6px",marginBottom:4,lineHeight:1.3}}>
+                                  {e.accion_ejecutada.slice(0,50)}
+                                </div>
+                              )}
+                              {actors.length > 0 && (
+                                <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:3}}>
+                                  {actors.slice(0,3).map(function(a,ai){
+                                    return <span key={ai} style={{fontSize:7.5,background:"#F0F4F8",color:"#6A6560",borderRadius:3,padding:"1px 5px"}}>{a}</span>;
+                                  })}
+                                </div>
+                              )}
+                              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                                <span style={{fontSize:7.5,color:"#8A8580"}}>{e.linea_estacion}</span>
+                                <span style={{fontSize:7.5,fontWeight:700,borderRadius:3,padding:"1px 5px",
+                                  background:({Critica:"#FEE2E2",Alta:"#FEF3C7",Media:"#EBF0FC",Baja:"#EBF8EE"})[e.prioridad]||"#F8F7F5",
+                                  color:({Critica:"#991B1B",Alta:"#92400E",Media:"#1E3C82",Baja:"#145A28"})[e.prioridad]||"#6A6560"
+                                }}>{e.prioridad}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Funnel bar */}
+              <div style={{borderTop:"1px solid #EEECEA",padding:"10px 16px",background:"#F8F7F5",display:"flex",gap:4,alignItems:"center"}}>
+                {[
+                  {key:"Detectado",color:"#E8A050"},
+                  {key:"Contenido",color:"#B87820"},
+                  {key:"Corregido",color:"#2952A3"},
+                  {key:"Validado",color:"#1A7A3C"},
+                  {key:"Cerrado",color:"#6A6560"}
+                ].map(function(s){
+                  var n = ev.filter(function(e){ return (e.estado_historia||"Detectado")===s.key; }).length;
+                  return (
+                    <div key={s.key} style={{flex:1,textAlign:"center"}}>
+                      <div style={{height:4,borderRadius:2,background:s.color,opacity:n>0?1:.2,marginBottom:3}}/>
+                      <div style={{fontSize:9,fontWeight:700,color:s.color}}>{n}</div>
+                      <div style={{fontSize:7.5,color:"#8A8580"}}>{s.key.slice(0,4)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Bitacora table */}
           <div className="tcard">
