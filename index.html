@@ -2,7 +2,16 @@
 
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
+<meta charset="UTF-8"/><!-- OpsTrace v2026-03-15 15:16:27 -->
+<script>
+window.onerror = function(msg, src, line, col, err) {
+  var box = document.createElement('div');
+  box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#C0392B;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all';
+  box.innerHTML = '<strong>ERROR</strong><br>' + msg + '<br>Line: ' + line + ' Col: ' + col + '<br>' + (err ? err.toString() : '');
+  document.body.appendChild(box);
+  return false;
+};
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>OpsTrace by SMTintel</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -304,30 +313,46 @@ color:#fff;font-size:18px;font-weight:700;z-index:1
 }
 
 /* – INVESTIGATION CAROUSEL – */
-.ic-wrap{position:relative;width:100%;overflow:hidden;padding:20px 0 16px;background:#F8F7F5;border-radius:14px;margin-bottom:14px;border:1px solid #DDDBD7}
-.ic-track{display:flex;align-items:center;justify-content:center;gap:12px;padding:0 16px;transition:transform .35s cubic-bezier(.4,0,.2,1)}
-.ic-card{flex-shrink:0;background:#fff;border-radius:14px;border:1px solid #DDDBD7;cursor:pointer;transition:all .35s cubic-bezier(.4,0,.2,1);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.ic-card.active{width:100%;max-width:540px;box-shadow:0 4px 20px rgba(0,0,0,.12);border-color:#2A7A60;z-index:2;cursor:default}
-.ic-card.side{width:88px;opacity:.55;transform:scale(.92);filter:blur(0px)}
-.ic-card.side:hover{opacity:.75;transform:scale(.95)}
+.ic-wrap{position:relative;width:100%;padding:20px 0 16px;background:#F4F3F0;border-radius:14px;margin-bottom:14px;border:1px solid #DDDBD7;overflow:hidden}
+.ic-stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:380px;padding:0 8px}
+.ic-card{position:absolute;background:#fff;border-radius:16px;border:1px solid #DDDBD7;overflow:hidden;cursor:pointer;transition:all .4s cubic-bezier(.25,.46,.45,.94);will-change:transform}
+.ic-card.active{
+position:relative;width:calc(100% - 80px);max-width:480px;
+box-shadow:0 12px 40px rgba(0,0,0,.18);border-color:#2A7A60;
+z-index:3;cursor:default;transform:translateX(0) scale(1)
+}
+.ic-card.prev{
+width:calc(100% - 120px);max-width:380px;
+transform:translateX(-65%) scale(.82) rotateY(8deg);
+opacity:.6;z-index:2;filter:brightness(.85);
+box-shadow:0 4px 16px rgba(0,0,0,.12)
+}
+.ic-card.next{
+width:calc(100% - 120px);max-width:380px;
+transform:translateX(65%) scale(.82) rotateY(-8deg);
+opacity:.6;z-index:2;filter:brightness(.85);
+box-shadow:0 4px 16px rgba(0,0,0,.12)
+}
+.ic-card.far-prev{transform:translateX(-90%) scale(.65) rotateY(12deg);opacity:.3;z-index:1}
+.ic-card.far-next{transform:translateX(90%) scale(.65) rotateY(-12deg);opacity:.3;z-index:1}
 .ic-card-head{padding:14px 16px 10px;border-bottom:1px solid #EEECEA;display:flex;align-items:flex-start;gap:10px}
 .ic-tabs{display:flex;overflow-x:auto;border-bottom:1px solid #EEECEA;background:#F8F7F5;scrollbar-width:none}
 .ic-tabs::-webkit-scrollbar{display:none}
 .ic-tab{flex-shrink:0;padding:8px 13px;font-size:9.5px;font-weight:600;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;color:#8A8580;transition:all .15s;white-space:nowrap}
 .ic-tab.on{border-bottom-color:#1E5C48;color:#1E5C48;background:#fff}
-.ic-body{padding:14px 16px;min-height:160px;overflow-y:auto;max-height:320px}
+.ic-body{padding:14px 16px;min-height:160px;overflow-y:auto;max-height:300px}
 .ic-field{margin-bottom:10px}
 .ic-field-label{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8A8580;margin-bottom:3px}
 .ic-field-val{font-size:11.5px;color:#1A1714;line-height:1.45}
 .ic-field-val.empty{color:#C8C4BE;font-style:italic}
 .ic-badge{display:inline-block;font-size:9px;font-weight:600;border-radius:4px;padding:2px 7px;margin:2px 3px 2px 0}
-.ic-nav{display:flex;align-items:center;justify-content:center;gap:16px;padding:10px 0 4px}
-.ic-nav-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid #DDDBD7;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#3D3A36;transition:all .15s}
+.ic-nav{display:flex;align-items:center;justify-content:center;gap:16px;padding:14px 0 4px;position:relative;z-index:10}
+.ic-nav-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid #DDDBD7;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#3D3A36;transition:all .15s;box-shadow:0 2px 6px rgba(0,0,0,.08)}
 .ic-nav-btn:hover{background:#1E5C48;color:#fff;border-color:#1E5C48}
-.ic-nav-btn:disabled{opacity:.3;cursor:default}
+.ic-nav-btn:disabled{opacity:.3;cursor:default;box-shadow:none}
 .ic-dots{display:flex;gap:5px;align-items:center}
-.ic-dot{width:6px;height:6px;border-radius:50%;background:#DDDBD7;transition:all .2s}
-.ic-dot.on{background:#1E5C48;width:18px;border-radius:3px}
+.ic-dot{width:6px;height:6px;border-radius:50%;background:#DDDBD7;transition:all .25s}
+.ic-dot.on{background:#1E5C48;width:20px;border-radius:3px}
 .ic-related{background:#FEF9E8;border:1px solid #F5E4A0;border-radius:8px;padding:10px 13px;margin-top:10px}
 
 @media(max-width:600px){
@@ -380,23 +405,7 @@ to   { opacity:1; }
 <body>
 <div id="root"></div>
 
-<script type="text/babel">
-var _useState = React.useState;
-var _useRef = React.useRef;
-var _useCallback = React.useCallback;
-
-// ── HELPERS ──────────────────────────────────────────────────────────────────
-
-function to24h(h, min, sec, mer) {
-  var hour = parseInt(h);
-  var m = (mer || "").toLowerCase().replace(/[\s.]/g, "");
-  if (m.indexOf("p") === 0 && hour !== 12) hour += 12;
-  if (m.indexOf("a") === 0 && hour === 12) hour = 0;
-  return {
-    hour: hour,
-    timeStr: String(hour).padStart(2,"0") + ":" + min + ":" + (sec || "00")
-  };
-}
+<script>
 
 function parseTurno(h, min, dateIso) {
   var m = parseInt(min) || 0;
@@ -407,20 +416,17 @@ function parseTurno(h, min, dateIso) {
     dow = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
   }
 
-  // Saturday (6): single shift 09:00-18:00
   if (dow === 6) {
     if (h >= 9 && h < 18) return "1T-Sab";
     if (h >= 18) return "2T-Sab";
     return "FS-Sab";
   }
 
-  // Sunday (0): 1T 06:00-18:00, 2T 18:00-06:00
   if (dow === 0) {
     if (h >= 6 && h < 18) return "1T-Dom";
     return "2T-Dom";
   }
 
-  // Friday (5): 3T ends 09:00, 1T 09:00-15:15, 2T 15:15-23:59
   if (dow === 5) {
     if (h >= 0 && h < 6) return "3T";
     if (h === 6 || h === 7 || h === 8) return "3T"; // Fri 3T extends to 09:00
@@ -428,10 +434,6 @@ function parseTurno(h, min, dateIso) {
     return "2T";
   }
 
-  // Mon-Thu (1-4):
-  // 3T: 00:00-06:00
-  // 1T: 06:00-15:15
-  // 2T: 15:15-00:00
   if (h >= 0 && h < 6) return "3T";
   if (h < 15 || (h === 15 && m < 15)) return "1T";
   return "2T";
@@ -485,7 +487,6 @@ function filterByDays(msgs, days) {
   return sorted.filter(function(m){ return m.dateIso >= cutStr; });
 }
 
-// Get ISO week number for a Date
 function getISOWeek(d) {
   var date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   var day = date.getUTCDay() || 7;
@@ -494,7 +495,6 @@ function getISOWeek(d) {
   return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
 }
 
-// Get Mon-Sun date range for ISO week number + year
 function getWeekRange(weekN, year) {
   var jan4 = new Date(Date.UTC(year, 0, 4));
   var day = jan4.getUTCDay() || 7;
@@ -523,14 +523,12 @@ function filterMsgs(msgs, mode, days, dateFrom, dateTo, weekNum, weekYear) {
     return sorted.filter(function(m){ return m.dateIso >= wr.from && m.dateIso <= wr.to; });
   }
 
-  // default: quick (last N days)
   var last = new Date(sorted[sorted.length-1].dateIso);
   var cutoff = new Date(last);
   cutoff.setDate(cutoff.getDate() - days + 1);
   var cutStr = cutoff.toISOString().slice(0,10);
   return sorted.filter(function(m){ return m.dateIso >= cutStr; });
 }
-
 
 function cleanMsgs(msgs) {
   var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|cifrados de extremo|ahora es admin/i;
@@ -540,9 +538,8 @@ function cleanMsgs(msgs) {
   });
 }
 
-// _zipRef: holds JSZip object for lazy per-image loading
 var _zipRef = null;
-// _imgCache: { fname: dataURL } - grows on demand
+
 var _imgCache = {};
 
 async function readZip(file) {
@@ -601,7 +598,6 @@ async function readZip(file) {
   return { txt:txt, imgNames:imgNames, imgMeta:imgMeta };
 }
 
-// Load one image on demand - result cached in _imgCache
 async function loadImg(fname) {
   if (_imgCache[fname]) return _imgCache[fname];
   if (!_zipRef) return null;
@@ -616,9 +612,6 @@ async function loadImg(fname) {
     return url;
   } catch(_) { return null; }
 }
-
-
-// ── AI ────────────────────────────────────────────────────────────────────────
 
 async function analyzeWithAI(msgs, apiKey) {
   var sample = msgs.slice(0,150).map(function(m){
@@ -698,8 +691,6 @@ async function analyzeWithAI(msgs, apiKey) {
   throw new Error("Error procesando respuesta. Intenta con 1 o 3 dias.");
 }
 
-// ── EXCEL ─────────────────────────────────────────────────────────────────────
-
 async function buildXlsx(result) {
   var ev = result.eventos || [];
   var kpis = result.kpis || [];
@@ -775,7 +766,6 @@ async function buildXlsx(result) {
   addEvSheet("Bitacora", ev);
   addEvSheet("Pendientes", ev.filter(function(e){ return e.estatus !== "Cerrado"; }));
 
-  // ── Incident_Stories sheet ──
   var wsIS = wb.addWorksheet("Incident_Stories");
   wsIS.mergeCells("A1:H1");
   var isT = wsIS.getCell("A1");
@@ -783,7 +773,6 @@ async function buildXlsx(result) {
   isT.fill = hFill(C.hBg); isT.font = hFont(12);
   wsIS.getRow(1).height = 22;
 
-  // Estado funnel header
   var ESTADOS = ["Detectado","Contenido","Corregido","Validado","Cerrado"];
   var eColors = {Detectado:"FCE8D0",Contenido:"FFF2CC",Corregido:"D0E8FC",Validado:"D0F0D8",Cerrado:"E2F0D9"};
   var eRow = wsIS.addRow(ESTADOS);
@@ -795,7 +784,6 @@ async function buildXlsx(result) {
     cell.alignment = {horizontal:"center"};
   });
 
-  // Count per estado
   var countRow = wsIS.addRow(ESTADOS.map(function(est){
     return ev.filter(function(e){ return (e.estado_historia||"Detectado") === est; }).length;
   }));
@@ -808,7 +796,6 @@ async function buildXlsx(result) {
 
   wsIS.addRow([]);
 
-  // Full story per event
   var storyH = ["ID","Fecha","Linea","Modelo","Evento_detectado","Actor_reporta","Actores_involucrados","Accion_ejecutada","Estado_historia","Impacto","Prioridad","Notas"];
   var shRow = wsIS.addRow(storyH);
   shRow.height = 16;
@@ -843,7 +830,6 @@ async function buildXlsx(result) {
   wsIS.columns = [8,12,16,18,40,20,28,36,16,26,10,30].map(function(w){ return {width:w}; });
   wsIS.views = [{state:"frozen",ySplit:4}];
 
-  // KPIs sheet
   var wsKpi = wb.addWorksheet("KPIs_chat");
   var kH = ["FechaHora","Indicador","Valor","Unidad","Fuente_chat"];
   wsKpi.addRow(kH); styleHdr(wsKpi, kH.length);
@@ -853,7 +839,6 @@ async function buildXlsx(result) {
   });
   wsKpi.columns = [22,28,10,8,32].map(function(w){ return {width:w}; });
 
-  // Resumen sheet
   var wsRes = wb.addWorksheet("Resumen_Junta");
   wsRes.mergeCells("A1:F1");
   var t1 = wsRes.getCell("A1");
@@ -869,7 +854,6 @@ async function buildXlsx(result) {
   });
   wsRes.columns = [55,30,5,42,14,5].map(function(w){ return {width:w}; });
 
-  // Dashboard sheet
   var mods = [];
   var modSet = {};
   ev.forEach(function(e){ if(e.modelo && !modSet[e.modelo]){ modSet[e.modelo]=true; mods.push(e.modelo); } });
@@ -894,7 +878,7 @@ async function buildXlsx(result) {
   Object.keys(defCounts).sort(function(a,b){return defCounts[b]-defCounts[a];}).forEach(function(k){
     var r = wsDash.addRow([k, defCounts[k]]); r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
   });
-  // Timeline por hora en Excel
+
   wsDash.addRow([]);
   var rTl = wsDash.addRow(["Timeline de comportamiento - Eventos por hora"]);
   rTl.getCell(1).fill = hFill(C.hBg); rTl.getCell(1).font = hFont();
@@ -918,7 +902,6 @@ async function buildXlsx(result) {
   });
   wsDash.columns = [28,10,10,10,10,10,12,10].map(function(w){ return {width:w}; });
 
-  // Directorio sheet
   var wsDir = wb.addWorksheet("Directorio_Equipo");
   var dH = ["Nombre","Departamento","Rol","Mensajes","Eventos","Area_owner"];
   wsDir.addRow(dH); styleHdr(wsDir, dH.length);
@@ -935,7 +918,6 @@ async function buildXlsx(result) {
   });
   wsDir.columns = [24,22,20,16,16,22].map(function(w){ return {width:w}; });
 
-  // Catalogos sheet
   var wsCat = wb.addWorksheet("Catalogos_Reglas");
   wsCat.mergeCells("A1:D1");
   var ct = wsCat.getCell("A1");
@@ -955,7 +937,23 @@ async function buildXlsx(result) {
   return await wb.xlsx.writeBuffer();
 }
 
-// ── LOGO SVG ──────────────────────────────────────────────────────────────────
+</script>
+
+<script type="text/babel">
+var _useState = React.useState;
+var _useRef = React.useRef;
+var _useCallback = React.useCallback;
+
+function to24h(h, min, sec, mer) {
+  var hour = parseInt(h);
+  var m = (mer || "").toLowerCase().replace(/[\s.]/g, "");
+  if (m.indexOf("p") === 0 && hour !== 12) hour += 12;
+  if (m.indexOf("a") === 0 && hour === 12) hour = 0;
+  return {
+    hour: hour,
+    timeStr: String(hour).padStart(2,"0") + ":" + min + ":" + (sec || "00")
+  };
+}
 
 function LogoSVG() {
   return (
@@ -979,11 +977,11 @@ function LogoSVG() {
         </linearGradient>
       </defs>
 
-      {/* Chip icon */}
+      
       <rect x="28" y="34" width="232" height="232" rx="36" ry="36" fill="url(#chipOuter)"/>
       <rect x="50" y="56" width="188" height="188" rx="22" ry="22" fill="url(#chipInner)"/>
 
-      {/* Pins top */}
+      
       <rect x="76"  y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
       <rect x="100" y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
       <rect x="124" y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
@@ -991,7 +989,7 @@ function LogoSVG() {
       <rect x="172" y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
       <rect x="196" y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
 
-      {/* Pins bottom */}
+      
       <rect x="76"  y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
       <rect x="100" y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
       <rect x="124" y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
@@ -999,7 +997,7 @@ function LogoSVG() {
       <rect x="172" y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
       <rect x="196" y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
 
-      {/* Pins left */}
+      
       <rect x="16" y="74"  width="14" height="13" rx="3" fill="#4A7A4E"/>
       <rect x="16" y="98"  width="14" height="13" rx="3" fill="#4A7A4E"/>
       <rect x="16" y="122" width="14" height="13" rx="3" fill="#4A7A4E"/>
@@ -1007,7 +1005,7 @@ function LogoSVG() {
       <rect x="16" y="170" width="14" height="13" rx="3" fill="#4A7A4E"/>
       <rect x="16" y="194" width="14" height="13" rx="3" fill="#4A7A4E"/>
 
-      {/* Pins right */}
+      
       <rect x="258" y="74"  width="14" height="13" rx="3" fill="#4A7A4E"/>
       <rect x="258" y="98"  width="14" height="13" rx="3" fill="#4A7A4E"/>
       <rect x="258" y="122" width="14" height="13" rx="3" fill="#4A7A4E"/>
@@ -1015,46 +1013,46 @@ function LogoSVG() {
       <rect x="258" y="170" width="14" height="13" rx="3" fill="#4A7A4E"/>
       <rect x="258" y="194" width="14" height="13" rx="3" fill="#4A7A4E"/>
 
-      {/* Waveform left */}
+      
       <polyline points="60,145 78,145 88,118 100,145"
         fill="none" stroke="#7A9E7E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
 
-      {/* S curve */}
+      
       <path d="M100,145 C105,145 110,126 121,120 C132,114 145,117 145,128 C145,139 132,143 121,145 C110,147 105,153 110,161 C115,168 128,168 138,163 C145,160 149,153 149,145"
         fill="none" stroke="url(#sGrad)" strokeWidth="2.8" strokeLinecap="round"/>
 
-      {/* Waveform right */}
+      
       <polyline points="149,145 160,118 170,158 180,145 228,145"
         fill="none" stroke="#7A9E7E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
 
-      {/* Node dots */}
+      
       <circle cx="88"  cy="118" r="3.2" fill="#7A9E7E"/>
       <circle cx="160" cy="118" r="3.2" fill="#7A9E7E"/>
       <circle cx="180" cy="145" r="2.8" fill="#7A9E7E" opacity="0.7"/>
 
-      {/* Divider */}
+      
       <line x1="60" y1="182" x2="228" y2="182" stroke="#2E5C33" strokeWidth="1" opacity="0.7"/>
 
-      {/* Circuit traces */}
+      
       <polyline points="74,182 74,194 94,194 94,204"  fill="none" stroke="#3D6B42" strokeWidth="1.2" opacity="0.65"/>
       <polyline points="144,182 144,198"               fill="none" stroke="#3D6B42" strokeWidth="1.2" opacity="0.65"/>
       <polyline points="214,182 214,194 194,194 194,204" fill="none" stroke="#3D6B42" strokeWidth="1.2" opacity="0.65"/>
       <line x1="94" y1="204" x2="194" y2="204" stroke="#3D6B42" strokeWidth="1.2" opacity="0.65"/>
 
-      {/* Circuit dots */}
+      
       <circle cx="74"  cy="194" r="2.5" fill="#4A7A4E" opacity="0.8"/>
       <circle cx="144" cy="198" r="2.5" fill="#4A7A4E" opacity="0.8"/>
       <circle cx="214" cy="194" r="2.5" fill="#4A7A4E" opacity="0.8"/>
       <circle cx="94"  cy="204" r="2"   fill="#4A7A4E" opacity="0.7"/>
       <circle cx="194" cy="204" r="2"   fill="#4A7A4E" opacity="0.7"/>
 
-      {/* ALDA text */}
+      
       <text x="144" y="238"
         fontFamily="'Arial Black','Helvetica Neue',Arial,sans-serif"
         fontSize="28" fontWeight="900" fill="#7A9E7E"
         textAnchor="middle" letterSpacing="6">ALDA</text>
 
-      {/* OpsTrace wordmark */}
+      
       <text x="312" y="158"
         fontFamily="'Arial Black','Helvetica Neue',Arial,sans-serif"
         fontSize="88" fontWeight="900" fill="#1B4D20" letterSpacing="-2">Ops</text>
@@ -1062,21 +1060,19 @@ function LogoSVG() {
         fontFamily="'Arial','Helvetica Neue',Arial,sans-serif"
         fontSize="88" fontWeight="300" fill="#2E6B32" letterSpacing="-1">Trace</text>
 
-      {/* Underline */}
+      
       <line x1="312" y1="176" x2="870" y2="176" stroke="url(#underline)" strokeWidth="2.5"/>
 
-      {/* Taglines */}
+      
       <text x="314" y="202"
         fontFamily="'Arial','Helvetica Neue',Arial,sans-serif"
         fontSize="18" fontWeight="400" fill="#5A8060" letterSpacing="0.5">Operational Event Intelligence</text>
       <text x="314" y="224"
         fontFamily="'Arial','Helvetica Neue',Arial,sans-serif"
-        fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">by SMTintel · ALDA</text>
+        fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">by SMTintel &#183; ALDA</text>
     </svg>
   );
 }
-
-// ── APP ───────────────────────────────────────────────────────────────────────
 
 function App() {
   var stateArr = _useState("idle");
@@ -1094,7 +1090,6 @@ function App() {
   var daysArr = _useState(3);
   var days = daysArr[0]; var setDays = daysArr[1];
 
-  // Slicer: "quick" | "range" | "week"
   var fmodeArr = _useState("quick");
   var filterMode = fmodeArr[0]; var setFilterMode = fmodeArr[1];
 
@@ -1134,11 +1129,9 @@ function App() {
   var imgMetaArr = _useState({});
   var imgMeta = imgMetaArr[0]; var setImgMeta = imgMetaArr[1];
 
-  // evImgs: { "EVT-001": ["filename.jpg", ...] }
   var evImgsArr = _useState({});
   var evImgs = evImgsArr[0]; var setEvImgs = evImgsArr[1];
 
-  // lightbox
   var lbArr = _useState(null);
   var lightbox = lbArr[0]; var setLightbox = lbArr[1];
 
@@ -1146,7 +1139,6 @@ function App() {
   var galPage = galPageArr[0]; var setGalPage = galPageArr[1];
   var GAL_PAGE_SIZE = 48;
 
-  // ── RCCA_MEMORY ──────────────────────────────────────────────────────────────
   var RCCA_KEY = "opstrace_rcca";
 
   var rccaArr = _useState(function(){
@@ -1155,15 +1147,12 @@ function App() {
   });
   var rccaList = rccaArr[0]; var setRccaList = rccaArr[1];
 
-  // Active RCCA form: null | { eventId, prefill }
   var rccaFormArr = _useState(null);
   var rccaForm = rccaFormArr[0]; var setRccaForm = rccaFormArr[1];
 
-  // Active RCCA detail view
   var rccaDetailArr = _useState(null);
   var rccaDetail = rccaDetailArr[0]; var setRccaDetail = rccaDetailArr[1];
 
-  // RCCA filter
   var rccaFilterArr = _useState("");
   var rccaFilter = rccaFilterArr[0]; var setRccaFilter = rccaFilterArr[1];
 
@@ -1188,7 +1177,6 @@ function App() {
     a.click(); URL.revokeObjectURL(a.href);
   }
 
-  // Similarity score between an event and a RCCA (0-100)
   function rccaSimilarity(ev, rcca) {
     var score = 0;
     if (!ev || !rcca) return 0;
@@ -1200,26 +1188,21 @@ function App() {
     var rcProb = (rcca.problema||"").toLowerCase().trim();
     var evTipo = (ev.tipo_evento||"").toLowerCase().trim();
 
-    // Exact modelo match = 40pts
     if (evModelo && rcModelo && evModelo !== "n/d" && evModelo === rcModelo) score += 40;
-    // Partial modelo
+
     else if (evModelo && rcModelo && evModelo !== "n/d" && (rcModelo.indexOf(evModelo) >= 0 || evModelo.indexOf(rcModelo) >= 0)) score += 20;
 
-    // Linea match = 25pts
     if (evLinea && rcLinea && evLinea !== "n/d" && evLinea === rcLinea) score += 25;
     else if (evLinea && rcLinea && evLinea !== "n/d" && (rcLinea.indexOf(evLinea) >= 0 || evLinea.indexOf(rcLinea) >= 0)) score += 12;
 
-    // Defecto / problema match = 25pts
     if (evDef && evDef !== "n/a" && rcProb && rcProb.indexOf(evDef) >= 0) score += 25;
     else if (evDef && evDef !== "n/a" && rcProb && evDef.split(" ").some(function(w){ return w.length > 3 && rcProb.indexOf(w) >= 0; })) score += 12;
 
-    // Tipo match in patron = 10pts
     if (evTipo && rcca.patron_detectado && rcca.patron_detectado.toLowerCase().indexOf(evTipo) >= 0) score += 10;
 
     return Math.min(score, 100);
   }
 
-  // Get top matches for an event (score >= 30)
   function getMatches(ev) {
     return rccaList
       .map(function(r){ return {rcca: r, score: rccaSimilarity(ev, r)}; })
@@ -1228,7 +1211,6 @@ function App() {
       .slice(0, 3);
   }
 
-  // Auto-suggestions: computed after ev is available (guarded)
   var autoSuggestions = [];
 
   var HIST_KEY = "opstrace_history";
@@ -1284,7 +1266,6 @@ function App() {
   var fileRef = _useRef();
   var fileNameRef = _useRef("chat.zip");
 
-  // ── TIMER ──
   var timerArr = _useState(0);
   var elapsed = timerArr[0]; var setElapsed = timerArr[1];
   var elapsedMsArr = _useState(0);
@@ -1333,7 +1314,6 @@ function App() {
       var res = await analyzeWithAI(clean, apiKey.trim());
       setProgStep(4); setProg(82);
 
-      // No auto-adjuntar - el usuario adjunta manualmente desde la bitacora
       setEvImgs({});
 
       var bytes = await buildXlsx(res);
@@ -1361,7 +1341,6 @@ function App() {
     setRccaForm(null); setRccaDetail(null);
   }
 
-  // Derived data
   var ev = (result && result.eventos) ? result.eventos : [];
   var kpis = (result && result.kpis) ? result.kpis : [];
   var res = (result && result.resumen) ? result.resumen : {};
@@ -1369,7 +1348,6 @@ function App() {
   var crit = ev.filter(function(e){ return e.prioridad === "Critica" && e.estatus !== "Cerrado"; });
   var cerr = ev.filter(function(e){ return e.estatus === "Cerrado"; });
 
-  // RCCA auto-suggestions (safe: ev is guaranteed array here)
   var autoSuggestions = ev.filter(function(e){
     var linked = rccaList.some(function(r){
       return r.event_ids && r.event_ids.indexOf(e.id) >= 0;
@@ -1377,7 +1355,6 @@ function App() {
     return !linked && getMatches(e).length > 0;
   });
 
-  // Charts
   var modMap = {};
   ev.forEach(function(e){ if(e.modelo) modMap[e.modelo] = (modMap[e.modelo]||0)+1; });
   var byMod = Object.keys(modMap).map(function(k){ return {l:k,n:modMap[k]}; }).sort(function(a,b){return b.n-a.n;}).slice(0,5);
@@ -1407,7 +1384,6 @@ function App() {
   var byDef = Object.keys(defMap2).map(function(k){return{l:k,n:defMap2[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,5);
   var mxD = Math.max.apply(null, byDef.map(function(x){return x.n;}).concat([1]));
 
-  // ── TIMELINE por hora ──
   var horaMap = {};
   var horaTipoMap = {};
   var TIPOS = ["Calidad","Proceso","Material","Sistema","Produccion","Seguridad"];
@@ -1426,13 +1402,11 @@ function App() {
   });
   var mxH = Math.max.apply(null, byHora.map(function(x){return x.n;}).concat([1]));
 
-  // Color por tipo para timeline
   var tipoColor = {
     Calidad:"#2952A3", Proceso:"#2A7A60", Material:"#B87820",
     Sistema:"#6B2DA8", Produccion:"#1A7A3C", Seguridad:"#C0392B", "N/D":"#8A8580"
   };
 
-  // Turno label por hora
   function horaToTurno(hh) {
     var h = parseInt(hh);
     if (h >= 6 && h < 15) return "1T";
@@ -1441,8 +1415,6 @@ function App() {
   }
   var turnoColor = {"1T":"#2A7A60","2T":"#2952A3","3T":"#6B2DA8"};
 
-
-  // ── HEATMAP hora x turno ──
   var hmMap = {};
   ev.forEach(function(e) {
     if (!e.hora) return;
@@ -1450,7 +1422,7 @@ function App() {
     if (isNaN(hParsed)) return;
     var hh = String(hParsed).padStart(2,"0");
     var turno = e.turno || "";
-    // Normalize turno to base category
+
     var cat = "t1";
     if (turno.indexOf("3T") === 0) cat = "t3";
     else if (turno.indexOf("2T") === 0) cat = "t2";
@@ -1463,7 +1435,6 @@ function App() {
   });
   var hmMax = 1;
   hmRows.forEach(function(r){ hmMax = Math.max(hmMax, r.t3, r.t1, r.t2); });
-
 
   var personaSet = {};
   ev.forEach(function(e){
@@ -1500,27 +1471,26 @@ function App() {
     );
   }
 
-  // ── Helper: generate smart RCCA_ID from event data ──
   function genRccaId(eventIds, evList) {
-    // RCCA-{EVT_ID}-{DEFECTO_SHORT}-{LINEA_SHORT}-{FECHA_SHORT}
+
     var parts = ["RCCA"];
     var firstId = eventIds && eventIds.length > 0 ? eventIds[0] : null;
     if (firstId) {
       parts.push(firstId.replace("EVT-","E").replace("-",""));
       var evData = evList.find(function(e){ return e.id === firstId; });
       if (evData) {
-        // Defecto short (first word, max 6 chars, no spaces)
+
         if (evData.defecto_smt && evData.defecto_smt !== "N/A") {
           var defShort = evData.defecto_smt.split(" ")[0].slice(0,6).toUpperCase();
           parts.push(defShort);
         } else if (evData.tipo_evento) {
           parts.push(evData.tipo_evento.slice(0,4).toUpperCase());
         }
-        // Linea short
+
         if (evData.linea_estacion && evData.linea_estacion !== "N/D") {
           parts.push(evData.linea_estacion.replace(/[^A-Za-z0-9]/g,"").slice(0,5).toUpperCase());
         }
-        // Date short YYYYMMDD
+
         if (evData.fecha) {
           var dp = evData.fecha.split("/");
           if (dp.length === 3) parts.push(dp[2].slice(2) + dp[1] + dp[0]);
@@ -1532,302 +1502,16 @@ function App() {
     return parts.join("-");
   }
 
-  // ── InvestigationCarousel ──────────────────────────────────────────────────
   function InvestigationCarousel(props) {
-    var cards = props.cards; // array of RCCA records
-    var allRcca = props.allRcca;
-    var idxArr = _useState(0);
-    var idx = idxArr[0]; var setIdx = idxArr[1];
-    var tabArr = _useState(0);
-    var tab = tabArr[0]; var setTab = tabArr[1];
-
-    if (!cards || cards.length === 0) return null;
-
-    var cur = cards[idx];
-    var prev = idx > 0 ? cards[idx-1] : null;
-    var next = idx < cards.length-1 ? cards[idx+1] : null;
-
-    // Map RCCA fields to 8 investigation steps
-    var TABS = [
-      {key:"identification", label:"1. Identification"},
-      {key:"hypothesis",     label:"2. Hypothesis"},
-      {key:"exposure",       label:"3. Exposure"},
-      {key:"material",       label:"4. Material"},
-      {key:"correction",     label:"5. Correction"},
-      {key:"pattern",        label:"6. Pattern"},
-      {key:"actions",        label:"7. Actions"},
-      {key:"evidence",       label:"8. Evidence"},
-    ];
-
-    function Val(p) {
-      return p.v
-        ? <div className="ic-field-val">{p.v}</div>
-        : <div className="ic-field-val empty">—</div>;
-    }
-    function Field(p) {
-      return (
-        <div className="ic-field">
-          <div className="ic-field-label">{p.label}</div>
-          <Val v={p.value}/>
-        </div>
-      );
-    }
-
-    function renderTab(r, t) {
-      if (t === 0) return ( // Identification
-        <div>
-          <Field label="RCCA ID" value={r.rcca_id}/>
-          <Field label="Model / Part Number" value={r.modelo}/>
-          <Field label="Line / Station" value={r.linea}/>
-          <Field label="Date" value={r.fecha}/>
-          <Field label="Problem Statement" value={r.problema}/>
-          <Field label="Linked Events" value={r.event_ids && r.event_ids.length > 0 ? r.event_ids.join(", ") : null}/>
-        </div>
-      );
-      if (t === 1) return ( // Hypothesis
-        <div>
-          <div className="ic-field">
-            <div className="ic-field-label">Root Cause Hypothesis</div>
-            <Val v={r.causa_raiz}/>
-          </div>
-          <div className="ic-field">
-            <div className="ic-field-label">Pattern Detected</div>
-            <Val v={r.patron_detectado}/>
-          </div>
-          <div className="ic-field">
-            <div className="ic-field-label">Problem Context</div>
-            <Val v={r.problema}/>
-          </div>
-        </div>
-      );
-      if (t === 2) return ( // Exposure
-        <div>
-          <div style={{background:"#FEF0EE",border:"1px solid #F4CCCC",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
-            <div className="ic-field-label" style={{color:"#C0392B"}}>Exposure Window</div>
-            <div className="ic-field-val">{r.patron_detectado || "—"}</div>
-          </div>
-          <Field label="Detection Point" value={r.contencion}/>
-          <Field label="Confirmed With" value={r.causa_raiz}/>
-        </div>
-      );
-      if (t === 3) return ( // Material
-        <div>
-          <Field label="Material / Components Affected" value={r.modelo}/>
-          <Field label="Scope Estimate" value={r.problema}/>
-          <Field label="Containment Coverage" value={r.contencion}/>
-        </div>
-      );
-      if (t === 4) return ( // Correction
-        <div>
-          <div style={{background:"#EBF8EE",border:"1px solid #A0DEB4",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
-            <div className="ic-field-label" style={{color:"#1A7A3C"}}>Containment Action</div>
-            <div className="ic-field-val">{r.contencion || "—"}</div>
-          </div>
-          <Field label="Corrective Action" value={r.accion_correctiva}/>
-          <Field label="Correction Status" value={r.accion_correctiva ? "Implemented" : "Pending"}/>
-        </div>
-      );
-      if (t === 5) return ( // Pattern
-        <div>
-          <div style={{background:"#F5F0FE",border:"1px solid #C8A8F8",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
-            <div className="ic-field-label" style={{color:"#6B2DA8"}}>Pattern / Error Mechanism</div>
-            <div className="ic-field-val">{r.patron_detectado || "—"}</div>
-          </div>
-          <Field label="System Weakness" value={r.causa_raiz}/>
-          <Field label="Recurrence Risk" value={r.leccion_aprendida}/>
-        </div>
-      );
-      if (t === 6) return ( // Actions
-        <div>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {[
-              {l:"Immediate / Containment", v:r.contencion,        color:"#B87820", bg:"#FEF9E8"},
-              {l:"Corrective Action",       v:r.accion_correctiva, color:"#2952A3", bg:"#EBF0FC"},
-              {l:"Preventive Action",       v:r.accion_preventiva, color:"#1A7A3C", bg:"#EBF8EE"},
-              {l:"Structural / Lesson",     v:r.leccion_aprendida, color:"#6B2DA8", bg:"#F5F0FE"},
-            ].map(function(a){
-              return (
-                <div key={a.l} style={{background:a.bg,border:"1px solid "+a.color+"40",borderRadius:7,padding:"9px 12px"}}>
-                  <div className="ic-field-label" style={{color:a.color}}>{a.l}</div>
-                  <div className="ic-field-val">{a.v || "—"}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-      if (t === 7) return ( // Evidence
-        <div>
-          <Field label="Linked Event IDs" value={r.event_ids && r.event_ids.length > 0 ? r.event_ids.join(", ") : null}/>
-          <Field label="Traceability / Records" value={r.contencion}/>
-          <Field label="Lesson Learned" value={r.leccion_aprendida}/>
-          {r.event_ids && r.event_ids.length > 0 && (
-            <div style={{marginTop:8}}>
-              <div className="ic-field-label">Linked Incidents</div>
-              <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>
-                {r.event_ids.map(function(id){
-                  return <span key={id} className="ic-badge" style={{background:"#EAF5F0",color:"#2A7A60"}}>{id}</span>;
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      );
-      return null;
-    }
-
-    // Related incidents: other RCCA with same modelo or linea, excluding current
-    var related = allRcca.filter(function(r){
-      if (r.rcca_id === cur.rcca_id) return false;
-      return (r.modelo && cur.modelo && r.modelo.toLowerCase() === cur.modelo.toLowerCase())
-          || (r.linea && cur.linea && r.linea.toLowerCase() === cur.linea.toLowerCase())
-          || (r.patron_detectado && cur.patron_detectado &&
-              r.patron_detectado.toLowerCase().indexOf(cur.patron_detectado.toLowerCase().split(" ")[0]) >= 0);
-    }).slice(0,3);
-
-    // Severity color
-    var sevColor = cur.prioridad === "Critica" ? "#C0392B"
-      : cur.prioridad === "Alta" ? "#B87820"
-      : cur.prioridad === "Media" ? "#2952A3" : "#1A7A3C";
-
+    if (!props.cards || props.cards.length === 0) return null;
     return (
-      <div className="ic-wrap">
-        {/* Header */}
-        <div style={{padding:"0 16px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
-            <div style={{fontSize:11,fontWeight:700,color:"#1A1714",letterSpacing:".02em"}}>Investigation Carousel</div>
-            <div style={{fontSize:9.5,color:"#8A8580"}}>{cards.length} case{cards.length!==1?"s":""} in memory</div>
-          </div>
-          <div style={{fontSize:9,fontFamily:"monospace",color:"#2A7A60",background:"#EAF5F0",borderRadius:4,padding:"3px 8px",fontWeight:600}}>
-            {idx+1} / {cards.length}
-          </div>
-        </div>
-
-        {/* Track */}
-        <div className="ic-track">
-          {/* Prev card */}
-          {prev && (
-            <div className="ic-card side" onClick={function(){ setIdx(idx-1); setTab(0); }}>
-              <div style={{padding:"12px 10px"}}>
-                <div style={{fontSize:8,fontFamily:"monospace",color:"#8A8580",marginBottom:4}}>{prev.rcca_id}</div>
-                <div style={{fontSize:10,fontWeight:600,color:"#3D3A36",lineHeight:1.3}}>
-                  {(prev.problema||"").slice(0,35)}{prev.problema && prev.problema.length>35?"...":""}
-                </div>
-                <div style={{fontSize:8.5,color:"#8A8580",marginTop:4}}>{prev.linea}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Active card */}
-          <div className="ic-card active">
-            {/* Card header */}
-            <div className="ic-card-head">
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                  <span style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:sevColor,background:sevColor+"15",borderRadius:4,padding:"2px 7px"}}>{cur.rcca_id}</span>
-                  <span style={{fontSize:8.5,color:"#8A8580"}}>{cur.fecha}</span>
-                </div>
-                <div style={{fontSize:12.5,fontWeight:700,color:"#1A1714",lineHeight:1.3,marginBottom:4}}>
-                  {(cur.problema||"").slice(0,70)}{cur.problema && cur.problema.length>70?"...":""}
-                </div>
-                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                  {cur.modelo && <span className="ic-badge" style={{background:"#F8F7F5",color:"#6A6560",border:"1px solid #DDDBD7"}}>{cur.modelo}</span>}
-                  {cur.linea && <span className="ic-badge" style={{background:"#EAF5F0",color:"#2A7A60"}}>{cur.linea}</span>}
-                  {cur.causa_raiz && <span className="ic-badge" style={{background:"#F5F0FE",color:"#6B2DA8"}}>RC: {cur.causa_raiz.slice(0,20)}</span>}
-                </div>
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="ic-tabs">
-              {TABS.map(function(t,ti){
-                return (
-                  <button key={t.key} className={"ic-tab"+(tab===ti?" on":"")}
-                    onClick={function(){ setTab(ti); }}>
-                    {t.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Tab body */}
-            <div className="ic-body">
-              {renderTab(cur, tab)}
-
-              {/* Related incidents — shown in all tabs at bottom */}
-              {related.length > 0 && (
-                <div className="ic-related">
-                  <div style={{fontSize:9,fontWeight:700,color:"#B87820",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6}}>
-                    Related Incident History ({related.length})
-                  </div>
-                  {related.map(function(r){
-                    return (
-                      <div key={r.rcca_id} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:7,paddingBottom:7,borderBottom:"1px solid #F5E4A0"}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{display:"flex",gap:5,alignItems:"center",marginBottom:2}}>
-                            <span style={{fontSize:8.5,fontFamily:"monospace",fontWeight:700,color:"#B87820"}}>{r.rcca_id}</span>
-                            <span style={{fontSize:8,color:"#8A8580"}}>{r.fecha}</span>
-                            {r.linea && <span style={{fontSize:8,background:"#F8F7F5",color:"#6A6560",borderRadius:3,padding:"1px 5px"}}>{r.linea}</span>}
-                          </div>
-                          <div style={{fontSize:10,color:"#3D3A36",lineHeight:1.3,marginBottom:3}}>
-                            {(r.problema||"").slice(0,50)}
-                          </div>
-                          {r.leccion_aprendida && (
-                            <div style={{fontSize:9,color:"#6B2DA8",background:"#F5F0FE",borderRadius:3,padding:"2px 7px",display:"inline-block"}}>
-                              {r.leccion_aprendida.slice(0,50)}
-                            </div>
-                          )}
-                        </div>
-                        <button onClick={function(){
-                            var ni = cards.findIndex(function(c){ return c.rcca_id === r.rcca_id; });
-                            if (ni >= 0) { setIdx(ni); setTab(0); }
-                          }}
-                          style={{background:"#F5E4A0",border:"none",borderRadius:5,padding:"3px 9px",fontSize:9,fontWeight:600,color:"#B87820",cursor:"pointer",flexShrink:0}}>
-                          Go
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Next card */}
-          {next && (
-            <div className="ic-card side" onClick={function(){ setIdx(idx+1); setTab(0); }}>
-              <div style={{padding:"12px 10px"}}>
-                <div style={{fontSize:8,fontFamily:"monospace",color:"#8A8580",marginBottom:4}}>{next.rcca_id}</div>
-                <div style={{fontSize:10,fontWeight:600,color:"#3D3A36",lineHeight:1.3}}>
-                  {(next.problema||"").slice(0,35)}{next.problema && next.problema.length>35?"...":""}
-                </div>
-                <div style={{fontSize:8.5,color:"#8A8580",marginTop:4}}>{next.linea}</div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Navigation */}
-        <div className="ic-nav">
-          <button className="ic-nav-btn" disabled={idx===0}
-            onClick={function(){ if(idx>0){setIdx(idx-1);setTab(0);} }}>
-            &lsaquo;
-          </button>
-          <div className="ic-dots">
-            {cards.map(function(_,di){
-              return <div key={di} className={"ic-dot"+(di===idx?" on":"")}/>;
-            })}
-          </div>
-          <button className="ic-nav-btn" disabled={idx===cards.length-1}
-            onClick={function(){ if(idx<cards.length-1){setIdx(idx+1);setTab(0);} }}>
-            &rsaquo;
-          </button>
-        </div>
+      <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#1A1714"}}>Investigation Carousel</div>
+        <div style={{fontSize:10,color:"#8A8580"}}>{props.cards.length} cases in memory</div>
       </div>
     );
   }
 
-  // ── RccaForm: modal form to create/edit RCCA ──
   function RccaForm(props) {
     var init = props.init || {};
     var onSave = props.onSave; var onClose = props.onClose;
@@ -1841,7 +1525,6 @@ function App() {
       {key:"leccion_aprendida",label:"Leccion Aprendida",  rows:2},
     ];
 
-    // Build initial event_ids from prefill
     var initIds = init.event_ids || [];
 
     var formArr = _useState(function(){
@@ -1864,13 +1547,12 @@ function App() {
       var n = {}; Object.keys(form).forEach(function(fk){ n[fk]=form[fk]; }); n[k]=v; setForm(n);
     }
 
-    // Toggle event selection and regenerate RCCA_ID
     function toggleEvent(evId) {
       var cur = form.event_ids;
       var newIds = cur.indexOf(evId) >= 0
         ? cur.filter(function(x){ return x !== evId; })
         : cur.concat([evId]);
-      // Auto-fill modelo/linea/fecha from first selected event
+
       var firstEv = newIds.length > 0 ? ev.find(function(e){ return e.id === newIds[0]; }) : null;
       var n = {}; Object.keys(form).forEach(function(fk){ n[fk]=form[fk]; });
       n.event_ids = newIds;
@@ -1893,7 +1575,7 @@ function App() {
         <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:820,maxHeight:"90vh",overflow:"auto",paddingBottom:32}}
           onClick={function(e){ e.stopPropagation(); }}>
 
-          {/* Header */}
+          
           <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",zIndex:1}}>
             <div>
               <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>Nueva RCCA</div>
@@ -1904,7 +1586,7 @@ function App() {
 
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
 
-            {/* Event selector */}
+            
             <div>
               <div style={{fontSize:10,fontWeight:700,color:"#2A7A60",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>
                 Vincular a eventos ({form.event_ids.length} seleccionados)
@@ -1924,7 +1606,7 @@ function App() {
                           border:"1.5px solid " + (selected ? "#2A7A60" : "#DDDBD7"),
                           borderRadius:7,padding:"8px 11px",cursor:"pointer",transition:"all .15s"
                         }}>
-                        {/* Checkbox */}
+                        
                         <div style={{
                           width:16,height:16,borderRadius:4,flexShrink:0,
                           background: selected ? "#1E5C48" : "#fff",
@@ -1932,7 +1614,7 @@ function App() {
                           display:"flex",alignItems:"center",justifyContent:"center",
                           color:"#fff",fontSize:10,fontWeight:700
                         }}>{selected ? "v" : ""}</div>
-                        {/* Event info */}
+                        
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{display:"flex",alignItems:"center",gap:6}}>
                             <span style={{fontSize:9.5,fontWeight:700,fontFamily:"monospace",color: selected?"#1E5C48":"#8A8580"}}>{e.id}</span>
@@ -1955,13 +1637,13 @@ function App() {
               )}
             </div>
 
-            {/* RCCA_ID preview */}
+            
             <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:9.5,color:"#8A8580",fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>RCCA ID:</span>
               <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:"#1E5C48"}}>{form.rcca_id}</span>
             </div>
 
-            {/* Modelo + Linea + Fecha */}
+            
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
               {[{k:"modelo",l:"Modelo/N-P"},{k:"linea",l:"Linea"},{k:"fecha",l:"Fecha"}].map(function(f){
                 return (
@@ -1974,7 +1656,7 @@ function App() {
               })}
             </div>
 
-            {/* Text fields */}
+            
             {fields.map(function(f){
               return (
                 <div key={f.key}>
@@ -1988,7 +1670,7 @@ function App() {
               );
             })}
 
-            {/* Save */}
+            
             <button
               onClick={function(){
                 if (!form.problema || !form.causa_raiz) { alert("Completa Problema y Causa Raiz"); return; }
@@ -2003,8 +1685,6 @@ function App() {
     );
   }
 
-
-  // ── RccaCard: compact card for a RCCA record ──
   function RccaCard(props) {
     var r = props.r; var evMatch = props.evMatch; var score = props.score;
     return (
@@ -2041,7 +1721,6 @@ function App() {
     );
   }
 
-  // ── RccaCell: inline cell for bitacora table ──
   function RccaCell(props) {
     var evId = props.evId;
     var linked = rccaList.filter(function(r){ return r.event_ids && r.event_ids.indexOf(evId) >= 0; });
@@ -2074,7 +1753,6 @@ function App() {
     );
   }
 
-  // ── WeekPreview: shows date range + shortcuts for week slicer ──
   function WeekPreview(props) {
     var wn = props.weekNum; var wy = props.weekYear;
     var setWN = props.setWeekNum; var setWY = props.setWeekYear;
@@ -2117,8 +1795,6 @@ function App() {
     );
   }
 
-  // ── Concurrency queue: max 4 simultaneous image loads ──
-  // Stored outside component to survive re-renders
   var _loadQueue = {running:0, max:4, pending:[]};
   function enqueueLoad(fname, cb) {
     if (_loadQueue.running < _loadQueue.max) {
@@ -2136,7 +1812,6 @@ function App() {
     }
   }
 
-  // ── LazyImg: loads only when visible via IntersectionObserver ──
   function LazyImg(props) {
     var fname = props.fname;
     var className = props.className || "";
@@ -2149,7 +1824,6 @@ function App() {
     var enqueuedRef = _useRef(false);
     var domRef = _useRef(null);
 
-    // Observe visibility
     React.useEffect(function() {
       var el = domRef.current;
       if (!el) return;
@@ -2164,7 +1838,6 @@ function App() {
       return function(){ obs.disconnect(); };
     }, []);
 
-    // Load when visible, using queue
     React.useEffect(function() {
       if (!visible || src || enqueuedRef.current) return;
       enqueuedRef.current = true;
@@ -2187,7 +1860,6 @@ function App() {
     );
   }
 
-  // ── Evidencias helpers ──
   function toggleImg(evId, fname) {
     var cur = evImgs[evId] || [];
     var next = cur.indexOf(fname) >= 0
@@ -2201,7 +1873,6 @@ function App() {
 
   var imgNames = zipImgNames;
 
-  // ── Components ──
   function Lightbox(props) {
     var src = props.src; var name = props.name;
     var meta2 = props.meta; var onClose = props.onClose;
@@ -2270,7 +1941,7 @@ function App() {
 
   return (
     <div>
-      {/* LIGHTBOX */}
+      
       {lightbox && (
         <div className="lb-overlay" onClick={function(){ setLightbox(null); }}>
           <div className="lb-box" onClick={function(e){e.stopPropagation();}}>
@@ -2292,7 +1963,7 @@ function App() {
         </div>
       )}
 
-      {/* ── RCCA FORM MODAL — root level so it works on any screen ── */}
+      
       {rccaForm && (
         <RccaForm
           init={rccaForm}
@@ -2301,7 +1972,7 @@ function App() {
         />
       )}
 
-      {/* ── RCCA DETAIL MODAL — root level ── */}
+      
       {rccaDetail && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9997,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
           onClick={function(){ setRccaDetail(null); }}>
@@ -2350,21 +2021,21 @@ function App() {
           </div>
         </div>
       )}
-      {/* HEADER - Casper style */}
+      
       <div style={{marginBottom:32,paddingTop:8}}>
-        {/* Logo row */}
+        
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
           <LogoSVG/>
           <span style={{fontSize:11,color:"#9A9590",fontWeight:500,letterSpacing:".02em",flexShrink:0}}>carmacorte.github.io</span>
         </div>
 
-        {/* SOLENOID ANIMATION - continuous loop */}
+        
         <div style={{marginBottom:16,overflow:"hidden",height:48}}>
           <svg width="100%" height="48" viewBox="0 0 600 48" preserveAspectRatio="xMidYMid meet">
-            {/* Base trace */}
+            
             <line x1="0" y1="24" x2="600" y2="24" stroke="#C8D8B8" strokeWidth="1" opacity="0.35"/>
 
-            {/* Solenoid coil - draws and resets in loop */}
+            
             <polyline
               points="0,24 30,24 36,8 48,8 54,38 66,38 72,8 84,8 90,38 102,38 108,8 120,8 126,38 138,38 144,24 600,24"
               fill="none" stroke="#2A7A60" strokeWidth="2"
@@ -2372,7 +2043,7 @@ function App() {
               strokeDasharray="400" strokeDashoffset="400"
               style={{animation:"trace-loop 3.5s cubic-bezier(.4,0,.2,1) infinite"}}/>
 
-            {/* Vias - appear and disappear in sync */}
+            
             <circle cx="54" cy="38" r="0" fill="#F4F3F0" stroke="#2A7A60" strokeWidth="1.5"
               style={{animation:"via-loop 3.5s ease .4s infinite"}}/>
             <circle cx="90" cy="38" r="0" fill="#F4F3F0" stroke="#2A7A60" strokeWidth="1.5"
@@ -2384,15 +2055,15 @@ function App() {
             <circle cx="108" cy="8" r="0" fill="#2A7A60"
               style={{animation:"via-loop 3.5s ease .62s infinite"}}/>
 
-            {/* Signal dot travelling down the trace after coil draws */}
+            
             <circle cx="144" cy="24" r="3.5" fill="#4DB896" opacity="0"
               style={{animation:"signal-travel 3.5s linear .85s infinite"}}/>
 
-            {/* Pulse dot - always pulsing */}
+            
             <circle cx="570" cy="24" r="2.5" fill="#2A7A60"
               style={{animation:"pulse-glow 1.4s ease-in-out infinite"}}/>
 
-            {/* Net label */}
+            
             <text x="170" y="20" fontSize="8" fill="#9A9590" fontFamily="Courier New,monospace"
               opacity="0" style={{animation:"fade-in .4s ease 1.5s both"}}>
               OPS_TRC
@@ -2400,7 +2071,7 @@ function App() {
           </svg>
         </div>
 
-        {/* Display headline */}
+        
         <div className="anim-header" style={{marginBottom:6}}>
           <span style={{fontSize:11,fontWeight:600,color:"#2A7A60",letterSpacing:".08em",textTransform:"uppercase"}}>Operational Event Intelligence</span>
         </div>
@@ -2411,7 +2082,7 @@ function App() {
         <p className="anim-header-desc" style={{fontSize:14,color:"#8A8580",fontWeight:400,lineHeight:1.5,maxWidth:420}}>
           Convierte conversaciones operativas dispersas en memoria estructurada de incidentes de manufactura.
         </p>
-        {/* Chips row */}
+        
         <div className="anim-chips" style={{display:"flex",gap:8,marginTop:16,flexWrap:"wrap"}}>
           {["OpsTrace","SMT","AOI","Incident Story","Root Cause"].map(function(t){
             return <span key={t} style={{fontSize:10.5,fontWeight:600,color:"#6A8060",background:"#EAF0E4",border:"1px solid #C8D8B8",borderRadius:99,padding:"4px 12px"}}>{t}</span>;
@@ -2419,7 +2090,7 @@ function App() {
         </div>
       </div>
 
-      {/* API KEY */}
+      
       <div className="api-bar">
         <label>API Key:</label>
         <input className="api-input" type="password" placeholder="sk-ant-api03-..."
@@ -2432,10 +2103,10 @@ function App() {
         </div>
       </div>
 
-      {/* IDLE - Casper minimal upload */}
+      
       {state === "idle" && (
         <div>
-          {/* Upload zone - minimal, almost invisible until hover */}
+          
           <div
             style={{
               border:"1.5px dashed #C8C4BE",borderRadius:16,
@@ -2450,7 +2121,7 @@ function App() {
             <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}}
               onChange={function(e){ handle(e.target.files[0]); }}/>
             <div style={{padding:"48px 32px",textAlign:"center"}}>
-              {/* Minimal icon */}
+              
               <div style={{width:48,height:48,borderRadius:12,background:"#EEF3EA",border:"1px solid #C8D8BC",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",color:"#4A7A50"}}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
@@ -2476,9 +2147,9 @@ function App() {
             </div>
           </div>
 
-          {/* ── SLICER DE FECHAS ── */}
+          
           <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.04)"}}>
-            {/* Mode tabs */}
+            
             <div style={{display:"flex",borderBottom:"1px solid #EEECEA"}}>
               {[["quick","Rapido"],["week","Por semana"],["range","Rango"]].map(function(tab){
                 var active = filterMode === tab[0];
@@ -2492,7 +2163,7 @@ function App() {
               })}
             </div>
 
-            {/* Quick mode */}
+            
             {filterMode === "quick" && (
               <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                 <span style={{fontSize:11.5,fontWeight:500,color:"#8A8580",marginRight:4}}>Ultimos:</span>
@@ -2508,7 +2179,7 @@ function App() {
               </div>
             )}
 
-            {/* Week mode */}
+            
             {filterMode === "week" && (
               <div style={{padding:"12px 16px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}>
@@ -2531,7 +2202,7 @@ function App() {
               </div>
             )}
 
-            {/* Range mode */}
+            
             {filterMode === "range" && (
               <div style={{padding:"12px 16px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}>
@@ -2553,7 +2224,7 @@ function App() {
                 {dateFrom && dateTo && (
                   <div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"7px 12px",display:"inline-flex",alignItems:"center",gap:6}}>
                     <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateFrom}</span>
-                    <span style={{fontSize:10,color:"#8A8580"}}>→</span>
+                    <span style={{fontSize:10,color:"#8A8580"}}>-></span>
                     <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateTo}</span>
                     <span style={{fontSize:9,color:"#6A8060",marginLeft:4}}>
                       {Math.round(Math.abs(new Date(dateTo)-new Date(dateFrom))/86400000)+1} dias
@@ -2566,7 +2237,7 @@ function App() {
         </div>
       )}
 
-      {/* ── HISTORIAL ── */}
+      
       {state === "idle" && history.length > 0 && (
         <div style={{marginTop:8}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,paddingLeft:2}}>
@@ -2589,9 +2260,9 @@ function App() {
             var critColor = h.criticos > 0 ? "#C0392B" : "#1A7A3C";
             return (
               <div key={h.id} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 16px",marginBottom:8,boxShadow:"0 1px 2px rgba(0,0,0,.04)",display:"flex",alignItems:"center",gap:12}}>
-                {/* Color bar */}
+                
                 <div style={{width:3,alignSelf:"stretch",borderRadius:99,background: h.criticos>0 ? "#C0392B" : "#1E5C48",flexShrink:0}}/>
-                {/* Info */}
+                
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:12,fontWeight:700,color:"#1A1714",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                     {h.grupo || h.fileName.replace(".zip","").replace("WhatsApp_Chat_-_","").replace(/_/g," ")}
@@ -2604,7 +2275,7 @@ function App() {
                     {h.imgs > 0 && <span style={{fontSize:9.5,color:"#6B2DA8",background:"#F5F0FE",borderRadius:4,padding:"2px 6px"}}>{h.imgs} imgs</span>}
                   </div>
                 </div>
-                {/* Time + actions */}
+                
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
                   <span style={{fontSize:9,color:"#B8B4AE"}}>{timeStr}</span>
                   {h.durationSecs > 0 && (
@@ -2629,11 +2300,11 @@ function App() {
         </div>
       )}
 
-      {/* LOADING */}
+      
       {state === "loading" && (
         <div style={{background:"#fff",border:"1.5px solid #DDDBD7",borderRadius:16,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
 
-          {/* Top bar */}
+          
           <div style={{background:"#F8F7F5",borderBottom:"1px solid #EEECEA",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>OpsTrace - Operational Event Intelligence</span>
             <div style={{display:"flex",gap:6}}>
@@ -2643,7 +2314,7 @@ function App() {
             </div>
           </div>
 
-          {/* Main timer */}
+          
           <div style={{padding:"28px 20px 16px",display:"flex",alignItems:"flex-end",justifyContent:"center",gap:0}}>
             <div style={{fontFamily:"'Courier New',monospace",fontSize:68,fontWeight:700,color:"#1E5C48",lineHeight:1,letterSpacing:"-3px"}}>
               {String(Math.floor(elapsed/3600)).padStart(1,"0")}:{String(Math.floor((elapsed%3600)/60)).padStart(2,"0")}:{String(elapsed%60).padStart(2,"0")}
@@ -2653,7 +2324,7 @@ function App() {
             </div>
           </div>
 
-          {/* Step label */}
+          
           <div style={{textAlign:"center",marginBottom:16,padding:"0 20px"}}>
             <div style={{fontSize:11,fontFamily:"monospace",color:"#2A7A60",letterSpacing:".08em"}}>
               {progStep === 0 && "> READING_ZIP..."}
@@ -2669,7 +2340,7 @@ function App() {
             )}
           </div>
 
-          {/* Progress bar */}
+          
           <div style={{padding:"0 20px",marginBottom:10}}>
             <div style={{background:"#EEECEA",borderRadius:3,height:7,overflow:"hidden"}}>
               <div style={{
@@ -2687,7 +2358,7 @@ function App() {
             </div>
           </div>
 
-          {/* Step indicators */}
+          
           <div style={{display:"flex",borderTop:"1px solid #EEECEA",background:"#F8F7F5"}}>
             {STEPS.map(function(s, i){
               var done = i < progStep;
@@ -2715,7 +2386,7 @@ function App() {
         </div>
       )}
 
-      {/* ERROR */}
+      
       {state === "error" && (
         <div>
           <div className="errc">Error: {errMsg}</div>
@@ -2723,12 +2394,12 @@ function App() {
         </div>
       )}
 
-      {/* DONE */}
+      
       {state === "done" && result && (
         <div>
           <button className="resetbtn" onClick={reset}>Nuevo analisis</button>
 
-          {/* Download bar */}
+          
           <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
             <div>
               <h3 style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>Excel listo para junta</h3>
@@ -2751,7 +2422,7 @@ function App() {
             </button>
           </div>
 
-          {/* Galeria de imagenes del ZIP */}
+          
           {imgNames.length > 0 && (
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
               <div style={{padding:"12px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
@@ -2769,7 +2440,7 @@ function App() {
                 </span>
               </div>
 
-              {/* Pagination controls top */}
+              
               {imgNames.length > GAL_PAGE_SIZE && (
                 <div style={{padding:"8px 16px",borderBottom:"1px solid #EEECEA",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:"#FAFAF9"}}>
                   <button onClick={function(){ setGalPage(0); }}
@@ -2798,7 +2469,7 @@ function App() {
                 </div>
               )}
 
-              {/* Image grid - only current page */}
+              
               <div style={{padding:"12px 16px",display:"flex",gap:10,flexWrap:"wrap"}}>
                 {imgNames.slice(galPage*GAL_PAGE_SIZE, (galPage+1)*GAL_PAGE_SIZE).map(function(fname){
                   var meta2 = imgMeta[fname];
@@ -2843,7 +2514,7 @@ function App() {
             </div>
           )}
 
-          {/* Stats cards */}
+          
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04)"}}>
               <div style={{fontSize:28,fontWeight:800,color:"#1E5C48",lineHeight:1,marginBottom:4}}>{ev.length}</div>
@@ -2863,7 +2534,7 @@ function App() {
             </div>
           </div>
 
-          {/* KPIs */}
+          
           {kpis.length > 0 && (
             <div className="tcard">
               <div className="tcard-hdr"><h3>KPIs en chat</h3></div>
@@ -2886,7 +2557,7 @@ function App() {
             </div>
           )}
 
-          {/* ── TIMELINE DE COMPORTAMIENTO DE PLANTA ── */}
+          
           {byHora.length >= 2 && (
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
               <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -2904,17 +2575,17 @@ function App() {
                 {byHora.map(function(x, i) {
                   var pct = (x.n / mxH) * 100;
                   var tc = turnoColor[horaToTurno(x.h)] || "#2A7A60";
-                  // dominant tipo for this hour
+
                   var domTipo = "N/D";
                   var domCount = 0;
                   Object.keys(x.tipos).forEach(function(t){ if(x.tipos[t]>domCount){domCount=x.tipos[t];domTipo=t;} });
                   return (
                     <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:9}}>
-                      {/* Hour label */}
+                      
                       <div style={{fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,color:"#3D3A36",width:28,flexShrink:0,textAlign:"right"}}>{x.h}</div>
-                      {/* Turno indicator */}
+                      
                       <div style={{width:3,height:22,borderRadius:99,background:tc,flexShrink:0}}/>
-                      {/* Bar */}
+                      
                       <div style={{flex:1,background:"#EEECEA",borderRadius:99,height:10,position:"relative",overflow:"hidden"}}>
                         <div style={{
                           position:"absolute",left:0,top:0,bottom:0,
@@ -2924,9 +2595,9 @@ function App() {
                         }}/>
   
                       </div>
-                      {/* Count */}
+                      
                       <div style={{fontSize:11,fontWeight:700,color:"#3D3A36",width:16,textAlign:"right",flexShrink:0}}>{x.n}</div>
-                      {/* Dominant tipo badge */}
+                      
                       <div style={{
                         fontSize:8.5,fontWeight:600,color:tipoColor[domTipo]||"#8A8580",
                         background:(tipoColor[domTipo]||"#8A8580")+"14",
@@ -2936,7 +2607,7 @@ function App() {
                   );
                 })}
 
-                {/* Turno legend separators */}
+                
                 <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #EEECEA",display:"flex",gap:16,flexWrap:"wrap"}}>
                   <span style={{fontSize:10,color:"#8A8580",fontWeight:500}}>Turnos aproximados:</span>
                   <span style={{fontSize:10,color:"#2A7A60",fontWeight:600}}>1T 06:00-15:14</span>
@@ -2953,7 +2624,7 @@ function App() {
             </div>
           )}
 
-          {/* ── MAPA DE CALOR hora x turno ── */}
+          
           {hmRows.length >= 2 && (
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
               <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
@@ -3012,7 +2683,7 @@ function App() {
                   </tbody>
                 </table>
               </div>
-              {/* Summary row */}
+              
               <div style={{padding:"10px 20px",borderTop:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",gap:16,flexWrap:"wrap"}}>
                 {[
                   {label:"3T",val:hmRows.reduce(function(a,r){return a+r.t3;},0),c:"#6B2DA8"},
@@ -3031,7 +2702,7 @@ function App() {
             </div>
           )}
 
-          {/* Charts row 1 */}
+          
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
               <h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Por modelo</h4>
@@ -3088,7 +2759,7 @@ function App() {
             </div>
           </div>
 
-          {/* Charts row 2 - SMT Pareto + Tipo */}
+          
           {(byDef.length > 0 || byTipo.length > 0) && (
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
               {byDef.length > 0 && (
@@ -3122,7 +2793,7 @@ function App() {
             </div>
           )}
 
-          {/* Persona filter */}
+          
           <div className="pf-card">
             <div className="pf-hdr">
               <h3>Filtro por persona</h3>
@@ -3179,7 +2850,7 @@ function App() {
             )}
           </div>
 
-          {/* ── INCIDENT STORY KANBAN ── */}
+          
           {ev.length > 0 && (
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
               <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
@@ -3189,7 +2860,7 @@ function App() {
                 </div>
                 <span style={{fontSize:9.5,color:"#2A7A60",fontWeight:600,background:"#EAF5F0",borderRadius:4,padding:"3px 8px"}}>{ev.length} incidentes</span>
               </div>
-              {/* Kanban columns */}
+              
               <div style={{display:"flex",overflowX:"auto",padding:"14px 12px",gap:8,minHeight:120}}>
                 {[
                   {key:"Detectado",color:"#E8A050",bg:"#FEF6ED",border:"#F5D0A0"},
@@ -3249,7 +2920,7 @@ function App() {
                   );
                 })}
               </div>
-              {/* Funnel bar */}
+              
               <div style={{borderTop:"1px solid #EEECEA",padding:"10px 16px",background:"#F8F7F5",display:"flex",gap:4,alignItems:"center"}}>
                 {[
                   {key:"Detectado",color:"#E8A050"},
@@ -3271,7 +2942,7 @@ function App() {
             </div>
           )}
 
-          {/* ── RCCA_MEMORY SECTION ── */}
+          
           <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
             <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
               <div>
@@ -3290,11 +2961,11 @@ function App() {
               </div>
             </div>
 
-            {/* Auto-suggestions: events with matching RCCA */}
+            
             {autoSuggestions.length > 0 && (
               <div style={{padding:"12px 16px",borderBottom:"1px solid #EEECEA",background:"#FEF9E8"}}>
                 <div style={{fontSize:10.5,fontWeight:700,color:"#B87820",marginBottom:8}}>
-                  Antecedentes detectados — {autoSuggestions.length} evento{autoSuggestions.length>1?"s":""} con RCCA similar
+                  Antecedentes detectados - {autoSuggestions.length} evento{autoSuggestions.length>1?"s":""} con RCCA similar
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {autoSuggestions.map(function(e){
@@ -3338,7 +3009,7 @@ function App() {
               </div>
             )}
 
-            {/* RCCA list + search */}
+            
             <div style={{padding:"12px 16px"}}>
               {rccaList.length === 0 ? (
                 <div style={{textAlign:"center",padding:"28px 0",color:"#B8B4AE",fontSize:13}}>
@@ -3347,12 +3018,12 @@ function App() {
                 </div>
               ) : (
                 <div>
-                  {/* Search */}
+                  
                   <input placeholder="Buscar por modelo, linea, problema..."
                     value={rccaFilter}
                     onChange={function(e){ setRccaFilter(e.target.value); }}
                     style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#1A1714",outline:"none",marginBottom:10}}/>
-                  {/* Filtered list */}
+                  
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {rccaList.filter(function(r){
                       if (!rccaFilter) return true;
@@ -3370,7 +3041,7 @@ function App() {
             </div>
           </div>
 
-          {/* Bitacora table */}
+          
           <div className="tcard">
             <div className="tcard-hdr">
                 <h3>Bitacora de eventos ({ev.length})</h3>
@@ -3421,7 +3092,7 @@ function App() {
             </div>
           </div>
 
-          {/* Pendientes */}
+          
           {pend.length > 0 && (
             <div className="tcard" style={{marginTop:14}}>
               <div className="tcard-hdr"><h3>Pendientes operativos ({pend.length})</h3></div>
@@ -3431,12 +3102,12 @@ function App() {
             </div>
           )}
 
-          {/* ── INVESTIGATION CAROUSEL ── */}
+          
           {rccaList.length > 0 && (
             <InvestigationCarousel cards={rccaList} allRcca={rccaList}/>
           )}
 
-          {/* Before/After */}
+          
           <div className="cmp" style={{marginTop:14}}>
             <div className="cmpc">
               <div className="cmplbl"><div className="cmpdot"/><span>Antes</span></div>
@@ -3447,13 +3118,13 @@ function App() {
             <div className="cmpc aft">
               <div className="cmplbl"><div className="cmpdot g"/><span>Despues OpsTrace</span></div>
               <div className="cmrow"><div className="cmic g">V</div><p><strong>{ev.length} incidentes</strong> reconstruidos del chat</p></div>
-              <div className="cmrow"><div className="cmic g">V</div><p><strong>Incident Story</strong> — ciclo de vida completo</p></div>
+              <div className="cmrow"><div className="cmic g">V</div><p><strong>Incident Story</strong> - ciclo de vida completo</p></div>
               <div className="cmrow"><div className="cmic g">V</div><p><strong>{pend.length} pendientes</strong> con owner y estado</p></div>
               <div className="cmrow"><div className="cmic g">V</div><p>Memoria operativa estructurada en minutos</p></div>
             </div>
           </div>
 
-          {/* Footer */}
+          
           <div className="foot">
             <p><strong>OpsTrace</strong> by SMTintel - ALDA - {new Date().toLocaleDateString("es-MX")}</p>
             <button className="dlbtn" style={{padding:"8px 16px",fontSize:12}} onClick={download}>Descargar Excel</button>
@@ -3467,5 +3138,13 @@ function App() {
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 
-</body>
+<script>
+window.addEventListener('unhandledrejection', function(e) {
+  var box = document.createElement('div');
+  box.style.cssText = 'position:fixed;top:60px;left:0;right:0;background:#8E44AD;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all';
+  box.innerHTML = '<strong>UNHANDLED REJECTION</strong><br>' + (e.reason ? e.reason.toString() : 'unknown');
+  document.body.appendChild(box);
+});
+</script></body>
+
 </html>
