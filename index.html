@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SMTintel</title>
+<title>OpsTrace by SMTintel</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -680,7 +680,7 @@ async function buildXlsx(result) {
   var directorio = result.directorio || [];
 
   var wb = new ExcelJS.Workbook();
-  wb.creator = "SMTintel by ALDA";
+  wb.creator = "OpsTrace by SMTintel - ALDA";
   wb.created = new Date();
 
   var C = {
@@ -752,7 +752,7 @@ async function buildXlsx(result) {
   var wsIS = wb.addWorksheet("Incident_Stories");
   wsIS.mergeCells("A1:H1");
   var isT = wsIS.getCell("A1");
-  isT.value = "Incident Story Model - SMTintel by ALDA";
+  isT.value = "Incident Story Model - OpsTrace by SMTintel";
   isT.fill = hFill(C.hBg); isT.font = hFont(12);
   wsIS.getRow(1).height = 22;
 
@@ -830,7 +830,7 @@ async function buildXlsx(result) {
   var wsRes = wb.addWorksheet("Resumen_Junta");
   wsRes.mergeCells("A1:F1");
   var t1 = wsRes.getCell("A1");
-  t1.value = "Resumen ejecutivo - " + (res.grupo || "SMTintel");
+  t1.value = "Resumen ejecutivo - " + (res.grupo || "OpsTrace");
   t1.fill = hFill(C.hBg); t1.font = hFont(13);
   t1.alignment = {horizontal:"left",vertical:"middle"};
   wsRes.getRow(1).height = 22;
@@ -854,7 +854,7 @@ async function buildXlsx(result) {
   var wsDash = wb.addWorksheet("Dashboard_Base");
   wsDash.mergeCells("A1:E1");
   var dt = wsDash.getCell("A1");
-  dt.value = "Dashboard SMTintel by ALDA";
+  dt.value = "Dashboard OpsTrace - SMTintel by ALDA";
   dt.fill = hFill(C.hBg); dt.font = hFont(13);
   wsDash.getRow(1).height = 22; wsDash.addRow([]);
   [["Total",ev.length],["Abiertos",ev.filter(function(e){return e.estatus==="Abierto";}).length],
@@ -1027,13 +1027,13 @@ function LogoSVG() {
         fontSize="28" fontWeight="900" fill="#7A9E7E"
         textAnchor="middle" letterSpacing="6">ALDA</text>
 
-      {/* SMT + intel wordmark */}
+      {/* OpsTrace wordmark */}
       <text x="312" y="158"
         fontFamily="'Arial Black','Helvetica Neue',Arial,sans-serif"
-        fontSize="88" fontWeight="900" fill="#1B4D20" letterSpacing="-2">SMT</text>
-      <text x="532" y="158"
+        fontSize="88" fontWeight="900" fill="#1B4D20" letterSpacing="-2">Ops</text>
+      <text x="430" y="158"
         fontFamily="'Arial','Helvetica Neue',Arial,sans-serif"
-        fontSize="88" fontWeight="300" fill="#2E6B32" letterSpacing="-1">intel</text>
+        fontSize="88" fontWeight="300" fill="#2E6B32" letterSpacing="-1">Trace</text>
 
       {/* Underline */}
       <line x1="312" y1="176" x2="870" y2="176" stroke="url(#underline)" strokeWidth="2.5"/>
@@ -1041,10 +1041,10 @@ function LogoSVG() {
       {/* Taglines */}
       <text x="314" y="202"
         fontFamily="'Arial','Helvetica Neue',Arial,sans-serif"
-        fontSize="18" fontWeight="400" fill="#5A8060" letterSpacing="0.5">Manufacturing Analytics</text>
+        fontSize="18" fontWeight="400" fill="#5A8060" letterSpacing="0.5">Operational Event Intelligence</text>
       <text x="314" y="224"
         fontFamily="'Arial','Helvetica Neue',Arial,sans-serif"
-        fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">SMT · AOI · SPI · X-RAY</text>
+        fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">by SMTintel · ALDA</text>
     </svg>
   );
 }
@@ -1055,7 +1055,7 @@ function App() {
   var stateArr = _useState("idle");
   var state = stateArr[0]; var setState = stateArr[1];
 
-  var apiKeyArr = _useState(localStorage.getItem("smtintel_key") || "");
+  var apiKeyArr = _useState(localStorage.getItem("opstrace_key") || "");
   var apiKey = apiKeyArr[0]; var setApiKey = apiKeyArr[1];
 
   var progArr = _useState(0);
@@ -1120,7 +1120,7 @@ function App() {
   var GAL_PAGE_SIZE = 48;
 
   // ── HISTORIAL ──
-  var HIST_KEY = "smtintel_history";
+  var HIST_KEY = "opstrace_history";
   var HIST_MAX = 10; // keep last 10 analyses
 
   var histArr = _useState(function(){
@@ -1194,7 +1194,7 @@ function App() {
     return function() { clearInterval(interval); };
   }, [state]);
 
-  function saveKey(k) { setApiKey(k); localStorage.setItem("smtintel_key", k); }
+  function saveKey(k) { setApiKey(k); localStorage.setItem("opstrace_key", k); }
 
   var STEPS = ["ZIP","Parser","Filtro","IA","Excel"];
 
@@ -1237,7 +1237,7 @@ function App() {
     var blob = new Blob([xlsxBytes], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "SMTintel_" + new Date().toISOString().slice(0,10) + ".xlsx";
+    a.download = "OpsTrace_" + new Date().toISOString().slice(0,10) + ".xlsx";
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -1625,25 +1625,25 @@ function App() {
             {/* Net label */}
             <text x="170" y="20" fontSize="8" fill="#9A9590" fontFamily="Courier New,monospace"
               opacity="0" style={{animation:"fade-in .4s ease 1.5s both"}}>
-              SIG_SMT
+              OPS_TRC
             </text>
           </svg>
         </div>
 
         {/* Display headline */}
         <div className="anim-header" style={{marginBottom:6}}>
-          <span style={{fontSize:11,fontWeight:600,color:"#2A7A60",letterSpacing:".08em",textTransform:"uppercase"}}>Manufacturing Analytics</span>
+          <span style={{fontSize:11,fontWeight:600,color:"#2A7A60",letterSpacing:".08em",textTransform:"uppercase"}}>Operational Event Intelligence</span>
         </div>
         <h1 className="anim-header-sub" style={{fontSize:38,fontWeight:800,color:"#1A1714",lineHeight:1.05,letterSpacing:"-.03em",marginBottom:10}}>
-          Chat de manufactura<br/>
-          <span style={{color:"#1E5C48"}}>a Dashboard SMT</span>
+          OpsTrace<br/>
+          <span style={{color:"#1E5C48",fontSize:32}}>by SMTintel</span>
         </h1>
         <p className="anim-header-desc" style={{fontSize:14,color:"#8A8580",fontWeight:400,lineHeight:1.5,maxWidth:420}}>
-          Sube el .zip de WhatsApp, selecciona el rango y descarga la bitacora Excel lista para junta.
+          Convierte conversaciones operativas dispersas en memoria estructurada de incidentes de manufactura.
         </p>
         {/* Chips row */}
         <div className="anim-chips" style={{display:"flex",gap:8,marginTop:16,flexWrap:"wrap"}}>
-          {["SMT","AOI","SPI","X-RAY","Root Cause"].map(function(t){
+          {["OpsTrace","SMT","AOI","Incident Story","Root Cause"].map(function(t){
             return <span key={t} style={{fontSize:10.5,fontWeight:600,color:"#6A8060",background:"#EAF0E4",border:"1px solid #C8D8B8",borderRadius:99,padding:"4px 12px"}}>{t}</span>;
           })}
         </div>
@@ -1687,7 +1687,7 @@ function App() {
                 </svg>
               </div>
               <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>
-                Arrastra tu .zip aqui
+                Arrastra el .zip de WhatsApp
               </div>
               <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>
                 o haz clic para seleccionar
@@ -1865,7 +1865,7 @@ function App() {
 
           {/* Top bar */}
           <div style={{background:"#F8F7F5",borderBottom:"1px solid #EEECEA",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>SMTintel Processing Engine</span>
+            <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>OpsTrace - Operational Event Intelligence</span>
             <div style={{display:"flex",gap:6}}>
               <div style={{width:8,height:8,borderRadius:50,background:"#C0392B",opacity:.6}}/>
               <div style={{width:8,height:8,borderRadius:50,background:"#B87820",opacity:.6}}/>
@@ -1956,7 +1956,7 @@ function App() {
       {/* DONE */}
       {state === "done" && result && (
         <div>
-          <button className="resetbtn" onClick={reset}>Analizar otro chat</button>
+          <button className="resetbtn" onClick={reset}>Nuevo analisis</button>
 
           {/* Download bar */}
           <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
@@ -2562,22 +2562,22 @@ function App() {
           <div className="cmp" style={{marginTop:14}}>
             <div className="cmpc">
               <div className="cmplbl"><div className="cmpdot"/><span>Antes</span></div>
-              {["Sin clasificacion SMT","Sin trazabilidad por turno","Eventos con ruido","Juntas sin datos"].map(function(t,i){
+              {["Memoria colectiva fracturada","Historia del incidente incompleta","Cada area tiene solo su parte","Juntas CFT sin contexto"].map(function(t,i){
                 return <div key={i} className="cmrow"><div className="cmic">X</div><p>{t}</p></div>;
               })}
             </div>
             <div className="cmpc aft">
-              <div className="cmplbl"><div className="cmpdot g"/><span>Despues SMTintel</span></div>
-              <div className="cmrow"><div className="cmic g">V</div><p><strong>{ev.length} eventos</strong> con defecto SMT</p></div>
-              <div className="cmrow"><div className="cmic g">V</div><p><strong>Pareto</strong> para root cause</p></div>
-              <div className="cmrow"><div className="cmic g">V</div><p><strong>{pend.length} pendientes</strong> con owner</p></div>
-              <div className="cmrow"><div className="cmic g">V</div><p>Excel 7 hojas en minutos</p></div>
+              <div className="cmplbl"><div className="cmpdot g"/><span>Despues OpsTrace</span></div>
+              <div className="cmrow"><div className="cmic g">V</div><p><strong>{ev.length} incidentes</strong> reconstruidos del chat</p></div>
+              <div className="cmrow"><div className="cmic g">V</div><p><strong>Incident Story</strong> — ciclo de vida completo</p></div>
+              <div className="cmrow"><div className="cmic g">V</div><p><strong>{pend.length} pendientes</strong> con owner y estado</p></div>
+              <div className="cmrow"><div className="cmic g">V</div><p>Memoria operativa estructurada en minutos</p></div>
             </div>
           </div>
 
           {/* Footer */}
           <div className="foot">
-            <p><strong>SMTintel by ALDA</strong> - Manufacturing Analytics - {new Date().toLocaleDateString("es-MX")}</p>
+            <p><strong>OpsTrace</strong> by SMTintel - ALDA - {new Date().toLocaleDateString("es-MX")}</p>
             <button className="dlbtn" style={{padding:"8px 16px",fontSize:12}} onClick={download}>Descargar Excel</button>
           </div>
         </div>
