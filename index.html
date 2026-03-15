@@ -1035,7 +1035,58 @@ function App() {
   var galPage = galPageArr[0]; var setGalPage = galPageArr[1];
   var GAL_PAGE_SIZE = 48;
 
+  // ── HISTORIAL ──
+  var HIST_KEY = "smtintel_history";
+  var HIST_MAX = 10; // keep last 10 analyses
+
+  var histArr = _useState(function(){
+    try {
+      var raw = localStorage.getItem(HIST_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch(_) { return []; }
+  });
+  var history = histArr[0]; var setHistory = histArr[1];
+
+  function saveToHistory(res, stats, fileName) {
+    var entry = {
+      id: Date.now(),
+      savedAt: new Date().toISOString(),
+      fileName: fileName || "chat.zip",
+      periodo: res.resumen ? res.resumen.periodo : "",
+      grupo: res.resumen ? res.resumen.grupo : "",
+      totalEventos: res.eventos ? res.eventos.length : 0,
+      criticos: res.eventos ? res.eventos.filter(function(e){ return e.prioridad==="Critica"; }).length : 0,
+      pendientes: res.eventos ? res.eventos.filter(function(e){ return e.estatus!=="Cerrado"; }).length : 0,
+      msgs: stats ? stats.clean : 0,
+      imgs: stats ? stats.imgs : 0,
+      result: res  // full result for reload
+    };
+    try {
+      var prev = [];
+      try { prev = JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch(_){}
+      var updated = [entry].concat(prev).slice(0, HIST_MAX);
+      localStorage.setItem(HIST_KEY, JSON.stringify(updated));
+      setHistory(updated);
+    } catch(_) {}
+  }
+
+  function deleteFromHistory(id) {
+    try {
+      var updated = history.filter(function(h){ return h.id !== id; });
+      localStorage.setItem(HIST_KEY, JSON.stringify(updated));
+      setHistory(updated);
+    } catch(_) {}
+  }
+
+  function loadFromHistory(entry) {
+    setResult(entry.result);
+    setMsgStats({total: entry.msgs, filtered: entry.msgs, clean: entry.msgs, imgs: entry.imgs});
+    setEvImgs({});
+    setState("done");
+  }
+
   var fileRef = _useRef();
+  var fileNameRef = _useRef("chat.zip");
 
   function saveKey(k) { setApiKey(k); localStorage.setItem("smtintel_key", k); }
 
@@ -1044,6 +1095,7 @@ function App() {
   async function handle(file) {
     if (!file || !file.name.endsWith(".zip")) { setErrMsg("Sube un .zip exportado de WhatsApp"); setState("error"); return; }
     if (!apiKey.trim()) { setErrMsg("Ingresa tu API Key de Anthropic"); setState("error"); return; }
+    fileNameRef.current = file.name;
     setState("loading"); setProg(8); setProgStep(0);
     try {
       var zipData = await readZip(file);
@@ -1069,6 +1121,7 @@ function App() {
 
       var bytes = await buildXlsx(res);
       setProg(100); setResult(res); setXlsxBytes(bytes); setState("done");
+      saveToHistory(res, {total: all.length, filtered: filtered.length, clean: clean.length, imgs: (zipData.imgNames||[]).length}, fileNameRef.current);
     } catch(e) { setErrMsg(e.message || String(e)); setState("error"); }
   }
 
@@ -1636,6 +1689,64 @@ function App() {
         </div>
       )}
 
+      {/* ── HISTORIAL ── */}
+      {state === "idle" && history.length > 0 && (
+        <div style={{marginTop:8}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,paddingLeft:2}}>
+            <span style={{fontSize:12,fontWeight:700,color:"#3D3A36",letterSpacing:".04em",textTransform:"uppercase"}}>Analisis recientes</span>
+            <button
+              onClick={function(){
+                if (window.confirm("Borrar todo el historial?")) {
+                  localStorage.removeItem(HIST_KEY);
+                  setHistory([]);
+                }
+              }}
+              style={{fontSize:10,color:"#8A8580",background:"none",border:"none",cursor:"pointer",padding:"2px 6px"}}>
+              Limpiar todo
+            </button>
+          </div>
+          {history.map(function(h){
+            var date = new Date(h.savedAt);
+            var dateStr = date.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"});
+            var timeStr = date.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
+            var critColor = h.criticos > 0 ? "#C0392B" : "#1A7A3C";
+            return (
+              <div key={h.id} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 16px",marginBottom:8,boxShadow:"0 1px 2px rgba(0,0,0,.04)",display:"flex",alignItems:"center",gap:12}}>
+                {/* Color bar */}
+                <div style={{width:3,alignSelf:"stretch",borderRadius:99,background: h.criticos>0 ? "#C0392B" : "#1E5C48",flexShrink:0}}/>
+                {/* Info */}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#1A1714",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {h.grupo || h.fileName.replace(".zip","").replace("WhatsApp_Chat_-_","").replace(/_/g," ")}
+                  </div>
+                  <div style={{fontSize:10.5,color:"#8A8580",marginBottom:4}}>{h.periodo || dateStr}</div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <span style={{fontSize:9.5,fontWeight:600,color:"#1E5C48",background:"#EAF5F0",borderRadius:4,padding:"2px 6px"}}>{h.totalEventos} eventos</span>
+                    <span style={{fontSize:9.5,fontWeight:600,color:critColor,background: h.criticos>0?"#FEF0EE":"#EBF8EE",borderRadius:4,padding:"2px 6px"}}>{h.criticos} criticos</span>
+                    <span style={{fontSize:9.5,color:"#8A8580",background:"#F8F7F5",borderRadius:4,padding:"2px 6px"}}>{h.pendientes} pendientes</span>
+                    {h.imgs > 0 && <span style={{fontSize:9.5,color:"#6B2DA8",background:"#F5F0FE",borderRadius:4,padding:"2px 6px"}}>{h.imgs} imgs</span>}
+                  </div>
+                </div>
+                {/* Time + actions */}
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
+                  <span style={{fontSize:9,color:"#B8B4AE"}}>{timeStr}</span>
+                  <button
+                    onClick={function(){ loadFromHistory(h); }}
+                    style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                    Ver
+                  </button>
+                  <button
+                    onClick={function(){ deleteFromHistory(h.id); }}
+                    style={{background:"none",border:"1px solid #DDDBD7",borderRadius:7,padding:"4px 10px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>
+                    x
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* LOADING */}
       {state === "loading" && (
         <div className="prog">
@@ -1676,6 +1787,10 @@ function App() {
             <div>
               <h3 style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>Excel listo para junta</h3>
               <p style={{fontSize:11,color:"rgba(242,236,200,.6)"}}>{(res.periodo || "") + " - " + ev.length + " eventos - " + ((msgStats && msgStats.clean) || 0) + " msgs"}</p>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginTop:5}}>
+                <div style={{width:6,height:6,borderRadius:50,background:"#8ABD6E"}}/>
+                <span style={{fontSize:9.5,color:"rgba(200,220,160,.8)",fontWeight:500}}>Guardado en historial del browser</span>
+              </div>
               <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>
                 {["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos"].map(function(s){
                   return <span key={s} style={{background:"rgba(200,216,150,.12)",border:"1px solid rgba(200,216,150,.2)",borderRadius:4,padding:"2px 8px",fontSize:9,color:"#F2ECC8"}}>{s}</span>;
