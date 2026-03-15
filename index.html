@@ -833,6 +833,7 @@ function App() {
   var turnoColor = {"1T":"#2A7A60","2T":"#2952A3","3T":"#6B2DA8"};
 
 
+  var personaSet = {};
   ev.forEach(function(e){
     if(e.reporta && e.reporta !== "N/D") personaSet[e.reporta] = true;
     if(e.responsable_sugerido && e.responsable_sugerido !== "N/D") personaSet[e.responsable_sugerido] = true;
@@ -1147,11 +1148,7 @@ function App() {
                           background:"linear-gradient(90deg,"+tc+","+tc+"CC)",
                           transition:"width .4s ease"
                         }}/>
-                        {/* Tipo dots overlay */}
-                        {Object.keys(x.tipos).map(function(t, ti){
-                          var tipoPct = (x.tipos[t]/x.n)*pct;
-                          return null; // keep bar clean, use dots below
-                        })}
+  
                       </div>
                       {/* Count */}
                       <div style={{fontSize:11,fontWeight:700,color:"#3D3A36",width:16,textAlign:"right",flexShrink:0}}>{x.n}</div>
