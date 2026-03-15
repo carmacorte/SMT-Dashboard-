@@ -1,327 +1,1072 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SMTintel — Manufacturing Analytics</title>
-
+<title>SMTintel</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-
 :root{
---bg:#F5F3EE;
---w:#fff;
---g200:#E2DDD7;
---g700:#4A4540;
---teal:#2E7A6A;
---teal2:#1E5545;
+--bg:#F5F3EE;--w:#fff;
+--g50:#F9F8F6;--g100:#F0EDE9;--g200:#E2DDD7;--g300:#C8C2BA;
+--g500:#8A847C;--g700:#4A4540;--g900:#1E1B18;
+--teal:#2E7A6A;--teal2:#1E5545;--teal3:#3A9A85;
+--lime:#CDDBA0;--lime2:#8A9F5C;--lime3:#F5EED0;
+--re:#DC2626;--rel:#FEF2F2;
+--bl:#2563EB;--bll:#EFF4FF;
+--gr:#16A34A;--grl:#F0FDF4;
+--ye:#F59E0B;
+--pu:#7C3AED;
 }
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--g900);min-height:100vh}
+#root{max-width:940px;margin:0 auto;padding:24px 16px 60px}
 
-body{
-font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
-background:var(--bg);
-color:#1E1B18;
-min-height:100vh
+/* HEADER */
+.hdr{background:var(–teal2);border-radius:16px;padding:22px 28px;margin-bottom:20px;display:flex;align-items:center;gap:20px;position:relative;overflow:hidden}
+.hdr::before{content:’’;position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(205,219,160,.15),transparent 70%);border-radius:50%}
+.hdr-logo svg{flex-shrink:0}
+.hdr-info{position:relative;z-index:1}
+.hdr-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(205,219,160,.12);border:1px solid rgba(205,219,160,.25);color:var(–lime);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:7px}
+.hdr-info h1{font-size:13px;font-weight:300;color:var(–lime3);margin-bottom:2px}
+.hdr-info h2{font-size:11px;color:rgba(245,238,208,.4);font-weight:300}
+
+/* API BAR */
+.api-bar{background:var(–w);border:1px solid var(–g200);border-radius:12px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.api-bar label{font-size:12px;font-weight:600;color:var(–g700);white-space:nowrap}
+.api-input{flex:1;min-width:200px;border:1px solid var(–g200);border-radius:7px;padding:7px 12px;font-size:12px;color:var(–g900);font-family:monospace;background:var(–g50);outline:none}
+.api-input:focus{border-color:var(–teal)}
+.api-note{font-size:10px;color:var(–g500);width:100%}
+.api-note a{color:var(–teal);text-decoration:none}
+
+/* UPLOAD */
+.up{background:var(–w);border:2px dashed var(–g200);border-radius:14px;margin-bottom:16px;cursor:pointer;transition:all .2s}
+.up:hover,.up.drag{border-color:var(–teal);background:#F0F7F5}
+.up-body{padding:32px 24px;text-align:center}
+.up-icon{width:48px;height:48px;background:#EDF5F3;border:1px solid #C5DDD8;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:var(–teal)}
+.up h3{font-size:16px;font-weight:700;margin-bottom:4px}
+.up p{font-size:13px;color:var(–g500);margin-bottom:12px}
+.chip{display:inline-block;background:var(–g100);border:1px solid var(–g200);border-radius:6px;padding:3px 9px;font-size:10px;color:var(–g700);font-weight:500;margin:3px}
+.up-btn{display:inline-flex;align-items:center;gap:6px;background:var(–teal);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px}
+.filter-bar{background:var(–g50);border-top:1px solid var(–g200);padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.filter-bar label{font-size:12px;font-weight:600;color:var(–g700)}
+.day-btns{display:flex;gap:5px;flex-wrap:wrap}
+.day-btn{border:1px solid var(–g200);background:var(–w);border-radius:6px;padding:5px 11px;font-size:12px;font-weight:500;color:var(–g700);cursor:pointer}
+.day-btn.active{background:var(–teal);border-color:var(–teal);color:#fff;font-weight:700}
+
+/* PROGRESS */
+.prog{background:var(–w);border:1px solid var(–g200);border-radius:14px;padding:28px 32px;text-align:center;margin-bottom:16px}
+.prog h3{font-size:16px;font-weight:700;margin-bottom:4px}
+.prog p{font-size:12px;color:var(–g500);margin-bottom:18px}
+.pbar{background:var(–g100);border-radius:99px;height:6px;overflow:hidden;margin-bottom:14px}
+.pfill{height:6px;border-radius:99px;background:linear-gradient(90deg,var(–teal2),var(–teal3));transition:width .5s ease}
+.psteps{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px}
+.pstep{font-size:10px;color:var(–g300);font-weight:500;text-align:center;flex:1}
+.pstep.on{color:var(–teal);font-weight:700}
+.pstep.ok{color:var(–gr)}
+
+/* STATS CARDS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.scard{background:var(–w);border:1px solid var(–g200);border-radius:11px;padding:14px 16px}
+.sval{font-size:26px;font-weight:800;line-height:1}
+.sval.te{color:var(–teal)}.sval.re{color:var(–re)}.sval.bl{color:var(–bl)}.sval.gr{color:var(–gr)}
+.slb{font-size:10px;color:var(–g500);margin-top:3px}
+
+/* DOWNLOAD */
+.dlc{background:var(–teal2);border-radius:12px;padding:20px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.dlc-txt h3{font-size:15px;font-weight:700;color:#fff;margin-bottom:3px}
+.dlc-txt p{font-size:11px;color:rgba(245,238,208,.65)}
+.dlc-sheets{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.dlc-sh{background:rgba(205,219,160,.1);border:1px solid rgba(205,219,160,.18);border-radius:4px;padding:2px 8px;font-size:9.5px;color:var(–lime3)}
+.dlbtn{background:var(–lime2);color:#fff;border:none;border-radius:9px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+
+/* TABLE CARDS */
+.tcard{background:var(–w);border:1px solid var(–g200);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.tcard-hdr{padding:12px 18px;border-bottom:1px solid var(–g100);display:flex;align-items:center;justify-content:space-between}
+.tcard-hdr h3{font-size:13px;font-weight:700}
+.tscroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:var(–g50);padding:8px 11px;text-align:left;font-weight:600;color:var(–g700);font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(–g200);white-space:nowrap}
+td{padding:8px 11px;border-bottom:1px solid var(–g100);color:var(–g700);vertical-align:top;line-height:1.4}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(–g50)}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700}
+.bc{background:#FEE2E2;color:#991B1B}
+.ba{background:#FEF3C7;color:#92400E}
+.bm{background:var(–bll);color:#1E3A8A}
+.bb{background:var(–grl);color:#166534}
+.bo{background:#FFF7ED;color:#9A3412;border:1px solid #FED7AA}
+.be{background:var(–bll);color:#1E40AF;border:1px solid #BFCFFE}
+.bce{background:var(–grl);color:#14532D;border:1px solid #BBF7D0}
+.bt{background:#F5F3FF;color:#5B21B6;border:1px solid #DDD6FE}
+
+/* PENDING ITEMS */
+.plist{display:flex;flex-direction:column;gap:7px;padding:12px 14px}
+.pitem{background:var(–g50);border:1px solid var(–g200);border-left:3px solid var(–teal);border-radius:0 8px 8px 0;padding:9px 12px}
+.pitem.cr{border-left-color:var(–re)}
+.pitem.al{border-left-color:var(–ye)}
+.pitem-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px}
+.pitem-id{font-size:9px;font-weight:700;color:var(–g500)}
+.pitem h4{font-size:11.5px;font-weight:700;color:var(–g900);margin-bottom:2px}
+.pitem p{font-size:10.5px;color:var(–g500);line-height:1.4}
+.pmeta{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+.ptag{font-size:9px;background:var(–w);border:1px solid var(–g200);border-radius:4px;padding:2px 6px;color:var(–g700)}
+
+/* CHARTS */
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.crt{background:var(–w);border:1px solid var(–g200);border-radius:11px;padding:14px 16px}
+.crt h4{font-size:12px;font-weight:700;margin-bottom:10px}
+.brow{display:flex;gap:7px;align-items:center;margin-bottom:6px}
+.blbl{font-size:10px;color:var(–g500);width:88px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btrk{flex:1;background:var(–g100);border-radius:4px;height:6px}
+.bfil{height:6px;border-radius:4px;background:var(–teal)}
+.bfil.bl{background:var(–bl)}.bfil.re{background:var(–re)}.bfil.gr{background:var(–gr)}.bfil.ye{background:var(–ye)}.bfil.lm{background:var(–lime2)}.bfil.pu{background:var(–pu)}
+.bnum{font-size:10px;font-weight:600;color:var(–g700);width:18px;text-align:right}
+
+/* KPI ROWS */
+.krow{display:flex;align-items:center;gap:10px;background:var(–g50);border:1px solid var(–g200);border-radius:8px;padding:8px 12px;margin-bottom:6px}
+.kval{font-size:17px;font-weight:800;color:var(–teal);width:64px;flex-shrink:0}
+.kin{flex:1}
+.kin .nm{font-size:11px;font-weight:600;color:var(–g900)}
+.kin .ts{font-size:9.5px;color:var(–g500)}
+.kbar{width:90px;height:5px;background:var(–g200);border-radius:99px;flex-shrink:0}
+.kbf{height:5px;border-radius:99px;background:var(–teal)}
+
+/* PERSONA FILTER */
+.pf-card{background:var(–w);border:1px solid var(–g200);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.pf-hdr{padding:12px 18px;border-bottom:1px solid var(–g100);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pf-hdr h3{font-size:13px;font-weight:700;flex:1}
+.pf-select{border:1px solid var(–g200);border-radius:7px;padding:6px 11px;font-size:11.5px;color:var(–g900);background:var(–g50);outline:none;cursor:pointer;min-width:160px}
+.pf-select:focus{border-color:var(–teal)}
+.pf-clear{background:var(–g100);border:1px solid var(–g200);border-radius:6px;padding:5px 11px;font-size:11px;color:var(–g700);cursor:pointer}
+.pf-body{padding:14px 18px}
+.pf-profile{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap}
+.pf-avatar{width:42px;height:42px;border-radius:50%;background:var(–teal);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;flex-shrink:0}
+.pf-info{flex:1}
+.pf-name{font-size:15px;font-weight:800;color:var(–g900);margin-bottom:2px}
+.pf-dept{font-size:11px;color:var(–g500);margin-bottom:7px}
+.pf-stats{display:flex;gap:8px;flex-wrap:wrap}
+.pf-stat{background:var(–g50);border:1px solid var(–g200);border-radius:7px;padding:7px 12px;text-align:center}
+.pf-stat-val{font-size:19px;font-weight:800;color:var(–teal);line-height:1}
+.pf-stat-lbl{font-size:9.5px;color:var(–g500);margin-top:2px}
+.pf-stat.bl .pf-stat-val{color:var(–bl)}
+.pf-stat.gr .pf-stat-val{color:var(–gr)}
+.pf-stat.re .pf-stat-val{color:var(–re)}
+.pf-section-title{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(–teal);margin-bottom:8px;margin-top:4px}
+.pf-empty{font-size:13px;color:var(–g500);text-align:center;padding:20px 0}
+
+/* BEFORE/AFTER */
+.cmp{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(–g200);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.cmpc{padding:20px 22px;background:var(–w)}
+.cmpc.aft{background:var(–g50);border-left:1px solid var(–g200)}
+.cmplbl{display:flex;align-items:center;gap:6px;margin-bottom:12px}
+.cmpdot{width:7px;height:7px;border-radius:50%;background:var(–re)}
+.cmpdot.g{background:var(–gr)}
+.cmplbl span{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(–g500)}
+.cmrow{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px}
+.cmic{width:18px;height:18px;border-radius:4px;background:var(–rel);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(–re);font-size:9.5px;font-weight:700}
+.cmic.g{background:var(–grl);color:var(–gr)}
+.cmrow p{font-size:11.5px;color:var(–g700);line-height:1.4;padding-top:1px}
+
+/* MISC */
+.resetbtn{display:inline-flex;align-items:center;gap:5px;background:var(–g100);border:1px solid var(–g200);border-radius:6px;padding:6px 12px;font-size:11px;font-weight:500;color:var(–g700);cursor:pointer;margin-bottom:14px}
+.errc{background:var(–rel);border:1px solid #FECACA;border-radius:10px;padding:14px 18px;margin-bottom:14px;color:var(–re);font-size:12px}
+.foot{background:var(–w);border:1px solid var(–g200);border-radius:12px;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;margin-top:14px;flex-wrap:wrap;gap:10px}
+.foot p{font-size:11px;color:var(–g500)}
+
+@media(max-width:600px){
+.stats{grid-template-columns:repeat(2,1fr)}
+.charts{grid-template-columns:1fr}
+.cmp{grid-template-columns:1fr}
+.cmpc.aft{border-left:none;border-top:1px solid var(–g200)}
+.hdr{padding:16px;flex-direction:column;gap:10px}
+.dlc{flex-direction:column}
+#root{padding:12px 10px 40px}
 }
-
-#root{
-max-width:940px;
-margin:0 auto;
-padding:24px 16px
-}
-
-.hdr{
-background:var(--teal2);
-color:#fff;
-border-radius:16px;
-padding:20px;
-margin-bottom:20px
-}
-
-.upload{
-border:2px dashed var(--g200);
-padding:40px;
-border-radius:12px;
-text-align:center;
-background:#fff;
-cursor:pointer
-}
-
-.btn{
-background:var(--teal);
-color:white;
-border:none;
-padding:10px 18px;
-border-radius:8px;
-font-weight:600;
-cursor:pointer
-}
-
-.stats{
-display:grid;
-grid-template-columns:repeat(4,1fr);
-gap:10px;
-margin-top:20px
-}
-
-.card{
-background:white;
-padding:14px;
-border-radius:10px;
-border:1px solid var(--g200)
-}
-
-.card h3{
-font-size:22px
-}
-
-.card p{
-font-size:12px;
-color:var(--g700)
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-margin-top:20px
-}
-
-th,td{
-padding:8px;
-border-bottom:1px solid var(--g200);
-font-size:12px;
-text-align:left
-}
-
 </style>
+
 </head>
-
 <body>
-
 <div id="root"></div>
 
 <script type="text/babel">
+var _useState = React.useState;
+var _useRef = React.useRef;
+var _useCallback = React.useCallback;
 
-const {useState,useRef}=React
+// ── HELPERS ──────────────────────────────────────────────────────────────────
 
-// ---------- PARSER WHATSAPP ----------
-
-function to24h(h,min,sec,mer){
-let hour=parseInt(h)
-const m=(mer||"").toLowerCase()
-
-if(m.includes("p") && hour!==12) hour+=12
-if(m.includes("a") && hour===12) hour=0
-
-return {
-hour,
-timeStr:String(hour).padStart(2,"0")+":"+min+":"+(sec||"00")
-}
-}
-
-function parseTurno(h){
-if(h>=6 && h<14) return "1T"
-if(h>=14 && h<22) return "2T"
-return "3T"
+function to24h(h, min, sec, mer) {
+  var hour = parseInt(h);
+  var m = (mer || "").toLowerCase().replace(/[\s.]/g, "");
+  if (m.indexOf("p") === 0 && hour !== 12) hour += 12;
+  if (m.indexOf("a") === 0 && hour === 12) hour = 0;
+  return {
+    hour: hour,
+    timeStr: String(hour).padStart(2,"0") + ":" + min + ":" + (sec || "00")
+  };
 }
 
-function parseWhatsApp(txt){
-
-const lines=txt.split(/\r?\n/)
-const msgs=[]
-
-const reA=/^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i
-const reB=/^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i
-
-let cur=null
-
-for(const raw of lines){
-
-const line=raw.trim()
-
-const m=line.match(reA) || line.match(reB)
-
-if(m){
-
-if(cur) msgs.push(cur)
-
-const d=m[1]
-const mo=m[2]
-const yr=m[3]
-
-const h=m[4]
-const min=m[5]
-const sec=m[6]||"00"
-const mer=m[7]||""
-
-const sender=m[m.length-2]
-const text=m[m.length-1]
-
-let year=parseInt(yr)
-if(year<100) year+=2000
-
-const {hour,timeStr}=to24h(h,min,sec,mer)
-
-cur={
-fecha:d+"/"+mo+"/"+year,
-hora:timeStr,
-turno:parseTurno(hour),
-sender:sender,
-text:text
+function parseTurno(h) {
+  if (h >= 6 && h < 14) return "1T";
+  if (h >= 14 && h < 22) return "2T";
+  return "3T";
 }
 
-}else if(cur && line){
-cur.text+=" "+line
+function parseWhatsApp(txt) {
+  var lines = txt.split(/\r?\n/);
+  var msgs = [];
+  var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
+  var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
+  var cur = null;
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].replace(/[\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u202f]/g, "").trim();
+    var m = line.match(reA) || line.match(reB);
+    if (m) {
+      if (cur) msgs.push(cur);
+      var d, mo, yr, h2, min, sec, mer, sender, text;
+      if (line.match(reA)) {
+        d=m[1]; mo=m[2]; yr=m[3]; h2=m[4]; min=m[5]; sec=m[6]||"00"; mer=m[7]||""; sender=m[8]; text=m[9];
+      } else {
+        d=m[1]; mo=m[2]; yr=m[3]; h2=m[4]; min=m[5]; sec="00"; mer=""; sender=m[6]; text=m[7];
+      }
+      var year = parseInt(yr);
+      if (year < 100) year += 2000;
+      var t = to24h(h2, min, sec, mer);
+      cur = {
+        dateIso: year + "-" + String(mo).padStart(2,"0") + "-" + String(d).padStart(2,"0"),
+        dateDisp: String(d).padStart(2,"0") + "/" + String(mo).padStart(2,"0") + "/" + year,
+        timeStr: t.timeStr,
+        hour: t.hour,
+        turno: parseTurno(t.hour),
+        sender: sender.replace(/^~/,"").trim(),
+        text: text.trim()
+      };
+    } else if (cur && line && !line.startsWith("[")) {
+      cur.text += " " + line;
+    }
+  }
+  if (cur) msgs.push(cur);
+  return msgs;
 }
 
+function filterByDays(msgs, days) {
+  if (!msgs.length) return msgs;
+  var sorted = msgs.slice().sort(function(a,b){ return a.dateIso.localeCompare(b.dateIso); });
+  var last = new Date(sorted[sorted.length-1].dateIso);
+  var cutoff = new Date(last);
+  cutoff.setDate(cutoff.getDate() - days + 1);
+  var cutStr = cutoff.toISOString().slice(0,10);
+  return sorted.filter(function(m){ return m.dateIso >= cutStr; });
 }
 
-if(cur) msgs.push(cur)
-
-return msgs
+function cleanMsgs(msgs) {
+  var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|cifrados de extremo|ahora es admin/i;
+  var noise = /^(buenos d|buenas t|buen d|gracias|de nada|enterado|recibido|entendido)/i;
+  return msgs.filter(function(m){
+    return m.text && m.text.trim().length > 8 && !m.text.match(skip) && !m.text.trim().match(noise);
+  });
 }
 
-// ---------- APP ----------
-
-function App(){
-
-const[file,setFile]=useState(null)
-const[data,setData]=useState([])
-const[fileRef]=useState(useRef())
-
-async function handleZip(f){
-
-try{
-
-const zip=await JSZip.loadAsync(f)
-
-for(const name of Object.keys(zip.files)){
-
-if(name.endsWith(".txt")){
-
-const txt=await zip.files[name].async("string")
-
-const parsed=parseWhatsApp(txt)
-
-setData(parsed.slice(0,30))
-
-break
-
+async function readZip(file) {
+  var zip = await JSZip.loadAsync(file);
+  var names = Object.keys(zip.files);
+  for (var i = 0; i < names.length; i++) {
+    var name = names[i];
+    if (name.endsWith(".txt") && !name.startsWith("__MACOSX")) {
+      return await zip.files[name].async("string");
+    }
+  }
+  throw new Error("No se encontro .txt en el ZIP");
 }
 
+// ── AI ────────────────────────────────────────────────────────────────────────
+
+async function analyzeWithAI(msgs, apiKey) {
+  var sample = msgs.slice(0,150).map(function(m){
+    return "[" + m.dateDisp + " " + m.timeStr + "|" + m.turno + "|" + m.sender + "]:" + m.text;
+  }).join("\n");
+
+  var system = "Eres experto en manufactura SMT/PCB/PTH. " +
+    "Analiza mensajes WhatsApp de manufactura y extrae SOLO eventos operativos accionables. " +
+    "INCLUIR: paros linea, defectos calidad, falta material, FAI, LCR vencido, RMA, AOI/ICT, dano fisico. " +
+    "EXCLUIR: saludos, ok, gracias, emojis solos. " +
+    "Catalogo defecto_smt: Solder bridge|Missing component|Wrong component|Wrong orientation|Polarity inverted|" +
+    "Misaligned component|BGA short|BGA open|Lifted pad|Feeder misload|Machine stop|Wrong reel|Missing material|" +
+    "ICT open|ICT short|Functional test fail|N/A. " +
+    "tipo_evento: Calidad|Proceso|Material|Sistema|Seguridad|Produccion. " +
+    "Maximo 15 eventos. Solo JSON sin texto extra:" +
+    '{"eventos":[{"id":"EVT-001","fecha":"DD/MM/YYYY","hora":"HH:MM","turno":"1T|2T|3T",' +
+    '"modelo":"N/P o N/D","linea_estacion":"L1 o N/D","reporta":"nombre",' +
+    '"area_involucrada":"SMT|PTH|ICT|AOI|Calidad|Mantenimiento|Materiales|Produccion",' +
+    '"tipo_evento":"Calidad|Proceso|Material|Sistema|Seguridad|Produccion",' +
+    '"defecto_smt":"del catalogo o N/A","evento_detectado":"descripcion","impacto":"impacto",' +
+    '"accion_requerida":"accion","responsable_sugerido":"responsable",' +
+    '"estatus":"Abierto|En proceso|Cerrado","prioridad":"Critica|Alta|Media|Baja",' +
+    '"fuente_chat":"DD/MM/YY HH:MM nombre","notas":""}],' +
+    '"kpis":[{"fechahora":"DD/MM/YYYY HH:MM","indicador":"nombre","valor":0.0,"unidad":"%","fuente":"nombre"}],' +
+    '"resumen":{"periodo":"DD/MM/YYYY a DD/MM/YYYY","grupo":"nombre","total_eventos":0,' +
+    '"alertas_criticas":["alerta"],"acciones_pendientes":["accion"],"estatus_lineas":["linea"]},' +
+    '"directorio":[{"nombre":"nombre","departamento":"area","rol":"rol","mensajes":0,"eventos":0,"area_owner":"area"}]}';
+
+  var resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 6000,
+      system: system,
+      messages: [
+        { role: "user", content: "Analiza " + msgs.length + " mensajes. Solo JSON:\n\n" + sample },
+        { role: "assistant", content: "{" }
+      ]
+    })
+  });
+
+  if (!resp.ok) {
+    var err = await resp.json().catch(function(){ return {}; });
+    if (resp.status === 401) throw new Error("API Key invalida. Verifica en console.anthropic.com");
+    if (resp.status === 429) throw new Error("Limite de uso alcanzado. Espera e intenta de nuevo.");
+    throw new Error((err.error && err.error.message) || ("Error API " + resp.status));
+  }
+
+  var data = await resp.json();
+  if (!data.content || !data.content.length) throw new Error("Respuesta vacia. Intenta de nuevo.");
+
+  var raw = "{" + data.content.map(function(b){ return b.text || ""; }).join("");
+  var clean = raw.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();
+  var s = clean.indexOf("{");
+  var e = clean.lastIndexOf("}");
+  if (s === -1 || e === -1) throw new Error("JSON invalido. Reduce el rango de dias.");
+  var jsonStr = clean.slice(s, e+1);
+
+  try { return JSON.parse(jsonStr); } catch(_) {}
+
+  var fixed = jsonStr
+    .replace(/,\s*([}\]])/g, "$1");
+  try { return JSON.parse(fixed); } catch(_) {}
+
+  throw new Error("Error procesando respuesta. Intenta con 1 o 3 dias.");
 }
 
-}catch(e){
-alert("Error leyendo ZIP")
+// ── EXCEL ─────────────────────────────────────────────────────────────────────
+
+async function buildXlsx(result) {
+  var ev = result.eventos || [];
+  var kpis = result.kpis || [];
+  var res = result.resumen || {};
+  var directorio = result.directorio || [];
+
+  var wb = new ExcelJS.Workbook();
+  wb.creator = "SMTintel by ALDA";
+  wb.created = new Date();
+
+  var C = {
+    hBg:"1E5545", hFg:"FFFFFF",
+    critica:"F4CCCC", alta:"FCE4D6", media:"EEF5FB", baja:"E2F0D9",
+    cerrado:"E2F0D9", enProceso:"FFF2CC", abierto:"F4CCCC", alt:"F5F3EE"
+  };
+
+  function hFill(bg){ return {type:"pattern",pattern:"solid",fgColor:{argb:"FF"+bg}}; }
+  function brd(){ return {top:{style:"thin"},left:{style:"thin"},bottom:{style:"thin"},right:{style:"thin"}}; }
+  function hFont(sz){ return {name:"Segoe UI",size:sz||11,bold:true,color:{argb:"FF"+C.hFg}}; }
+  function dFont(){ return {name:"Segoe UI",size:10}; }
+  function prioFill(p){ return ({Critica:C.critica,Alta:C.alta,Media:C.media,Baja:C.baja})[p] || "FFFFFF"; }
+  function estFill(s){ return ({Abierto:C.abierto,"En proceso":C.enProceso,Cerrado:C.cerrado})[s] || "FFFFFF"; }
+
+  function styleHdr(ws, n) {
+    var r = ws.getRow(1);
+    for (var i = 1; i <= n; i++) {
+      var c = r.getCell(i);
+      c.fill = hFill(C.hBg); c.font = hFont(); c.border = brd();
+      c.alignment = {horizontal:"center",vertical:"middle"};
+    }
+    r.height = 18;
+  }
+
+  var H = ["ID","Fecha","Hora","Turno","Modelo","Linea_Estacion","Reporta","Area_involucrada",
+           "Tipo_evento","Defecto_SMT","Evento_detectado","Impacto","Accion_requerida",
+           "Responsable_sugerido","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
+
+  function addEvSheet(name, evArr) {
+    var ws = wb.addWorksheet(name);
+    ws.addRow(H);
+    styleHdr(ws, H.length);
+    evArr.forEach(function(e, ri) {
+      var row = ws.addRow([
+        e.id, e.fecha, e.hora, e.turno, e.modelo, e.linea_estacion, e.reporta,
+        e.area_involucrada, e.tipo_evento, e.defecto_smt || "N/A", e.evento_detectado,
+        e.impacto, e.accion_requerida, e.responsable_sugerido, e.estatus, e.prioridad,
+        {formula: "IF(OR(P"+(ri+2)+"=\"Abierto\",P"+(ri+2)+"=\"En proceso\"),TODAY()-B"+(ri+2)+",\"\")"},
+        e.fuente_chat, e.notas
+      ]);
+      row.height = 38;
+      row.eachCell({includeEmpty:false}, function(cell, col) {
+        cell.font = dFont();
+        cell.alignment = {wrapText:true, vertical:"top"};
+        if (col === 15) cell.fill = hFill(estFill(e.estatus));
+        else if (col === 16) cell.fill = hFill(prioFill(e.prioridad));
+        else cell.fill = hFill(ri % 2 === 0 ? "FFFFFF" : C.alt);
+      });
+    });
+    ws.columns = [6,12,8,6,16,18,18,20,14,20,40,30,34,24,12,10,10,30,30].map(function(w){ return {width:w}; });
+    ws.views = [{state:"frozen",ySplit:1}];
+  }
+
+  addEvSheet("Bitacora", ev);
+  addEvSheet("Pendientes", ev.filter(function(e){ return e.estatus !== "Cerrado"; }));
+
+  // KPIs sheet
+  var wsKpi = wb.addWorksheet("KPIs_chat");
+  var kH = ["FechaHora","Indicador","Valor","Unidad","Fuente_chat"];
+  wsKpi.addRow(kH); styleHdr(wsKpi, kH.length);
+  kpis.forEach(function(k){
+    var r = wsKpi.addRow([k.fechahora, k.indicador, k.valor, k.unidad, k.fuente]);
+    r.eachCell({includeEmpty:false}, function(c){ c.font = dFont(); c.fill = hFill("FFFFFF"); });
+  });
+  wsKpi.columns = [22,28,10,8,32].map(function(w){ return {width:w}; });
+
+  // Resumen sheet
+  var wsRes = wb.addWorksheet("Resumen_Junta");
+  wsRes.mergeCells("A1:F1");
+  var t1 = wsRes.getCell("A1");
+  t1.value = "Resumen ejecutivo - " + (res.grupo || "SMTintel");
+  t1.fill = hFill(C.hBg); t1.font = hFont(13);
+  t1.alignment = {horizontal:"left",vertical:"middle"};
+  wsRes.getRow(1).height = 22;
+  wsRes.getCell("A2").value = "Periodo"; wsRes.getCell("A2").font = dFont();
+  wsRes.getCell("B2").value = res.periodo || ""; wsRes.getCell("B2").font = dFont();
+  wsRes.addRow([]);
+  (res.alertas_criticas || []).forEach(function(a){
+    var r = wsRes.addRow(["- " + a]); r.getCell(1).font = dFont();
+  });
+  wsRes.columns = [55,30,5,42,14,5].map(function(w){ return {width:w}; });
+
+  // Dashboard sheet
+  var mods = [];
+  var modSet = {};
+  ev.forEach(function(e){ if(e.modelo && !modSet[e.modelo]){ modSet[e.modelo]=true; mods.push(e.modelo); } });
+  var defCounts = {};
+  ev.forEach(function(e){ if(e.defecto_smt && e.defecto_smt !== "N/A") defCounts[e.defecto_smt] = (defCounts[e.defecto_smt]||0)+1; });
+  var tipoCounts = {};
+  ev.forEach(function(e){ var t=e.tipo_evento||"N/D"; tipoCounts[t]=(tipoCounts[t]||0)+1; });
+
+  var wsDash = wb.addWorksheet("Dashboard_Base");
+  wsDash.mergeCells("A1:E1");
+  var dt = wsDash.getCell("A1");
+  dt.value = "Dashboard SMTintel by ALDA";
+  dt.fill = hFill(C.hBg); dt.font = hFont(13);
+  wsDash.getRow(1).height = 22; wsDash.addRow([]);
+  [["Total",ev.length],["Abiertos",ev.filter(function(e){return e.estatus==="Abierto";}).length],
+   ["En proceso",ev.filter(function(e){return e.estatus==="En proceso";}).length],
+   ["Cerrados",ev.filter(function(e){return e.estatus==="Cerrado";}).length]].forEach(function(kv){
+    var r = wsDash.addRow([kv[0], kv[1]]); r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
+  });
+  wsDash.addRow([]);
+  var rDef = wsDash.addRow(["Pareto Defectos SMT"]); rDef.getCell(1).fill=hFill(C.hBg); rDef.getCell(1).font=hFont();
+  Object.keys(defCounts).sort(function(a,b){return defCounts[b]-defCounts[a];}).forEach(function(k){
+    var r = wsDash.addRow([k, defCounts[k]]); r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
+  });
+  wsDash.columns = [30,12,3,20,10].map(function(w){ return {width:w}; });
+
+  // Directorio sheet
+  var wsDir = wb.addWorksheet("Directorio_Equipo");
+  var dH = ["Nombre","Departamento","Rol","Mensajes","Eventos","Area_owner"];
+  wsDir.addRow(dH); styleHdr(wsDir, dH.length);
+  var dirRows = directorio.length > 0
+    ? directorio.map(function(d){ return [d.nombre, d.departamento, d.rol, d.mensajes, d.eventos, d.area_owner]; })
+    : Array.from(new Set(ev.map(function(e){return e.reporta;}).filter(Boolean))).map(function(n){
+        return [n, (ev.find(function(e){return e.reporta===n;})||{}).area_involucrada||"", "",
+          ev.filter(function(e){return e.reporta===n;}).length,
+          ev.filter(function(e){return e.responsable_sugerido===n;}).length, ""];
+      });
+  dirRows.forEach(function(row, ri){
+    var r = wsDir.addRow(row);
+    r.eachCell({includeEmpty:false},function(c){c.font=dFont();c.fill=hFill(ri%2===0?"FFFFFF":C.alt);});
+  });
+  wsDir.columns = [24,22,20,16,16,22].map(function(w){ return {width:w}; });
+
+  // Catalogos sheet
+  var wsCat = wb.addWorksheet("Catalogos_Reglas");
+  wsCat.mergeCells("A1:D1");
+  var ct = wsCat.getCell("A1");
+  ct.value = "Catalogos y reglas - SMTintel"; ct.fill=hFill(C.hBg); ct.font=hFont(12);
+  wsCat.getRow(1).height = 20; wsCat.addRow([]);
+  var lins = Array.from(new Set(ev.map(function(e){return e.linea_estacion;}).filter(Boolean)));
+  var reglas = ["Incluir: paros, defectos, falta material, FAI.",
+    "Excluir: saludos, confirmaciones simples.",
+    "Turnos: 1T 06-14h, 2T 14-22h, 3T 22-06h."];
+  var maxC = Math.max(mods.length, lins.length, reglas.length);
+  for (var i = 0; i < maxC; i++) {
+    var r = wsCat.addRow([mods[i]||"", lins[i]||"", reglas[i]||""]);
+    r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
+  }
+  wsCat.columns = [24,28,60,3].map(function(w){ return {width:w}; });
+
+  return await wb.xlsx.writeBuffer();
 }
 
+// ── LOGO SVG ──────────────────────────────────────────────────────────────────
+
+function LogoSVG() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" width="200" height="50">
+      <rect x="0" y="0" width="50" height="50" rx="10" fill="#1E5545"/>
+      <rect x="4" y="6" width="42" height="22" rx="2" fill="none" stroke="#F5EED0" strokeWidth="0.6" opacity="0.2"/>
+      <polyline points="4,18 9,18 12,11 15,11 18,25 21,25 24,7 27,7 30,19 33,19 36,14 39,14 42,18 46,18"
+        fill="none" stroke="#CDDBA0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="12" cy="11" r="2" fill="#1E5545" stroke="#CDDBA0" strokeWidth="1.5"/>
+      <circle cx="24" cy="7" r="2" fill="#1E5545" stroke="#CDDBA0" strokeWidth="1.5"/>
+      <circle cx="36" cy="14" r="2" fill="#1E5545" stroke="#CDDBA0" strokeWidth="1.5"/>
+      <line x1="6" y1="34" x2="44" y2="34" stroke="#F5EED0" strokeWidth="0.5" opacity="0.2"/>
+      <text x="25" y="45" textAnchor="middle" fill="#F5EED0" fontSize="10" fontWeight="300" fontFamily="Segoe UI,sans-serif" opacity="0.85">ALDA</text>
+      <rect x="0" y="0" width="50" height="50" rx="10" fill="none" stroke="#1A5040" strokeWidth="1"/>
+      <text x="57" y="22" fill="#F5EED0" fontSize="20" fontWeight="700" fontFamily="Segoe UI,sans-serif">SMT</text>
+      <text x="96" y="22" fill="#F5EED0" fontSize="20" fontWeight="300" fontFamily="Segoe UI,sans-serif">intel</text>
+      <line x1="57" y1="27" x2="198" y2="27" stroke="#8A9F5C" strokeWidth="0.9" opacity="0.65"/>
+      <text x="57" y="37" fill="rgba(245,238,208,0.7)" fontSize="7.5" fontFamily="Segoe UI,sans-serif">Manufacturing Analytics</text>
+      <text x="57" y="47" fill="rgba(205,219,160,0.5)" fontSize="6" fontFamily="Segoe UI,sans-serif">SMT - AOI - SPI - X-RAY</text>
+    </svg>
+  );
 }
 
-return(
+// ── APP ───────────────────────────────────────────────────────────────────────
 
-<div>
+function App() {
+  var stateArr = _useState("idle");
+  var state = stateArr[0]; var setState = stateArr[1];
 
-<div className="hdr">
-<h2>SMTintel — Manufacturing Analytics</h2>
-<p>Chat de manufactura → Dashboard SMT</p>
-</div>
+  var apiKeyArr = _useState(localStorage.getItem("smtintel_key") || "");
+  var apiKey = apiKeyArr[0]; var setApiKey = apiKeyArr[1];
 
-<div className="upload"
-onClick={()=>fileRef.current.click()}
->
+  var progArr = _useState(0);
+  var prog = progArr[0]; var setProg = progArr[1];
 
-<input
-type="file"
-ref={fileRef}
-accept=".zip"
-style={{display:"none"}}
-onChange={e=>handleZip(e.target.files[0])}
-/>
+  var progStepArr = _useState(0);
+  var progStep = progStepArr[0]; var setProgStep = progStepArr[1];
 
-<p>Sube el ZIP exportado de WhatsApp</p>
+  var daysArr = _useState(3);
+  var days = daysArr[0]; var setDays = daysArr[1];
 
-<br/>
+  var resultArr = _useState(null);
+  var result = resultArr[0]; var setResult = resultArr[1];
 
-<button className="btn">Seleccionar archivo</button>
+  var xlsxArr = _useState(null);
+  var xlsxBytes = xlsxArr[0]; var setXlsxBytes = xlsxArr[1];
 
-</div>
+  var errArr = _useState("");
+  var errMsg = errArr[0]; var setErrMsg = errArr[1];
 
-{data.length>0 && (
+  var dragArr = _useState(false);
+  var drag = dragArr[0]; var setDrag = dragArr[1];
 
-<>
+  var statsArr = _useState(null);
+  var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
 
-<div className="stats">
+  var pfArr = _useState("");
+  var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
 
-<div className="card">
-<h3>{data.length}</h3>
-<p>Mensajes parseados</p>
-</div>
+  var fileRef = _useRef();
 
-<div className="card">
-<h3>{[...new Set(data.map(x=>x.sender))].length}</h3>
-<p>Participantes</p>
-</div>
+  function saveKey(k) { setApiKey(k); localStorage.setItem("smtintel_key", k); }
 
-<div className="card">
-<h3>{data.filter(x=>x.turno==="1T").length}</h3>
-<p>Turno 1</p>
-</div>
+  var STEPS = ["ZIP","Parser","Filtro","IA","Excel"];
 
-<div className="card">
-<h3>{data.filter(x=>x.turno==="2T").length}</h3>
-<p>Turno 2</p>
-</div>
+  async function handle(file) {
+    if (!file || !file.name.endsWith(".zip")) { setErrMsg("Sube un .zip exportado de WhatsApp"); setState("error"); return; }
+    if (!apiKey.trim()) { setErrMsg("Ingresa tu API Key de Anthropic"); setState("error"); return; }
+    setState("loading"); setProg(8); setProgStep(0);
+    try {
+      var txt = await readZip(file);
+      setProgStep(1); setProg(22);
+      var all = parseWhatsApp(txt);
+      if (!all.length) throw new Error("No se encontraron mensajes con formato WhatsApp.");
+      setProgStep(2); setProg(38);
+      var filtered = filterByDays(all, days);
+      var clean = cleanMsgs(filtered);
+      setMsgStats({total: all.length, filtered: filtered.length, clean: clean.length});
+      if (!clean.length) throw new Error("Sin mensajes operativos en el periodo. Aumenta el rango.");
+      setProgStep(3); setProg(55);
+      var res = await analyzeWithAI(clean, apiKey.trim());
+      setProgStep(4); setProg(82);
+      var bytes = await buildXlsx(res);
+      setProg(100); setResult(res); setXlsxBytes(bytes); setState("done");
+    } catch(e) { setErrMsg(e.message || String(e)); setState("error"); }
+  }
 
-</div>
+  function download() {
+    if (!xlsxBytes) return;
+    var blob = new Blob([xlsxBytes], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "SMTintel_" + new Date().toISOString().slice(0,10) + ".xlsx";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 
-<table>
+  function reset() {
+    setState("idle"); setResult(null); setXlsxBytes(null);
+    setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); setPersonaFiltro("");
+  }
 
-<thead>
-<tr>
-<th>Fecha</th>
-<th>Hora</th>
-<th>Turno</th>
-<th>Usuario</th>
-<th>Mensaje</th>
-</tr>
-</thead>
+  // Derived data
+  var ev = (result && result.eventos) ? result.eventos : [];
+  var kpis = (result && result.kpis) ? result.kpis : [];
+  var res = (result && result.resumen) ? result.resumen : {};
+  var pend = ev.filter(function(e){ return e.estatus !== "Cerrado"; });
+  var crit = ev.filter(function(e){ return e.prioridad === "Critica" && e.estatus !== "Cerrado"; });
+  var cerr = ev.filter(function(e){ return e.estatus === "Cerrado"; });
 
-<tbody>
+  // Charts
+  var modMap = {};
+  ev.forEach(function(e){ if(e.modelo) modMap[e.modelo] = (modMap[e.modelo]||0)+1; });
+  var byMod = Object.keys(modMap).map(function(k){ return {l:k,n:modMap[k]}; }).sort(function(a,b){return b.n-a.n;}).slice(0,5);
+  var mxM = Math.max.apply(null, byMod.map(function(x){return x.n;}).concat([1]));
 
-{data.map((m,i)=>
+  var linMap = {};
+  ev.forEach(function(e){ if(e.linea_estacion && e.linea_estacion!=="N/D") linMap[e.linea_estacion]=(linMap[e.linea_estacion]||0)+1; });
+  var byLin = Object.keys(linMap).map(function(k){return{l:k,n:linMap[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,5);
+  var mxL = Math.max.apply(null, byLin.map(function(x){return x.n;}).concat([1]));
 
-<tr key={i}>
-<td>{m.fecha}</td>
-<td>{m.hora}</td>
-<td>{m.turno}</td>
-<td>{m.sender}</td>
-<td>{m.text}</td>
-</tr>
+  var byPrio = [
+    {l:"Critica",n:ev.filter(function(e){return e.prioridad==="Critica";}).length,c:"re"},
+    {l:"Alta",n:ev.filter(function(e){return e.prioridad==="Alta";}).length,c:"ye"},
+    {l:"Media",n:ev.filter(function(e){return e.prioridad==="Media";}).length,c:"bl"},
+    {l:"Baja",n:ev.filter(function(e){return e.prioridad==="Baja";}).length,c:"gr"}
+  ];
+  var mxP = Math.max.apply(null, byPrio.map(function(x){return x.n;}).concat([1]));
 
-)}
+  var tipoMap = {};
+  ev.forEach(function(e){ var t=e.tipo_evento||"N/D"; tipoMap[t]=(tipoMap[t]||0)+1; });
+  var byTipo = ["Calidad","Proceso","Material","Sistema","Produccion","Seguridad"]
+    .map(function(t){return{l:t,n:tipoMap[t]||0};}).filter(function(x){return x.n>0;});
+  var mxT = Math.max.apply(null, byTipo.map(function(x){return x.n;}).concat([1]));
 
-</tbody>
+  var defMap2 = {};
+  ev.forEach(function(e){ if(e.defecto_smt && e.defecto_smt!=="N/A") defMap2[e.defecto_smt]=(defMap2[e.defecto_smt]||0)+1; });
+  var byDef = Object.keys(defMap2).map(function(k){return{l:k,n:defMap2[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,5);
+  var mxD = Math.max.apply(null, byDef.map(function(x){return x.n;}).concat([1]));
 
-</table>
+  // Persona filter
+  var personaSet = {};
+  ev.forEach(function(e){
+    if(e.reporta && e.reporta !== "N/D") personaSet[e.reporta] = true;
+    if(e.responsable_sugerido && e.responsable_sugerido !== "N/D") personaSet[e.responsable_sugerido] = true;
+  });
+  var personas = Object.keys(personaSet).sort();
 
-</>
+  var evRep = personaFiltro ? ev.filter(function(e){ return e.reporta && e.reporta.toLowerCase().indexOf(personaFiltro.toLowerCase()) >= 0; }) : [];
+  var evRes = personaFiltro ? ev.filter(function(e){ return e.responsable_sugerido && e.responsable_sugerido.toLowerCase().indexOf(personaFiltro.toLowerCase()) >= 0 && evRep.indexOf(e) === -1; }) : [];
+  var dirInfo = result && result.directorio ? result.directorio.find(function(d){ return d.nombre && d.nombre.toLowerCase().indexOf(personaFiltro.toLowerCase()) >= 0; }) : null;
 
-)}
+  function bprio(p) { return ({Critica:"badge bc",Alta:"badge ba",Media:"badge bm",Baja:"badge bb"})[p] || "badge"; }
+  function best(s) { return ({Abierto:"badge bo","En proceso":"badge be",Cerrado:"badge bce"})[s] || "badge"; }
 
-</div>
+  function PendItem(props) {
+    var e = props.e;
+    return (
+      <div className={"pitem" + (e.prioridad==="Critica"?" cr":e.prioridad==="Alta"?" al":"")}>
+        <div className="pitem-top">
+          <span className="pitem-id">{e.id} - {e.fecha} - {e.turno}</span>
+          <span className={bprio(e.prioridad)}>{e.prioridad}</span>
+        </div>
+        <h4>{e.evento_detectado}</h4>
+        <p>{e.accion_requerida}</p>
+        <div className="pmeta">
+          <span className="ptag">{e.linea_estacion}</span>
+          <span className="ptag">{e.responsable_sugerido}</span>
+          {e.modelo !== "N/D" && <span className="ptag">{e.modelo}</span>}
+          {e.defecto_smt && e.defecto_smt !== "N/A" && <span className="badge bt">{e.defecto_smt}</span>}
+          <span className={best(e.estatus)}>{e.estatus}</span>
+        </div>
+      </div>
+    );
+  }
 
-)
+  return (
+    <div>
+      {/* HEADER */}
+      <div className="hdr">
+        <div className="hdr-logo"><LogoSVG/></div>
+        <div className="hdr-info">
+          <div className="hdr-badge">Herramienta Operativa</div>
+          <h1>Chat de manufactura a Dashboard SMT</h1>
+          <h2>ZIP - Analisis IA - Excel - by ALDA</h2>
+        </div>
+      </div>
 
+      {/* API KEY */}
+      <div className="api-bar">
+        <label>API Key:</label>
+        <input className="api-input" type="password" placeholder="sk-ant-api03-..."
+          value={apiKey} onChange={function(e){ saveKey(e.target.value); }}/>
+        <div className="api-note">
+          Guardada en este navegador.{" "}
+          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">
+            console.anthropic.com
+          </a>
+        </div>
+      </div>
+
+      {/* IDLE */}
+      {state === "idle" && (
+        <div
+          className={"up" + (drag ? " drag" : "")}
+          onDragOver={function(e){ e.preventDefault(); setDrag(true); }}
+          onDragLeave={function(){ setDrag(false); }}
+          onDrop={function(e){ e.preventDefault(); setDrag(false); handle(e.dataTransfer.files[0]); }}
+          onClick={function(){ fileRef.current.click(); }}
+        >
+          <div className="up-body">
+            <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}}
+              onChange={function(e){ handle(e.target.files[0]); }}/>
+            <div className="up-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+              </svg>
+            </div>
+            <h3>Sube el .zip de WhatsApp</h3>
+            <p>Arrastra aqui o haz clic</p>
+            <div>
+              {["CALIDAD SMT/PTH","SMT Output","ERBU CRBU","Cualquier grupo"].map(function(t){
+                return <span key={t} className="chip">{t}</span>;
+              })}
+            </div>
+            <button className="up-btn" onClick={function(e){ e.stopPropagation(); fileRef.current.click(); }}>
+              Seleccionar .zip
+            </button>
+          </div>
+          <div className="filter-bar" onClick={function(e){ e.stopPropagation(); }}>
+            <label>Ultimos:</label>
+            <div className="day-btns">
+              {[1,3,7,14,30].map(function(d){
+                return (
+                  <button key={d} className={"day-btn" + (days===d?" active":"")}
+                    onClick={function(){ setDays(d); }}>
+                    {d}d
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LOADING */}
+      {state === "loading" && (
+        <div className="prog">
+          <h3>Procesando chat...</h3>
+          <p>{msgStats
+            ? (msgStats.clean + " mensajes relevantes de " + msgStats.total + " totales")
+            : "Leyendo ZIP..."}</p>
+          <div className="pbar">
+            <div className="pfill" style={{width: prog + "%"}}/>
+          </div>
+          <div className="psteps">
+            {STEPS.map(function(s, i){
+              return (
+                <div key={i} className={"pstep" + (i===progStep?" on":i<progStep?" ok":"")}>
+                  {i < progStep ? "ok " : ""}{s}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ERROR */}
+      {state === "error" && (
+        <div>
+          <div className="errc">Error: {errMsg}</div>
+          <button className="resetbtn" onClick={reset}>Intentar de nuevo</button>
+        </div>
+      )}
+
+      {/* DONE */}
+      {state === "done" && result && (
+        <div>
+          <button className="resetbtn" onClick={reset}>Analizar otro chat</button>
+
+          {/* Download bar */}
+          <div className="dlc">
+            <div className="dlc-txt">
+              <h3>Excel listo para junta</h3>
+              <p>{(res.periodo || "") + " - " + ev.length + " eventos - " + ((msgStats && msgStats.clean) || 0) + " msgs"}</p>
+              <div className="dlc-sheets">
+                {["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio_Equipo","Catalogos_Reglas"].map(function(s){
+                  return <span key={s} className="dlc-sh">{s}</span>;
+                })}
+              </div>
+            </div>
+            <button className="dlbtn" onClick={download}>Descargar .xlsx</button>
+          </div>
+
+          {/* Stats cards */}
+          <div className="stats">
+            <div className="scard"><div className="sval te">{ev.length}</div><div className="slb">Total eventos</div></div>
+            <div className="scard"><div className="sval re">{crit.length}</div><div className="slb">Criticos</div></div>
+            <div className="scard"><div className="sval bl">{pend.length}</div><div className="slb">Pendientes</div></div>
+            <div className="scard"><div className="sval gr">{cerr.length}</div><div className="slb">Cerrados</div></div>
+          </div>
+
+          {/* KPIs */}
+          {kpis.length > 0 && (
+            <div className="tcard">
+              <div className="tcard-hdr"><h3>KPIs en chat</h3></div>
+              <div style={{padding:"10px 14px"}}>
+                {kpis.map(function(k, i){
+                  return (
+                    <div key={i} className="krow">
+                      <div className="kval">{k.valor}<span style={{fontSize:9}}>{k.unidad}</span></div>
+                      <div className="kin">
+                        <div className="nm">{k.indicador}</div>
+                        <div className="ts">{k.fechahora} - {k.fuente}</div>
+                      </div>
+                      <div className="kbar">
+                        <div className="kbf" style={{width: Math.min(100, k.valor < 2 ? k.valor*100 : k.valor) + "%"}}/>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Charts row 1 */}
+          <div className="charts">
+            <div className="crt">
+              <h4>Por modelo</h4>
+              {byMod.map(function(x,i){
+                return (
+                  <div key={i} className="brow">
+                    <div className="blbl" title={x.l}>{x.l}</div>
+                    <div className="btrk"><div className="bfil" style={{width:(x.n/mxM*100)+"%"}}/></div>
+                    <div className="bnum">{x.n}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="crt">
+              <h4>Por linea</h4>
+              {byLin.map(function(x,i){
+                return (
+                  <div key={i} className="brow">
+                    <div className="blbl" title={x.l}>{x.l}</div>
+                    <div className="btrk"><div className="bfil bl" style={{width:(x.n/mxL*100)+"%"}}/></div>
+                    <div className="bnum">{x.n}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="crt">
+              <h4>Por prioridad</h4>
+              {byPrio.map(function(x,i){
+                return (
+                  <div key={i} className="brow">
+                    <div className="blbl">{x.l}</div>
+                    <div className="btrk"><div className={"bfil " + x.c} style={{width:(x.n/mxP*100)+"%"}}/></div>
+                    <div className="bnum">{x.n}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="crt">
+              <h4>Por estatus</h4>
+              {[
+                {l:"Abiertos",n:ev.filter(function(e){return e.estatus==="Abierto";}).length,c:"re"},
+                {l:"En proceso",n:ev.filter(function(e){return e.estatus==="En proceso";}).length,c:"ye"},
+                {l:"Cerrados",n:cerr.length,c:"gr"}
+              ].map(function(x,i){
+                return (
+                  <div key={i} className="brow">
+                    <div className="blbl">{x.l}</div>
+                    <div className="btrk"><div className={"bfil " + x.c} style={{width:(x.n/Math.max(ev.length,1)*100)+"%"}}/></div>
+                    <div className="bnum">{x.n}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Charts row 2 - SMT Pareto + Tipo */}
+          {(byDef.length > 0 || byTipo.length > 0) && (
+            <div className="charts">
+              {byDef.length > 0 && (
+                <div className="crt">
+                  <h4>Pareto defectos SMT</h4>
+                  {byDef.map(function(x,i){
+                    return (
+                      <div key={i} className="brow">
+                        <div className="blbl" title={x.l}>{x.l}</div>
+                        <div className="btrk"><div className="bfil pu" style={{width:(x.n/mxD*100)+"%"}}/></div>
+                        <div className="bnum">{x.n}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {byTipo.length > 0 && (
+                <div className="crt">
+                  <h4>Por tipo de evento</h4>
+                  {byTipo.map(function(x,i){
+                    return (
+                      <div key={i} className="brow">
+                        <div className="blbl">{x.l}</div>
+                        <div className="btrk"><div className="bfil lm" style={{width:(x.n/mxT*100)+"%"}}/></div>
+                        <div className="bnum">{x.n}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Persona filter */}
+          <div className="pf-card">
+            <div className="pf-hdr">
+              <h3>Filtro por persona</h3>
+              <select className="pf-select" value={personaFiltro}
+                onChange={function(e){ setPersonaFiltro(e.target.value); }}>
+                <option value="">Todos los participantes</option>
+                {personas.map(function(p,i){ return <option key={i} value={p}>{p}</option>; })}
+              </select>
+              {personaFiltro && (
+                <button className="pf-clear" onClick={function(){ setPersonaFiltro(""); }}>Limpiar</button>
+              )}
+            </div>
+            {personaFiltro ? (
+              <div className="pf-body">
+                <div className="pf-profile">
+                  <div className="pf-avatar">{personaFiltro.charAt(0).toUpperCase()}</div>
+                  <div className="pf-info">
+                    <div className="pf-name">{personaFiltro}</div>
+                    <div className="pf-dept">
+                      {dirInfo ? (dirInfo.departamento + " - " + dirInfo.rol) : "Participante del chat"}
+                    </div>
+                    <div className="pf-stats">
+                      <div className="pf-stat"><div className="pf-stat-val">{evRep.length}</div><div className="pf-stat-lbl">Reporto</div></div>
+                      <div className="pf-stat bl"><div className="pf-stat-val">{evRes.length}</div><div className="pf-stat-lbl">Responsable</div></div>
+                      <div className="pf-stat re"><div className="pf-stat-val">{evRep.filter(function(e){return e.prioridad==="Critica";}).length}</div><div className="pf-stat-lbl">Criticos</div></div>
+                      <div className="pf-stat gr"><div className="pf-stat-val">{evRep.concat(evRes).filter(function(e){return e.estatus!=="Cerrado";}).length}</div><div className="pf-stat-lbl">Abiertos</div></div>
+                    </div>
+                  </div>
+                </div>
+                {evRep.length > 0 && (
+                  <div>
+                    <div className="pf-section-title">Eventos reportados ({evRep.length})</div>
+                    <div className="plist" style={{padding:0,marginBottom:12}}>
+                      {evRep.map(function(e,i){ return <PendItem key={i} e={e}/>; })}
+                    </div>
+                  </div>
+                )}
+                {evRes.length > 0 && (
+                  <div>
+                    <div className="pf-section-title">Donde es responsable ({evRes.length})</div>
+                    <div className="plist" style={{padding:0}}>
+                      {evRes.map(function(e,i){ return <PendItem key={i} e={e}/>; })}
+                    </div>
+                  </div>
+                )}
+                {evRep.length === 0 && evRes.length === 0 && (
+                  <div className="pf-empty">Sin eventos para esta persona en el periodo</div>
+                )}
+              </div>
+            ) : (
+              <div className="pf-body">
+                <div className="pf-empty">Selecciona una persona para ver su actividad</div>
+              </div>
+            )}
+          </div>
+
+          {/* Bitacora table */}
+          <div className="tcard">
+            <div className="tcard-hdr"><h3>Bitacora de eventos ({ev.length})</h3></div>
+            <div className="tscroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th><th>Fecha</th><th>T</th><th>Linea</th>
+                    <th>Tipo</th><th>Defecto SMT</th><th>Evento</th>
+                    <th>Prioridad</th><th>Estatus</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ev.map(function(e,i){
+                    return (
+                      <tr key={i}>
+                        <td><strong>{e.id}</strong></td>
+                        <td style={{whiteSpace:"nowrap",fontSize:10}}>{e.fecha}</td>
+                        <td>{e.turno}</td>
+                        <td style={{maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.linea_estacion}</td>
+                        <td><span style={{fontSize:9,background:"#EDF5F3",color:"#1E5545",padding:"2px 5px",borderRadius:4,fontWeight:600}}>{e.tipo_evento}</span></td>
+                        <td style={{maxWidth:100}}>
+                          {e.defecto_smt && e.defecto_smt !== "N/A"
+                            ? <span className="badge bt" style={{fontSize:8.5,whiteSpace:"normal"}}>{e.defecto_smt}</span>
+                            : <span style={{color:"#C8C2BA",fontSize:10}}>-</span>}
+                        </td>
+                        <td style={{maxWidth:170,fontSize:10.5}}>{e.evento_detectado}</td>
+                        <td><span className={bprio(e.prioridad)}>{e.prioridad}</span></td>
+                        <td><span className={best(e.estatus)}>{e.estatus}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Pendientes */}
+          {pend.length > 0 && (
+            <div className="tcard" style={{marginTop:14}}>
+              <div className="tcard-hdr"><h3>Pendientes operativos ({pend.length})</h3></div>
+              <div className="plist">
+                {pend.map(function(e,i){ return <PendItem key={i} e={e}/>; })}
+              </div>
+            </div>
+          )}
+
+          {/* Before/After */}
+          <div className="cmp" style={{marginTop:14}}>
+            <div className="cmpc">
+              <div className="cmplbl"><div className="cmpdot"/><span>Antes</span></div>
+              {["Sin clasificacion SMT","Sin trazabilidad por turno","Eventos con ruido","Juntas sin datos"].map(function(t,i){
+                return <div key={i} className="cmrow"><div className="cmic">X</div><p>{t}</p></div>;
+              })}
+            </div>
+            <div className="cmpc aft">
+              <div className="cmplbl"><div className="cmpdot g"/><span>Despues SMTintel</span></div>
+              <div className="cmrow"><div className="cmic g">V</div><p><strong>{ev.length} eventos</strong> con defecto SMT</p></div>
+              <div className="cmrow"><div className="cmic g">V</div><p><strong>Pareto</strong> para root cause</p></div>
+              <div className="cmrow"><div className="cmic g">V</div><p><strong>{pend.length} pendientes</strong> con owner</p></div>
+              <div className="cmrow"><div className="cmic g">V</div><p>Excel 7 hojas en minutos</p></div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="foot">
+            <p><strong>SMTintel by ALDA</strong> - Manufacturing Analytics - {new Date().toLocaleDateString("es-MX")}</p>
+            <button className="dlbtn" style={{padding:"8px 16px",fontSize:12}} onClick={download}>Descargar Excel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>)
-
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 
 </body>
