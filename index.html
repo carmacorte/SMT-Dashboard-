@@ -1253,7 +1253,11 @@ function App() {
       var updated = history.filter(function(h){ return h.id !== id; });
       localStorage.setItem(HIST_KEY, JSON.stringify(updated));
       setHistory(updated);
-    } catch(_) {}
+    } catch(_) {}var sortedGalNames = imgNames.slice().sort(function(a,b){
+  var ma=imgMeta[a]; var mb=imgMeta[b];
+  if(!ma&&!mb) return 0; if(!ma) return 1; if(!mb) return -1;
+  return ((mb.dateIso||"")+(mb.timeStr||"")).localeCompare((ma.dateIso||"")+(ma.timeStr||""));
+}); 
   }
 
   function loadFromHistory(entry) {
