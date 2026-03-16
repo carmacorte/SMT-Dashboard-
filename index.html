@@ -553,12 +553,10 @@ async function readZip(file) {
     if (!txt && base.endsWith(".txt")) {
       txt = await zip.files[name].async("string");
     }
-    if (/\.(jpe?g|png)$/i.test(base)) {
+    if (/\.(jpe?g|png|webp)$/i.test(base)) {
       imgNames.push(base);
     }
   }
-
-  imgNames = imgNames.slice(0, 500);
 
   if (!txt) throw new Error("No se encontro .txt en el ZIP");
 
@@ -584,7 +582,7 @@ async function readZip(file) {
         sender:(sender||"").replace(/^~/,"").trim()
       };
     }
-    var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png))\s*>/i);
+    var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
     if (adj && lastMeta) {
       imgMeta[adj[1].trim()] = {
         dateIso:lastMeta.dateIso, timeStr:lastMeta.timeStr, sender:lastMeta.sender
@@ -2129,7 +2127,7 @@ return (
               <div style={{fontSize:12,fontWeight:600,color:"#3D3A36",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</div>
               {meta2 && (
                 <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>
-                  {meta2.timeStr} - {meta2.sender}
+                  {(meta2.dateIso ? (function(){ var p = meta2.dateIso.split("-"); return p.length === 3 ? (p[2] + "/" + p[1] + "/" + p[0]) : meta2.dateIso; })() + " " : "") + meta2.timeStr} - {meta2.sender}
                 </div>
               )}
             </div>
@@ -2195,7 +2193,7 @@ return (
                 <div style={{fontSize:12,fontWeight:600,color:"#3D3A36",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lightbox.name}</div>
                 {lightbox.meta && (
                   <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>
-                    {lightbox.meta.timeStr} - {lightbox.meta.sender}
+                    {(lightbox.meta.dateIso ? (function(){ var p = lightbox.meta.dateIso.split("-"); return p.length === 3 ? (p[2] + "/" + p[1] + "/" + p[0]) : lightbox.meta.dateIso; })() + " " : "") + lightbox.meta.timeStr} - {lightbox.meta.sender}
                   </div>
                 )}
               </div>
@@ -2717,12 +2715,20 @@ return (
               
               <div style={{padding:"12px 16px",display:"flex",gap:10,flexWrap:"wrap"}}>
                 {(imgNames.slice().sort(function(a,b){
-  var ma=imgMeta[a],mb=imgMeta[b];
-  if(!ma&&!mb)return 0;if(!ma)return 1;if(!mb)return -1;
-  return((mb.dateIso||"")+(mb.timeStr||"")).localeCompare((ma.dateIso||"")+(ma.timeStr||""));
+  var ma = imgMeta[a], mb = imgMeta[b];
+  if (!ma && !mb) return a.localeCompare(b);
+  if (!ma) return 1;
+  if (!mb) return -1;
+  var ta = Date.parse((ma.dateIso || "1970-01-01") + "T" + ((ma.timeStr || "00:00").slice(0,5)) + ":00") || 0;
+  var tb = Date.parse((mb.dateIso || "1970-01-01") + "T" + ((mb.timeStr || "00:00").slice(0,5)) + ":00") || 0;
+  return tb - ta; // mas nuevo primero
 })).slice(galPage*GAL_PAGE_SIZE,(galPage+1)*GAL_PAGE_SIZE).map(function(fname){
 
                   var meta2 = imgMeta[fname];
+                  var dateLabel = meta2 && meta2.dateIso ? (function(){
+                    var p = meta2.dateIso.split("-");
+                    return p.length === 3 ? (p[2] + "/" + p[1] + "/" + p[0]) : meta2.dateIso;
+                  })() : "";
                   var attachedTo = Object.keys(evImgs).filter(function(id){
                     return (evImgs[id]||[]).indexOf(fname) >= 0;
                   });
@@ -2753,7 +2759,7 @@ return (
                       </div>
                       {meta2 && (
                         <div style={{fontSize:7.5,color:"#8A8580",marginTop:3,lineHeight:1.3}}>
-                          <div style={{fontSize:7,color:"#2A7A60",fontWeight:600}}>{(meta2.dateIso||"").slice(5).replace("-","/")}</div>
+                          <div style={{fontSize:7,color:"#2A7A60",fontWeight:600}}>{dateLabel}</div>
 <div style={{fontWeight:isSuggested?700:400,color:isSuggested?"#B87820":"#8A8580"}}>{meta2.timeStr}</div>
 
                           <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:68}}>{meta2.sender.split(" ")[0]}</div>
