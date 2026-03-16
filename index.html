@@ -1,3612 +1,423 @@
 <!DOCTYPE html>
-
 <html lang="es">
 <head>
-<meta charset="UTF-8"/><!-- OpsTrace v2026-03-15 15:16:27 -->
-<script>
-window.onerror = function(msg, src, line, col, err) {
-  var box = document.createElement('div');
-  box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#C0392B;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all';
-  box.innerHTML = '<strong>ERROR</strong><br>' + msg + '<br>Line: ' + line + ' Col: ' + col + '<br>' + (err ? err.toString() : '');
-  document.body.appendChild(box);
-  return false;
-};
-</script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>OpsTrace by SMTintel</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<meta charset="UTF-8">
+<title>OpsTrace Consistency Lab</title>
+
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{
-  --bg:#F2F1EE;
-  --w:#FFFFFF;
-  --g50:#F8F7F5;--g100:#EEECEA;--g200:#DDDBD7;--g300:#B8B4AE;
-  --g500:#8A8580;--g700:#3D3A36;--g900:#1A1714;
-  --green:#1E5C48;--green2:#2A7A60;--green3:#48A882;
-  --lime:#6B8C3A;--limeL:#EAF0DC;
-  --re:#C0392B;--reL:#FDF0EE;
-  --bl:#2952A3;--blL:#EBF0FC;
-  --gr:#1A7A3C;--grL:#EBF8EE;
-  --ye:#B87820;--yeL:#FBF5E6;
-  --pu:#6B2DA8;--puL:#F2ECFB;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04);
-  --shadow:0 2px 6px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.05);
-  --shadow-lg:0 4px 12px rgba(0,0,0,.08),0 16px 40px rgba(0,0,0,.07);
-  --radius:14px;
-  --radius-sm:8px;
-}
+
 body{
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  background:#F4F3F0;color:var(--g900);min-height:100vh;
-  -webkit-font-smoothing:antialiased;letter-spacing:-.01em
-}
-#root{max-width:820px;margin:0 auto;padding:32px 20px 80px}
-
-/* -- HEADER -- */
-.hdr{
-background:var(--green);
-border-radius:20px;padding:28px 32px;margin-bottom:20px;
-display:flex;align-items:center;gap:22px;
-position:relative;overflow:hidden;
-box-shadow:0 4px 20px rgba(30,92,72,.25)
-}
-.hdr::before{
-content:'';position:absolute;inset:0;
-background:linear-gradient(135deg,rgba(255,255,255,.06) 0%,transparent 60%);
-pointer-events:none
-}
-.hdr::after{
-content:'';position:absolute;right:-40px;top:-40px;
-width:200px;height:200px;border-radius:50%;
-background:radial-gradient(circle,rgba(255,255,255,.08),transparent 70%)
-}
-.hdr-logo{flex-shrink:0;position:relative;z-index:1}
-.hdr-info{position:relative;z-index:1}
-.hdr-badge{
-display:inline-flex;align-items:center;
-background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
-color:rgba(255,255,255,.85);font-size:8.5px;font-weight:700;
-letter-spacing:.14em;text-transform:uppercase;
-padding:3px 10px;border-radius:99px;margin-bottom:8px
-}
-.hdr-info h1{font-size:15px;font-weight:500;color:rgba(255,255,255,.95);margin-bottom:3px}
-.hdr-info h2{font-size:11px;color:rgba(255,255,255,.45);font-weight:400}
-
-/* -- API BAR -- */
-.api-bar{
-background:var(--w);border:1px solid var(--g200);border-radius:var(--radius);
-padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-box-shadow:var(--shadow-sm)
-}
-.api-bar label{font-size:12px;font-weight:600;color:var(--g700);white-space:nowrap}
-.api-input{
-flex:1;min-width:180px;border:1.5px solid var(--g200);border-radius:var(--radius-sm);
-padding:8px 12px;font-size:12px;color:var(--g900);font-family:'Courier New',monospace;
-background:var(--g50);outline:none;transition:border-color .15s,box-shadow .15s
-}
-.api-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(30,92,72,.1)}
-.api-note{font-size:10px;color:var(--g500);width:100%;margin-top:3px}
-.api-note a{color:var(--green2);text-decoration:none;font-weight:500}
-
-/* -- UPLOAD -- */
-.up{
-background:var(--w);border:2px dashed var(--g200);border-radius:var(--radius);
-margin-bottom:16px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm)
-}
-.up:hover,.up.drag{border-color:var(--green3);background:#F0F8F5}
-.up-body{padding:40px 24px;text-align:center}
-.up-icon{
-width:56px;height:56px;background:#EAF5F0;border:1.5px solid #B8DECE;
-border-radius:16px;display:flex;align-items:center;justify-content:center;
-margin:0 auto 16px;color:var(--green2)
-}
-.up h3{font-size:19px;font-weight:700;margin-bottom:6px;color:var(--g900)}
-.up p{font-size:13px;color:var(--g500);margin-bottom:16px}
-.chip{
-display:inline-block;background:var(--g100);border:1px solid var(--g200);
-border-radius:99px;padding:3px 12px;font-size:10px;color:var(--g700);font-weight:500;margin:3px
-}
-.up-btn{
-display:inline-flex;align-items:center;gap:8px;background:var(--green);
-color:#fff;border:none;border-radius:10px;padding:12px 26px;font-size:13.5px;
-font-weight:600;cursor:pointer;margin-top:14px;letter-spacing:-.01em;
-box-shadow:0 2px 10px rgba(30,92,72,.3);transition:all .2s
-}
-.up-btn:hover{background:var(--green2);box-shadow:0 4px 14px rgba(30,92,72,.35);transform:translateY(-1px)}
-.filter-bar{
-background:var(--g50);border-top:1px solid var(--g100);
-padding:13px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap
-}
-.filter-bar label{font-size:12px;font-weight:600;color:var(--g700)}
-.day-btns{display:flex;gap:5px;flex-wrap:wrap}
-.day-btn{
-border:1.5px solid var(--g200);background:var(--w);border-radius:99px;
-padding:5px 14px;font-size:12px;font-weight:500;color:var(--g500);cursor:pointer;transition:all .15s
-}
-.day-btn:hover{border-color:var(--green);color:var(--green)}
-.day-btn.active{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
-
-/* -- PROGRESS -- */
-.prog{
-background:var(--w);border:1px solid var(--g200);border-radius:var(--radius);
-padding:36px;text-align:center;margin-bottom:16px;box-shadow:var(--shadow-sm)
-}
-.prog h3{font-size:18px;font-weight:700;margin-bottom:5px;color:var(--g900)}
-.prog p{font-size:12.5px;color:var(--g500);margin-bottom:22px}
-.pbar{background:var(--g100);border-radius:99px;height:6px;overflow:hidden;margin-bottom:18px}
-.pfill{height:6px;border-radius:99px;background:linear-gradient(90deg,var(--green),var(--green3));transition:width .5s ease}
-.psteps{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px}
-.pstep{font-size:10px;color:var(--g300);font-weight:500;text-align:center;flex:1}
-.pstep.on{color:var(--green);font-weight:700}
-.pstep.ok{color:var(--gr);font-weight:600}
-
-/* -- TABLE CARDS -- */
-.tcard{
-background:var(--w);border:1px solid var(--g200);border-radius:var(--radius);
-overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow-sm)
-}
-.tcard-hdr{
-padding:14px 20px;border-bottom:1px solid var(--g100);
-display:flex;align-items:center;justify-content:space-between;background:var(--g50)
-}
-.tcard-hdr h3{font-size:13.5px;font-weight:700;color:var(--g900)}
-.tscroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:11.5px}
-th{
-background:var(--g50);padding:9px 14px;text-align:left;
-font-weight:600;color:var(--g500);font-size:10px;
-text-transform:uppercase;letter-spacing:.05em;
-border-bottom:1.5px solid var(--g200);white-space:nowrap
-}
-td{padding:10px 14px;border-bottom:1px solid var(--g100);color:var(--g700);vertical-align:top;line-height:1.5}
-tr:last-child td{border-bottom:none}
-tr:hover td{background:var(--g50)}
-
-/* -- BADGES -- */
-.badge{display:inline-block;padding:3px 8px;border-radius:5px;font-size:9.5px;font-weight:700;letter-spacing:.01em}
-.bc{background:#FCE8E6;color:#922B21}.ba{background:#FEF6E0;color:#8A5C10}
-.bm{background:#EBF0FC;color:#1E3C82}.bb{background:#EBF8EE;color:#145A28}
-.bo{background:#FEF6E0;color:#8A5C10;border:1px solid #F5DFA0}
-.be{background:#EBF0FC;color:#2040A0;border:1px solid #BDD0F8}
-.bce{background:#EBF8EE;color:#145A28;border:1px solid #A0DEB4}
-.bt{background:#F2ECFB;color:#521DA8;border:1px solid #C8A8F0}
-
-/* -- PENDING ITEMS -- */
-.plist{display:flex;flex-direction:column;gap:8px;padding:14px}
-.pitem{
-background:var(--g50);border:1px solid var(--g200);
-border-left:3px solid var(--green2);border-radius:0 10px 10px 0;
-padding:11px 14px;transition:all .15s
-}
-.pitem:hover{background:var(--w);box-shadow:var(--shadow-sm);transform:translateX(2px)}
-.pitem.cr{border-left-color:var(--re)}.pitem.al{border-left-color:var(--ye)}
-.pitem-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
-.pitem-id{font-size:9.5px;font-weight:700;color:var(--g400,var(--g300));letter-spacing:.04em}
-.pitem h4{font-size:12.5px;font-weight:700;color:var(--g900);margin-bottom:3px;line-height:1.3}
-.pitem p{font-size:11px;color:var(--g500);line-height:1.45}
-.pmeta{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
-.ptag{font-size:9.5px;background:var(--w);border:1px solid var(--g200);border-radius:99px;padding:2px 8px;color:var(--g700);font-weight:500}
-
-/* -- KPI -- */
-.krow{
-display:flex;align-items:center;gap:12px;
-background:linear-gradient(90deg,#EAF5F0,var(--w));
-border:1px solid #C0DECE;border-radius:10px;padding:11px 15px;margin-bottom:7px
-}
-.kval{font-size:22px;font-weight:800;color:var(--green);width:72px;flex-shrink:0;line-height:1}
-.kin{flex:1}
-.kin .nm{font-size:12px;font-weight:600;color:var(--g900)}
-.kin .ts{font-size:10px;color:var(--g500);margin-top:1px}
-.kbar{width:80px;height:5px;background:var(--g200);border-radius:99px;flex-shrink:0}
-.kbf{height:5px;border-radius:99px;background:var(--green)}
-
-/* -- PERSONA FILTER -- */
-.pf-card{background:var(--w);border:1px solid var(--g200);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow-sm)}
-.pf-hdr{padding:14px 20px;border-bottom:1px solid var(--g100);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--g50)}
-.pf-hdr h3{font-size:13.5px;font-weight:700;flex:1;color:var(--g900)}
-.pf-select{border:1.5px solid var(--g200);border-radius:var(--radius-sm);padding:7px 12px;font-size:12px;color:var(--g900);background:var(--w);outline:none;cursor:pointer;min-width:180px;transition:border-color .15s}
-.pf-select:focus{border-color:var(--green)}
-.pf-clear{background:var(--g100);border:1px solid var(--g200);border-radius:var(--radius-sm);padding:6px 13px;font-size:11.5px;color:var(--g700);cursor:pointer;font-weight:500}
-.pf-body{padding:18px 20px}
-.pf-profile{display:flex;gap:14px;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap}
-.pf-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green2),var(--green));display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:800;flex-shrink:0;box-shadow:0 2px 8px rgba(30,92,72,.25)}
-.pf-info{flex:1}
-.pf-name{font-size:16px;font-weight:800;color:var(--g900);margin-bottom:3px}
-.pf-dept{font-size:11.5px;color:var(--g500);margin-bottom:8px}
-.pf-stats{display:flex;gap:8px;flex-wrap:wrap}
-.pf-stat{background:var(--g50);border:1.5px solid var(--g200);border-radius:10px;padding:9px 14px;text-align:center;min-width:66px}
-.pf-stat-val{font-size:22px;font-weight:800;color:var(--green);line-height:1}
-.pf-stat-lbl{font-size:9.5px;color:var(--g500);margin-top:2px;font-weight:500}
-.pf-stat.bl .pf-stat-val{color:var(--bl)}.pf-stat.gr .pf-stat-val{color:var(--gr)}.pf-stat.re .pf-stat-val{color:var(--re)}
-.pf-section-title{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--green);margin-bottom:8px;margin-top:6px}
-.pf-empty{font-size:13px;color:var(--g300);text-align:center;padding:28px 0}
-
-/* -- BEFORE/AFTER -- */
-.cmp{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--g200);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow-sm)}
-.cmpc{padding:22px 24px;background:var(--w)}
-.cmpc.aft{background:var(--g50);border-left:1px solid var(--g200)}
-.cmplbl{display:flex;align-items:center;gap:7px;margin-bottom:14px}
-.cmpdot{width:8px;height:8px;border-radius:50%;background:var(--re)}.cmpdot.g{background:var(--gr)}
-.cmplbl span{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--g500)}
-.cmrow{display:flex;gap:9px;align-items:flex-start;margin-bottom:9px}
-.cmic{width:20px;height:20px;border-radius:5px;background:var(--reL);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--re);font-size:10px;font-weight:700}
-.cmic.g{background:var(--grL);color:var(--gr)}
-.cmrow p{font-size:12px;color:var(--g700);line-height:1.4;padding-top:1px}
-
-/* -- MISC -- */
-.resetbtn{display:inline-flex;align-items:center;gap:5px;background:var(--g100);border:1.5px solid var(--g200);border-radius:var(--radius-sm);padding:7px 14px;font-size:11.5px;font-weight:500;color:var(--g700);cursor:pointer;margin-bottom:16px;transition:all .15s}
-.resetbtn:hover{background:var(--g200)}
-.errc{background:var(--reL);border:1.5px solid #F0C4BE;border-radius:var(--radius);padding:14px 18px;margin-bottom:14px;color:var(--re);font-size:12.5px}
-.foot{background:var(--w);border:1px solid var(--g200);border-radius:var(--radius);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;margin-top:16px;flex-wrap:wrap;gap:10px;box-shadow:var(--shadow-sm)}
-.foot p{font-size:11px;color:var(--g500)}
-.foot strong{color:var(--g900)}
-
-/* -- EVIDENCIAS -- */
-.ev-gallery{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.ev-thumb{
-width:48px;height:48px;border-radius:7px;object-fit:cover;
-border:1.5px solid var(--g200);cursor:pointer;
-transition:all .15s;flex-shrink:0
-}
-.ev-thumb:hover{transform:scale(1.08);border-color:var(--green);box-shadow:0 2px 8px rgba(30,92,72,.2)}
-.ev-add-btn{
-width:48px;height:48px;border-radius:7px;
-border:1.5px dashed var(--g300);background:var(--g50);
-display:flex;align-items:center;justify-content:center;
-cursor:pointer;color:var(--g500);font-size:18px;flex-shrink:0;
-transition:all .15s
-}
-.ev-add-btn:hover{border-color:var(--green);color:var(--green);background:var(--grL)}
-.ev-count{
-font-size:9px;font-weight:700;color:var(--green);
-background:#EAF5F0;border:1px solid #B8DECE;
-border-radius:99px;padding:1px 7px;margin-left:4px;vertical-align:middle
+font-family: system-ui;
+background:#0f172a;
+color:white;
+margin:40px;
 }
 
-/* -- LIGHTBOX -- */
-.lb-overlay{
-position:fixed;inset:0;background:rgba(0,0,0,.85);
-z-index:9999;display:flex;align-items:center;justify-content:center;
-padding:20px
-}
-.lb-box{
-background:#fff;border-radius:16px;overflow:hidden;
-max-width:90vw;max-height:90vh;
-display:flex;flex-direction:column;
-box-shadow:0 24px 80px rgba(0,0,0,.4)
-}
-.lb-hdr{
-padding:12px 16px;background:var(--g50);border-bottom:1px solid var(--g200);
-display:flex;align-items:center;justify-content:space-between;gap:10px
-}
-.lb-hdr span{font-size:12px;font-weight:600;color:var(--g700);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lb-close{
-width:28px;height:28px;border-radius:50%;background:var(--g100);border:none;
-cursor:pointer;font-size:14px;color:var(--g700);display:flex;align-items:center;justify-content:center;
-flex-shrink:0
-}
-.lb-img-wrap{overflow:auto;display:flex;align-items:center;justify-content:center;padding:12px}
-.lb-img-wrap img{max-width:80vw;max-height:70vh;border-radius:8px;display:block}
-
-/* -- IMG PICKER PANEL -- */
-.img-panel{
-background:var(--g50);border:1px solid var(--g200);border-radius:10px;
-padding:12px;margin-top:8px
-}
-.img-panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--green);margin-bottom:8px}
-.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px}
-.img-pick-item{position:relative;cursor:pointer;border-radius:7px;overflow:hidden;aspect-ratio:1}
-.img-pick-item img{width:100%;height:100%;object-fit:cover;display:block}
-.img-pick-item.selected::after{
-content:"";position:absolute;inset:0;
-background:rgba(30,92,72,.4);border:2px solid var(--green);border-radius:7px
-}
-.img-pick-item.selected::before{
-content:"v";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-color:#fff;font-size:18px;font-weight:700;z-index:1
+h1{
+font-size:32px;
+margin-bottom:10px;
 }
 
-.picker-overlay{
-position:fixed;inset:0;background:rgba(0,0,0,.42);
-z-index:9998;display:flex;align-items:flex-end;justify-content:center;
-padding:12px
-}
-.picker-box{
-background:#fff;border-radius:18px 18px 0 0;width:min(920px,100%);
-max-height:84vh;display:flex;flex-direction:column;overflow:hidden;
-box-shadow:0 24px 80px rgba(0,0,0,.28)
-}
-.picker-head{
-padding:12px 16px;border-bottom:1px solid var(--g200);background:var(--g50);
-display:flex;align-items:center;justify-content:space-between;gap:12px
-}
-.picker-title{font-size:13px;font-weight:700;color:var(--g900)}
-.picker-sub{font-size:10px;color:var(--g500);margin-top:2px}
-.picker-close{
-border:1px solid var(--g200);background:#fff;color:var(--g700);cursor:pointer;
-border-radius:10px;padding:7px 12px;font-size:11px;font-weight:600;flex-shrink:0
-}
-.picker-grid{
-padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));
-gap:8px;overflow:auto;background:#fff
-}
-.picker-card{
-position:relative;border:1.5px solid var(--g200);border-radius:10px;overflow:hidden;
-background:#fff;cursor:pointer;transition:all .15s
-}
-.picker-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
-.picker-card.selected{border-color:var(--green);box-shadow:0 0 0 2px rgba(30,92,72,.12)}
-.picker-thumb{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#EEECEA}
-.picker-check{
-position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;
-background:var(--green);color:#fff;font-size:12px;font-weight:800;
-display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)
-}
-.picker-meta{padding:6px 7px 8px}
-.picker-date{font-size:9px;font-weight:700;color:var(--green);line-height:1.2}
-.picker-time,.picker-sender{font-size:8.5px;color:var(--g500);line-height:1.2;margin-top:1px}
-
-/* -- INVESTIGATION CAROUSEL -- */
-.ic-wrap{position:relative;width:100%;padding:20px 0 16px;background:#F4F3F0;border-radius:14px;margin-bottom:14px;border:1px solid #DDDBD7;overflow:hidden}
-.ic-stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:380px;padding:0 8px}
-.ic-card{position:absolute;background:#fff;border-radius:16px;border:1px solid #DDDBD7;overflow:hidden;cursor:pointer;transition:all .4s cubic-bezier(.25,.46,.45,.94);will-change:transform}
-.ic-card.active{
-position:relative;width:calc(100% - 80px);max-width:480px;
-box-shadow:0 12px 40px rgba(0,0,0,.18);border-color:#2A7A60;
-z-index:3;cursor:default;transform:translateX(0) scale(1)
-}
-.ic-card.prev{
-width:calc(100% - 120px);max-width:380px;
-transform:translateX(-65%) scale(.82) rotateY(8deg);
-opacity:.6;z-index:2;filter:brightness(.85);
-box-shadow:0 4px 16px rgba(0,0,0,.12)
-}
-.ic-card.next{
-width:calc(100% - 120px);max-width:380px;
-transform:translateX(65%) scale(.82) rotateY(-8deg);
-opacity:.6;z-index:2;filter:brightness(.85);
-box-shadow:0 4px 16px rgba(0,0,0,.12)
-}
-.ic-card.far-prev{transform:translateX(-90%) scale(.65) rotateY(12deg);opacity:.3;z-index:1}
-.ic-card.far-next{transform:translateX(90%) scale(.65) rotateY(-12deg);opacity:.3;z-index:1}
-.ic-card-head{padding:14px 16px 10px;border-bottom:1px solid #EEECEA;display:flex;align-items:flex-start;gap:10px}
-.ic-tabs{display:flex;overflow-x:auto;border-bottom:1px solid #EEECEA;background:#F8F7F5;scrollbar-width:none}
-.ic-tabs::-webkit-scrollbar{display:none}
-.ic-tab{flex-shrink:0;padding:8px 13px;font-size:9.5px;font-weight:600;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;color:#8A8580;transition:all .15s;white-space:nowrap}
-.ic-tab.on{border-bottom-color:#1E5C48;color:#1E5C48;background:#fff}
-.ic-body{padding:14px 16px;min-height:160px;overflow-y:auto;max-height:300px}
-.ic-field{margin-bottom:10px}
-.ic-field-label{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8A8580;margin-bottom:3px}
-.ic-field-val{font-size:11.5px;color:#1A1714;line-height:1.45}
-.ic-field-val.empty{color:#C8C4BE;font-style:italic}
-.ic-badge{display:inline-block;font-size:9px;font-weight:600;border-radius:4px;padding:2px 7px;margin:2px 3px 2px 0}
-.ic-nav{display:flex;align-items:center;justify-content:center;gap:16px;padding:14px 0 4px;position:relative;z-index:10}
-.ic-nav-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid #DDDBD7;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#3D3A36;transition:all .15s;box-shadow:0 2px 6px rgba(0,0,0,.08)}
-.ic-nav-btn:hover{background:#1E5C48;color:#fff;border-color:#1E5C48}
-.ic-nav-btn:disabled{opacity:.3;cursor:default;box-shadow:none}
-.ic-dots{display:flex;gap:5px;align-items:center}
-.ic-dot{width:6px;height:6px;border-radius:50%;background:#DDDBD7;transition:all .25s}
-.ic-dot.on{background:#1E5C48;width:20px;border-radius:3px}
-.ic-related{background:#FEF9E8;border:1px solid #F5E4A0;border-radius:8px;padding:10px 13px;margin-top:10px}
-
-@media(max-width:600px){
-.cmp{grid-template-columns:1fr}
-.cmpc.aft{border-left:none;border-top:1px solid var(--g200)}
-.hdr{padding:20px 18px;flex-direction:column;gap:14px}
-#root{padding:14px 12px 60px}
-.lb-img-wrap img{max-width:90vw;max-height:60vh}
-.picker-overlay{padding:0}
-.picker-box{width:100%;max-height:88vh;border-radius:18px 18px 0 0}
-.picker-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:10px}
+button{
+padding:12px 18px;
+border-radius:10px;
+border:none;
+background:#22c55e;
+color:black;
+font-weight:600;
+cursor:pointer;
 }
 
-@keyframes trace-loop {
-0%   { stroke-dashoffset: 400; opacity:0; }
-8%   { opacity:1; }
-70%  { stroke-dashoffset: 0; opacity:1; }
-85%  { stroke-dashoffset: 0; opacity:1; }
-95%  { stroke-dashoffset: 400; opacity:0; }
-100% { stroke-dashoffset: 400; opacity:0; }
+pre{
+background:#020617;
+padding:20px;
+border-radius:12px;
+overflow:auto;
 }
-@keyframes via-loop {
-0%,15%  { r:0; opacity:0; }
-30%      { r:3.5; opacity:1; }
-40%      { r:2.5; }
-70%,85%  { r:3; opacity:1; }
-95%,100% { r:0; opacity:0; }
+
+.card{
+background:#020617;
+padding:20px;
+border-radius:12px;
+margin-top:20px;
 }
-@keyframes pulse-glow {
-0%, 100% { opacity:.3; transform:scale(1); }
-50%       { opacity:1; transform:scale(1.4); }
+
+.metric{
+font-size:22px;
+font-weight:700;
 }
-@keyframes signal-travel {
-0%        { cx:144; opacity:0; }
-5%        { opacity:1; }
-100%      { cx:560; opacity:0; }
-}
-@keyframes fade-up {
-from { opacity:0; transform:translateY(12px); }
-to   { opacity:1; transform:translateY(0); }
-}
-@keyframes fade-in {
-from { opacity:0; }
-to   { opacity:1; }
-}
-.anim-header { animation: fade-up .6s ease both; }
-.anim-header-sub { animation: fade-up .6s .1s ease both; }
-.anim-header-desc { animation: fade-up .6s .2s ease both; }
-.anim-chips { animation: fade-up .5s .35s ease both; }
+
 </style>
 
 </head>
+
 <body>
-<div id="root"></div>
+
+<h1>OpsTrace Consistency Lab</h1>
+
+<div class="card">
+
+<button onclick="runPipeline()">Run Pipeline</button>
+
+<p class="metric" id="consistency"></p>
+<p class="metric" id="tokens"></p>
+<p class="metric" id="cost"></p>
+
+</div>
+
+<div class="card">
+<h3>Detected Events</h3>
+<pre id="events"></pre>
+</div>
 
 <script>
 
-function parseTurno(h, min, dateIso) {
-  var m = parseInt(min) || 0;
-  var dow = 1; // default Mon
-  if (dateIso) {
-    var parts = dateIso.split("-");
-    var d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
-    dow = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
-  }
+// =============================
+// SAMPLE CHAT
+// =============================
 
-  if (dow === 6) {
-    if (h >= 0 && h < 9) return "3T";      // 3T del viernes termina 09:00 sábado
-    if (h >= 9 && h < 18) return "1T-Sab";
-    return "2T-Sab";
-  }
+const SAMPLE_CHAT = [
 
-  if (dow === 0) {
-    if (h >= 6 && h < 18) return "1T-Dom";
-    return "2T-Dom";
-  }
+{time:new Date("2026-03-10T10:00"), text:"AOI detecta wrong orientation en BB4"},
+{time:new Date("2026-03-10T10:03"), text:"3 tablillas afectadas"},
+{time:new Date("2026-03-10T10:10"), text:"linea detenida BB4"},
+{time:new Date("2026-03-10T10:15"), text:"aplicando contencion"},
+{time:new Date("2026-03-10T11:40"), text:"material incorrecto detectado en feeder 12"},
+{time:new Date("2026-03-10T11:45"), text:"cambio de reel realizado"}
 
-  // Lun–Vie: mismo patrón, el 3T es la madrugada del día actual
-  if (h >= 0 && h < 6) return "3T";
-  if (h < 15 || (h === 15 && m < 15)) return "1T";
-  return "2T";
+]
+
+// =============================
+// NOISE FILTER
+// =============================
+
+function noiseFilter(messages){
+
+return messages.filter(m=>m.text.length>8)
+
 }
 
-function parseWhatsApp(txt) {
-  var lines = txt.split(/\r?\n/);
-  var msgs = [];
-  var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
-  var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
-  var cur = null;
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].replace(/[\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u202f]/g, "").trim();
-    var m = line.match(reA) || line.match(reB);
-    if (m) {
-      if (cur) msgs.push(cur);
-      var d, mo, yr, h2, min, sec, mer, sender, text;
-      if (line.match(reA)) {
-        d=m[1]; mo=m[2]; yr=m[3]; h2=m[4]; min=m[5]; sec=m[6]||"00"; mer=m[7]||""; sender=m[8]; text=m[9];
-      } else {
-        d=m[1]; mo=m[2]; yr=m[3]; h2=m[4]; min=m[5]; sec="00"; mer=""; sender=m[6]; text=m[7];
-      }
-      var year = parseInt(yr);
-      if (year < 100) year += 2000;
-      var t = to24h(h2, min, sec, mer);
-      var dateIso = year + "-" + String(mo).padStart(2,"0") + "-" + String(d).padStart(2,"0");
-      cur = {
-        dateIso: dateIso,
-        dateDisp: String(d).padStart(2,"0") + "/" + String(mo).padStart(2,"0") + "/" + year,
-        timeStr: t.timeStr,
-        hour: t.hour,
-        turno: parseTurno(t.hour, min, dateIso),
-        sender: sender.replace(/^~/,"").trim(),
-        text: text.trim()
-      };
-    } else if (cur && line && !line.startsWith("[")) {
-      cur.text += " " + line;
-    }
-  }
-  if (cur) msgs.push(cur);
-  return msgs;
+// =============================
+// SEMANTIC NORMALIZER
+// =============================
+
+const SEMANTIC_MAP = {
+
+wrong_orientation:[
+/wrong orientation/i,
+/polaridad invertida/i,
+/orientation error/i
+],
+
+wrong_component:[
+/wrong component/i,
+/material incorrecto/i,
+/incorrect component/i
+],
+
+line_stop:[
+/linea detenida/i,
+/line stop/i,
+/line down/i
+],
+
+feeder_issue:[
+/feeder/i,
+/alimentador/i
+]
+
 }
 
-function filterByDays(msgs, days) {
-  if (!msgs.length) return msgs;
-  var sorted = msgs.slice().sort(function(a,b){ return a.dateIso.localeCompare(b.dateIso); });
-  var last = new Date(sorted[sorted.length-1].dateIso);
-  var cutoff = new Date(last);
-  cutoff.setDate(cutoff.getDate() - days + 1);
-  var cutStr = cutoff.toISOString().slice(0,10);
-  return sorted.filter(function(m){ return m.dateIso >= cutStr; });
+function semanticKey(text){
+
+for(const key in SEMANTIC_MAP){
+
+for(const pattern of SEMANTIC_MAP[key]){
+
+if(pattern.test(text)){
+return key
 }
 
-function getISOWeek(d) {
-  var date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  var day = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - day);
-  var yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
 }
 
-function getWeekRange(weekN, year) {
-  var jan4 = new Date(Date.UTC(year, 0, 4));
-  var day = jan4.getUTCDay() || 7;
-  var monday = new Date(jan4);
-  monday.setUTCDate(jan4.getUTCDate() - day + 1 + (weekN - 1) * 7);
-  var sunday = new Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + 6);
-  return {
-    from: monday.toISOString().slice(0,10),
-    to: sunday.toISOString().slice(0,10)
-  };
 }
 
-function filterMsgs(msgs, mode, days, dateFrom, dateTo, weekNum, weekYear) {
-  if (!msgs.length) return msgs;
-  var sorted = msgs.slice().sort(function(a,b){ return a.dateIso.localeCompare(b.dateIso); });
+return "unknown"
 
-  if (mode === "range" && dateFrom && dateTo) {
-    var f = dateFrom <= dateTo ? dateFrom : dateTo;
-    var t = dateFrom <= dateTo ? dateTo : dateFrom;
-    return sorted.filter(function(m){ return m.dateIso >= f && m.dateIso <= t; });
-  }
-
-  if (mode === "week" && weekNum && weekYear) {
-    var wr = getWeekRange(parseInt(weekNum), parseInt(weekYear));
-    return sorted.filter(function(m){ return m.dateIso >= wr.from && m.dateIso <= wr.to; });
-  }
-
-  var last = new Date(sorted[sorted.length-1].dateIso);
-  var cutoff = new Date(last);
-  cutoff.setDate(cutoff.getDate() - days + 1);
-  var cutStr = cutoff.toISOString().slice(0,10);
-  return sorted.filter(function(m){ return m.dateIso >= cutStr; });
 }
 
-function cleanMsgs(msgs) {
-  var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|cifrados de extremo|ahora es admin/i;
-  var noise = /^(buenos d|buenas t|buen d|gracias|de nada|enterado|recibido|entendido)/i;
-  return msgs.filter(function(m){
-    return m.text && m.text.trim().length > 8 && !m.text.match(skip) && !m.text.trim().match(noise);
-  });
+// =============================
+// LINE EXTRACTOR
+// =============================
+
+function extractLine(text){
+
+const match = text.match(/BB\d+/i)
+
+if(match) return match[0]
+
+return "unknown"
+
 }
 
-var _zipRef = null;
+// =============================
+// CANDIDATE DETECTOR
+// =============================
 
-var _imgCache = {};
+function candidateDetector(messages){
 
-async function readZip(file) {
-  var zip = await JSZip.loadAsync(file);
-  _zipRef = zip;
-  _imgCache = {};
+const events=[]
 
-  var names = Object.keys(zip.files);
-  var txt = null;
-  var imgNames = [];  // only filenames - no base64 yet
-  var imgMeta = {};
+messages.forEach(msg=>{
 
-  for (var i = 0; i < names.length; i++) {
-    var name = names[i];
-    if (name.startsWith("__MACOSX")) continue;
-    var base = name.split("/").pop();
-    if (!txt && base.endsWith(".txt")) {
-      txt = await zip.files[name].async("string");
-    }
-    if (/\.(jpe?g|png|webp)$/i.test(base)) {
-      imgNames.push(base);
-    }
-  }
+const key = semanticKey(msg.text)
 
-  if (!txt) throw new Error("No se encontro .txt en el ZIP");
+if(key!=="unknown"){
 
-  var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
-  var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
-  var lastMeta = null;
-  txt.split(/\r?\n/).forEach(function(rawLine) {
-    var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g,"").trim();
-    var m = line.match(reA) || line.match(reB);
-    if (m) {
-      var isA = !!line.match(reA);
-      var d=m[1],mo=m[2],yr=m[3],h2=m[4],min2=m[5];
-      var mer=isA?(m[7]||""):"";
-      var sender=isA?m[8]:m[6];
-      var year=parseInt(yr); if(year<100) year+=2000;
-      var hour=parseInt(h2);
-      var mlow=(mer||"").toLowerCase().replace(/[\s.]/g,"");
-      if(mlow.indexOf("p")===0 && hour!==12) hour+=12;
-      if(mlow.indexOf("a")===0 && hour===12) hour=0;
-      lastMeta={
-        dateIso:year+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0"),
-        timeStr:String(hour).padStart(2,"0")+":"+min2,
-        sender:(sender||"").replace(/^~/,"").trim()
-      };
-    }
-    var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
-    if (adj && lastMeta) {
-      imgMeta[adj[1].trim()] = {
-        dateIso:lastMeta.dateIso, timeStr:lastMeta.timeStr, sender:lastMeta.sender
-      };
-    }
-  });
+events.push({
 
-  return { txt:txt, imgNames:imgNames, imgMeta:imgMeta };
+time:msg.time,
+line:extractLine(msg.text),
+issue_key:key,
+raw:msg.text
+
+})
+
 }
 
-async function loadImg(fname) {
-  if (_imgCache[fname]) return _imgCache[fname];
-  if (!_zipRef) return null;
-  var allNames = Object.keys(_zipRef.files);
-  var match = allNames.find(function(n){ return n.split("/").pop() === fname; });
-  if (!match) return null;
-  try {
-    var b64 = await _zipRef.files[match].async("base64");
-    var ext = fname.split(".").pop().toLowerCase().replace("jpg","jpeg");
-    var url = "data:image/"+ext+";base64,"+b64;
-    _imgCache[fname] = url;
-    return url;
-  } catch(_) { return null; }
+})
+
+return events
+
 }
 
-async function analyzeWithAI(msgs, apiKey) {
-  var sample = msgs.slice(0,150).map(function(m){
-    return "[" + m.dateDisp + " " + m.timeStr + "|" + m.turno + "|" + m.sender + "]:" + m.text;
-  }).join("\n");
+// =============================
+// HYBRID CLUSTERING
+// =============================
 
-  var system = "Eres experto en manufactura SMT/PCB/PTH. " +
-    "Analiza mensajes WhatsApp de manufactura y extrae SOLO eventos operativos accionables. " +
-    "INCLUIR: paros linea, defectos calidad, falta material, FAI, LCR vencido, RMA, AOI/ICT, dano fisico. " +
-    "EXCLUIR: saludos, ok, gracias, emojis solos. " +
-    "Catalogo defecto_smt: Solder bridge|Missing component|Wrong component|Wrong orientation|Polarity inverted|" +
-    "Misaligned component|BGA short|BGA open|Lifted pad|Feeder misload|Machine stop|Wrong reel|Missing material|" +
-    "ICT open|ICT short|Functional test fail|N/A. " +
-    "tipo_evento: Calidad|Proceso|Material|Sistema|Seguridad|Produccion. " +
-    "actor_area: Produccion|Calidad|Proceso|Mantenimiento|Materiales|Ingenieria|PTH|SMT|AOI|ICT. " +
-    "estado_historia: Detectado|Contenido|Corregido|Validado|Cerrado. " +
-    "Para cada evento extrae: quien detecto, que accion se tomo, que actores participaron, cual es el estado real del ciclo de vida. " +
-    "Maximo 15 eventos. Solo JSON sin texto extra:" +
-    '{"eventos":[{"id":"EVT-001","fecha":"DD/MM/YYYY","hora":"HH:MM","turno":"1T|2T|3T",' +
-    '"modelo":"N/P o N/D","linea_estacion":"L1 o N/D","reporta":"nombre",' +
-    '"area_involucrada":"SMT|PTH|ICT|AOI|Calidad|Mantenimiento|Materiales|Produccion",' +
-    '"tipo_evento":"Calidad|Proceso|Material|Sistema|Seguridad|Produccion",' +
-    '"defecto_smt":"del catalogo o N/A","evento_detectado":"descripcion","impacto":"impacto",' +
-    '"accion_requerida":"accion","accion_ejecutada":"accion tomada o vacia si no hay",' +
-    '"responsable_sugerido":"responsable",' +
-    '"actores":["area1","area2"],' +
-    '"estado_historia":"Detectado|Contenido|Corregido|Validado|Cerrado",' +
-    '"estatus":"Abierto|En proceso|Cerrado","prioridad":"Critica|Alta|Media|Baja",' +
-    '"fuente_chat":"DD/MM/YY HH:MM nombre","notas":""}],' +
-    '"kpis":[{"fechahora":"DD/MM/YYYY HH:MM","indicador":"nombre","valor":0.0,"unidad":"%","fuente":"nombre"}],' +
-    '"resumen":{"periodo":"DD/MM/YYYY a DD/MM/YYYY","grupo":"nombre","total_eventos":0,' +
-    '"alertas_criticas":["alerta"],"acciones_pendientes":["accion"],"estatus_lineas":["linea"]},' +
-    '"directorio":[{"nombre":"nombre","departamento":"area","rol":"rol","mensajes":0,"eventos":0,"area_owner":"area"}]}';
+function clusterIncidents(events){
 
-  var resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true"
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 6000,
-      system: system,
-      messages: [
-        { role: "user", content: "Analiza " + msgs.length + " mensajes. Solo JSON:\n\n" + sample },
-        { role: "assistant", content: "{" }
-      ]
-    })
-  });
+const clusters=[]
+const WINDOW = 90*60*1000
 
-  if (!resp.ok) {
-    var err = await resp.json().catch(function(){ return {}; });
-    if (resp.status === 401) throw new Error("API Key invalida. Verifica en console.anthropic.com");
-    if (resp.status === 429) throw new Error("Limite de uso alcanzado. Espera e intenta de nuevo.");
-    throw new Error((err.error && err.error.message) || ("Error API " + resp.status));
-  }
+events.forEach(event=>{
 
-  var data = await resp.json();
-  if (!data.content || !data.content.length) throw new Error("Respuesta vacia. Intenta de nuevo.");
+let assigned=false
 
-  var raw = "{" + data.content.map(function(b){ return b.text || ""; }).join("");
-  var clean = raw.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();
-  var s = clean.indexOf("{");
-  var e = clean.lastIndexOf("}");
-  if (s === -1 || e === -1) throw new Error("JSON invalido. Reduce el rango de dias.");
-  var jsonStr = clean.slice(s, e+1);
+for(const cluster of clusters){
 
-  try { return JSON.parse(jsonStr); } catch(_) {}
+const last = cluster[cluster.length-1]
 
-  var fixed = jsonStr
-    .replace(/,\s*([}\]])/g, "$1");
-  try { return JSON.parse(fixed); } catch(_) {}
+const timeDiff = Math.abs(event.time-last.time)
+const sameIssue = event.issue_key===last.issue_key
+const sameLine = event.line===last.line
 
-  throw new Error("Error procesando respuesta. Intenta con 1 o 3 dias.");
+if(timeDiff<WINDOW && (sameIssue || sameLine)){
+
+cluster.push(event)
+assigned=true
+break
+
 }
 
-async function buildXlsx(result) {
-  var ev = result.eventos || [];
-  var kpis = result.kpis || [];
-  var res = result.resumen || {};
-  var directorio = result.directorio || [];
+}
 
-  var wb = new ExcelJS.Workbook();
-  wb.creator = "OpsTrace by SMTintel - ALDA";
-  wb.created = new Date();
+if(!assigned){
+clusters.push([event])
+}
 
-  var C = {
-    hBg:"1E5545", hFg:"FFFFFF",
-    critica:"F4CCCC", alta:"FCE4D6", media:"EEF5FB", baja:"E2F0D9",
-    cerrado:"E2F0D9", enProceso:"FFF2CC", abierto:"F4CCCC", alt:"F5F3EE"
-  };
+})
 
-  function hFill(bg){ return {type:"pattern",pattern:"solid",fgColor:{argb:"FF"+bg}}; }
-  function brd(){ return {top:{style:"thin"},left:{style:"thin"},bottom:{style:"thin"},right:{style:"thin"}}; }
-  function hFont(sz){ return {name:"Segoe UI",size:sz||11,bold:true,color:{argb:"FF"+C.hFg}}; }
-  function dFont(){ return {name:"Segoe UI",size:10}; }
-  function prioFill(p){ return ({Critica:C.critica,Alta:C.alta,Media:C.media,Baja:C.baja})[p] || "FFFFFF"; }
-  function estFill(s){ return ({Abierto:C.abierto,"En proceso":C.enProceso,Cerrado:C.cerrado})[s] || "FFFFFF"; }
+return clusters
 
-  function styleHdr(ws, n) {
-    var r = ws.getRow(1);
-    for (var i = 1; i <= n; i++) {
-      var c = r.getCell(i);
-      c.fill = hFill(C.hBg); c.font = hFont(); c.border = brd();
-      c.alignment = {horizontal:"center",vertical:"middle"};
-    }
-    r.height = 18;
-  }
+}
 
-  var H = ["ID","Fecha","Hora","Turno","Modelo","Linea_Estacion","Reporta","Area_involucrada",
-           "Tipo_evento","Defecto_SMT","Evento_detectado","Impacto","Accion_requerida","Accion_ejecutada",
-           "Actores","Responsable_sugerido","Estado_historia","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
+// =============================
+// SCHEMA LOCK
+// =============================
 
-  function addEvSheet(name, evArr) {
-    var ws = wb.addWorksheet(name);
-    ws.addRow(H);
-    styleHdr(ws, H.length);
-    evArr.forEach(function(e, ri) {
-      var actoresStr = Array.isArray(e.actores) ? e.actores.join(", ") : (e.actores || "");
-      var row = ws.addRow([
-        e.id, e.fecha, e.hora, e.turno, e.modelo, e.linea_estacion, e.reporta,
-        e.area_involucrada, e.tipo_evento, e.defecto_smt || "N/A", e.evento_detectado,
-        e.impacto, e.accion_requerida, e.accion_ejecutada || "",
-        actoresStr, e.responsable_sugerido,
-        e.estado_historia || "Detectado",
-        e.estatus, e.prioridad,
-        {formula: "IF(OR(R"+(ri+2)+"=\"Abierto\",R"+(ri+2)+"=\"En proceso\"),TODAY()-B"+(ri+2)+",\"\")"},
-        e.fuente_chat, e.notas
-      ]);
-      row.height = 38;
-      row.eachCell({includeEmpty:false}, function(cell, col) {
-        cell.font = dFont();
-        cell.alignment = {wrapText:true, vertical:"top"};
-        if (col === 17) {  // Estado_historia
-          var ehFill = ({
-            Detectado:"FCE8D0", Contenido:"FFF2CC", Corregido:"D0E8FC",
-            Validado:"D0F0D8", Cerrado:"E2F0D9"
-          })[e.estado_historia] || "FFFFFF";
-          cell.fill = hFill(ehFill);
-        } else if (col === 18) cell.fill = hFill(estFill(e.estatus));
-        else if (col === 19) cell.fill = hFill(prioFill(e.prioridad));
-        else cell.fill = hFill(ri % 2 === 0 ? "FFFFFF" : C.alt);
-      });
-    });
-    ws.columns = [6,12,8,6,16,18,18,20,14,20,40,26,30,30,24,22,14,12,10,10,28,28].map(function(w){ return {width:w}; });
-    ws.views = [{state:"frozen",ySplit:1}];
-  }
+const REQUIRED_KEYS = [
 
-  addEvSheet("Bitacora", ev);
-  addEvSheet("Pendientes", ev.filter(function(e){ return e.estatus !== "Cerrado"; }));
+"schema_version",
+"event_id",
+"timestamp_from",
+"timestamp_to",
+"type",
+"line",
+"station",
+"issue",
+"issue_key",
+"action",
+"status",
+"responsible",
+"source_refs"
 
-  var wsIS = wb.addWorksheet("Incident_Stories");
-  wsIS.mergeCells("A1:H1");
-  var isT = wsIS.getCell("A1");
-  isT.value = "Incident Story Model - OpsTrace by SMTintel";
-  isT.fill = hFill(C.hBg); isT.font = hFont(12);
-  wsIS.getRow(1).height = 22;
+]
 
-  var ESTADOS = ["Detectado","Contenido","Corregido","Validado","Cerrado"];
-  var eColors = {Detectado:"FCE8D0",Contenido:"FFF2CC",Corregido:"D0E8FC",Validado:"D0F0D8",Cerrado:"E2F0D9"};
-  var eRow = wsIS.addRow(ESTADOS);
-  eRow.height = 16;
-  ESTADOS.forEach(function(est, ci) {
-    var cell = eRow.getCell(ci+1);
-    cell.fill = hFill(eColors[est] || "FFFFFF");
-    cell.font = {name:"Segoe UI",size:10,bold:true};
-    cell.alignment = {horizontal:"center"};
-  });
+function enforceSchema(event){
 
-  var countRow = wsIS.addRow(ESTADOS.map(function(est){
-    return ev.filter(function(e){ return (e.estado_historia||"Detectado") === est; }).length;
-  }));
-  countRow.height = 14;
-  ESTADOS.forEach(function(est, ci) {
-    var cell = countRow.getCell(ci+1);
-    cell.font = {name:"Segoe UI",size:11,bold:true};
-    cell.alignment = {horizontal:"center"};
-  });
+return REQUIRED_KEYS.reduce((acc,key)=>{
 
-  wsIS.addRow([]);
+acc[key]=event[key]
+return acc
 
-  var storyH = ["ID","Fecha","Linea","Modelo","Evento_detectado","Actor_reporta","Actores_involucrados","Accion_ejecutada","Estado_historia","Impacto","Prioridad","Notas"];
-  var shRow = wsIS.addRow(storyH);
-  shRow.height = 16;
-  for (var ci2 = 1; ci2 <= storyH.length; ci2++) {
-    var sc = shRow.getCell(ci2);
-    sc.fill = hFill(C.hBg); sc.font = hFont(); sc.border = brd();
-    sc.alignment = {horizontal:"center",vertical:"middle"};
-  }
+},{})
 
-  ev.forEach(function(e, ri) {
-    var actoresStr2 = Array.isArray(e.actores) ? e.actores.join(", ") : (e.actores || "");
-    var r = wsIS.addRow([
-      e.id, e.fecha, e.linea_estacion, e.modelo,
-      e.evento_detectado, e.reporta, actoresStr2,
-      e.accion_ejecutada || e.accion_requerida,
-      e.estado_historia || "Detectado",
-      e.impacto, e.prioridad, e.notas
-    ]);
-    r.height = 36;
-    r.eachCell({includeEmpty:false}, function(cell, col) {
-      cell.font = dFont();
-      cell.alignment = {wrapText:true,vertical:"top"};
-      if (col === 9) {
-        var ef = eColors[e.estado_historia] || "FFFFFF";
-        cell.fill = hFill(ef);
-      } else {
-        cell.fill = hFill(ri%2===0 ? "FFFFFF" : C.alt);
-      }
-    });
-  });
+}
 
-  wsIS.columns = [8,12,16,18,40,20,28,36,16,26,10,30].map(function(w){ return {width:w}; });
-  wsIS.views = [{state:"frozen",ySplit:4}];
+// =============================
+// INCIDENT BUILDER
+// =============================
 
-  var wsKpi = wb.addWorksheet("KPIs_chat");
-  var kH = ["FechaHora","Indicador","Valor","Unidad","Fuente_chat"];
-  wsKpi.addRow(kH); styleHdr(wsKpi, kH.length);
-  kpis.forEach(function(k){
-    var r = wsKpi.addRow([k.fechahora, k.indicador, k.valor, k.unidad, k.fuente]);
-    r.eachCell({includeEmpty:false}, function(c){ c.font = dFont(); c.fill = hFill("FFFFFF"); });
-  });
-  wsKpi.columns = [22,28,10,8,32].map(function(w){ return {width:w}; });
+function generateEventID(){
 
-  var wsRes = wb.addWorksheet("Resumen_Junta");
-  wsRes.mergeCells("A1:F1");
-  var t1 = wsRes.getCell("A1");
-  t1.value = "Resumen ejecutivo - " + (res.grupo || "OpsTrace");
-  t1.fill = hFill(C.hBg); t1.font = hFont(13);
-  t1.alignment = {horizontal:"left",vertical:"middle"};
-  wsRes.getRow(1).height = 22;
-  wsRes.getCell("A2").value = "Periodo"; wsRes.getCell("A2").font = dFont();
-  wsRes.getCell("B2").value = res.periodo || ""; wsRes.getCell("B2").font = dFont();
-  wsRes.addRow([]);
-  (res.alertas_criticas || []).forEach(function(a){
-    var r = wsRes.addRow(["- " + a]); r.getCell(1).font = dFont();
-  });
-  wsRes.columns = [55,30,5,42,14,5].map(function(w){ return {width:w}; });
+return "EVT-"+Math.random().toString(36).slice(2,8)
 
-  var mods = [];
-  var modSet = {};
-  ev.forEach(function(e){ if(e.modelo && !modSet[e.modelo]){ modSet[e.modelo]=true; mods.push(e.modelo); } });
-  var defCounts = {};
-  ev.forEach(function(e){ if(e.defecto_smt && e.defecto_smt !== "N/A") defCounts[e.defecto_smt] = (defCounts[e.defecto_smt]||0)+1; });
-  var tipoCounts = {};
-  ev.forEach(function(e){ var t=e.tipo_evento||"N/D"; tipoCounts[t]=(tipoCounts[t]||0)+1; });
+}
 
-  var wsDash = wb.addWorksheet("Dashboard_Base");
-  wsDash.mergeCells("A1:E1");
-  var dt = wsDash.getCell("A1");
-  dt.value = "Dashboard OpsTrace - SMTintel by ALDA";
-  dt.fill = hFill(C.hBg); dt.font = hFont(13);
-  wsDash.getRow(1).height = 22; wsDash.addRow([]);
-  [["Total",ev.length],["Abiertos",ev.filter(function(e){return e.estatus==="Abierto";}).length],
-   ["En proceso",ev.filter(function(e){return e.estatus==="En proceso";}).length],
-   ["Cerrados",ev.filter(function(e){return e.estatus==="Cerrado";}).length]].forEach(function(kv){
-    var r = wsDash.addRow([kv[0], kv[1]]); r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
-  });
-  wsDash.addRow([]);
-  var rDef = wsDash.addRow(["Pareto Defectos SMT"]); rDef.getCell(1).fill=hFill(C.hBg); rDef.getCell(1).font=hFont();
-  Object.keys(defCounts).sort(function(a,b){return defCounts[b]-defCounts[a];}).forEach(function(k){
-    var r = wsDash.addRow([k, defCounts[k]]); r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
-  });
+function incidentFingerprint(event){
 
-  wsDash.addRow([]);
-  var rTl = wsDash.addRow(["Timeline de comportamiento - Eventos por hora"]);
-  rTl.getCell(1).fill = hFill(C.hBg); rTl.getCell(1).font = hFont();
-  var tlHdrRow = wsDash.addRow(["Hora","Total","Calidad","Proceso","Material","Sistema","Produccion","Seguridad"]);
-  tlHdrRow.eachCell({includeEmpty:false},function(c){c.font={name:"Segoe UI",size:10,bold:true};c.fill=hFill("D0EAE4");});
-  var horaXls={};var horaTipoXls={};
-  ev.forEach(function(e){
-    if(!e.hora)return;
-    var hParsed=parseInt(e.hora.split(":")[0]);
-    if(isNaN(hParsed))return;
-    var hh=String(hParsed).padStart(2,"0");
-    horaXls[hh]=(horaXls[hh]||0)+1;
-    if(!horaTipoXls[hh])horaTipoXls[hh]={};
-    var tp=e.tipo_evento||"N/D";
-    horaTipoXls[hh][tp]=(horaTipoXls[hh][tp]||0)+1;
-  });
-  Object.keys(horaXls).sort().forEach(function(hh){
-    var tp=horaTipoXls[hh]||{};
-    var r=wsDash.addRow([hh+":00",horaXls[hh],tp.Calidad||0,tp.Proceso||0,tp.Material||0,tp.Sistema||0,tp.Produccion||0,tp.Seguridad||0]);
-    r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
-  });
-  wsDash.columns = [28,10,10,10,10,10,12,10].map(function(w){ return {width:w}; });
+return [
 
-  var wsDir = wb.addWorksheet("Directorio_Equipo");
-  var dH = ["Nombre","Departamento","Rol","Mensajes","Eventos","Area_owner"];
-  wsDir.addRow(dH); styleHdr(wsDir, dH.length);
-  var dirRows = directorio.length > 0
-    ? directorio.map(function(d){ return [d.nombre, d.departamento, d.rol, d.mensajes, d.eventos, d.area_owner]; })
-    : Array.from(new Set(ev.map(function(e){return e.reporta;}).filter(Boolean))).map(function(n){
-        return [n, (ev.find(function(e){return e.reporta===n;})||{}).area_involucrada||"", "",
-          ev.filter(function(e){return e.reporta===n;}).length,
-          ev.filter(function(e){return e.responsable_sugerido===n;}).length, ""];
-      });
-  dirRows.forEach(function(row, ri){
-    var r = wsDir.addRow(row);
-    r.eachCell({includeEmpty:false},function(c){c.font=dFont();c.fill=hFill(ri%2===0?"FFFFFF":C.alt);});
-  });
-  wsDir.columns = [24,22,20,16,16,22].map(function(w){ return {width:w}; });
+event.type,
+event.line,
+event.issue_key
 
-  var wsCat = wb.addWorksheet("Catalogos_Reglas");
-  wsCat.mergeCells("A1:D1");
-  var ct = wsCat.getCell("A1");
-  ct.value = "Catalogos y reglas - SMTintel"; ct.fill=hFill(C.hBg); ct.font=hFont(12);
-  wsCat.getRow(1).height = 20; wsCat.addRow([]);
-  var lins = Array.from(new Set(ev.map(function(e){return e.linea_estacion;}).filter(Boolean)));
-  var reglas = ["Incluir: paros, defectos, falta material, FAI.",
-    "Excluir: saludos, confirmaciones simples.",
-    "Turnos Lun-Jue: 1T 06:00-15:15, 2T 15:15-00:00, 3T 00:00-06:00. Vie: 3T 00:00-09:00, 1T 09:00-15:15, 2T 15:15-23:59. Sab: 1T-Sab 09:00-18:00. Dom: 1T-Dom 06:00-18:00, 2T-Dom 18:00-06:00."];
-  var maxC = Math.max(mods.length, lins.length, reglas.length);
-  for (var i = 0; i < maxC; i++) {
-    var r = wsCat.addRow([mods[i]||"", lins[i]||"", reglas[i]||""]);
-    r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
-  }
-  wsCat.columns = [24,28,60,3].map(function(w){ return {width:w}; });
+].join("|")
 
-  return await wb.xlsx.writeBuffer();
+}
+
+function stableEventFromCluster(cluster){
+
+const first = cluster[0]
+const last = cluster[cluster.length-1]
+
+let event = {
+
+schema_version:"1.0",
+event_id:generateEventID(),
+timestamp_from:first.time,
+timestamp_to:last.time,
+type:"manufacturing_incident",
+line:first.line,
+station:"unknown",
+issue:first.raw,
+issue_key:first.issue_key,
+action:"pending",
+status:"open",
+responsible:"unassigned",
+source_refs:cluster.map(e=>e.raw)
+
+}
+
+event.fingerprint = incidentFingerprint(event)
+
+return enforceSchema(event)
+
+}
+
+// =============================
+// DEDUPE
+// =============================
+
+function dedupeEvents(events){
+
+const seen=new Set()
+const clean=[]
+
+for(const ev of events){
+
+const fp = ev.line+"|"+ev.issue_key
+
+if(!seen.has(fp)){
+
+seen.add(fp)
+clean.push(ev)
+
+}
+
+}
+
+return clean
+
+}
+
+// =============================
+// TOKEN ESTIMATOR
+// =============================
+
+function estimateTokens(text){
+
+return Math.ceil(text.length/3.7)
+
+}
+
+function estimateCost(tokens){
+
+const price = 0.15/1000000
+
+return tokens*price
+
+}
+
+// =============================
+// CONSISTENCY SCORE
+// =============================
+
+function consistencyScore(events){
+
+if(events.length===0) return 0
+
+let score = 100
+
+events.forEach(ev=>{
+
+if(!ev.line) score-=5
+if(!ev.issue_key) score-=5
+
+})
+
+return score
+
+}
+
+// =============================
+// PIPELINE
+// =============================
+
+function runPipeline(){
+
+let messages = noiseFilter(SAMPLE_CHAT)
+
+let candidates = candidateDetector(messages)
+
+let clusters = clusterIncidents(candidates)
+
+let events = clusters.map(stableEventFromCluster)
+
+events = dedupeEvents(events)
+
+document.getElementById("events").textContent =
+JSON.stringify(events,null,2)
+
+const text = JSON.stringify(events)
+
+const tokens = estimateTokens(text)
+
+const cost = estimateCost(tokens)
+
+document.getElementById("tokens").textContent =
+"Estimated tokens: "+tokens
+
+document.getElementById("cost").textContent =
+"Estimated API cost: $"+cost.toFixed(6)
+
+document.getElementById("consistency").textContent =
+"Consistency score: "+consistencyScore(events)+"%"
+
 }
 
 </script>
 
-<script type="text/babel">
-var _useState = React.useState;
-var _useRef = React.useRef;
-var _useCallback = React.useCallback;
-
-function to24h(h, min, sec, mer) {
-  var hour = parseInt(h);
-  var m = (mer || "").toLowerCase().replace(/[\s.]/g, "");
-  if (m.indexOf("p") === 0 && hour !== 12) hour += 12;
-  if (m.indexOf("a") === 0 && hour === 12) hour = 0;
-  return {
-    hour: hour,
-    timeStr: String(hour).padStart(2,"0") + ":" + min + ":" + (sec || "00")
-  };
-}
-
-function LogoSVG() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 320" width="270" height="96">
-      <defs>
-        <linearGradient id="chipOuter" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style={{stopColor:"#2E5C33"}}/>
-          <stop offset="100%" style={{stopColor:"#1A3D1E"}}/>
-        </linearGradient>
-        <linearGradient id="chipInner" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style={{stopColor:"#152E18"}}/>
-          <stop offset="100%" style={{stopColor:"#0A1A0C"}}/>
-        </linearGradient>
-        <linearGradient id="sGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style={{stopColor:"#9BBE9E"}}/>
-          <stop offset="100%" style={{stopColor:"#5A7D5E"}}/>
-        </linearGradient>
-        <linearGradient id="underline" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" style={{stopColor:"#3A7A3E"}}/>
-          <stop offset="100%" style={{stopColor:"#8ABD6E",stopOpacity:0.4}}/>
-        </linearGradient>
-      </defs>
-
-      
-      <rect x="28" y="34" width="232" height="232" rx="36" ry="36" fill="url(#chipOuter)"/>
-      <rect x="50" y="56" width="188" height="188" rx="22" ry="22" fill="url(#chipInner)"/>
-
-      
-      <rect x="76"  y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
-      <rect x="100" y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
-      <rect x="124" y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
-      <rect x="148" y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
-      <rect x="172" y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
-      <rect x="196" y="22" width="13" height="14" rx="3" fill="#4A7A4E"/>
-
-      
-      <rect x="76"  y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
-      <rect x="100" y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
-      <rect x="124" y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
-      <rect x="148" y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
-      <rect x="172" y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
-      <rect x="196" y="264" width="13" height="14" rx="3" fill="#4A7A4E"/>
-
-      
-      <rect x="16" y="74"  width="14" height="13" rx="3" fill="#4A7A4E"/>
-      <rect x="16" y="98"  width="14" height="13" rx="3" fill="#4A7A4E"/>
-      <rect x="16" y="122" width="14" height="13" rx="3" fill="#4A7A4E"/>
-      <rect x="16" y="146" width="14" height="13" rx="3" fill="#4A7A4E"/>
-      <rect x="16" y="170" width="14" height="13" rx="3" fill="#4A7A4E"/>
-      <rect x="16" y="194" width="14" height="13" rx="3" fill="#4A7A4E"/>
-
-      
-      <rect x="258" y="74"  width="14" height="13" rx="3" fill="#4A7A4E"/>
-      <rect x="258" y="98"  width="14" height="13" rx="3" fill="#4A7A4E"/>
-      <rect x="258" y="122" width="14" height="13" rx="3" fill="#4A7A4E"/>
-      <rect x="258" y="146" width="14" height="13" rx="3" fill="#4A7A4E"/>
-      <rect x="258" y="170" width="14" height="13" rx="3" fill="#4A7A4E"/>
-      <rect x="258" y="194" width="14" height="13" rx="3" fill="#4A7A4E"/>
-
-      
-      <polyline points="60,145 78,145 88,118 100,145"
-        fill="none" stroke="#7A9E7E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-
-      
-      <path d="M100,145 C105,145 110,126 121,120 C132,114 145,117 145,128 C145,139 132,143 121,145 C110,147 105,153 110,161 C115,168 128,168 138,163 C145,160 149,153 149,145"
-        fill="none" stroke="url(#sGrad)" strokeWidth="2.8" strokeLinecap="round"/>
-
-      
-      <polyline points="149,145 160,118 170,158 180,145 228,145"
-        fill="none" stroke="#7A9E7E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-
-      
-      <circle cx="88"  cy="118" r="3.2" fill="#7A9E7E"/>
-      <circle cx="160" cy="118" r="3.2" fill="#7A9E7E"/>
-      <circle cx="180" cy="145" r="2.8" fill="#7A9E7E" opacity="0.7"/>
-
-      
-      <line x1="60" y1="182" x2="228" y2="182" stroke="#2E5C33" strokeWidth="1" opacity="0.7"/>
-
-      
-      <polyline points="74,182 74,194 94,194 94,204"  fill="none" stroke="#3D6B42" strokeWidth="1.2" opacity="0.65"/>
-      <polyline points="144,182 144,198"               fill="none" stroke="#3D6B42" strokeWidth="1.2" opacity="0.65"/>
-      <polyline points="214,182 214,194 194,194 194,204" fill="none" stroke="#3D6B42" strokeWidth="1.2" opacity="0.65"/>
-      <line x1="94" y1="204" x2="194" y2="204" stroke="#3D6B42" strokeWidth="1.2" opacity="0.65"/>
-
-      
-      <circle cx="74"  cy="194" r="2.5" fill="#4A7A4E" opacity="0.8"/>
-      <circle cx="144" cy="198" r="2.5" fill="#4A7A4E" opacity="0.8"/>
-      <circle cx="214" cy="194" r="2.5" fill="#4A7A4E" opacity="0.8"/>
-      <circle cx="94"  cy="204" r="2"   fill="#4A7A4E" opacity="0.7"/>
-      <circle cx="194" cy="204" r="2"   fill="#4A7A4E" opacity="0.7"/>
-
-      
-      <text x="144" y="238"
-        fontFamily="'Arial Black','Helvetica Neue',Arial,sans-serif"
-        fontSize="28" fontWeight="900" fill="#7A9E7E"
-        textAnchor="middle" letterSpacing="6">ALDA</text>
-
-      
-      <text x="312" y="158"
-        fontFamily="'Arial Black','Helvetica Neue',Arial,sans-serif"
-        fontSize="88" fontWeight="900" fill="#1B4D20" letterSpacing="-2">Ops</text>
-      <text x="430" y="158"
-        fontFamily="'Arial','Helvetica Neue',Arial,sans-serif"
-        fontSize="88" fontWeight="300" fill="#2E6B32" letterSpacing="-1">Trace</text>
-
-      
-      <line x1="312" y1="176" x2="870" y2="176" stroke="url(#underline)" strokeWidth="2.5"/>
-
-      
-      <text x="314" y="202"
-        fontFamily="'Arial','Helvetica Neue',Arial,sans-serif"
-        fontSize="18" fontWeight="400" fill="#5A8060" letterSpacing="0.5">Operational Event Intelligence</text>
-      <text x="314" y="224"
-        fontFamily="'Arial','Helvetica Neue',Arial,sans-serif"
-        fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">by SMTintel &#183; ALDA</text>
-    </svg>
-  );
-}
-
-function App() {
-  var stateArr = _useState("idle");
-  var state = stateArr[0]; var setState = stateArr[1];
-
-  var apiKeyArr = _useState(localStorage.getItem("opstrace_key") || "");
-  var apiKey = apiKeyArr[0]; var setApiKey = apiKeyArr[1];
-
-  var progArr = _useState(0);
-  var prog = progArr[0]; var setProg = progArr[1];
-
-  var progStepArr = _useState(0);
-  var progStep = progStepArr[0]; var setProgStep = progStepArr[1];
-
-  var daysArr = _useState(3);
-  var days = daysArr[0]; var setDays = daysArr[1];
-
-  var fmodeArr = _useState("quick");
-  var filterMode = fmodeArr[0]; var setFilterMode = fmodeArr[1];
-
-  var fFromArr = _useState("");
-  var dateFrom = fFromArr[0]; var setDateFrom = fFromArr[1];
-
-  var fToArr = _useState("");
-  var dateTo = fToArr[0]; var setDateTo = fToArr[1];
-
-  var fWeekArr = _useState("");
-  var weekNum = fWeekArr[0]; var setWeekNum = fWeekArr[1];
-
-  var fYearArr = _useState(new Date().getFullYear());
-  var weekYear = fYearArr[0]; var setWeekYear = fYearArr[1];
-
-  var resultArr = _useState(null);
-  var result = resultArr[0]; var setResult = resultArr[1];
-
-  var xlsxArr = _useState(null);
-  var xlsxBytes = xlsxArr[0]; var setXlsxBytes = xlsxArr[1];
-
-  var errArr = _useState("");
-  var errMsg = errArr[0]; var setErrMsg = errArr[1];
-
-  var dragArr = _useState(false);
-  var drag = dragArr[0]; var setDrag = dragArr[1];
-
-  var statsArr = _useState(null);
-  var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
-
-  React.useEffect(function(){
-    try {
-      var saved = sessionStorage.getItem("opstrace_last_result");
-      if (!saved) return;
-
-      var payload = JSON.parse(saved);
-      var savedResult = payload && payload.result ? payload.result : payload;
-      var savedStats = payload && payload.msgStats ? payload.msgStats : null;
-
-      setResult(savedResult);
-      if (savedStats) setMsgStats(savedStats);
-      setState("done");
-
-      buildXlsx(savedResult).then(function(bytes){
-        setXlsxBytes(bytes);
-      }).catch(function(){});
-    } catch(e){}
-  }, []);
-
-  var pfArr = _useState("");
-  var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
-
-  var imgsArr = _useState([]);
-  var zipImgNames = imgsArr[0]; var setZipImgNames = imgsArr[1];
-
-  var imgMetaArr = _useState({});
-  var imgMeta = imgMetaArr[0]; var setImgMeta = imgMetaArr[1];
-
-  var evImgsArr = _useState({});
-  var evImgs = evImgsArr[0]; var setEvImgs = evImgsArr[1];
-
-  var lbArr = _useState(null);
-  var lightbox = lbArr[0]; var setLightbox = lbArr[1];
-
-  var galPageArr = _useState(0);
-  var galPage = galPageArr[0]; var setGalPage = galPageArr[1];
-  var GAL_PAGE_SIZE = 48;
-
-  var RCCA_KEY = "opstrace_rcca";
-
-  var rccaArr = _useState(function(){
-    try { var raw = localStorage.getItem(RCCA_KEY); return raw ? JSON.parse(raw) : []; }
-    catch(_) { return []; }
-  });
-  var rccaList = rccaArr[0]; var setRccaList = rccaArr[1];
-
-  var rccaFormArr = _useState(null);
-  var rccaForm = rccaFormArr[0]; var setRccaForm = rccaFormArr[1];
-
-  var rccaDetailArr = _useState(null);
-  var rccaDetail = rccaDetailArr[0]; var setRccaDetail = rccaDetailArr[1];
-
-  var rccaFilterArr = _useState("");
-  var rccaFilter = rccaFilterArr[0]; var setRccaFilter = rccaFilterArr[1];
-
-  function saveRcca(rcca) {
-    var updated = rccaList.filter(function(r){ return r.rcca_id !== rcca.rcca_id; });
-    updated = [rcca].concat(updated);
-    try { localStorage.setItem(RCCA_KEY, JSON.stringify(updated)); } catch(_) {}
-    setRccaList(updated);
-  }
-
-  function deleteRcca(rcca_id) {
-    var updated = rccaList.filter(function(r){ return r.rcca_id !== rcca_id; });
-    try { localStorage.setItem(RCCA_KEY, JSON.stringify(updated)); } catch(_) {}
-    setRccaList(updated);
-  }
-
-  function exportRcca() {
-    var blob = new Blob([JSON.stringify(rccaList, null, 2)], {type:"application/json"});
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "OpsTrace_RCCA_" + new Date().toISOString().slice(0,10) + ".json";
-    a.click(); URL.revokeObjectURL(a.href);
-  }
-
-  function rccaSimilarity(ev, rcca) {
-    var score = 0;
-    if (!ev || !rcca) return 0;
-    var evModelo = (ev.modelo||"").toLowerCase().trim();
-    var rcModelo = (rcca.modelo||"").toLowerCase().trim();
-    var evLinea = (ev.linea_estacion||"").toLowerCase().trim();
-    var rcLinea = (rcca.linea||"").toLowerCase().trim();
-    var evDef = (ev.defecto_smt||"").toLowerCase().trim();
-    var rcProb = (rcca.problema||"").toLowerCase().trim();
-    var evTipo = (ev.tipo_evento||"").toLowerCase().trim();
-
-    if (evModelo && rcModelo && evModelo !== "n/d" && evModelo === rcModelo) score += 40;
-
-    else if (evModelo && rcModelo && evModelo !== "n/d" && (rcModelo.indexOf(evModelo) >= 0 || evModelo.indexOf(rcModelo) >= 0)) score += 20;
-
-    if (evLinea && rcLinea && evLinea !== "n/d" && evLinea === rcLinea) score += 25;
-    else if (evLinea && rcLinea && evLinea !== "n/d" && (rcLinea.indexOf(evLinea) >= 0 || evLinea.indexOf(rcLinea) >= 0)) score += 12;
-
-    if (evDef && evDef !== "n/a" && rcProb && rcProb.indexOf(evDef) >= 0) score += 25;
-    else if (evDef && evDef !== "n/a" && rcProb && evDef.split(" ").some(function(w){ return w.length > 3 && rcProb.indexOf(w) >= 0; })) score += 12;
-
-    if (evTipo && rcca.patron_detectado && rcca.patron_detectado.toLowerCase().indexOf(evTipo) >= 0) score += 10;
-
-    return Math.min(score, 100);
-  }
-
-  function getMatches(ev) {
-    return rccaList
-      .map(function(r){ return {rcca: r, score: rccaSimilarity(ev, r)}; })
-      .filter(function(x){ return x.score >= 30; })
-      .sort(function(a,b){ return b.score - a.score; })
-      .slice(0, 3);
-  }
-
-  var autoSuggestions = [];
-
-  var HIST_KEY = "opstrace_history";
-  var HIST_MAX = 10; // keep last 10 analyses
-
-  var histArr = _useState(function(){
-    try {
-      var raw = localStorage.getItem(HIST_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch(_) { return []; }
-  });
-  var history = histArr[0]; var setHistory = histArr[1];
-
-  function saveToHistory(res, stats, fileName, durationSecs) {
-    var entry = {
-      id: Date.now(),
-      savedAt: new Date().toISOString(),
-      fileName: fileName || "chat.zip",
-      periodo: res.resumen ? res.resumen.periodo : "",
-      grupo: res.resumen ? res.resumen.grupo : "",
-      totalEventos: res.eventos ? res.eventos.length : 0,
-      criticos: res.eventos ? res.eventos.filter(function(e){ return e.prioridad==="Critica"; }).length : 0,
-      pendientes: res.eventos ? res.eventos.filter(function(e){ return e.estatus!=="Cerrado"; }).length : 0,
-      msgs: stats ? stats.clean : 0,
-      imgs: stats ? stats.imgs : 0,
-      durationSecs: durationSecs || 0,
-      result: res
-    };
-    try {
-      var prev = [];
-      try { prev = JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch(_){}
-      var updated = [entry].concat(prev).slice(0, HIST_MAX);
-      localStorage.setItem(HIST_KEY, JSON.stringify(updated));
-      setHistory(updated);
-    } catch(_) {}
-  }
-
-  function deleteFromHistory(id) {
-    try {
-      var updated = history.filter(function(h){ return h.id !== id; });
-      localStorage.setItem(HIST_KEY, JSON.stringify(updated));
-      setHistory(updated);
-      } catch(_) {}
-  }
-  function loadFromHistory(entry) {
-    var restoredStats = {total: entry.msgs, filtered: entry.msgs, clean: entry.msgs, imgs: entry.imgs};
-    setResult(entry.result);
-    setMsgStats(restoredStats);
-    setEvImgs({});
-    setState("done");
-    buildXlsx(entry.result).then(function(bytes){
-      setXlsxBytes(bytes);
-    }).catch(function(){
-      setXlsxBytes(null);
-    });
-    try {
-      sessionStorage.setItem("opstrace_last_result", JSON.stringify({result: entry.result, msgStats: restoredStats}));
-    } catch(e){}
-  }
-
-  var fileRef = _useRef();
-  var fileNameRef = _useRef("chat.zip");
-
-  var timerArr = _useState(0);
-  var elapsed = timerArr[0]; var setElapsed = timerArr[1];
-  var elapsedMsArr = _useState(0);
-  var elapsedMs = elapsedMsArr[0]; var setElapsedMs = elapsedMsArr[1];
-  var startTimeRef = _useRef(null);
-  var stepTimesRef = _useRef({});
-
-  React.useEffect(function() {
-    if (state !== "loading") return;
-    startTimeRef.current = Date.now();
-    stepTimesRef.current = {};
-    setElapsed(0); setElapsedMs(0);
-    var interval = setInterval(function() {
-      var ms = Date.now() - startTimeRef.current;
-      setElapsed(Math.floor(ms / 1000));
-      setElapsedMs(ms);
-    }, 100);
-    return function() { clearInterval(interval); };
-  }, [state]);
-
-  function saveKey(k) { setApiKey(k); localStorage.setItem("opstrace_key", k); }
-
-  var STEPS = ["ZIP","Parser","Filtro","IA","Excel"];
-
-  async function handle(file) {
-    if (!file || !file.name.endsWith(".zip")) { setErrMsg("Sube un .zip exportado de WhatsApp"); setState("error"); return; }
-    if (!apiKey.trim()) { setErrMsg("Ingresa tu API Key de Anthropic"); setState("error"); return; }
-    fileNameRef.current = file.name;
-    setState("loading"); setProg(8); setProgStep(0);
-    try {
-      var zipData = await readZip(file);
-      var txt = zipData.txt;
-      var meta = zipData.imgMeta || {};
-      setZipImgNames(zipData.imgNames || []);
-      setImgMeta(meta);
-
-      setProgStep(1); setProg(22);
-      var all = parseWhatsApp(txt);
-      if (!all.length) throw new Error("No se encontraron mensajes con formato WhatsApp.");
-      setProgStep(2); setProg(38);
-      var filtered = filterMsgs(all, filterMode, days, dateFrom, dateTo, weekNum, weekYear);
-      var clean = cleanMsgs(filtered);
-      var statsPayload = {total: all.length, filtered: filtered.length, clean: clean.length, imgs: (zipData.imgNames||[]).length};
-      setMsgStats(statsPayload);
-      if (!clean.length) throw new Error("Sin mensajes operativos en el periodo. Aumenta el rango.");
-      setProgStep(3); setProg(55);
-      var res = await analyzeWithAI(clean, apiKey.trim());
-      setProgStep(4); setProg(82);
-
-      setEvImgs({});
-
-      var bytes = await buildXlsx(res);
-      var totalSecs = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      setProg(100);
-      setResult(res);
-      setXlsxBytes(bytes);
-      setState("done");
-      try {
-        sessionStorage.setItem("opstrace_last_result", JSON.stringify({result: res, msgStats: statsPayload}));
-      } catch(e){}
-      saveToHistory(res, statsPayload, fileNameRef.current, totalSecs);
-    } catch(e) { setErrMsg(e.message || String(e)); setState("error"); }
-  }
-
-  function download() {
-    if (!xlsxBytes) return;
-    var blob = new Blob([xlsxBytes], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "OpsTrace_" + new Date().toISOString().slice(0,10) + ".xlsx";
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  function reset() {
-    try { sessionStorage.removeItem("opstrace_last_result"); } catch(e){}
-    setState("idle"); setResult(null); setXlsxBytes(null);
-    setProg(0); setProgStep(0); setMsgStats(null); setErrMsg(""); setPersonaFiltro("");
-    setZipImgNames([]); setImgMeta({}); setEvImgs({}); setLightbox(null); setGalPage(0);
-    setFilterMode("quick"); setDateFrom(""); setDateTo(""); setWeekNum(""); setWeekYear(new Date().getFullYear());
-    setRccaForm(null); setRccaDetail(null);
-  }
-
-  var ev = (result && result.eventos) ? result.eventos : [];
-  var kpis = (result && result.kpis) ? result.kpis : [];
-  var res = (result && result.resumen) ? result.resumen : {};
-  var pend = ev.filter(function(e){ return e.estatus !== "Cerrado"; });
-  var crit = ev.filter(function(e){ return e.prioridad === "Critica" && e.estatus !== "Cerrado"; });
-  var cerr = ev.filter(function(e){ return e.estatus === "Cerrado"; });
-
-  var autoSuggestions = ev.filter(function(e){
-    var linked = rccaList.some(function(r){
-      return r.event_ids && r.event_ids.indexOf(e.id) >= 0;
-    });
-    return !linked && getMatches(e).length > 0;
-  });
-
-  var modMap = {};
-  ev.forEach(function(e){ if(e.modelo) modMap[e.modelo] = (modMap[e.modelo]||0)+1; });
-  var byMod = Object.keys(modMap).map(function(k){ return {l:k,n:modMap[k]}; }).sort(function(a,b){return b.n-a.n;}).slice(0,5);
-  var mxM = Math.max.apply(null, byMod.map(function(x){return x.n;}).concat([1]));
-
-  var linMap = {};
-  ev.forEach(function(e){ if(e.linea_estacion && e.linea_estacion!=="N/D") linMap[e.linea_estacion]=(linMap[e.linea_estacion]||0)+1; });
-  var byLin = Object.keys(linMap).map(function(k){return{l:k,n:linMap[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,5);
-  var mxL = Math.max.apply(null, byLin.map(function(x){return x.n;}).concat([1]));
-
-  var byPrio = [
-    {l:"Critica",n:ev.filter(function(e){return e.prioridad==="Critica";}).length,c:"re"},
-    {l:"Alta",n:ev.filter(function(e){return e.prioridad==="Alta";}).length,c:"ye"},
-    {l:"Media",n:ev.filter(function(e){return e.prioridad==="Media";}).length,c:"bl"},
-    {l:"Baja",n:ev.filter(function(e){return e.prioridad==="Baja";}).length,c:"gr"}
-  ];
-  var mxP = Math.max.apply(null, byPrio.map(function(x){return x.n;}).concat([1]));
-
-  var tipoMap = {};
-  ev.forEach(function(e){ var t=e.tipo_evento||"N/D"; tipoMap[t]=(tipoMap[t]||0)+1; });
-  var byTipo = ["Calidad","Proceso","Material","Sistema","Produccion","Seguridad"]
-    .map(function(t){return{l:t,n:tipoMap[t]||0};}).filter(function(x){return x.n>0;});
-  var mxT = Math.max.apply(null, byTipo.map(function(x){return x.n;}).concat([1]));
-
-  var defMap2 = {};
-  ev.forEach(function(e){ if(e.defecto_smt && e.defecto_smt!=="N/A") defMap2[e.defecto_smt]=(defMap2[e.defecto_smt]||0)+1; });
-  var byDef = Object.keys(defMap2).map(function(k){return{l:k,n:defMap2[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,5);
-  var mxD = Math.max.apply(null, byDef.map(function(x){return x.n;}).concat([1]));
-
-  var horaMap = {};
-  var horaTipoMap = {};
-  var TIPOS = ["Calidad","Proceso","Material","Sistema","Produccion","Seguridad"];
-  ev.forEach(function(e) {
-    if (!e.hora) return;
-    var h = e.hora.split(":")[0];
-    if (!h || isNaN(parseInt(h))) return;
-    var hh = String(parseInt(h)).padStart(2,"0");
-    horaMap[hh] = (horaMap[hh]||0) + 1;
-    if (!horaTipoMap[hh]) horaTipoMap[hh] = {};
-    var t = e.tipo_evento || "N/D";
-    horaTipoMap[hh][t] = (horaTipoMap[hh][t]||0) + 1;
-  });
-  var byHora = Object.keys(horaMap).sort().map(function(h){
-    return { h: h, n: horaMap[h], tipos: horaTipoMap[h]||{} };
-  });
-  var mxH = Math.max.apply(null, byHora.map(function(x){return x.n;}).concat([1]));
-
-  var tipoColor = {
-    Calidad:"#2952A3", Proceso:"#2A7A60", Material:"#B87820",
-    Sistema:"#6B2DA8", Produccion:"#1A7A3C", Seguridad:"#C0392B", "N/D":"#8A8580"
-  };
-
-  function horaToTurno(hh) {
-    var h = parseInt(hh);
-    if (h >= 6 && h < 15) return "1T";
-    if (h >= 15) return "2T";
-    return "3T";
-  }
-  var turnoColor = {"1T":"#2A7A60","2T":"#2952A3","3T":"#6B2DA8"};
-
-  var hmMap = {};
-  ev.forEach(function(e) {
-    if (!e.hora) return;
-    var hParsed = parseInt(e.hora.split(":")[0]);
-    if (isNaN(hParsed)) return;
-    var hh = String(hParsed).padStart(2,"0");
-    var turno = e.turno || "";
-
-    var cat = "t1";
-    if (turno.indexOf("3T") === 0) cat = "t3";
-    else if (turno.indexOf("2T") === 0) cat = "t2";
-    else if (turno.indexOf("1T") === 0) cat = "t1";
-    if (!hmMap[hh]) hmMap[hh] = {t3:0, t1:0, t2:0};
-    hmMap[hh][cat]++;
-  });
-  var hmRows = Object.keys(hmMap).sort().map(function(h){
-    return { h:h, t3:hmMap[h].t3, t1:hmMap[h].t1, t2:hmMap[h].t2 };
-  });
-  var hmMax = 1;
-  hmRows.forEach(function(r){ hmMax = Math.max(hmMax, r.t3, r.t1, r.t2); });
-
-  var personaSet = {};
-  ev.forEach(function(e){
-    if(e.reporta && e.reporta !== "N/D") personaSet[e.reporta] = true;
-    if(e.responsable_sugerido && e.responsable_sugerido !== "N/D") personaSet[e.responsable_sugerido] = true;
-  });
-  var personas = Object.keys(personaSet).sort();
-
-  var evRep = personaFiltro ? ev.filter(function(e){ return e.reporta && e.reporta.toLowerCase().indexOf(personaFiltro.toLowerCase()) >= 0; }) : [];
-  var evRes = personaFiltro ? ev.filter(function(e){ return e.responsable_sugerido && e.responsable_sugerido.toLowerCase().indexOf(personaFiltro.toLowerCase()) >= 0 && evRep.indexOf(e) === -1; }) : [];
-  var dirInfo = result && result.directorio ? result.directorio.find(function(d){ return d.nombre && d.nombre.toLowerCase().indexOf(personaFiltro.toLowerCase()) >= 0; }) : null;
-
-  function bprio(p) { return ({Critica:"badge bc",Alta:"badge ba",Media:"badge bm",Baja:"badge bb"})[p] || "badge"; }
-  function best(s) { return ({Abierto:"badge bo","En proceso":"badge be",Cerrado:"badge bce"})[s] || "badge"; }
-
-  function PendItem(props) {
-    var e = props.e;
-    return (
-      <div className={"pitem" + (e.prioridad==="Critica"?" cr":e.prioridad==="Alta"?" al":"")}>
-        <div className="pitem-top">
-          <span className="pitem-id">{e.id} - {e.fecha} - {e.turno}</span>
-          <span className={bprio(e.prioridad)}>{e.prioridad}</span>
-        </div>
-        <h4>{e.evento_detectado}</h4>
-        <p>{e.accion_requerida}</p>
-        <div className="pmeta">
-          <span className="ptag">{e.linea_estacion}</span>
-          <span className="ptag">{e.responsable_sugerido}</span>
-          {e.modelo !== "N/D" && <span className="ptag">{e.modelo}</span>}
-          {e.defecto_smt && e.defecto_smt !== "N/A" && <span className="badge bt">{e.defecto_smt}</span>}
-          <span className={best(e.estatus)}>{e.estatus}</span>
-        </div>
-      </div>
-    );
-  }
-
-  function genRccaId(eventIds, evList) {
-
-    var parts = ["RCCA"];
-    var firstId = eventIds && eventIds.length > 0 ? eventIds[0] : null;
-    if (firstId) {
-      parts.push(firstId.replace("EVT-","E").replace("-",""));
-      var evData = evList.find(function(e){ return e.id === firstId; });
-      if (evData) {
-
-        if (evData.defecto_smt && evData.defecto_smt !== "N/A") {
-          var defShort = evData.defecto_smt.split(" ")[0].slice(0,6).toUpperCase();
-          parts.push(defShort);
-        } else if (evData.tipo_evento) {
-          parts.push(evData.tipo_evento.slice(0,4).toUpperCase());
-        }
-
-        if (evData.linea_estacion && evData.linea_estacion !== "N/D") {
-          parts.push(evData.linea_estacion.replace(/[^A-Za-z0-9]/g,"").slice(0,5).toUpperCase());
-        }
-
-        if (evData.fecha) {
-          var dp = evData.fecha.split("/");
-          if (dp.length === 3) parts.push(dp[2].slice(2) + dp[1] + dp[0]);
-        }
-      }
-    } else {
-      parts.push(String(Date.now()).slice(-6));
-    }
-    return parts.join("-");
-  }
-
-  function InvestigationCarousel(props) {
-var cards = props.cards;
-var allRcca = props.allRcca || [];
-var idxArr = _useState(0);
-var idx = idxArr[0]; var setIdx = idxArr[1];
-var tabArr = _useState(0);
-var tab = tabArr[0]; var setTab = tabArr[1];
-
-if (!cards || cards.length === 0) return null;
-
-var safeIdx = Math.min(idx, cards.length - 1);
-var cur = cards[safeIdx];
-
-var TABS = [
-  "Identification","Hypothesis","Exposure","Material",
-  "Correction","Pattern","Actions","Evidence"
-];
-
-function getCardClass(i) {
-  var diff = i - safeIdx;
-  if (diff === 0) return "ic-card active";
-  if (diff === -1) return "ic-card prev";
-  if (diff === 1) return "ic-card next";
-  if (diff === -2) return "ic-card far-prev";
-  if (diff === 2) return "ic-card far-next";
-  return "ic-card far-prev";
-}
-
-function Field(p) {
-  return (
-    <div className="ic-field">
-      <div className="ic-field-label">{p.label}</div>
-      {p.value
-        ? <div className="ic-field-val">{p.value}</div>
-        : <div className="ic-field-val empty">-</div>}
-    </div>
-  );
-}
-
-var evIds = cur.event_ids && cur.event_ids.length > 0 ? cur.event_ids.join(", ") : null;
-var actions = [
-  {l:"Immediate / Containment", v:cur.contencion,         color:"#B87820", bg:"#FEF9E8"},
-  {l:"Corrective Action",        v:cur.accion_correctiva,  color:"#2952A3", bg:"#EBF0FC"},
-  {l:"Preventive Action",        v:cur.accion_preventiva,  color:"#1A7A3C", bg:"#EBF8EE"},
-  {l:"Structural / Lesson",      v:cur.leccion_aprendida,  color:"#6B2DA8", bg:"#F5F0FE"},
-];
-
-var related = allRcca.filter(function(r) {
-  if (!r || r.rcca_id === cur.rcca_id) return false;
-  return (r.modelo && cur.modelo && r.modelo.toLowerCase() === cur.modelo.toLowerCase()) ||
-         (r.linea && cur.linea && r.linea.toLowerCase() === cur.linea.toLowerCase()) ||
-         (r.patron_detectado && cur.patron_detectado && r.patron_detectado.toLowerCase().indexOf((cur.patron_detectado||"").split(" ")[0].toLowerCase()) >= 0);
-}).slice(0, 3);
-
-var sevColor = cur.prioridad === "Critica" ? "#C0392B"
-  : cur.prioridad === "Alta" ? "#B87820"
-  : cur.prioridad === "Media" ? "#2952A3" : "#2A7A60";
-
-return (
-  <div className="ic-wrap">
-
-    <div style={{padding:"0 20px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-      <div>
-        <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>Investigation Carousel</div>
-        <div style={{fontSize:10,color:"#8A8580"}}>{cards.length} case{cards.length!==1?"s":""} en memoria RCCA</div>
-      </div>
-      <div style={{fontSize:9,color:sevColor,fontWeight:700,background:sevColor+"14",borderRadius:99,padding:"3px 10px",border:"1px solid "+sevColor+"30"}}>
-        {cur.rcca_id}
-      </div>
-    </div>
-
-    <div className="ic-stage" style={{perspective:"1200px"}}>
-      {cards.map(function(card, i) {
-        var diff = i - safeIdx;
-        if (Math.abs(diff) > 2) return null;
-        return (
-          <div key={card.rcca_id || i}
-            className={getCardClass(i)}
-            onClick={function(){ if (i !== safeIdx) { setIdx(i); setTab(0); } }}
-            style={{position: i === safeIdx ? "relative" : "absolute"}}>
-
-            <div className="ic-card-head">
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#2A7A60",marginBottom:3}}>{card.rcca_id}</div>
-                <div style={{fontSize:11,fontWeight:600,color:"#1A1714",lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.problema || "-"}</div>
-                <div style={{display:"flex",gap:5,marginTop:4,flexWrap:"wrap"}}>
-                  {card.modelo && <span style={{fontSize:8.5,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"1px 6px"}}>{card.modelo}</span>}
-                  {card.linea && <span style={{fontSize:8.5,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"1px 6px"}}>{card.linea}</span>}
-                  {card.fecha && <span style={{fontSize:8.5,color:"#8A8580"}}>{card.fecha}</span>}
-                </div>
-              </div>
-            </div>
-
-            {i === safeIdx && (
-              <div>
-                <div className="ic-tabs">
-                  {TABS.map(function(tlabel, ti) {
-                    return (
-                      <button key={ti} className={"ic-tab" + (tab===ti?" on":"")}
-                        onClick={function(){ setTab(ti); }}>
-                        {tlabel}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="ic-body">
-                  {tab === 0 && <div>
-                    <Field label="RCCA ID" value={cur.rcca_id}/>
-                    <Field label="Model / Part Number" value={cur.modelo}/>
-                    <Field label="Line / Station" value={cur.linea}/>
-                    <Field label="Date" value={cur.fecha}/>
-                    <Field label="Problem Statement" value={cur.problema}/>
-                    <Field label="Linked Events" value={evIds}/>
-                  </div>}
-                  {tab === 1 && <div>
-                    <div className="ic-field"><div className="ic-field-label">Root Cause Hypothesis</div>{cur.causa_raiz ? <div className="ic-field-val">{cur.causa_raiz}</div> : <div className="ic-field-val empty">-</div>}</div>
-                    <div className="ic-field"><div className="ic-field-label">Pattern Detected</div>{cur.patron_detectado ? <div className="ic-field-val">{cur.patron_detectado}</div> : <div className="ic-field-val empty">-</div>}</div>
-                    <div className="ic-field"><div className="ic-field-label">Problem Context</div>{cur.problema ? <div className="ic-field-val">{cur.problema}</div> : <div className="ic-field-val empty">-</div>}</div>
-                  </div>}
-                  {tab === 2 && <div>
-                    <div style={{background:"#FEF0EE",border:"1px solid #F4CCCC",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
-                      <div className="ic-field-label" style={{color:"#C0392B"}}>Exposure Window</div>
-                      <div className="ic-field-val">{cur.patron_detectado || "-"}</div>
-                    </div>
-                    <Field label="Detection Point" value={cur.contencion}/>
-                    <Field label="Confirmed With" value={cur.causa_raiz}/>
-                  </div>}
-                  {tab === 3 && <div>
-                    <Field label="Material / Components Affected" value={cur.modelo}/>
-                    <Field label="Scope Estimate" value={cur.problema}/>
-                    <Field label="Containment Coverage" value={cur.contencion}/>
-                  </div>}
-                  {tab === 4 && <div>
-                    <div style={{background:"#EBF8EE",border:"1px solid #A0DEB4",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
-                      <div className="ic-field-label" style={{color:"#1A7A3C"}}>Containment Action</div>
-                      <div className="ic-field-val">{cur.contencion || "-"}</div>
-                    </div>
-                    <Field label="Corrective Action" value={cur.accion_correctiva}/>
-                    <Field label="Correction Status" value={cur.accion_correctiva ? "Implemented" : "Pending"}/>
-                  </div>}
-                  {tab === 5 && <div>
-                    <div style={{background:"#F5F0FE",border:"1px solid #C8A8F8",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
-                      <div className="ic-field-label" style={{color:"#6B2DA8"}}>Pattern / Error Mechanism</div>
-                      <div className="ic-field-val">{cur.patron_detectado || "-"}</div>
-                    </div>
-                    <Field label="System Weakness" value={cur.causa_raiz}/>
-                    <Field label="Recurrence Risk" value={cur.leccion_aprendida}/>
-                  </div>}
-                  {tab === 6 && <div>
-                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                      {actions.map(function(a){
-                        return (
-                          <div key={a.l} style={{background:a.bg,border:"1px solid "+a.color+"40",borderRadius:7,padding:"9px 12px"}}>
-                            <div className="ic-field-label" style={{color:a.color}}>{a.l}</div>
-                            <div className="ic-field-val">{a.v || "-"}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>}
-                  {tab === 7 && <div>
-                    <Field label="Linked Event IDs" value={evIds}/>
-                    <Field label="Traceability / Records" value={cur.contencion}/>
-                    <Field label="Lesson Learned" value={cur.leccion_aprendida}/>
-                    {cur.event_ids && cur.event_ids.length > 0 && (
-                      <div style={{marginTop:8}}>
-                        <div className="ic-field-label">Linked Incidents</div>
-                        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>
-                          {cur.event_ids.map(function(id){
-                            return <span key={id} className="ic-badge" style={{background:"#EAF5F0",color:"#2A7A60"}}>{id}</span>;
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>}
-
-                  {related.length > 0 && (
-                    <div className="ic-related" style={{marginTop:12}}>
-                      <div style={{fontSize:9,fontWeight:700,color:"#B87820",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Casos relacionados</div>
-                      {related.map(function(r){
-                        var ri = cards.findIndex(function(c){ return c.rcca_id === r.rcca_id; });
-                        return (
-                          <div key={r.rcca_id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,cursor: ri>=0?"pointer":"default"}}
-                            onClick={function(){ if(ri>=0){setIdx(ri);setTab(0);} }}>
-                            <span style={{fontSize:9,fontFamily:"monospace",color:"#B87820",fontWeight:700}}>{r.rcca_id}</span>
-                            <span style={{fontSize:9,color:"#6A6560",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.problema}</span>
-                            {ri >= 0 && <span style={{fontSize:8,color:"#2A7A60",fontWeight:600}}>Go</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-
-    <div className="ic-nav">
-      <button className="ic-nav-btn" disabled={safeIdx===0}
-        onClick={function(){ if(safeIdx>0){setIdx(safeIdx-1);setTab(0);} }}>
-        &#8249;
-      </button>
-      <div className="ic-dots">
-        {cards.map(function(_, i){
-          return <div key={i} className={"ic-dot"+(i===safeIdx?" on":"")}/>;
-        })}
-      </div>
-      <button className="ic-nav-btn" disabled={safeIdx===cards.length-1}
-        onClick={function(){ if(safeIdx<cards.length-1){setIdx(safeIdx+1);setTab(0);} }}>
-        &#8250;
-      </button>
-    </div>
-
-  </div>
-);
-
-
-}
-
-  function RccaForm(props) {
-    var init = props.init || {};
-    var onSave = props.onSave; var onClose = props.onClose;
-    var fields = [
-      {key:"problema",         label:"Problema",           rows:2, required:true},
-      {key:"causa_raiz",       label:"Causa Raiz",         rows:3, required:true},
-      {key:"contencion",       label:"Contencion",         rows:2},
-      {key:"accion_correctiva",label:"Accion Correctiva",  rows:2},
-      {key:"accion_preventiva",label:"Accion Preventiva",  rows:2},
-      {key:"patron_detectado", label:"Patron Detectado",   rows:1},
-      {key:"leccion_aprendida",label:"Leccion Aprendida",  rows:2},
-    ];
-
-    var initIds = init.event_ids || [];
-
-    var formArr = _useState(function(){
-      var ids = initIds;
-      return Object.assign({
-        rcca_id: genRccaId(ids, ev),
-        event_ids: ids,
-        modelo: init.modelo || "",
-        linea: init.linea || "",
-        fecha: init.fecha || new Date().toISOString().slice(0,10),
-        problema: init.problema || "",
-        causa_raiz:"", contencion:"",
-        accion_correctiva:"", accion_preventiva:"",
-        patron_detectado:"", leccion_aprendida:""
-      }, {});
-    });
-    var form = formArr[0]; var setForm = formArr[1];
-
-    function upd(k, v) {
-      var n = {}; Object.keys(form).forEach(function(fk){ n[fk]=form[fk]; }); n[k]=v; setForm(n);
-    }
-
-    function toggleEvent(evId) {
-      var cur = form.event_ids;
-      var newIds = cur.indexOf(evId) >= 0
-        ? cur.filter(function(x){ return x !== evId; })
-        : cur.concat([evId]);
-
-      var firstEv = newIds.length > 0 ? ev.find(function(e){ return e.id === newIds[0]; }) : null;
-      var n = {}; Object.keys(form).forEach(function(fk){ n[fk]=form[fk]; });
-      n.event_ids = newIds;
-      n.rcca_id = genRccaId(newIds, ev);
-      if (firstEv) {
-        if (!form.modelo || form.modelo === init.modelo) n.modelo = firstEv.modelo || "";
-        if (!form.linea || form.linea === init.linea) n.linea = firstEv.linea_estacion || "";
-        if (!form.fecha || form.fecha === init.fecha) {
-          var dp = (firstEv.fecha||"").split("/");
-          n.fecha = dp.length===3 ? dp[2]+"-"+dp[1].padStart(2,"0")+"-"+dp[0].padStart(2,"0") : form.fecha;
-        }
-        if (!form.problema && firstEv.evento_detectado) n.problema = firstEv.evento_detectado;
-      }
-      setForm(n);
-    }
-
-    return (
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9998,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
-        onClick={function(){ onClose(); }}>
-        <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:820,maxHeight:"90vh",overflow:"auto",paddingBottom:32}}
-          onClick={function(e){ e.stopPropagation(); }}>
-
-          
-          <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",zIndex:1}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>Nueva RCCA</div>
-              <div style={{fontSize:10,fontFamily:"monospace",color:"#2A7A60",fontWeight:600,marginTop:2}}>{form.rcca_id}</div>
-            </div>
-            <button onClick={onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cancelar</button>
-          </div>
-
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
-
-            
-            <div>
-              <div style={{fontSize:10,fontWeight:700,color:"#2A7A60",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>
-                Vincular a eventos ({form.event_ids.length} seleccionados)
-              </div>
-              {ev.length === 0 ? (
-                <div style={{fontSize:11,color:"#8A8580",fontStyle:"italic"}}>No hay eventos cargados en esta sesion</div>
-              ) : (
-                <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:200,overflowY:"auto",border:"1px solid #EEECEA",borderRadius:8,padding:8}}>
-                  {ev.map(function(e){
-                    var selected = form.event_ids.indexOf(e.id) >= 0;
-                    return (
-                      <div key={e.id}
-                        onClick={function(){ toggleEvent(e.id); }}
-                        style={{
-                          display:"flex",alignItems:"center",gap:10,
-                          background: selected ? "#EAF5F0" : "#F8F7F5",
-                          border:"1.5px solid " + (selected ? "#2A7A60" : "#DDDBD7"),
-                          borderRadius:7,padding:"8px 11px",cursor:"pointer",transition:"all .15s"
-                        }}>
-                        
-                        <div style={{
-                          width:16,height:16,borderRadius:4,flexShrink:0,
-                          background: selected ? "#1E5C48" : "#fff",
-                          border:"1.5px solid " + (selected ? "#1E5C48" : "#C8C4BE"),
-                          display:"flex",alignItems:"center",justifyContent:"center",
-                          color:"#fff",fontSize:10,fontWeight:700
-                        }}>{selected ? "v" : ""}</div>
-                        
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{display:"flex",alignItems:"center",gap:6}}>
-                            <span style={{fontSize:9.5,fontWeight:700,fontFamily:"monospace",color: selected?"#1E5C48":"#8A8580"}}>{e.id}</span>
-                            <span style={{fontSize:9,color:"#8A8580"}}>{e.fecha} {e.turno}</span>
-                            {e.linea_estacion && e.linea_estacion !== "N/D" && (
-                              <span style={{fontSize:9,background:"#F0F4F8",color:"#6A6560",borderRadius:3,padding:"1px 5px"}}>{e.linea_estacion}</span>
-                            )}
-                          </div>
-                          <div style={{fontSize:10.5,color:"#1A1714",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                            {e.evento_detectado ? e.evento_detectado.slice(0,60) : ""}
-                          </div>
-                          {e.defecto_smt && e.defecto_smt !== "N/A" && (
-                            <span style={{fontSize:8.5,color:"#6B2DA8",background:"#F5F0FE",borderRadius:3,padding:"1px 6px",marginTop:2,display:"inline-block"}}>{e.defecto_smt}</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            
-            <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:9.5,color:"#8A8580",fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>RCCA ID:</span>
-              <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:"#1E5C48"}}>{form.rcca_id}</span>
-            </div>
-
-            
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-              {[{k:"modelo",l:"Modelo/N-P"},{k:"linea",l:"Linea"},{k:"fecha",l:"Fecha"}].map(function(f){
-                return (
-                  <div key={f.k}>
-                    <div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.l}</div>
-                    <input value={form[f.k]} onChange={function(e){ upd(f.k, e.target.value); }}
-                      style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/>
-                  </div>
-                );
-              })}
-            </div>
-
-            
-            {fields.map(function(f){
-              return (
-                <div key={f.key}>
-                  <div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>
-                    {f.label}{f.required && <span style={{color:"#C0392B"}}> *</span>}
-                  </div>
-                  <textarea value={form[f.key]} rows={f.rows}
-                    onChange={function(e){ upd(f.key, e.target.value); }}
-                    style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
-                </div>
-              );
-            })}
-
-            
-            <button
-              onClick={function(){
-                if (!form.problema || !form.causa_raiz) { alert("Completa Problema y Causa Raiz"); return; }
-                onSave(form); onClose();
-              }}
-              style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>
-              Guardar RCCA
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function RccaCard(props) {
-    var r = props.r; var evMatch = props.evMatch; var score = props.score;
-    return (
-      <div style={{background:"#fff",border:"1.5px solid " + (score >= 70 ? "#B8DECE" : score >= 50 ? "#F5E4A0" : "#DDDBD7"),borderRadius:10,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:8}}>
-          <div>
-            <span style={{fontSize:9,fontWeight:700,fontFamily:"monospace",color:"#2A7A60"}}>{r.rcca_id}</span>
-            {score > 0 && (
-              <span style={{marginLeft:6,fontSize:9,fontWeight:700,color: score>=70?"#1A7A3C":score>=50?"#B87820":"#8A8580",background:score>=70?"#EBF8EE":score>=50?"#FEF9E8":"#F8F7F5",borderRadius:99,padding:"1px 7px"}}>
-                {score}% coincide
-              </span>
-            )}
-          </div>
-          <div style={{display:"flex",gap:5,flexShrink:0}}>
-            <button onClick={function(){ setRccaDetail(r); }}
-              style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E5C48",cursor:"pointer"}}>
-              Ver
-            </button>
-            <button onClick={function(){ deleteRcca(r.rcca_id); }}
-              style={{background:"none",border:"1px solid #DDDBD7",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>x</button>
-          </div>
-        </div>
-        <div style={{fontSize:11.5,fontWeight:600,color:"#1A1714",marginBottom:5,lineHeight:1.3}}>{r.problema}</div>
-        <div style={{fontSize:10,color:"#2A7A60",background:"#EAF5F0",borderRadius:4,padding:"3px 8px",marginBottom:6,lineHeight:1.4}}>{r.causa_raiz ? r.causa_raiz.slice(0,80) + (r.causa_raiz.length > 80 ? "..." : "") : ""}</div>
-        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-          {r.modelo && <span style={{fontSize:9,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:4,padding:"2px 7px",color:"#6A6560"}}>{r.modelo}</span>}
-          {r.linea && <span style={{fontSize:9,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:4,padding:"2px 7px",color:"#6A6560"}}>{r.linea}</span>}
-          {r.fecha && <span style={{fontSize:9,color:"#8A8580"}}>{r.fecha}</span>}
-          {r.event_ids && r.event_ids.length > 0 && r.event_ids.map(function(id){
-            return <span key={id} style={{fontSize:9,fontFamily:"monospace",background:"#EAF5F0",color:"#2A7A60",borderRadius:4,padding:"2px 6px"}}>{id}</span>;
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  function RccaCell(props) {
-    var evId = props.evId;
-    var linked = rccaList.filter(function(r){ return r.event_ids && r.event_ids.indexOf(evId) >= 0; });
-    var fakeEv = {id:evId, modelo:props.modelo, linea_estacion:props.linea, defecto_smt:"", tipo_evento:""};
-    var matches = getMatches(fakeEv);
-    return (
-      <div style={{display:"flex",flexDirection:"column",gap:3}}>
-        {linked.map(function(r){
-          return (
-            <span key={r.rcca_id} onClick={function(){ setRccaDetail(r); }}
-              style={{fontSize:8.5,fontFamily:"monospace",color:"#2A7A60",background:"#EAF5F0",borderRadius:4,padding:"2px 6px",cursor:"pointer",whiteSpace:"nowrap"}}>
-              {r.rcca_id}
-            </span>
-          );
-        })}
-        {linked.length === 0 && matches.length > 0 && (
-          <span style={{fontSize:8,color:"#B87820",background:"#FEF9E8",borderRadius:4,padding:"2px 5px",whiteSpace:"nowrap"}}>
-            {matches[0].score}% sim
-          </span>
-        )}
-        <button onClick={function(){ setRccaForm({
-            event_ids:[evId], modelo:props.modelo||"",
-            linea:props.linea||"", fecha:props.fecha||new Date().toISOString().slice(0,10),
-            problema:props.problema||""
-          }); }}
-          style={{background:"none",border:"1px solid #DDDBD7",borderRadius:5,padding:"2px 7px",fontSize:9,color:"#6A6560",cursor:"pointer",marginTop:2}}>
-          +RCCA
-        </button>
-      </div>
-    );
-  }
-
-  function WeekPreview(props) {
-    var wn = props.weekNum; var wy = props.weekYear;
-    var setWN = props.setWeekNum; var setWY = props.setWeekYear;
-    var now = new Date();
-    var thisWeek = getISOWeek(now);
-    var yr = now.getFullYear();
-    var shortcuts = [
-      {label:"Esta sem", w:thisWeek, y:yr},
-      {label:"Sem ant", w:thisWeek-1>0?thisWeek-1:52, y:thisWeek-1>0?yr:yr-1},
-      {label:"-2 sem", w:thisWeek-2>0?thisWeek-2:51, y:thisWeek-2>0?yr:yr-1}
-    ];
-    var wr = null;
-    if (wn && wy) {
-      try { wr = getWeekRange(parseInt(wn), parseInt(wy)); } catch(_) {}
-    }
-    return (
-      <div>
-        {wr && (
-          <div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"7px 12px",display:"inline-flex",alignItems:"center",gap:6,marginBottom:10}}>
-            <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{wr.from}</span>
-            <span style={{fontSize:10,color:"#8A8580"}}>to</span>
-            <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{wr.to}</span>
-            <span style={{fontSize:9,color:"#6A8060",marginLeft:4}}>Sem {wn} / {wy}</span>
-          </div>
-        )}
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-          <span style={{fontSize:10.5,color:"#8A8580"}}>Ir a:</span>
-          {shortcuts.map(function(s){
-            var active = parseInt(wn)===s.w && parseInt(wy)===s.y;
-            return (
-              <button key={s.label}
-                style={{border: active?"none":"1px solid #DDDBD7",background: active?"#1E5C48":"#fff",color: active?"#fff":"#6A6560",borderRadius:99,padding:"4px 12px",fontSize:11,fontWeight: active?700:500,cursor:"pointer"}}
-                onClick={function(){ setWN(String(s.w)); setWY(String(s.y)); }}>
-                {s.label} (S{s.w})
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  var _loadQueue = {running:0, max:4, pending:[]};
-  function enqueueLoad(fname, cb) {
-    if (_loadQueue.running < _loadQueue.max) {
-      _loadQueue.running++;
-      loadImg(fname).then(function(url){
-        _loadQueue.running--;
-        cb(url);
-        if (_loadQueue.pending.length) {
-          var next = _loadQueue.pending.shift();
-          enqueueLoad(next.fname, next.cb);
-        }
-      });
-    } else {
-      _loadQueue.pending.push({fname:fname, cb:cb});
-    }
-  }
-
-  function LazyImg(props) {
-    var fname = props.fname;
-    var className = props.className || "";
-    var style = props.style || {};
-    var onClick = props.onClick;
-    var srcArr = _useState(null);
-    var src = srcArr[0]; var setSrc = srcArr[1];
-    var visibleArr = _useState(false);
-    var visible = visibleArr[0]; var setVisible = visibleArr[1];
-    var enqueuedRef = _useRef(false);
-    var domRef = _useRef(null);
-
-    React.useEffect(function() {
-      var el = domRef.current;
-      if (!el) return;
-      if (!window.IntersectionObserver) { setVisible(true); return; }
-      var obs = new IntersectionObserver(function(entries) {
-        if (entries[0].isIntersecting) {
-          setVisible(true);
-          obs.disconnect();
-        }
-      }, {rootMargin:"200px"});
-      obs.observe(el);
-      return function(){ obs.disconnect(); };
-    }, []);
-
-    React.useEffect(function() {
-      if (!visible || src || enqueuedRef.current) return;
-      enqueuedRef.current = true;
-      enqueueLoad(fname, function(url) { setSrc(url); });
-    }, [visible]);
-
-    if (!src) {
-      return (
-        <div ref={domRef} className={className} style={Object.assign({
-          background:"#EEECEA",display:"flex",alignItems:"center",
-          justifyContent:"center",color:"#C8C4BE",fontSize:9,borderRadius:8
-        }, style)}>
-          {visible ? "..." : ""}
-        </div>
-      );
-    }
-    return (
-      <img ref={domRef} className={className} src={src} alt={fname} style={style}
-        onClick={onClick ? function(){ onClick(src); } : undefined}/>
-    );
-  }
-
-  function toggleImg(evId, fname) {
-    var cur = evImgs[evId] || [];
-    var next = cur.indexOf(fname) >= 0
-      ? cur.filter(function(f){ return f !== fname; })
-      : cur.concat([fname]);
-    var updated = {};
-    Object.keys(evImgs).forEach(function(k){ updated[k] = evImgs[k]; });
-    updated[evId] = next;
-    setEvImgs(updated);
-  }
-
-  var imgNames = zipImgNames;
-
-  function formatDateIso(dateIso) {
-    if (!dateIso) return "";
-    var p = dateIso.split("-");
-    return p.length === 3 ? (p[2] + "/" + p[1] + "/" + p[0]) : dateIso;
-  }
-
-  function parseClockParts(timeStr) {
-    var parts = String(timeStr || "00:00:00").split(":");
-    return {
-      h: parseInt(parts[0], 10) || 0,
-      m: parseInt(parts[1], 10) || 0,
-      s: parseInt(parts[2], 10) || 0
-    };
-  }
-
-  function parseIsoDateTimeMs(dateIso, timeStr) {
-    if (!dateIso) return null;
-    var p = dateIso.split("-");
-    if (p.length !== 3) return null;
-    var t = parseClockParts(timeStr);
-    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10), t.h, t.m, t.s).getTime();
-  }
-
-  function parseEventDateTimeMs(evRow) {
-    if (!evRow || !evRow.fecha) return null;
-    var p = String(evRow.fecha).split("/");
-    if (p.length !== 3) return null;
-    var t = parseClockParts(evRow.hora);
-    return new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10), t.h, t.m, t.s).getTime();
-  }
-
-  function sameCalendarDay(msA, msB) {
-    if (msA == null || msB == null) return false;
-    var a = new Date(msA);
-    var b = new Date(msB);
-    return a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate();
-  }
-
-  function sortImageNamesNewestFirst(namesList) {
-    return namesList.slice().sort(function(a, b) {
-      var ma = imgMeta[a], mb = imgMeta[b];
-      if (!ma && !mb) return a.localeCompare(b);
-      if (!ma) return 1;
-      if (!mb) return -1;
-      return ((mb.dateIso || "") + (mb.timeStr || "")).localeCompare((ma.dateIso || "") + (ma.timeStr || ""));
-    });
-  }
-
-  function uniqueNames(list) {
-    var out = [];
-    var seen = {};
-    list.forEach(function(name) {
-      if (!name || seen[name]) return;
-      seen[name] = true;
-      out.push(name);
-    });
-    return out;
-  }
-
-  function formatEventRef(evRow) {
-    if (!evRow) return "";
-    var base = evRow.fecha || "";
-    return evRow.hora ? (base + " " + evRow.hora) : base;
-  }
-
-  function buildPickerDataForEvent(evRow, attachedNames) {
-    var sorted = sortImageNamesNewestFirst(imgNames);
-    var refMs = parseEventDateTimeMs(evRow);
-
-    if (refMs == null) {
-      return {
-        list: uniqueNames((attachedNames || []).concat(sorted)).slice(0, 120),
-        modeLabel: "mas nuevas primero",
-        refText: ""
-      };
-    }
-
-    var exact = [];
-    var near15 = [];
-    var near60 = [];
-    var near180 = [];
-    var sameDay = [];
-    var rest = [];
-
-    sorted.forEach(function(fname) {
-      var meta2 = imgMeta[fname] || {};
-      var ms = parseIsoDateTimeMs(meta2.dateIso, meta2.timeStr);
-      if (ms == null) {
-        rest.push(fname);
-        return;
-      }
-
-      var diff = Math.abs(ms - refMs);
-      if (diff <= 5 * 60 * 1000) exact.push(fname);
-      else if (diff <= 15 * 60 * 1000) near15.push(fname);
-      else if (diff <= 60 * 60 * 1000) near60.push(fname);
-      else if (diff <= 3 * 60 * 60 * 1000) near180.push(fname);
-      else if (sameCalendarDay(ms, refMs)) sameDay.push(fname);
-      else rest.push(fname);
-    });
-
-    var contextual = uniqueNames((attachedNames || []).concat(exact, near15, near60, near180, sameDay));
-    if (contextual.length < 36) {
-      contextual = uniqueNames(contextual.concat(rest.slice(0, 36 - contextual.length)));
-    }
-
-    var modeLabel = "mas nuevas primero";
-    if (exact.length) modeLabel = "ventana +-5 min";
-    else if (near15.length) modeLabel = "ventana +-15 min";
-    else if (near60.length) modeLabel = "ventana +-1 h";
-    else if (near180.length) modeLabel = "ventana +-3 h";
-    else if (sameDay.length) modeLabel = "mismo dia";
-
-    return {
-      list: contextual.slice(0, 120),
-      modeLabel: modeLabel,
-      refText: formatEventRef(evRow)
-    };
-  }
-
-  function PickerThumb(props) {
-    var fname = props.fname;
-    var srcArr = _useState(_imgCache[fname] || null);
-    var src = srcArr[0]; var setSrc = srcArr[1];
-    var queuedRef = _useRef(false);
-
-    React.useEffect(function() {
-      var alive = true;
-      if (src || queuedRef.current) return;
-      queuedRef.current = true;
-      enqueueLoad(fname, function(url) {
-        if (alive) setSrc(url);
-      });
-      return function() { alive = false; };
-    }, [fname, src]);
-
-    if (!src) {
-      return <div className="picker-thumb" style={{background:"#EEECEA"}} />;
-    }
-
-    return <img className="picker-thumb" src={src} alt={fname} />;
-  }
-
-  function Lightbox(props) {
-    var src = props.src; var name = props.name;
-    var meta2 = props.meta; var onClose = props.onClose;
-    return (
-      <div className="lb-overlay" onClick={onClose}>
-        <div className="lb-box" onClick={function(e){e.stopPropagation();}}>
-          <div className="lb-hdr">
-            <div style={{flex:1,overflow:"hidden"}}>
-              <div style={{fontSize:12,fontWeight:600,color:"#3D3A36",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</div>
-              {meta2 && (
-                <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>
-                  {formatDateIso(meta2.dateIso)} {meta2.timeStr} - {meta2.sender}
-                </div>
-              )}
-            </div>
-            <button className="lb-close" onClick={onClose}>x</button>
-          </div>
-          <div className="lb-img-wrap">
-            <img src={src} alt={name}/>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function EvidenceCell(props) {
-    var e = props.e;
-    var attached = evImgs[e.id] || [];
-    var showPickArr = _useState(false);
-    var showPick = showPickArr[0]; var setShowPick = showPickArr[1];
-    var pickerData = showPick ? buildPickerDataForEvent(e, attached) : null;
-    var pickerImgs = pickerData ? pickerData.list : [];
-
-    return (
-      <td style={{verticalAlign:"top",paddingTop:8,minWidth:80}}>
-        <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
-          {attached.map(function(fname){
-            return (
-              <LazyImg key={fname} fname={fname} className="ev-thumb"
-                onClick={function(src){ setLightbox({src:src,name:fname,meta:imgMeta[fname]}); }}/>
-            );
-          })}
-          {imgNames.length > 0 && (
-            <div className="ev-add-btn" title="Adjuntar imagen"
-              onClick={function(){ setShowPick(true); }}>
-              +
-            </div>
-          )}
-        </div>
-        {showPick && imgNames.length > 0 && (
-          <div className="picker-overlay" onClick={function(){ setShowPick(false); }}>
-            <div className="picker-box" onClick={function(ev){ ev.stopPropagation(); }}>
-              <div className="picker-head">
-                <div>
-                  <div className="picker-title">Seleccionar evidencia</div>
-                  <div className="picker-sub">
-                    {attached.length} adjuntas • {pickerImgs.length} sugeridas
-                    {pickerData && pickerData.refText ? (" • " + pickerData.refText) : ""}
-                    {pickerData ? (" • " + pickerData.modeLabel) : ""}
-                  </div>
-                </div>
-                <button className="picker-close" onClick={function(){ setShowPick(false); }}>Cerrar</button>
-              </div>
-              <div className="picker-grid">
-                {pickerImgs.map(function(fname){
-                  var sel = attached.indexOf(fname) >= 0;
-                  var meta2 = imgMeta[fname] || {};
-                  return (
-                    <div key={fname} className={"picker-card" + (sel ? " selected" : "")}
-                      onClick={function(){ toggleImg(e.id, fname); }}>
-                      <div style={{position:"relative"}}>
-                        <PickerThumb fname={fname}/>
-                        {sel && <div className="picker-check">✓</div>}
-                      </div>
-                      <div className="picker-meta">
-                        <div className="picker-date">{formatDateIso(meta2.dateIso)}</div>
-                        <div className="picker-time">{meta2.timeStr || ""}</div>
-                        <div className="picker-sender">{meta2.sender ? meta2.sender.split(" ")[0] : fname}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-      </td>
-    );
-  }
-
-  return (
-    <div>
-      
-      {lightbox && (
-        <div className="lb-overlay" onClick={function(){ setLightbox(null); }}>
-          <div className="lb-box" onClick={function(e){e.stopPropagation();}}>
-            <div className="lb-hdr">
-              <div style={{flex:1,overflow:"hidden"}}>
-                <div style={{fontSize:12,fontWeight:600,color:"#3D3A36",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lightbox.name}</div>
-                {lightbox.meta && (
-                  <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>
-                    {formatDateIso(lightbox.meta.dateIso)} {lightbox.meta.timeStr} - {lightbox.meta.sender}
-                  </div>
-                )}
-              </div>
-              <button className="lb-close" onClick={function(){ setLightbox(null); }}>x</button>
-            </div>
-            <div className="lb-img-wrap">
-              <img src={lightbox.src} alt={lightbox.name}/>
-            </div>
-          </div>
-        </div>
-      )}
-
-      
-      {rccaForm && (
-        <RccaForm
-          init={rccaForm}
-          onSave={saveRcca}
-          onClose={function(){ setRccaForm(null); }}
-        />
-      )}
-
-      
-      {rccaDetail && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9997,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
-          onClick={function(){ setRccaDetail(null); }}>
-          <div style={{background:"#fff",borderRadius:16,maxWidth:680,width:"100%",maxHeight:"85vh",overflow:"auto",padding:0}}
-            onClick={function(e){ e.stopPropagation(); }}>
-            <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div>
-                <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>RCCA Detail</div>
-                <div style={{fontSize:10,color:"#2A7A60",fontFamily:"monospace"}}>{rccaDetail.rcca_id}</div>
-              </div>
-              <button onClick={function(){ setRccaDetail(null); }} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cerrar</button>
-            </div>
-            <div style={{padding:"18px 20px",display:"flex",flexDirection:"column",gap:12}}>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {rccaDetail.modelo && <span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"3px 9px",fontWeight:600}}>{rccaDetail.modelo}</span>}
-                {rccaDetail.linea && <span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"3px 9px",fontWeight:600}}>{rccaDetail.linea}</span>}
-                <span style={{fontSize:10,color:"#8A8580"}}>{rccaDetail.fecha}</span>
-              </div>
-              {[
-                {l:"Problema",v:rccaDetail.problema,color:"#C0392B",bg:"#FEF0EE"},
-                {l:"Causa Raiz",v:rccaDetail.causa_raiz,color:"#2952A3",bg:"#EBF0FC"},
-                {l:"Contencion",v:rccaDetail.contencion,color:"#B87820",bg:"#FEF9E8"},
-                {l:"Accion Correctiva",v:rccaDetail.accion_correctiva,color:"#1A7A3C",bg:"#EBF8EE"},
-                {l:"Accion Preventiva",v:rccaDetail.accion_preventiva,color:"#2A7A60",bg:"#EAF5F0"},
-                {l:"Patron Detectado",v:rccaDetail.patron_detectado,color:"#6B2DA8",bg:"#F5F0FE"},
-                {l:"Leccion Aprendida",v:rccaDetail.leccion_aprendida,color:"#1A1714",bg:"#F8F7F5"},
-              ].filter(function(f){ return f.v; }).map(function(f){
-                return (
-                  <div key={f.l} style={{background:f.bg,border:"1px solid "+f.color+"30",borderRadius:8,padding:"10px 14px"}}>
-                    <div style={{fontSize:9.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:f.color,marginBottom:5}}>{f.l}</div>
-                    <div style={{fontSize:12,color:"#1A1714",lineHeight:1.5}}>{f.v}</div>
-                  </div>
-                );
-              })}
-              {rccaDetail.event_ids && rccaDetail.event_ids.length > 0 && (
-                <div>
-                  <div style={{fontSize:9.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:"#2A7A60",marginBottom:5}}>Eventos vinculados</div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {rccaDetail.event_ids.map(function(id){
-                      return <span key={id} style={{fontSize:11,fontFamily:"monospace",background:"#EAF5F0",color:"#2A7A60",borderRadius:6,padding:"3px 9px",fontWeight:600}}>{id}</span>;
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <div style={{marginBottom:32,paddingTop:8}}>
-        
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-          <LogoSVG/>
-          <span style={{fontSize:11,color:"#9A9590",fontWeight:500,letterSpacing:".02em",flexShrink:0}}>carmacorte.github.io</span>
-        </div>
-
-        
-        <div style={{marginBottom:16,overflow:"hidden",height:48}}>
-          <svg width="100%" height="48" viewBox="0 0 600 48" preserveAspectRatio="xMidYMid meet">
-            
-            <line x1="0" y1="24" x2="600" y2="24" stroke="#C8D8B8" strokeWidth="1" opacity="0.35"/>
-
-            
-            <polyline
-              points="0,24 30,24 36,8 48,8 54,38 66,38 72,8 84,8 90,38 102,38 108,8 120,8 126,38 138,38 144,24 600,24"
-              fill="none" stroke="#2A7A60" strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round"
-              strokeDasharray="400" strokeDashoffset="400"
-              style={{animation:"trace-loop 3.5s cubic-bezier(.4,0,.2,1) infinite"}}/>
-
-            
-            <circle cx="54" cy="38" r="0" fill="#F4F3F0" stroke="#2A7A60" strokeWidth="1.5"
-              style={{animation:"via-loop 3.5s ease .4s infinite"}}/>
-            <circle cx="90" cy="38" r="0" fill="#F4F3F0" stroke="#2A7A60" strokeWidth="1.5"
-              style={{animation:"via-loop 3.5s ease .55s infinite"}}/>
-            <circle cx="126" cy="38" r="0" fill="#F4F3F0" stroke="#2A7A60" strokeWidth="1.5"
-              style={{animation:"via-loop 3.5s ease .7s infinite"}}/>
-            <circle cx="72" cy="8" r="0" fill="#2A7A60"
-              style={{animation:"via-loop 3.5s ease .47s infinite"}}/>
-            <circle cx="108" cy="8" r="0" fill="#2A7A60"
-              style={{animation:"via-loop 3.5s ease .62s infinite"}}/>
-
-            
-            <circle cx="144" cy="24" r="3.5" fill="#4DB896" opacity="0"
-              style={{animation:"signal-travel 3.5s linear .85s infinite"}}/>
-
-            
-            <circle cx="570" cy="24" r="2.5" fill="#2A7A60"
-              style={{animation:"pulse-glow 1.4s ease-in-out infinite"}}/>
-
-            
-            <text x="170" y="20" fontSize="8" fill="#9A9590" fontFamily="Courier New,monospace"
-              opacity="0" style={{animation:"fade-in .4s ease 1.5s both"}}>
-              OPS_TRC
-            </text>
-          </svg>
-        </div>
-
-        
-        <div className="anim-header" style={{marginBottom:6}}>
-          <span style={{fontSize:11,fontWeight:600,color:"#2A7A60",letterSpacing:".08em",textTransform:"uppercase"}}>Operational Event Intelligence</span>
-        </div>
-        <h1 className="anim-header-sub" style={{fontSize:38,fontWeight:800,color:"#1A1714",lineHeight:1.05,letterSpacing:"-.03em",marginBottom:10}}>
-          OpsTrace<br/>
-          <span style={{color:"#1E5C48",fontSize:32}}>by SMTintel</span>
-        </h1>
-        <p className="anim-header-desc" style={{fontSize:14,color:"#8A8580",fontWeight:400,lineHeight:1.5,maxWidth:420}}>
-          Convierte conversaciones operativas dispersas en memoria estructurada de incidentes de manufactura.
-        </p>
-        
-        <div className="anim-chips" style={{display:"flex",gap:8,marginTop:16,flexWrap:"wrap"}}>
-          {["OpsTrace","SMT","AOI","Incident Story","Root Cause"].map(function(t){
-            return <span key={t} style={{fontSize:10.5,fontWeight:600,color:"#6A8060",background:"#EAF0E4",border:"1px solid #C8D8B8",borderRadius:99,padding:"4px 12px"}}>{t}</span>;
-          })}
-        </div>
-      </div>
-
-      
-      <div className="api-bar">
-        <label>API Key:</label>
-        <input className="api-input" type="password" placeholder="sk-ant-api03-..."
-          value={apiKey} onChange={function(e){ saveKey(e.target.value); }}/>
-        <div className="api-note">
-          Guardada en este navegador.{" "}
-          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">
-            console.anthropic.com
-          </a>
-        </div>
-      </div>
-
-      
-      {state === "idle" && (
-        <div>
-          
-          <div
-            style={{
-              border:"1.5px dashed #C8C4BE",borderRadius:16,
-              background: drag ? "#F0F5EE" : "#FAFAF9",
-              cursor:"pointer",transition:"all .2s",marginBottom:20
-            }}
-            onDragOver={function(e){ e.preventDefault(); setDrag(true); }}
-            onDragLeave={function(){ setDrag(false); }}
-            onDrop={function(e){ e.preventDefault(); setDrag(false); handle(e.dataTransfer.files[0]); }}
-            onClick={function(){ fileRef.current.click(); }}
-          >
-            <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}}
-              onChange={function(e){ handle(e.target.files[0]); }}/>
-            <div style={{padding:"48px 32px",textAlign:"center"}}>
-              
-              <div style={{width:48,height:48,borderRadius:12,background:"#EEF3EA",border:"1px solid #C8D8BC",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",color:"#4A7A50"}}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-                </svg>
-              </div>
-              <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>
-                Arrastra el .zip de WhatsApp
-              </div>
-              <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>
-                o haz clic para seleccionar
-              </div>
-              <button
-                style={{
-                  background:"#1E5C48",color:"#fff",border:"none",
-                  borderRadius:99,padding:"10px 24px",fontSize:13,fontWeight:600,
-                  cursor:"pointer",letterSpacing:"-.01em",
-                  boxShadow:"0 2px 8px rgba(30,92,72,.25)"
-                }}
-                onClick={function(e){ e.stopPropagation(); fileRef.current.click(); }}
-              >
-                Seleccionar archivo
-              </button>
-            </div>
-          </div>
-
-          
-          <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.04)"}}>
-            
-            <div style={{display:"flex",borderBottom:"1px solid #EEECEA"}}>
-              {[["quick","Rapido"],["week","Por semana"],["range","Rango"]].map(function(tab){
-                var active = filterMode === tab[0];
-                return (
-                  <button key={tab[0]}
-                    style={{flex:1,padding:"10px 6px",border:"none",borderBottom: active ? "2px solid #1E5C48" : "2px solid transparent",background:"transparent",fontSize:12,fontWeight: active ? 700 : 500,color: active ? "#1E5C48" : "#8A8580",cursor:"pointer",transition:"all .15s"}}
-                    onClick={function(){ setFilterMode(tab[0]); }}>
-                    {tab[1]}
-                  </button>
-                );
-              })}
-            </div>
-
-            
-            {filterMode === "quick" && (
-              <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                <span style={{fontSize:11.5,fontWeight:500,color:"#8A8580",marginRight:4}}>Ultimos:</span>
-                {[1,3,7,14,30].map(function(d){
-                  return (
-                    <button key={d}
-                      style={{border: days===d ? "none" : "1.5px solid #DDDBD7",background: days===d ? "#1E5C48" : "#fff",color: days===d ? "#fff" : "#6A6560",borderRadius:99,padding:"5px 14px",fontSize:12,fontWeight: days===d ? 700 : 500,cursor:"pointer",transition:"all .15s"}}
-                      onClick={function(){ setDays(d); }}>
-                      {d}d
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            
-            {filterMode === "week" && (
-              <div style={{padding:"12px 16px"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:12,fontWeight:500,color:"#8A8580"}}>Semana</span>
-                    <input type="number" min="1" max="53" placeholder="10"
-                      value={weekNum}
-                      onChange={function(e){ setWeekNum(e.target.value); }}
-                      style={{width:60,border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:13,fontWeight:700,color:"#1A1714",textAlign:"center",outline:"none"}}/>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:12,fontWeight:500,color:"#8A8580"}}>A&#241;o</span>
-                    <input type="number" min="2020" max="2030" placeholder={weekYear}
-                      value={weekYear}
-                      onChange={function(e){ setWeekYear(e.target.value); }}
-                      style={{width:76,border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:13,color:"#1A1714",textAlign:"center",outline:"none"}}/>
-                  </div>
-                </div>
-                <WeekPreview weekNum={weekNum} weekYear={weekYear} setWeekNum={setWeekNum} setWeekYear={setWeekYear}/>
-              </div>
-            )}
-
-            
-            {filterMode === "range" && (
-              <div style={{padding:"12px 16px"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:12,fontWeight:500,color:"#8A8580"}}>Desde</span>
-                    <input type="date"
-                      value={dateFrom}
-                      onChange={function(e){ setDateFrom(e.target.value); }}
-                      style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:12,fontWeight:500,color:"#8A8580"}}>Hasta</span>
-                    <input type="date"
-                      value={dateTo}
-                      onChange={function(e){ setDateTo(e.target.value); }}
-                      style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/>
-                  </div>
-                </div>
-                {dateFrom && dateTo && (
-                  <div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"7px 12px",display:"inline-flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateFrom}</span>
-                    <span style={{fontSize:10,color:"#8A8580"}}>→</span>
-                    <span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateTo}</span>
-                    <span style={{fontSize:9,color:"#6A8060",marginLeft:4}}>
-                      {Math.round(Math.abs(new Date(dateTo)-new Date(dateFrom))/86400000)+1} dias
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      
-      {state === "idle" && history.length > 0 && (
-        <div style={{marginTop:8}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,paddingLeft:2}}>
-            <span style={{fontSize:12,fontWeight:700,color:"#3D3A36",letterSpacing:".04em",textTransform:"uppercase"}}>Analisis recientes</span>
-            <button
-              onClick={function(){
-                if (window.confirm("Borrar todo el historial?")) {
-                  localStorage.removeItem(HIST_KEY);
-                  setHistory([]);
-                }
-              }}
-              style={{fontSize:10,color:"#8A8580",background:"none",border:"none",cursor:"pointer",padding:"2px 6px"}}>
-              Limpiar todo
-            </button>
-          </div>
-          {history.map(function(h){
-            var date = new Date(h.savedAt);
-            var dateStr = date.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"});
-            var timeStr = date.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
-            var critColor = h.criticos > 0 ? "#C0392B" : "#1A7A3C";
-            return (
-              <div key={h.id} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 16px",marginBottom:8,boxShadow:"0 1px 2px rgba(0,0,0,.04)",display:"flex",alignItems:"center",gap:12}}>
-                
-                <div style={{width:3,alignSelf:"stretch",borderRadius:99,background: h.criticos>0 ? "#C0392B" : "#1E5C48",flexShrink:0}}/>
-                
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#1A1714",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                    {h.grupo || h.fileName.replace(".zip","").replace("WhatsApp_Chat_-_","").replace(/_/g," ")}
-                  </div>
-                  <div style={{fontSize:10.5,color:"#8A8580",marginBottom:4}}>{h.periodo || dateStr}</div>
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    <span style={{fontSize:9.5,fontWeight:600,color:"#1E5C48",background:"#EAF5F0",borderRadius:4,padding:"2px 6px"}}>{h.totalEventos} eventos</span>
-                    <span style={{fontSize:9.5,fontWeight:600,color:critColor,background: h.criticos>0?"#FEF0EE":"#EBF8EE",borderRadius:4,padding:"2px 6px"}}>{h.criticos} criticos</span>
-                    <span style={{fontSize:9.5,color:"#8A8580",background:"#F8F7F5",borderRadius:4,padding:"2px 6px"}}>{h.pendientes} pendientes</span>
-                    {h.imgs > 0 && <span style={{fontSize:9.5,color:"#6B2DA8",background:"#F5F0FE",borderRadius:4,padding:"2px 6px"}}>{h.imgs} imgs</span>}
-                  </div>
-                </div>
-                
-                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
-                  <span style={{fontSize:9,color:"#B8B4AE"}}>{timeStr}</span>
-                  {h.durationSecs > 0 && (
-                    <span style={{fontSize:9,color:"#2A7A60",fontFamily:"monospace",fontWeight:600}}>
-                      {String(Math.floor(h.durationSecs/60)).padStart(2,"0")}:{String(h.durationSecs%60).padStart(2,"0")}
-                    </span>
-                  )}
-                  <button
-                    onClick={function(){ loadFromHistory(h); }}
-                    style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:11,fontWeight:600,cursor:"pointer"}}>
-                    Ver
-                  </button>
-                  <button
-                    onClick={function(){ deleteFromHistory(h.id); }}
-                    style={{background:"none",border:"1px solid #DDDBD7",borderRadius:7,padding:"4px 10px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>
-                    x
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      
-      {state === "loading" && (
-        <div style={{background:"#fff",border:"1.5px solid #DDDBD7",borderRadius:16,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
-
-          
-          <div style={{background:"#F8F7F5",borderBottom:"1px solid #EEECEA",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>OpsTrace - Operational Event Intelligence</span>
-            <div style={{display:"flex",gap:6}}>
-              <div style={{width:8,height:8,borderRadius:50,background:"#C0392B",opacity:.6}}/>
-              <div style={{width:8,height:8,borderRadius:50,background:"#B87820",opacity:.6}}/>
-              <div style={{width:8,height:8,borderRadius:50,background:"#1A7A3C"}}/>
-            </div>
-          </div>
-
-          
-          <div style={{padding:"28px 20px 16px",display:"flex",alignItems:"flex-end",justifyContent:"center",gap:0}}>
-            <div style={{fontFamily:"'Courier New',monospace",fontSize:68,fontWeight:700,color:"#1E5C48",lineHeight:1,letterSpacing:"-3px"}}>
-              {String(Math.floor(elapsed/3600)).padStart(1,"0")}:{String(Math.floor((elapsed%3600)/60)).padStart(2,"0")}:{String(elapsed%60).padStart(2,"0")}
-            </div>
-            <div style={{fontFamily:"'Courier New',monospace",fontSize:22,fontWeight:700,color:"#8A8580",lineHeight:1,marginBottom:8,marginLeft:3,letterSpacing:"-1px"}}>
-              {String(Math.floor((elapsedMs%1000)/10)).padStart(2,"0")}
-            </div>
-          </div>
-
-          
-          <div style={{textAlign:"center",marginBottom:16,padding:"0 20px"}}>
-            <div style={{fontSize:11,fontFamily:"monospace",color:"#2A7A60",letterSpacing:".08em"}}>
-              {progStep === 0 && "> READING_ZIP..."}
-              {progStep === 1 && "> PARSING_WHATSAPP_MESSAGES..."}
-              {progStep === 2 && "> FILTERING_OPERATIONAL_EVENTS..."}
-              {progStep === 3 && "> AI_ANALYSIS_IN_PROGRESS..."}
-              {progStep === 4 && "> BUILDING_XLSX_7_SHEETS..."}
-            </div>
-            {msgStats && (
-              <div style={{fontSize:10,color:"#8A8580",marginTop:4,fontFamily:"monospace"}}>
-                {msgStats.clean} / {msgStats.total} msgs
-              </div>
-            )}
-          </div>
-
-          
-          <div style={{padding:"0 20px",marginBottom:10}}>
-            <div style={{background:"#EEECEA",borderRadius:3,height:7,overflow:"hidden"}}>
-              <div style={{
-                height:7,borderRadius:3,
-                background:"linear-gradient(90deg,#1E5C48,#48A882)",
-                width: prog + "%",
-                transition:"width .5s ease"
-              }}/>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:5}}>
-              <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580"}}>{prog}%</span>
-              <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580"}}>
-                {prog > 5 && prog < 100 ? "ETA ~" + Math.max(1,Math.round((elapsed/Math.max(prog,1))*(100-prog))) + "s" : prog >= 100 ? "DONE" : "..."}
-              </span>
-            </div>
-          </div>
-
-          
-          <div style={{display:"flex",borderTop:"1px solid #EEECEA",background:"#F8F7F5"}}>
-            {STEPS.map(function(s, i){
-              var done = i < progStep;
-              var active = i === progStep;
-              return (
-                <div key={i} style={{
-                  flex:1,padding:"8px 4px",textAlign:"center",
-                  borderRight: i<STEPS.length-1 ? "1px solid #EEECEA" : "none",
-                  background: active ? "#EAF5F0" : "transparent"
-                }}>
-                  <div style={{fontSize:9,fontFamily:"monospace",letterSpacing:".04em",
-                    color: done ? "#1A7A3C" : active ? "#1E5C48" : "#C8C4BE",
-                    fontWeight: active ? 700 : 400
-                  }}>
-                    {done ? "[v]" : active ? "[>]" : "[ ]"}
-                  </div>
-                  <div style={{fontSize:9,fontFamily:"monospace",
-                    color: done ? "#2A7A60" : active ? "#1E5C48" : "#B8B4AE",marginTop:2}}>
-                    {s}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      
-      {state === "error" && (
-        <div>
-          <div className="errc">Error: {errMsg}</div>
-          <button className="resetbtn" onClick={reset}>Intentar de nuevo</button>
-        </div>
-      )}
-
-      
-      {state === "done" && result && (
-        <div>
-          <button className="resetbtn" onClick={reset}>Nuevo analisis</button>
-
-          
-          <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
-            <div>
-              <h3 style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>Excel listo para junta</h3>
-              <p style={{fontSize:11,color:"rgba(242,236,200,.6)"}}>{(res.periodo || "") + " - " + ev.length + " eventos - " + ((msgStats && msgStats.clean) || 0) + " msgs"}</p>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginTop:5}}>
-                <div style={{width:6,height:6,borderRadius:50,background:"#8ABD6E"}}/>
-                <span style={{fontSize:9.5,color:"rgba(200,220,160,.8)",fontWeight:500}}>
-                  Guardado en historial
-                  {elapsed > 0 && " - procesado en " + String(Math.floor(elapsed/60)).padStart(2,"0") + ":" + String(elapsed%60).padStart(2,"0")}
-                </span>
-              </div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>
-                {["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){
-                  return <span key={s} style={{background:"rgba(200,216,150,.12)",border:"1px solid rgba(200,216,150,.2)",borderRadius:4,padding:"2px 8px",fontSize:9,color:"#F2ECC8"}}>{s}</span>;
-                })}
-              </div>
-            </div>
-            <button onClick={download} style={{background:"#7A9448",color:"#fff",border:"none",borderRadius:10,padding:"12px 22px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,boxShadow:"0 2px 8px rgba(122,148,72,.35)"}}>
-              Descargar .xlsx
-            </button>
-          </div>
-
-          
-          {imgNames.length > 0 && (
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-              <div style={{padding:"12px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-                <div>
-                  <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Evidencias del chat</h3>
-                  <span style={{fontSize:10,color:"#8A8580"}}>{imgNames.length} imagenes - mostrando {Math.min(GAL_PAGE_SIZE, imgNames.length - galPage*GAL_PAGE_SIZE)} de pagina {galPage+1}/{Math.ceil(imgNames.length/GAL_PAGE_SIZE)}</span>
-                  <div style={{display:"flex",gap:10,marginTop:4,flexWrap:"wrap"}}>
-                    <span style={{fontSize:9,color:"#2A7A60",fontWeight:600}}>&#9646; Adjunta</span>
-                    <span style={{fontSize:9,color:"#B87820",fontWeight:600}}>~ Proxima (+-1h)</span>
-                    <span style={{fontSize:9,color:"#8A8580"}}>Sin adjuntar</span>
-                  </div>
-                </div>
-                <span style={{fontSize:10,fontWeight:600,color:"#2A7A60"}}>
-                  {Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas
-                </span>
-              </div>
-
-              
-              {imgNames.length > GAL_PAGE_SIZE && (
-                <div style={{padding:"8px 16px",borderBottom:"1px solid #EEECEA",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:"#FAFAF9"}}>
-                  <button onClick={function(){ setGalPage(0); }}
-                    disabled={galPage===0}
-                    style={{border:"1px solid #DDDBD7",background: galPage===0?"#F8F7F5":"#fff",color: galPage===0?"#C8C4BE":"#3D3A36",borderRadius:6,padding:"4px 10px",fontSize:11,cursor: galPage===0?"default":"pointer"}}>
-                    &laquo;
-                  </button>
-                  <button onClick={function(){ if(galPage>0) setGalPage(galPage-1); }}
-                    disabled={galPage===0}
-                    style={{border:"1px solid #DDDBD7",background: galPage===0?"#F8F7F5":"#fff",color: galPage===0?"#C8C4BE":"#3D3A36",borderRadius:6,padding:"4px 10px",fontSize:11,cursor: galPage===0?"default":"pointer"}}>
-                    &lsaquo; Anterior
-                  </button>
-                  <span style={{fontSize:11,color:"#8A8580",flex:1,textAlign:"center"}}>
-                    {galPage*GAL_PAGE_SIZE+1}-{Math.min((galPage+1)*GAL_PAGE_SIZE, imgNames.length)} de {imgNames.length}
-                  </span>
-                  <button onClick={function(){ if((galPage+1)*GAL_PAGE_SIZE < imgNames.length) setGalPage(galPage+1); }}
-                    disabled={(galPage+1)*GAL_PAGE_SIZE >= imgNames.length}
-                    style={{border:"1px solid #DDDBD7",background:(galPage+1)*GAL_PAGE_SIZE>=imgNames.length?"#F8F7F5":"#fff",color:(galPage+1)*GAL_PAGE_SIZE>=imgNames.length?"#C8C4BE":"#3D3A36",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:(galPage+1)*GAL_PAGE_SIZE>=imgNames.length?"default":"pointer"}}>
-                    Siguiente &rsaquo;
-                  </button>
-                  <button onClick={function(){ setGalPage(Math.ceil(imgNames.length/GAL_PAGE_SIZE)-1); }}
-                    disabled={(galPage+1)*GAL_PAGE_SIZE >= imgNames.length}
-                    style={{border:"1px solid #DDDBD7",background:(galPage+1)*GAL_PAGE_SIZE>=imgNames.length?"#F8F7F5":"#fff",color:(galPage+1)*GAL_PAGE_SIZE>=imgNames.length?"#C8C4BE":"#3D3A36",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:(galPage+1)*GAL_PAGE_SIZE>=imgNames.length?"default":"pointer"}}>
-                    &raquo;
-                  </button>
-                </div>
-              )}
-
-              
-              <div style={{padding:"12px 16px",display:"flex",gap:10,flexWrap:"wrap"}}>
-                {(imgNames.slice().sort(function(a,b){
-  var ma=imgMeta[a],mb=imgMeta[b];
-  if(!ma&&!mb)return 0;if(!ma)return 1;if(!mb)return -1;
-  return((mb.dateIso||"")+(mb.timeStr||"")).localeCompare((ma.dateIso||"")+(ma.timeStr||""));
-})).slice(galPage*GAL_PAGE_SIZE,(galPage+1)*GAL_PAGE_SIZE).map(function(fname){
-
-                  var meta2 = imgMeta[fname];
-                  var attachedTo = Object.keys(evImgs).filter(function(id){
-                    return (evImgs[id]||[]).indexOf(fname) >= 0;
-                  });
-                  var imgHour = meta2 ? parseInt(meta2.timeStr.split(":")[0]) : -1;
-                  var isSuggested = imgHour >= 0 && ev.some(function(e){
-                    if (!e.hora) return false;
-                    return Math.abs(parseInt(e.hora.split(":")[0]) - imgHour) <= 1;
-                  });
-                  return (
-                    <div key={fname} style={{textAlign:"center",width:68}}>
-                      <div style={{position:"relative"}}>
-                        <LazyImg fname={fname}
-                          style={{width:64,height:64,objectFit:"cover",borderRadius:8,
-                            border: attachedTo.length>0 ? "2px solid #2A7A60" : isSuggested ? "2px solid #B87820" : "1.5px solid #DDDBD7",
-                            display:"block",cursor:"pointer"}}
-                          onClick={function(src){ setLightbox({src:src,name:fname,meta:meta2}); }}
-                        />
-                        {attachedTo.length > 0 && (
-                          <div style={{position:"absolute",top:3,right:3,background:"#1E5C48",color:"#fff",borderRadius:99,fontSize:8,fontWeight:700,padding:"1px 5px",lineHeight:1.5}}>
-                            {attachedTo.length}
-                          </div>
-                        )}
-                        {attachedTo.length===0 && isSuggested && (
-                          <div style={{position:"absolute",top:3,right:3,background:"#B87820",color:"#fff",borderRadius:99,fontSize:7,fontWeight:700,padding:"1px 4px",lineHeight:1.5}}>
-                            ~
-                          </div>
-                        )}
-                      </div>
-                      {meta2 && (
-                        <div style={{fontSize:7.5,color:"#8A8580",marginTop:3,lineHeight:1.3}}>
-                          <div style={{fontSize:7,color:"#2A7A60",fontWeight:600}}>{formatDateIso(meta2.dateIso)}</div>
-<div style={{fontWeight:isSuggested?700:400,color:isSuggested?"#B87820":"#8A8580"}}>{meta2.timeStr}</div>
-
-                          <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:68}}>{meta2.sender.split(" ")[0]}</div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04)"}}>
-              <div style={{fontSize:28,fontWeight:800,color:"#1E5C48",lineHeight:1,marginBottom:4}}>{ev.length}</div>
-              <div style={{fontSize:10.5,color:"#8A8580",fontWeight:500}}>Total eventos</div>
-            </div>
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04)"}}>
-              <div style={{fontSize:28,fontWeight:800,color:"#C0392B",lineHeight:1,marginBottom:4}}>{crit.length}</div>
-              <div style={{fontSize:10.5,color:"#8A8580",fontWeight:500}}>Criticos</div>
-            </div>
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04)"}}>
-              <div style={{fontSize:28,fontWeight:800,color:"#2952A3",lineHeight:1,marginBottom:4}}>{pend.length}</div>
-              <div style={{fontSize:10.5,color:"#8A8580",fontWeight:500}}>Pendientes</div>
-            </div>
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04)"}}>
-              <div style={{fontSize:28,fontWeight:800,color:"#1A7A3C",lineHeight:1,marginBottom:4}}>{cerr.length}</div>
-              <div style={{fontSize:10.5,color:"#8A8580",fontWeight:500}}>Cerrados</div>
-            </div>
-          </div>
-
-          
-          {kpis.length > 0 && (
-            <div className="tcard">
-              <div className="tcard-hdr"><h3>KPIs en chat</h3></div>
-              <div style={{padding:"10px 14px"}}>
-                {kpis.map(function(k, i){
-                  return (
-                    <div key={i} className="krow">
-                      <div className="kval">{k.valor}<span style={{fontSize:9}}>{k.unidad}</span></div>
-                      <div className="kin">
-                        <div className="nm">{k.indicador}</div>
-                        <div className="ts">{k.fechahora} - {k.fuente}</div>
-                      </div>
-                      <div className="kbar">
-                        <div className="kbf" style={{width: Math.min(100, k.valor < 2 ? k.valor*100 : k.valor) + "%"}}/>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          
-          {byHora.length >= 2 && (
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-              <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div>
-                  <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Timeline de comportamiento de planta</h3>
-                  <span style={{fontSize:10,color:"#8A8580"}}>Eventos detectados por hora del periodo analizado</span>
-                </div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  {[["1T","#2A7A60"],["2T","#2952A3"],["3T","#6B2DA8"]].map(function(t){
-                    return <span key={t[0]} style={{fontSize:9,fontWeight:600,color:t[1],background:t[1]+"18",border:"1px solid "+t[1]+"30",borderRadius:99,padding:"2px 8px"}}>{t[0]}</span>;
-                  })}
-                </div>
-              </div>
-              <div style={{padding:"16px 20px"}}>
-                {byHora.map(function(x, i) {
-                  var pct = (x.n / mxH) * 100;
-                  var tc = turnoColor[horaToTurno(x.h)] || "#2A7A60";
-
-                  var domTipo = "N/D";
-                  var domCount = 0;
-                  Object.keys(x.tipos).forEach(function(t){ if(x.tipos[t]>domCount){domCount=x.tipos[t];domTipo=t;} });
-                  return (
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:9}}>
-                      
-                      <div style={{fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,color:"#3D3A36",width:28,flexShrink:0,textAlign:"right"}}>{x.h}</div>
-                      
-                      <div style={{width:3,height:22,borderRadius:99,background:tc,flexShrink:0}}/>
-                      
-                      <div style={{flex:1,background:"#EEECEA",borderRadius:99,height:10,position:"relative",overflow:"hidden"}}>
-                        <div style={{
-                          position:"absolute",left:0,top:0,bottom:0,
-                          width:pct+"%",borderRadius:99,
-                          background:"linear-gradient(90deg,"+tc+","+tc+"CC)",
-                          transition:"width .4s ease"
-                        }}/>
-  
-                      </div>
-                      
-                      <div style={{fontSize:11,fontWeight:700,color:"#3D3A36",width:16,textAlign:"right",flexShrink:0}}>{x.n}</div>
-                      
-                      <div style={{
-                        fontSize:8.5,fontWeight:600,color:tipoColor[domTipo]||"#8A8580",
-                        background:(tipoColor[domTipo]||"#8A8580")+"14",
-                        borderRadius:4,padding:"2px 6px",flexShrink:0,minWidth:52,textAlign:"center"
-                      }}>{domTipo}</div>
-                    </div>
-                  );
-                })}
-
-                
-                <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #EEECEA",display:"flex",gap:16,flexWrap:"wrap"}}>
-                  <span style={{fontSize:10,color:"#8A8580",fontWeight:500}}>Turnos aproximados:</span>
-                  <span style={{fontSize:10,color:"#2A7A60",fontWeight:600}}>1T 06:00-15:14</span>
-                  <span style={{fontSize:10,color:"#2952A3",fontWeight:600}}>2T 15:15-23:59</span>
-                  <span style={{fontSize:10,color:"#6B2DA8",fontWeight:600}}>3T 00:00-05:59</span>
-                </div>
-
-                <div style={{marginTop:10,background:"#F0F5EE",border:"1px solid #C8D8B8",borderRadius:8,padding:"8px 12px"}}>
-                  <span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>
-                    Pico: {byHora.reduce(function(a,b){return a.n>=b.n?a:b;},byHora[0]).h}:00h - {byHora.length} horas con actividad
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          
-          {hmRows.length >= 2 && (
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-              <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-                <div>
-                  <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Mapa termico de eventos por turno</h3>
-                  <span style={{fontSize:10,color:"#8A8580"}}>Intensidad por hora y turno - mas oscuro = mas eventos</span>
-                </div>
-                <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <span style={{fontSize:9,color:"#8A8580"}}>0</span>
-                  {[0.2,0.4,0.6,0.8,1].map(function(v,i){
-                    var alpha = Math.round(v*100);
-                    return <div key={i} style={{width:14,height:14,borderRadius:3,background:"rgba(30,92,72,"+v+")"}}></div>;
-                  })}
-                  <span style={{fontSize:9,color:"#8A8580"}}>max</span>
-                </div>
-              </div>
-              <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:220}}>
-                  <thead>
-                    <tr>
-                      <th style={{padding:"8px 12px",textAlign:"center",background:"#F8F7F5",fontWeight:600,color:"#8A8580",fontSize:10,textTransform:"uppercase",letterSpacing:".05em",borderBottom:"1.5px solid #DDDBD7",width:48}}>Hora</th>
-                      {[["3T","#6B2DA8"],["1T","#1E5C48"],["2T","#2952A3"]].map(function(t){
-                        return (
-                          <th key={t[0]} style={{padding:"8px 14px",textAlign:"center",background:"#F8F7F5",fontWeight:700,color:t[1],fontSize:11,letterSpacing:".05em",borderBottom:"1.5px solid #DDDBD7"}}>
-                            {t[0]}
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {hmRows.map(function(row, i) {
-                      function cell(val, baseColor) {
-                        var pct = val / hmMax;
-                        var bg = val === 0
-                          ? "#F8F7F5"
-                          : "rgba(" + (baseColor === "green" ? "30,92,72" : baseColor === "purple" ? "107,45,168" : "41,82,163") + "," + (0.1 + pct * 0.85) + ")";
-                        var textColor = val === 0
-                          ? "#DDDBD7"
-                          : pct > 0.5 ? "#fff" : (baseColor === "green" ? "#1E5C48" : baseColor === "purple" ? "#6B2DA8" : "#2952A3");
-                        return (
-                          <td style={{padding:"7px 14px",textAlign:"center",background:bg,color:textColor,fontWeight:val>0?700:400,fontSize:12,borderBottom:"1px solid #EEECEA",transition:"background .2s"}}>
-                            {val > 0 ? val : ""}
-                          </td>
-                        );
-                      }
-                      return (
-                        <tr key={i} style={{borderBottom:"1px solid #EEECEA"}}>
-                          <td style={{padding:"7px 12px",textAlign:"center",fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,color:"#3D3A36",background: i%2===0?"#fff":"#FAFAF9",borderBottom:"1px solid #EEECEA"}}>{row.h}</td>
-                          {cell(row.t3,"purple")}
-                          {cell(row.t1,"green")}
-                          {cell(row.t2,"blue")}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              
-              <div style={{padding:"10px 20px",borderTop:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",gap:16,flexWrap:"wrap"}}>
-                {[
-                  {label:"3T",val:hmRows.reduce(function(a,r){return a+r.t3;},0),c:"#6B2DA8"},
-                  {label:"1T",val:hmRows.reduce(function(a,r){return a+r.t1;},0),c:"#1E5C48"},
-                  {label:"2T",val:hmRows.reduce(function(a,r){return a+r.t2;},0),c:"#2952A3"}
-                ].map(function(s){
-                  return (
-                    <div key={s.label} style={{display:"flex",alignItems:"center",gap:6}}>
-                      <div style={{width:8,height:8,borderRadius:2,background:s.c}}/>
-                      <span style={{fontSize:10.5,fontWeight:600,color:s.c}}>{s.label}</span>
-                      <span style={{fontSize:10.5,color:"#8A8580"}}>{s.val} evento{s.val!==1?"s":""}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-              <h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Por modelo</h4>
-              {byMod.map(function(x,i){
-                return (
-                  <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}>
-                    <div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div>
-                    <div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#2A7A60",width:(x.n/mxM*100)+"%"}}/></div>
-                    <div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-              <h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Por linea</h4>
-              {byLin.map(function(x,i){
-                return (
-                  <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}>
-                    <div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div>
-                    <div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#2952A3",width:(x.n/mxL*100)+"%"}}/></div>
-                    <div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-              <h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Por prioridad</h4>
-              {byPrio.map(function(x,i){
-                var colors = {re:"#C42020",ye:"#D4860A",bl:"#1D55D4",gr:"#148A3C"};
-                return (
-                  <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}>
-                    <div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0}}>{x.l}</div>
-                    <div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:colors[x.c]||"#2C7566",width:(x.n/mxP*100)+"%"}}/></div>
-                    <div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-              <h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Por estatus</h4>
-              {[
-                {l:"Abiertos",n:ev.filter(function(e){return e.estatus==="Abierto";}).length,c:"#C42020"},
-                {l:"En proceso",n:ev.filter(function(e){return e.estatus==="En proceso";}).length,c:"#D4860A"},
-                {l:"Cerrados",n:cerr.length,c:"#148A3C"}
-              ].map(function(x,i){
-                return (
-                  <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}>
-                    <div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0}}>{x.l}</div>
-                    <div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:x.c,width:(x.n/Math.max(ev.length,1)*100)+"%"}}/></div>
-                    <div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          
-          {(byDef.length > 0 || byTipo.length > 0) && (
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-              {byDef.length > 0 && (
-                <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-                  <h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Pareto defectos SMT</h4>
-                  {byDef.map(function(x,i){
-                    return (
-                      <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}>
-                        <div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div>
-                        <div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B2DA8",width:(x.n/mxD*100)+"%"}}/></div>
-                        <div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {byTipo.length > 0 && (
-                <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-                  <h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Por tipo de evento</h4>
-                  {byTipo.map(function(x,i){
-                    return (
-                      <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}>
-                        <div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0}}>{x.l}</div>
-                        <div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B8C3A",width:(x.n/mxT*100)+"%"}}/></div>
-                        <div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          
-          <div className="pf-card">
-            <div className="pf-hdr">
-              <h3>Filtro por persona</h3>
-              <select className="pf-select" value={personaFiltro}
-                onChange={function(e){ setPersonaFiltro(e.target.value); }}>
-                <option value="">Todos los participantes</option>
-                {personas.map(function(p,i){ return <option key={i} value={p}>{p}</option>; })}
-              </select>
-              {personaFiltro && (
-                <button className="pf-clear" onClick={function(){ setPersonaFiltro(""); }}>Limpiar</button>
-              )}
-            </div>
-            {personaFiltro ? (
-              <div className="pf-body">
-                <div className="pf-profile">
-                  <div className="pf-avatar">{personaFiltro.charAt(0).toUpperCase()}</div>
-                  <div className="pf-info">
-                    <div className="pf-name">{personaFiltro}</div>
-                    <div className="pf-dept">
-                      {dirInfo ? (dirInfo.departamento + " - " + dirInfo.rol) : "Participante del chat"}
-                    </div>
-                    <div className="pf-stats">
-                      <div className="pf-stat"><div className="pf-stat-val">{evRep.length}</div><div className="pf-stat-lbl">Reporto</div></div>
-                      <div className="pf-stat bl"><div className="pf-stat-val">{evRes.length}</div><div className="pf-stat-lbl">Responsable</div></div>
-                      <div className="pf-stat re"><div className="pf-stat-val">{evRep.filter(function(e){return e.prioridad==="Critica";}).length}</div><div className="pf-stat-lbl">Criticos</div></div>
-                      <div className="pf-stat gr"><div className="pf-stat-val">{evRep.concat(evRes).filter(function(e){return e.estatus!=="Cerrado";}).length}</div><div className="pf-stat-lbl">Abiertos</div></div>
-                    </div>
-                  </div>
-                </div>
-                {evRep.length > 0 && (
-                  <div>
-                    <div className="pf-section-title">Eventos reportados ({evRep.length})</div>
-                    <div className="plist" style={{padding:0,marginBottom:12}}>
-                      {evRep.map(function(e,i){ return <PendItem key={i} e={e}/>; })}
-                    </div>
-                  </div>
-                )}
-                {evRes.length > 0 && (
-                  <div>
-                    <div className="pf-section-title">Donde es responsable ({evRes.length})</div>
-                    <div className="plist" style={{padding:0}}>
-                      {evRes.map(function(e,i){ return <PendItem key={i} e={e}/>; })}
-                    </div>
-                  </div>
-                )}
-                {evRep.length === 0 && evRes.length === 0 && (
-                  <div className="pf-empty">Sin eventos para esta persona en el periodo</div>
-                )}
-              </div>
-            ) : (
-              <div className="pf-body">
-                <div className="pf-empty">Selecciona una persona para ver su actividad</div>
-              </div>
-            )}
-          </div>
-
-          
-          {ev.length > 0 && (
-            <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-              <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-                <div>
-                  <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Incident Story Model</h3>
-                  <span style={{fontSize:10,color:"#8A8580"}}>Ciclo de vida de los incidentes operativos</span>
-                </div>
-                <span style={{fontSize:9.5,color:"#2A7A60",fontWeight:600,background:"#EAF5F0",borderRadius:4,padding:"3px 8px"}}>{ev.length} incidentes</span>
-              </div>
-              
-              <div style={{display:"flex",overflowX:"auto",padding:"14px 12px",gap:8,minHeight:120}}>
-                {[
-                  {key:"Detectado",color:"#E8A050",bg:"#FEF6ED",border:"#F5D0A0"},
-                  {key:"Contenido",color:"#B87820",bg:"#FEF9E8",border:"#F5E4A0"},
-                  {key:"Corregido",color:"#2952A3",bg:"#EBF0FC",border:"#BDD0F8"},
-                  {key:"Validado",color:"#1A7A3C",bg:"#EBF8EE",border:"#A0DEB4"},
-                  {key:"Cerrado",color:"#6A6560",bg:"#F8F7F5",border:"#DDDBD7"}
-                ].map(function(col){
-                  var colEvs = ev.filter(function(e){
-                    return (e.estado_historia || "Detectado") === col.key;
-                  });
-                  return (
-                    <div key={col.key} style={{flex:"0 0 160px",minWidth:160,background:col.bg,border:"1px solid "+col.border,borderRadius:10,overflow:"hidden"}}>
-                      <div style={{padding:"8px 10px",borderBottom:"1px solid "+col.border,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                        <span style={{fontSize:10.5,fontWeight:700,color:col.color}}>{col.key}</span>
-                        <span style={{fontSize:10,fontWeight:800,color:"#fff",background:col.color,borderRadius:99,width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center"}}>{colEvs.length}</span>
-                      </div>
-                      <div style={{padding:"7px",display:"flex",flexDirection:"column",gap:5}}>
-                        {colEvs.length === 0 && (
-                          <div style={{fontSize:9,color:col.color,opacity:.4,textAlign:"center",padding:"10px 0",fontStyle:"italic"}}>vacio</div>
-                        )}
-                        {colEvs.map(function(e){
-                          var actors = Array.isArray(e.actores) ? e.actores : (e.actores ? [e.actores] : []);
-                          return (
-                            <div key={e.id} style={{background:"#fff",borderRadius:7,border:"1px solid "+col.border,padding:"8px 9px",boxShadow:"0 1px 3px rgba(0,0,0,.05)"}}>
-                              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
-                                <span style={{fontSize:8.5,fontWeight:700,color:col.color,fontFamily:"monospace"}}>{e.id}</span>
-                                <span style={{fontSize:7.5,color:"#8A8580"}}>{e.hora}</span>
-                              </div>
-                              <div style={{fontSize:10,fontWeight:600,color:"#1A1714",lineHeight:1.3,marginBottom:5}}>
-                                {e.evento_detectado ? e.evento_detectado.slice(0,55)+(e.evento_detectado.length>55?"...":"") : ""}
-                              </div>
-                              {e.accion_ejecutada && (
-                                <div style={{fontSize:8.5,color:"#2A7A60",background:"#EAF5F0",borderRadius:4,padding:"2px 6px",marginBottom:4,lineHeight:1.3}}>
-                                  {e.accion_ejecutada.slice(0,50)}
-                                </div>
-                              )}
-                              {actors.length > 0 && (
-                                <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:3}}>
-                                  {actors.slice(0,3).map(function(a,ai){
-                                    return <span key={ai} style={{fontSize:7.5,background:"#F0F4F8",color:"#6A6560",borderRadius:3,padding:"1px 5px"}}>{a}</span>;
-                                  })}
-                                </div>
-                              )}
-                              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                                <span style={{fontSize:7.5,color:"#8A8580"}}>{e.linea_estacion}</span>
-                                <span style={{fontSize:7.5,fontWeight:700,borderRadius:3,padding:"1px 5px",
-                                  background:({Critica:"#FEE2E2",Alta:"#FEF3C7",Media:"#EBF0FC",Baja:"#EBF8EE"})[e.prioridad]||"#F8F7F5",
-                                  color:({Critica:"#991B1B",Alta:"#92400E",Media:"#1E3C82",Baja:"#145A28"})[e.prioridad]||"#6A6560"
-                                }}>{e.prioridad}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              
-              <div style={{borderTop:"1px solid #EEECEA",padding:"10px 16px",background:"#F8F7F5",display:"flex",gap:4,alignItems:"center"}}>
-                {[
-                  {key:"Detectado",color:"#E8A050"},
-                  {key:"Contenido",color:"#B87820"},
-                  {key:"Corregido",color:"#2952A3"},
-                  {key:"Validado",color:"#1A7A3C"},
-                  {key:"Cerrado",color:"#6A6560"}
-                ].map(function(s){
-                  var n = ev.filter(function(e){ return (e.estado_historia||"Detectado")===s.key; }).length;
-                  return (
-                    <div key={s.key} style={{flex:1,textAlign:"center"}}>
-                      <div style={{height:4,borderRadius:2,background:s.color,opacity:n>0?1:.2,marginBottom:3}}/>
-                      <div style={{fontSize:9,fontWeight:700,color:s.color}}>{n}</div>
-                      <div style={{fontSize:7.5,color:"#8A8580"}}>{s.key.slice(0,4)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          
-          <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14,boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}>
-            <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-              <div>
-                <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>RCCA Memory</h3>
-                <span style={{fontSize:10,color:"#8A8580"}}>Antecedentes de causa raiz vinculados a eventos</span>
-              </div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:9.5,color:"#6B2DA8",fontWeight:600,background:"#F5F0FE",borderRadius:4,padding:"3px 8px"}}>{rccaList.length} RCCA guardadas</span>
-                {rccaList.length > 0 && (
-                  <button onClick={exportRcca} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:7,padding:"4px 11px",fontSize:10,color:"#6A6560",cursor:"pointer"}}>Exportar JSON</button>
-                )}
-                <button onClick={function(){ setRccaForm({event_ids:[],modelo:"",linea:"",fecha:new Date().toISOString().slice(0,10)}); }}
-                  style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:7,padding:"6px 14px",fontSize:11,fontWeight:600,cursor:"pointer"}}>
-                  + Nueva RCCA
-                </button>
-              </div>
-            </div>
-
-            
-            {autoSuggestions.length > 0 && (
-              <div style={{padding:"12px 16px",borderBottom:"1px solid #EEECEA",background:"#FEF9E8"}}>
-                <div style={{fontSize:10.5,fontWeight:700,color:"#B87820",marginBottom:8}}>
-                  Antecedentes detectados - {autoSuggestions.length} evento{autoSuggestions.length>1?"s":""} con RCCA similar
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {autoSuggestions.map(function(e){
-                    var matches = getMatches(e);
-                    return (
-                      <div key={e.id} style={{background:"#fff",border:"1px solid #F5E4A0",borderRadius:8,padding:"10px 12px"}}>
-                        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginBottom:6}}>
-                          <div>
-                            <span style={{fontSize:9.5,fontWeight:700,fontFamily:"monospace",color:"#B87820",marginRight:6}}>{e.id}</span>
-                            <span style={{fontSize:10.5,fontWeight:600,color:"#1A1714"}}>{e.evento_detectado ? e.evento_detectado.slice(0,60) : ""}</span>
-                          </div>
-                          <button onClick={function(){
-                            setRccaForm({
-                              event_ids:[e.id],
-                              modelo:e.modelo||"",
-                              linea:e.linea_estacion||"",
-                              fecha:e.fecha||new Date().toISOString().slice(0,10),
-                              problema:e.evento_detectado||""
-                            });
-                          }}
-                            style={{background:"#B87820",color:"#fff",border:"none",borderRadius:6,padding:"4px 12px",fontSize:10,fontWeight:600,cursor:"pointer",flexShrink:0}}>
-                            Crear RCCA
-                          </button>
-                        </div>
-                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                          {matches.map(function(m){
-                            return (
-                              <div key={m.rcca.rcca_id} style={{display:"flex",alignItems:"center",gap:5,background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:6,padding:"3px 9px",cursor:"pointer"}}
-                                onClick={function(){ setRccaDetail(m.rcca); }}>
-                                <span style={{fontSize:9,fontFamily:"monospace",color:"#B87820",fontWeight:700}}>{m.rcca.rcca_id}</span>
-                                <span style={{fontSize:8.5,color:"#B87820"}}>{m.score}%</span>
-                                <span style={{fontSize:8.5,color:"#6A6560",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.rcca.problema}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            
-            <div style={{padding:"12px 16px"}}>
-              {rccaList.length === 0 ? (
-                <div style={{textAlign:"center",padding:"28px 0",color:"#B8B4AE",fontSize:13}}>
-                  <div style={{fontSize:24,marginBottom:8}}>0</div>
-                  No hay RCCA guardadas. Crea la primera desde un evento de la bitacora.
-                </div>
-              ) : (
-                <div>
-                  
-                  <input placeholder="Buscar por modelo, linea, problema..."
-                    value={rccaFilter}
-                    onChange={function(e){ setRccaFilter(e.target.value); }}
-                    style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#1A1714",outline:"none",marginBottom:10}}/>
-                  
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    {rccaList.filter(function(r){
-                      if (!rccaFilter) return true;
-                      var q = rccaFilter.toLowerCase();
-                      return (r.modelo||"").toLowerCase().indexOf(q) >= 0
-                        || (r.linea||"").toLowerCase().indexOf(q) >= 0
-                        || (r.problema||"").toLowerCase().indexOf(q) >= 0
-                        || (r.rcca_id||"").toLowerCase().indexOf(q) >= 0;
-                    }).map(function(r){
-                      return <RccaCard key={r.rcca_id} r={r} score={0}/>;
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          
-          <div className="tcard">
-            <div className="tcard-hdr">
-                <h3>Bitacora de eventos ({ev.length})</h3>
-                {imgNames.length > 0 && (
-                  <span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>
-                    {imgNames.length} imagen{imgNames.length!==1?"es":""} disponibles
-                    <span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span>
-                  </span>
-                )}
-              </div>
-            <div className="tscroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th><th>Fecha</th><th>T</th><th>Linea</th>
-                    <th>Tipo</th><th>Defecto SMT</th><th>Evento</th>
-                    <th>Prioridad</th><th>Estatus</th>
-                    <th>RCCA</th>
-                    {imgNames.length > 0 && <th>Evidencia</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ev.map(function(e,i){
-                    return (
-                      <tr key={i}>
-                        <td><strong>{e.id}</strong></td>
-                        <td style={{whiteSpace:"nowrap",fontSize:10}}>{e.fecha}</td>
-                        <td>{e.turno}</td>
-                        <td style={{maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.linea_estacion}</td>
-                        <td><span style={{fontSize:9,background:"#EDF5F3",color:"#1E5545",padding:"2px 5px",borderRadius:4,fontWeight:600}}>{e.tipo_evento}</span></td>
-                        <td style={{maxWidth:100}}>
-                          {e.defecto_smt && e.defecto_smt !== "N/A"
-                            ? <span className="badge bt" style={{fontSize:8.5,whiteSpace:"normal"}}>{e.defecto_smt}</span>
-                            : <span style={{color:"#C8C2BA",fontSize:10}}>-</span>}
-                        </td>
-                        <td style={{maxWidth:170,fontSize:10.5}}>{e.evento_detectado}</td>
-                        <td><span className={bprio(e.prioridad)}>{e.prioridad}</span></td>
-                        <td><span className={best(e.estatus)}>{e.estatus}</span></td>
-                        <td style={{verticalAlign:"top",paddingTop:8}}>
-                          <RccaCell evId={e.id} modelo={e.modelo} linea={e.linea_estacion} fecha={e.fecha} problema={e.evento_detectado}/>
-                        </td>
-                        {imgNames.length > 0 && <EvidenceCell e={e}/>}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          
-          {pend.length > 0 && (
-            <div className="tcard" style={{marginTop:14}}>
-              <div className="tcard-hdr"><h3>Pendientes operativos ({pend.length})</h3></div>
-              <div className="plist">
-                {pend.map(function(e,i){ return <PendItem key={i} e={e}/>; })}
-              </div>
-            </div>
-          )}
-
-          
-          {rccaList.length > 0 && (
-            <InvestigationCarousel cards={rccaList} allRcca={rccaList}/>
-          )}
-
-          
-          <div className="cmp" style={{marginTop:14}}>
-            <div className="cmpc">
-              <div className="cmplbl"><div className="cmpdot"/><span>Antes</span></div>
-              {["Memoria colectiva fracturada","Historia del incidente incompleta","Cada area tiene solo su parte","Juntas CFT sin contexto"].map(function(t,i){
-                return <div key={i} className="cmrow"><div className="cmic">X</div><p>{t}</p></div>;
-              })}
-            </div>
-            <div className="cmpc aft">
-              <div className="cmplbl"><div className="cmpdot g"/><span>Despues OpsTrace</span></div>
-              <div className="cmrow"><div className="cmic g">V</div><p><strong>{ev.length} incidentes</strong> reconstruidos del chat</p></div>
-              <div className="cmrow"><div className="cmic g">V</div><p><strong>Incident Story</strong> - ciclo de vida completo</p></div>
-              <div className="cmrow"><div className="cmic g">V</div><p><strong>{pend.length} pendientes</strong> con owner y estado</p></div>
-              <div className="cmrow"><div className="cmic g">V</div><p>Memoria operativa estructurada en minutos</p></div>
-            </div>
-          </div>
-
-          
-          <div className="foot">
-            <p><strong>OpsTrace</strong> by SMTintel - ALDA - {new Date().toLocaleDateString("es-MX")}</p>
-            <button className="dlbtn" style={{padding:"8px 16px",fontSize:12}} onClick={download}>Descargar Excel</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-</script>
-
-<script>
-window.addEventListener('unhandledrejection', function(e) {
-  var box = document.createElement('div');
-  box.style.cssText = 'position:fixed;top:60px;left:0;right:0;background:#8E44AD;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all';
-  box.innerHTML = '<strong>UNHANDLED REJECTION</strong><br>' + (e.reason ? e.reason.toString() : 'unknown');
-  document.body.appendChild(box);
-});
-</script></body>
-
+</body>
 </html>
