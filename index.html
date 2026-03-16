@@ -2165,6 +2165,145 @@ return (
     return p.length === 3 ? (p[2] + "/" + p[1] + "/" + p[0]) : dateIso;
   }
 
+  function parseClockParts(timeStr) {
+    var parts = String(timeStr || "00:00:00").split(":");
+    return {
+      h: parseInt(parts[0], 10) || 0,
+      m: parseInt(parts[1], 10) || 0,
+      s: parseInt(parts[2], 10) || 0
+    };
+  }
+
+  function parseIsoDateTimeMs(dateIso, timeStr) {
+    if (!dateIso) return null;
+    var p = dateIso.split("-");
+    if (p.length !== 3) return null;
+    var t = parseClockParts(timeStr);
+    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10), t.h, t.m, t.s).getTime();
+  }
+
+  function parseEventDateTimeMs(evRow) {
+    if (!evRow || !evRow.fecha) return null;
+    var p = String(evRow.fecha).split("/");
+    if (p.length !== 3) return null;
+    var t = parseClockParts(evRow.hora);
+    return new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10), t.h, t.m, t.s).getTime();
+  }
+
+  function sameCalendarDay(msA, msB) {
+    if (msA == null || msB == null) return false;
+    var a = new Date(msA);
+    var b = new Date(msB);
+    return a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate();
+  }
+
+  function sortImageNamesNewestFirst(namesList) {
+    return namesList.slice().sort(function(a, b) {
+      var ma = imgMeta[a], mb = imgMeta[b];
+      if (!ma && !mb) return a.localeCompare(b);
+      if (!ma) return 1;
+      if (!mb) return -1;
+      return ((mb.dateIso || "") + (mb.timeStr || "")).localeCompare((ma.dateIso || "") + (ma.timeStr || ""));
+    });
+  }
+
+  function uniqueNames(list) {
+    var out = [];
+    var seen = {};
+    list.forEach(function(name) {
+      if (!name || seen[name]) return;
+      seen[name] = true;
+      out.push(name);
+    });
+    return out;
+  }
+
+  function formatEventRef(evRow) {
+    if (!evRow) return "";
+    var base = evRow.fecha || "";
+    return evRow.hora ? (base + " " + evRow.hora) : base;
+  }
+
+  function buildPickerDataForEvent(evRow, attachedNames) {
+    var sorted = sortImageNamesNewestFirst(imgNames);
+    var refMs = parseEventDateTimeMs(evRow);
+
+    if (refMs == null) {
+      return {
+        list: uniqueNames((attachedNames || []).concat(sorted)).slice(0, 120),
+        modeLabel: "mas nuevas primero",
+        refText: ""
+      };
+    }
+
+    var exact = [];
+    var near15 = [];
+    var near60 = [];
+    var near180 = [];
+    var sameDay = [];
+    var rest = [];
+
+    sorted.forEach(function(fname) {
+      var meta2 = imgMeta[fname] || {};
+      var ms = parseIsoDateTimeMs(meta2.dateIso, meta2.timeStr);
+      if (ms == null) {
+        rest.push(fname);
+        return;
+      }
+
+      var diff = Math.abs(ms - refMs);
+      if (diff <= 5 * 60 * 1000) exact.push(fname);
+      else if (diff <= 15 * 60 * 1000) near15.push(fname);
+      else if (diff <= 60 * 60 * 1000) near60.push(fname);
+      else if (diff <= 3 * 60 * 60 * 1000) near180.push(fname);
+      else if (sameCalendarDay(ms, refMs)) sameDay.push(fname);
+      else rest.push(fname);
+    });
+
+    var contextual = uniqueNames((attachedNames || []).concat(exact, near15, near60, near180, sameDay));
+    if (contextual.length < 36) {
+      contextual = uniqueNames(contextual.concat(rest.slice(0, 36 - contextual.length)));
+    }
+
+    var modeLabel = "mas nuevas primero";
+    if (exact.length) modeLabel = "ventana +-5 min";
+    else if (near15.length) modeLabel = "ventana +-15 min";
+    else if (near60.length) modeLabel = "ventana +-1 h";
+    else if (near180.length) modeLabel = "ventana +-3 h";
+    else if (sameDay.length) modeLabel = "mismo dia";
+
+    return {
+      list: contextual.slice(0, 120),
+      modeLabel: modeLabel,
+      refText: formatEventRef(evRow)
+    };
+  }
+
+  function PickerThumb(props) {
+    var fname = props.fname;
+    var srcArr = _useState(_imgCache[fname] || null);
+    var src = srcArr[0]; var setSrc = srcArr[1];
+    var queuedRef = _useRef(false);
+
+    React.useEffect(function() {
+      var alive = true;
+      if (src || queuedRef.current) return;
+      queuedRef.current = true;
+      enqueueLoad(fname, function(url) {
+        if (alive) setSrc(url);
+      });
+      return function() { alive = false; };
+    }, [fname, src]);
+
+    if (!src) {
+      return <div className="picker-thumb" style={{background:"#EEECEA"}} />;
+    }
+
+    return <img className="picker-thumb" src={src} alt={fname} />;
+  }
+
   function Lightbox(props) {
     var src = props.src; var name = props.name;
     var meta2 = props.meta; var onClose = props.onClose;
@@ -2195,13 +2334,9 @@ return (
     var attached = evImgs[e.id] || [];
     var showPickArr = _useState(false);
     var showPick = showPickArr[0]; var setShowPick = showPickArr[1];
-    var pickerImgs = imgNames.slice().sort(function(a,b){
-      var ma = imgMeta[a], mb = imgMeta[b];
-      if (!ma && !mb) return a.localeCompare(b);
-      if (!ma) return 1;
-      if (!mb) return -1;
-      return ((mb.dateIso||"") + (mb.timeStr||"")).localeCompare((ma.dateIso||"") + (ma.timeStr||""));
-    });
+    var pickerData = showPick ? buildPickerDataForEvent(e, attached) : null;
+    var pickerImgs = pickerData ? pickerData.list : [];
+
     return (
       <td style={{verticalAlign:"top",paddingTop:8,minWidth:80}}>
         <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
@@ -2224,7 +2359,11 @@ return (
               <div className="picker-head">
                 <div>
                   <div className="picker-title">Seleccionar evidencia</div>
-                  <div className="picker-sub">{attached.length} adjuntas • {pickerImgs.length} disponibles • más nuevas primero</div>
+                  <div className="picker-sub">
+                    {attached.length} adjuntas • {pickerImgs.length} sugeridas
+                    {pickerData && pickerData.refText ? (" • " + pickerData.refText) : ""}
+                    {pickerData ? (" • " + pickerData.modeLabel) : ""}
+                  </div>
                 </div>
                 <button className="picker-close" onClick={function(){ setShowPick(false); }}>Cerrar</button>
               </div>
@@ -2236,7 +2375,7 @@ return (
                     <div key={fname} className={"picker-card" + (sel ? " selected" : "")}
                       onClick={function(){ toggleImg(e.id, fname); }}>
                       <div style={{position:"relative"}}>
-                        <LazyImg fname={fname} className="picker-thumb"/>
+                        <PickerThumb fname={fname}/>
                         {sel && <div className="picker-check">✓</div>}
                       </div>
                       <div className="picker-meta">
