@@ -2,7 +2,7 @@
 
 <html lang="es">
 <head>
-<meta charset="UTF-8"/><!-- OpsTrace v2026-03-15 vNext-pipeline -->
+<meta charset="UTF-8"/><!-- OpsTrace v2026-03-16 hybrid-engine -->
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var box = document.createElement('div');
@@ -436,152 +436,206 @@ async function loadImg(fname) {
 
 
 // ═══════════════════════════════════════════════════════════════
-// PIPELINE LOCAL-FIRST — OpsTrace vNext
-// Reduce tokens al API 85-90%
+// HYBRID ENGINE — OpsTrace v3
+// Semantic pre-processing + token reduction (85-90%)
+// All helpers encapsulated inside analyzeWithAI
 // ═══════════════════════════════════════════════════════════════
 
-function estimateTokensLocal(text) {
-  if (!text) return 1;
-  return Math.max(1, Math.ceil(text.length / 3.7));
-}
-
-function normalizeLocal(text) {
-  return (text || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\s\-\/\.]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function isNoiseLocal(text) {
-  var short = normalizeLocal(text);
-  var trivial = ['ok','enterado','recibido','gracias','de nada','listo',
-    'va','copiado','entendido','si','no','claro','bien','perfecto','roger'];
-  if (!short || short.length < 4) return true;
-  return trivial.indexOf(short) >= 0;
-}
-
-function detectTypeLocal(text) {
-  var t = normalizeLocal(text);
-  if (!t) return null;
-  if (/seguridad|alarma|puerta|riesgo|acceso|celda/.test(t)) return 'Seguridad';
-  if (/material|lcr|reel|etiquetad|faltante|rollo/.test(t)) return 'Material';
-  if (/aoi|ict|wrong|orientation|defecto|scrap|open|short|cross|tablilla/.test(t)) return 'Calidad';
-  if (/paro|deten|setup|fallando|feeder|linea|maquina|machine|stop/.test(t)) return 'Proceso';
-  if (/produccion|eficiencia|lote|output|rendimiento/.test(t)) return 'Produccion';
-  if (/sistema|red|servidor|software|erp|mes/.test(t)) return 'Sistema';
-  return null;
-}
-
-function extractLineLocal(text) {
-  var raw = text || '';
-  var m = raw.match(/\b(?:L\s*\d+|BB\s*\d+|linea\s*\d+|line\s*\d+)\b/i);
-  if (!m) return 'N/D';
-  return m[0].replace(/\s+/g, '').toUpperCase();
-}
-
-function extractStationLocal(text) {
-  var t = normalizeLocal(text);
-  if (/\baoi\b/.test(t)) return 'AOI';
-  if (/\bict\b/.test(t)) return 'ICT';
-  if (/\bsmt\b/.test(t)) return 'SMT';
-  if (/\bpth\b/.test(t)) return 'PTH';
-  if (/seguridad|celda/.test(t)) return 'Seguridad';
-  return 'N/D';
-}
-
-function timeToMinsLocal(dateIso, timeStr) {
-  var dp = (dateIso || '').split('-').map(Number);
-  var tp = (timeStr || '00:00').split(':').map(Number);
-  if (dp.length < 3) return 0;
-  return new Date(dp[0], dp[1]-1, dp[2], tp[0]||0, tp[1]||0).getTime() / 60000;
-}
-
-function clusterIncidentsLocal(candidates) {
-  var sorted = candidates.slice().sort(function(a, b) {
-    return timeToMinsLocal(a.dateIso, a.timeStr) - timeToMinsLocal(b.dateIso, b.timeStr);
-  });
-  var clusters = [];
-  sorted.forEach(function(msg) {
-    var msgTime = timeToMinsLocal(msg.dateIso, msg.timeStr);
-    var line = extractLineLocal(msg.text);
-    var station = extractStationLocal(msg.text);
-    var last = clusters[clusters.length - 1];
-    if (last) {
-      var dt = msgTime - last.lastTime;
-      var sameType = msg.type === last.type;
-      var lineOk = line === last.line || line === 'N/D' || last.line === 'N/D';
-      if (sameType && lineOk && dt <= 90) {
-        last.messages.push(msg);
-        last.lastTime = msgTime;
-        if (last.line === 'N/D' && line !== 'N/D') last.line = line;
-        if (last.station === 'N/D' && station !== 'N/D') last.station = station;
-        return;
-      }
-    }
-    clusters.push({ type: msg.type, line: line, station: station, lastTime: msgTime, messages: [msg] });
-  });
-  return clusters;
-}
-
-function candidateDetectorLocal(msgs) {
-  return msgs
-    .filter(function(m) { return !isNoiseLocal(m.text); })
-    .map(function(m) { return { dateIso: m.dateIso, timeStr: m.timeStr, sender: m.sender, text: m.text, turno: m.turno, type: detectTypeLocal(m.text) }; })
-    .filter(function(m) { return Boolean(m.type); });
-}
-
-function buildClusterPayload(clusters) {
-  return clusters.map(function(cluster, i) {
-    var msgs = cluster.messages;
-    var first = msgs[0];
-    var last2 = msgs[msgs.length - 1];
-    var senders = msgs.map(function(m) { return m.sender; })
-      .filter(function(s, idx, arr) { return arr.indexOf(s) === idx; })
-      .join(', ');
-    var texts = msgs.map(function(m) { return m.sender + ': ' + m.text; }).join(' | ');
-    return 'CLUSTER-' + String(i+1).padStart(2,'0') +
-      ' | ' + (first.dateIso || '') + ' ' + (first.timeStr || '') +
-      ' -> ' + (last2.dateIso || '') + ' ' + (last2.timeStr || '') +
-      ' | tipo:' + cluster.type +
-      ' | linea:' + cluster.line +
-      ' | estacion:' + cluster.station +
-      ' | turno:' + (first.turno || '') +
-      ' | actores:' + senders +
-      ' | msgs:' + texts.slice(0, 280);
-  }).join('\n');
-}
-
 async function analyzeWithAI(msgs, apiKey) {
-  var candidates = candidateDetectorLocal(msgs);
-  var useFallback = candidates.length < 3;
-  var userContent;
-
-  if (!useFallback) {
-    var clusters = clusterIncidentsLocal(candidates);
-    var rawTok = estimateTokensLocal(msgs.map(function(m){return m.text;}).join(' '));
-    var clTok  = estimateTokensLocal(buildClusterPayload(clusters));
-    console.log('[OpsTrace vNext] ' + msgs.length + ' msgs -> ' +
-      candidates.length + ' candidatos -> ' +
-      clusters.length + ' clusters | ' +
-      rawTok + ' tok -> ' + clTok + ' tok | ' +
-      Math.round((1-clTok/Math.max(rawTok,1))*100) + '% reduccion');
-    var clusterPayload = buildClusterPayload(clusters);
-    userContent = "Analiza estos " + clusters.length +
-      " clusters pre-procesados de " + msgs.length + " mensajes. " +
-      "Cada CLUSTER = un incidente. Extrae un evento por cluster. Solo JSON:\n\n" +
-      clusterPayload;
-  } else {
-    var sample = msgs.slice(0,150).map(function(m){
-      return "["+m.dateIso+" "+m.timeStr+"|"+m.turno+"|"+m.sender+"]:"+m.text;
-    }).join("\n");
-    userContent = "Analiza " + msgs.length + " mensajes. Solo JSON:\n\n" + sample;
-    console.log('[OpsTrace vNext] Fallback: ' + msgs.length + ' msgs directo');
+  function estimateTokensLocal(text) {
+    if (!text) return 1;
+    return Math.max(1, Math.ceil(text.length / 3.7));
   }
 
-  var system = "Eres experto en manufactura SMT/PCB/PTH. " +
+  function normalizeLocal(text) {
+    return (text || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\w\s\-\/\.]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function isNoiseLocal(text) {
+    var short = normalizeLocal(text);
+    var trivial = [
+      "ok","enterado","recibido","gracias","de nada","listo",
+      "va","copiado","entendido","si","no","claro","bien","perfecto","roger"
+    ];
+    if (!short || short.length < 4) return true;
+    return trivial.indexOf(short) >= 0;
+  }
+
+  function detectTypeLocal(text) {
+    var t = normalizeLocal(text);
+    if (!t) return null;
+    if (/seguridad|alarma|puerta|riesgo|acceso|celda/.test(t)) return "Seguridad";
+    if (/material|lcr|reel|etiquetad|faltante|rollo/.test(t)) return "Material";
+    if (/aoi|ict|wrong|orientation|defecto|scrap|open|short|cross|tablilla/.test(t)) return "Calidad";
+    if (/paro|deten|setup|fallando|feeder|linea|maquina|machine|stop/.test(t)) return "Proceso";
+    if (/produccion|eficiencia|lote|output|rendimiento/.test(t)) return "Produccion";
+    if (/sistema|red|servidor|software|erp|mes/.test(t)) return "Sistema";
+    return null;
+  }
+
+  function extractLineLocal(text) {
+    var raw = text || "";
+    var m = raw.match(/\b(?:L\s*\d+|BB\s*\d+|linea\s*\d+|line\s*\d+)\b/i);
+    if (!m) return "N/D";
+    return m[0].replace(/\s+/g, "").toUpperCase();
+  }
+
+  function extractStationLocal(text) {
+    var t = normalizeLocal(text);
+    if (/\baoi\b/.test(t)) return "AOI";
+    if (/\bict\b/.test(t)) return "ICT";
+    if (/\bsmt\b/.test(t)) return "SMT";
+    if (/\bpth\b/.test(t)) return "PTH";
+    if (/seguridad|celda/.test(t)) return "Seguridad";
+    return "N/D";
+  }
+
+  function timeToMinsLocal(dateIso, timeStr) {
+    var dp = (dateIso || "").split("-").map(Number);
+    var tp = (timeStr || "00:00").split(":").map(Number);
+    if (dp.length < 3) return 0;
+    return new Date(dp[0], dp[1] - 1, dp[2], tp[0] || 0, tp[1] || 0).getTime() / 60000;
+  }
+
+  function candidateDetectorLocal(msgs) {
+    return msgs
+      .filter(function(m) { return !isNoiseLocal(m.text); })
+      .map(function(m) {
+        return {
+          dateIso: m.dateIso,
+          timeStr: m.timeStr,
+          sender: m.sender,
+          text: m.text,
+          turno: m.turno,
+          type: detectTypeLocal(m.text)
+        };
+      })
+      .filter(function(m) { return Boolean(m.type); });
+  }
+
+  function clusterIncidentsLocal(candidates) {
+    var sorted = candidates.slice().sort(function(a, b) {
+      return timeToMinsLocal(a.dateIso, a.timeStr) - timeToMinsLocal(b.dateIso, b.timeStr);
+    });
+
+    var clusters = [];
+
+    sorted.forEach(function(msg) {
+      var msgTime = timeToMinsLocal(msg.dateIso, msg.timeStr);
+      var line = extractLineLocal(msg.text);
+      var station = extractStationLocal(msg.text);
+      var last = clusters[clusters.length - 1];
+
+      if (last) {
+        var dt = msgTime - last.lastTime;
+        var sameType = msg.type === last.type;
+        var lineOk = line === last.line || line === "N/D" || last.line === "N/D";
+
+        if (sameType && lineOk && dt <= 90) {
+          last.messages.push(msg);
+          last.lastTime = msgTime;
+          if (last.line === "N/D" && line !== "N/D") last.line = line;
+          if (last.station === "N/D" && station !== "N/D") last.station = station;
+          return;
+        }
+      }
+
+      clusters.push({
+        type: msg.type,
+        line: line,
+        station: station,
+        lastTime: msgTime,
+        messages: [msg]
+      });
+    });
+
+    return clusters;
+  }
+
+  function buildClusterPayload(clusters) {
+    return clusters.map(function(cluster, i) {
+      var msgs = cluster.messages;
+      var first = msgs[0];
+      var last2 = msgs[msgs.length - 1];
+
+      var senders = msgs
+        .map(function(m) { return m.sender; })
+        .filter(function(s, idx, arr) { return arr.indexOf(s) === idx; })
+        .join(", ");
+
+      var texts = msgs
+        .map(function(m) { return m.sender + ": " + m.text; })
+        .join(" | ");
+
+      return (
+        "CLUSTER-" + String(i + 1).padStart(2, "0") +
+        " | " + (first.dateIso || "") + " " + (first.timeStr || "") +
+        " -> " + (last2.dateIso || "") + " " + (last2.timeStr || "") +
+        " | tipo:" + cluster.type +
+        " | linea:" + cluster.line +
+        " | estacion:" + cluster.station +
+        " | turno:" + (first.turno || "") +
+        " | actores:" + senders +
+        " | msgs:" + texts.slice(0, 320)
+      );
+    }).join("\n");
+  }
+
+  // --- Engine logic ---
+
+  var candidates = candidateDetectorLocal(msgs);
+  var clusters = clusterIncidentsLocal(candidates);
+
+  var useClusterMode = candidates.length >= 3 && clusters.length >= 2;
+  var userContent;
+
+  if (useClusterMode) {
+    var clusterPayload = buildClusterPayload(clusters);
+    var rawTok = estimateTokensLocal(msgs.map(function(m) { return m.text; }).join(" "));
+    var clTok = estimateTokensLocal(clusterPayload);
+
+    console.log(
+      "[OpsTrace Hybrid] " +
+      msgs.length + " msgs -> " +
+      candidates.length + " candidatos -> " +
+      clusters.length + " clusters | " +
+      rawTok + " tok -> " + clTok + " tok | " +
+      Math.round((1 - clTok / Math.max(rawTok, 1)) * 100) + "% reduccion"
+    );
+
+    userContent =
+      "Analiza estos " + clusters.length +
+      " clusters pre-procesados de " + msgs.length + " mensajes. " +
+      "Cada CLUSTER = un incidente. Extrae un evento por cluster. " +
+      "Usa linea y estacion cuando esten disponibles. Solo JSON:\n\n" +
+      clusterPayload;
+  } else {
+    var sample = msgs.slice(0, 150).map(function(m) {
+      return "[" + m.dateIso + " " + m.timeStr + "|" + m.turno + "|" + m.sender + "]:" + m.text;
+    }).join("\n");
+
+    console.log(
+      "[OpsTrace Hybrid] Fallback semantico: " +
+      msgs.length + " msgs | " +
+      candidates.length + " candidatos | " +
+      clusters.length + " clusters"
+    );
+
+    userContent =
+      "Analiza " + msgs.length +
+      " mensajes de manufactura SMT/PTH/AOI/ICT. " +
+      "Extrae incidentes operativos accionables. Solo JSON:\n\n" +
+      sample;
+  }
+
+  var system =
+    "Eres experto en manufactura SMT/PCB/PTH. " +
     "Analiza mensajes o clusters de WhatsApp de manufactura y extrae SOLO eventos operativos accionables. " +
     "Si recibes CLUSTERS, cada cluster es un incidente. Extrae un evento por cluster. " +
     "INCLUIR: paros linea, defectos calidad, falta material, FAI, LCR vencido, RMA, AOI/ICT, dano fisico. " +
@@ -630,25 +684,46 @@ async function analyzeWithAI(msgs, apiKey) {
   });
 
   if (!resp.ok) {
-    var err = await resp.json().catch(function(){ return {}; });
-    if (resp.status === 401) throw new Error("API Key invalida. Verifica en console.anthropic.com");
-    if (resp.status === 429) throw new Error("Limite de uso alcanzado. Espera e intenta de nuevo.");
+    var err = await resp.json().catch(function() { return {}; });
+
+    if (resp.status === 401) {
+      throw new Error("API Key invalida. Verifica en console.anthropic.com");
+    }
+    if (resp.status === 429) {
+      throw new Error("Limite de uso alcanzado. Espera e intenta de nuevo.");
+    }
+
     throw new Error((err.error && err.error.message) || ("Error API " + resp.status));
   }
 
   var data = await resp.json();
-  if (!data.content || !data.content.length) throw new Error("Respuesta vacia. Intenta de nuevo.");
 
-  var raw = "{" + data.content.map(function(b){ return b.text || ""; }).join("");
-  var clean = raw.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();
+  if (!data.content || !data.content.length) {
+    throw new Error("Respuesta vacia. Intenta de nuevo.");
+  }
+
+  var raw = "{" + data.content.map(function(b) { return b.text || ""; }).join("");
+  var clean = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+
   var s = clean.indexOf("{");
   var e = clean.lastIndexOf("}");
-  if (s === -1 || e === -1) throw new Error("JSON invalido. Reduce el rango de dias.");
-  var jsonStr = clean.slice(s, e+1);
 
-  try { return JSON.parse(jsonStr); } catch(_) {}
+  if (s === -1 || e === -1) {
+    throw new Error("JSON invalido. Reduce el rango de dias.");
+  }
+
+  var jsonStr = clean.slice(s, e + 1);
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch (_) {}
+
   var fixed = jsonStr.replace(/,\s*([}\]])/g, "$1");
-  try { return JSON.parse(fixed); } catch(_) {}
+
+  try {
+    return JSON.parse(fixed);
+  } catch (_) {}
+
   throw new Error("Error procesando respuesta. Intenta con 1 o 3 dias.");
 }
 
