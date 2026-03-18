@@ -418,13 +418,19 @@ async function loadRccasFromCloud(){
 
   console.log("RCCA normalizados:", rccas);
 
-  // 🔥🔥🔥 ESTA ES LA LINEA QUE TE FALTA
+  window.__traceops_cloud_rccas = rccas;
   if (typeof renderInvestigationCarousel === "function") {
     renderInvestigationCarousel(rccas);
-  } else {
-    console.warn("renderInvestigationCarousel no existe");
   }
 } 
+async function signIn(email, password){
+    var client = getClient();
+    if (!client) throw new Error("Supabase no configurado.");
+    var out = await client.auth.signInWithPassword({ email: email, password: password });
+    if (out.error) throw out.error;
+    return out.data;
+  }
+
 async function signUp(email, password){
     var client = getClient();
     if (!client) throw new Error("Supabase no configurado.");
@@ -1431,7 +1437,7 @@ function App() {
     try { localStorage.setItem(RCCA_KEY, JSON.stringify(list || [])); } catch(_) {}
     setRccaList(list || []);
   }
-
+  
   async function refreshCloudRcca(opts) {
     opts = opts || {};
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
@@ -1531,15 +1537,22 @@ function App() {
       return;
     }
     var unsub = window.TraceOpsCloud.onAuthChange(function(evt, user){
-      setAuthUser(user || null);
-      if (user) {
-        setCloudStatus("Sesion activa");
-        refreshCloudRcca();
-      } else {
-        setCloudStatus("Modo local");
-        setAuthReady(true);
-      }
-    });
+  window.authUser = user || null;
+
+  if (typeof updateAuthUI === "function") updateAuthUI();
+
+  if (user) {
+    setCloudStatus("Sesion activa");
+
+    // 🔥 ESTO ES LO QUE TE FALTA
+    refreshCloudRcca();
+
+  } else {
+    setCloudStatus("Modo local");
+  }
+
+  setAuthReady(true);
+});
     window.TraceOpsCloud.getUser().then(function(user){
       setAuthUser(user || null);
       if (user) {
@@ -2122,7 +2135,7 @@ function App() {
                 </div>
                 <input className="sidebar-api-input" type="email" placeholder="correo@empresa.com" value={authEmail} onChange={function(e){setAuthEmail(e.target.value);}}/>
                 <input className="sidebar-api-input" type="password" placeholder="Contrasena" value={authPassword} onChange={function(e){setAuthPassword(e.target.value);}}/>
-                <button className="sidebar-btn active" onClick={handleAuthSubmit} disabled={syncBusy} style={{justifyContent:"center",opacity:syncBusy?.65:1}}>
+                <button className="sidebar-btn active" onClick={handleAuthSubmit} disabled={syncBusy} style={{justifyContent:"center",opacity:syncBusy ? .65 : 1}}>
                   {syncBusy?"Procesando...":(authMode==="signup"?"Crear cuenta y sincronizar":"Entrar y sincronizar")}
                 </button>
               </>
