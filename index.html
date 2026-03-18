@@ -1250,12 +1250,10 @@ async function buildXlsx(result) {
 </script>
 
 <script type="text/babel">
-
-// 🔥 HOOKS (DEBEN IR PRIMERO SIEMPRE)
 var _useState = React.useState;
 var _useRef = React.useRef;
 var _useCallback = React.useCallback;
-  // 🔥 APP PRINCIPAL
+
 function to24h(h, min, sec, mer) {
   var hour = parseInt(h);
   var m = (mer || "").toLowerCase().replace(/[\s.]/g, "");
@@ -1341,35 +1339,25 @@ function LogoSVG() {
 }
 
 function App() {
-  var stateArr = React.useState("idle");
+  var stateArr = _useState("idle");
   var state = stateArr[0]; var setState = stateArr[1];
-  var apiKeyArr = React.useState(localStorage.getItem("traceops_key") || "");
+  var apiKeyArr = _useState(localStorage.getItem("traceops_key") || "");
   var apiKey = apiKeyArr[0]; var setApiKey = apiKeyArr[1];
-  var progArr = React.useState(0); var prog = progArr[0]; var setProg = progArr[1];
-  var progStepArr = React.useState(0); var progStep = progStepArr[0]; var setProgStep = progStepArr[1];
-  var daysArr = React.useState(3); var days = daysArr[0]; var setDays = daysArr[1];
-  var fmodeArr = React.useState("quick"); var filterMode = fmodeArr[0]; var setFilterMode = fmodeArr[1];
-  var fFromArr = React.useState(""); var dateFrom = fFromArr[0]; var setDateFrom = fFromArr[1];
-  var fToArr = React.useState(""); var dateTo = fToArr[0]; var setDateTo = fToArr[1];
-  var fWeekArr = React.useState(""); var weekNum = fWeekArr[0]; var setWeekNum = fWeekArr[1];
-  var fYearArr = React.useState(new Date().getFullYear()); var weekYear = fYearArr[0]; var setWeekYear = fYearArr[1];
-  var resultArr = React.useState(null); var result = resultArr[0]; var setResult = resultArr[1];
-  var xlsxArr = React.useState(null); var xlsxBytes = xlsxArr[0]; var setXlsxBytes = xlsxArr[1];
-  var errArr = React.useState(""); var errMsg = errArr[0]; var setErrMsg = errArr[1];
-  var dragArr = React.useState(false); var drag = dragArr[0]; var setDrag = dragArr[1];
-  var sbArr = React.useState(window.innerWidth > 900); var sidebarOpen = sbArr[0]; var setSidebarOpen = sbArr[1];
+  var progArr = _useState(0); var prog = progArr[0]; var setProg = progArr[1];
+  var progStepArr = _useState(0); var progStep = progStepArr[0]; var setProgStep = progStepArr[1];
+  var daysArr = _useState(3); var days = daysArr[0]; var setDays = daysArr[1];
+  var fmodeArr = _useState("quick"); var filterMode = fmodeArr[0]; var setFilterMode = fmodeArr[1];
+  var fFromArr = _useState(""); var dateFrom = fFromArr[0]; var setDateFrom = fFromArr[1];
+  var fToArr = _useState(""); var dateTo = fToArr[0]; var setDateTo = fToArr[1];
+  var fWeekArr = _useState(""); var weekNum = fWeekArr[0]; var setWeekNum = fWeekArr[1];
+  var fYearArr = _useState(new Date().getFullYear()); var weekYear = fYearArr[0]; var setWeekYear = fYearArr[1];
+  var resultArr = _useState(null); var result = resultArr[0]; var setResult = resultArr[1];
+  var xlsxArr = _useState(null); var xlsxBytes = xlsxArr[0]; var setXlsxBytes = xlsxArr[1];
+  var errArr = _useState(""); var errMsg = errArr[0]; var setErrMsg = errArr[1];
+  var dragArr = _useState(false); var drag = dragArr[0]; var setDrag = dragArr[1];
+  var sbArr = _useState(window.innerWidth > 900); var sidebarOpen = sbArr[0]; var setSidebarOpen = sbArr[1];
   var isMobile = function(){ return window.innerWidth <= 900; };
-  var statsArr = React.useState(null); var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
-
-  var _useStateFilters = React.useState({
-    fecha: "",
-    tipo: "",
-    defecto: "",
-    estatus: "",
-    sort: ""
-  });
-  var filters = _useStateFilters[0];
-  var setFilters = _useStateFilters[1]; 
+  var statsArr = _useState(null); var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
 
   React.useEffect(function(){
     function onResize(){ if (window.innerWidth > 900) setSidebarOpen(true); }
@@ -1391,37 +1379,37 @@ function App() {
     } catch(e){}
   }, []);
 
-  var pfArr = React.useState(""); var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
-  var imgsArr = React.useState([]); var zipImgNames = imgsArr[0]; var setZipImgNames = imgsArr[1];
-  var imgMetaArr = React.useState({}); var imgMeta = imgMetaArr[0]; var setImgMeta = imgMetaArr[1];
-  var evImgsArr = React.useState({}); var evImgs = evImgsArr[0]; var setEvImgs = evImgsArr[1];
-  var lbArr = React.useState(null); var lightbox = lbArr[0]; var setLightbox = lbArr[1];
-  var galPageArr = React.useState(0); var galPage = galPageArr[0]; var setGalPage = galPageArr[1];
+  var pfArr = _useState(""); var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
+  var imgsArr = _useState([]); var zipImgNames = imgsArr[0]; var setZipImgNames = imgsArr[1];
+  var imgMetaArr = _useState({}); var imgMeta = imgMetaArr[0]; var setImgMeta = imgMetaArr[1];
+  var evImgsArr = _useState({}); var evImgs = evImgsArr[0]; var setEvImgs = evImgsArr[1];
+  var lbArr = _useState(null); var lightbox = lbArr[0]; var setLightbox = lbArr[1];
+  var galPageArr = _useState(0); var galPage = galPageArr[0]; var setGalPage = galPageArr[1];
   var GAL_PAGE_SIZE = 48;
   var RCCA_KEY = "traceops_rcca";
-  var rccaArr = React.useState(function(){
+  var rccaArr = _useState(function(){
     try { var raw = localStorage.getItem(RCCA_KEY); return raw ? JSON.parse(raw) : []; } catch(_) { return []; }
   });
   var rccaList = rccaArr[0]; var setRccaList = rccaArr[1];
-  var rccaFormArr = React.useState(null); var rccaForm = rccaFormArr[0]; var setRccaForm = rccaFormArr[1];
-  var rccaDetailArr = React.useState(null); var rccaDetail = rccaDetailArr[0]; var setRccaDetail = rccaDetailArr[1];
-  var rccaFilterArr = React.useState(""); var rccaFilter = rccaFilterArr[0]; var setRccaFilter = rccaFilterArr[1];
+  var rccaFormArr = _useState(null); var rccaForm = rccaFormArr[0]; var setRccaForm = rccaFormArr[1];
+  var rccaDetailArr = _useState(null); var rccaDetail = rccaDetailArr[0]; var setRccaDetail = rccaDetailArr[1];
+  var rccaFilterArr = _useState(""); var rccaFilter = rccaFilterArr[0]; var setRccaFilter = rccaFilterArr[1];
 
-  var authEmailArr = React.useState(localStorage.getItem("traceops_auth_email") || "");
+  var authEmailArr = _useState(localStorage.getItem("traceops_auth_email") || "");
   var authEmail = authEmailArr[0]; var setAuthEmail = authEmailArr[1];
-  var authPassArr = React.useState("");
+  var authPassArr = _useState("");
   var authPassword = authPassArr[0]; var setAuthPassword = authPassArr[1];
-  var authModeArr = React.useState("signin");
+  var authModeArr = _useState("signin");
   var authMode = authModeArr[0]; var setAuthMode = authModeArr[1];
-  var authUserArr = React.useState(null);
+  var authUserArr = _useState(null);
   var authUser = authUserArr[0]; var setAuthUser = authUserArr[1];
-  var authReadyArr = React.useState(false);
+  var authReadyArr = _useState(false);
   var authReady = authReadyArr[0]; var setAuthReady = authReadyArr[1];
-  var cloudStatusArr = React.useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "Configurando nube..." : "Modo local");
+  var cloudStatusArr = _useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "Configurando nube..." : "Modo local");
   var cloudStatus = cloudStatusArr[0]; var setCloudStatus = cloudStatusArr[1];
-  var syncBusyArr = React.useState(false);
+  var syncBusyArr = _useState(false);
   var syncBusy = syncBusyArr[0]; var setSyncBusy = syncBusyArr[1];
-  var authErrArr = React.useState("");
+  var authErrArr = _useState("");
   var authErrMsg = authErrArr[0]; var setAuthErrMsg = authErrArr[1];
 
 
@@ -1664,7 +1652,7 @@ function App() {
   }
   var HIST_KEY = "traceops_history";
   var HIST_MAX = 10;
-  var histArr = React.useState(function(){
+  var histArr = _useState(function(){
     try { var raw=localStorage.getItem(HIST_KEY); return raw?JSON.parse(raw):[]; } catch(_){ return []; }
   });
   var history = histArr[0]; var setHistory = histArr[1];
@@ -1699,8 +1687,8 @@ function App() {
   }
   var fileRef = _useRef();
   var fileNameRef = _useRef("chat.zip");
-  var timerArr = React.useState(0); var elapsed = timerArr[0]; var setElapsed = timerArr[1];
-  var elapsedMsArr = React.useState(0); var elapsedMs = elapsedMsArr[0]; var setElapsedMs = elapsedMsArr[1];
+  var timerArr = _useState(0); var elapsed = timerArr[0]; var setElapsed = timerArr[1];
+  var elapsedMsArr = _useState(0); var elapsedMs = elapsedMsArr[0]; var setElapsedMs = elapsedMsArr[1];
   var startTimeRef = _useRef(null); var stepTimesRef = _useRef({});
 
   React.useEffect(function(){
@@ -1766,42 +1754,6 @@ function App() {
   var ev=(result&&result.eventos)?result.eventos:[];
   var kpis=(result&&result.kpis)?result.kpis:[];
   var res=(result&&result.resumen)?result.resumen:{};
- var filtered = ev
-    .filter(function(e){
-      var ok = true;
-      if(filters.fecha) ok = ok && e.fecha === filters.fecha;
-      if(filters.tipo) ok = ok && e.tipo_evento === filters.tipo;
-      if(filters.defecto) ok = ok && e.defecto_smt === filters.defecto;
-      if(filters.estatus) ok = ok && e.estatus === filters.estatus;
-      return ok;
-    })
-    .sort(function(a,b){
-      if(filters.sort === "fecha"){
-        var ap = (a.fecha || "").split("/");
-        var bp = (b.fecha || "").split("/");
-        var ad = ap.length === 3 ? new Date(ap[2], ap[1]-1, ap[0]) : new Date(0);
-        var bd = bp.length === 3 ? new Date(bp[2], bp[1]-1, bp[0]) : new Date(0);
-        return bd - ad;
-      }
-      if(filters.sort === "prioridad"){
-        var order = {Critica:4, Alta:3, Media:2, Baja:1};
-        return (order[b.prioridad]||0) - (order[a.prioridad]||0);
-      }
-      return 0;
-    });
-
-  var uniqueFechas = Array.from(new Set(ev.map(function(e){ return e.fecha; }).filter(Boolean))).sort(function(a,b){
-    var ap = (a || "").split("/");
-    var bp = (b || "").split("/");
-    var ad = ap.length === 3 ? new Date(ap[2], ap[1]-1, ap[0]) : new Date(0);
-    var bd = bp.length === 3 ? new Date(bp[2], bp[1]-1, bp[0]) : new Date(0);
-    return bd - ad;
-  });
-
-  var uniqueTipos = Array.from(new Set(ev.map(function(e){ return e.tipo_evento; }).filter(Boolean))).sort();
-  var uniqueDefectos = Array.from(new Set(ev.map(function(e){ return e.defecto_smt; }).filter(function(x){ return x && x !== "N/A"; }))).sort();
-  var uniqueEstatus = Array.from(new Set(ev.map(function(e){ return e.estatus; }).filter(Boolean))).sort();
-
   var pend=ev.filter(function(e){return e.estatus!=="Cerrado";});
   var crit=ev.filter(function(e){return e.prioridad==="Critica"&&e.estatus!=="Cerrado";});
   var cerr=ev.filter(function(e){return e.estatus==="Cerrado";});
@@ -1893,8 +1845,8 @@ function App() {
 
   function InvestigationCarousel(props){
     var cards=props.cards;var allRcca=props.allRcca||[];
-    var idxArr=React.useState(0);var idx=idxArr[0];var setIdx=idxArr[1];
-    var tabArr=React.useState(0);var tab=tabArr[0];var setTab=tabArr[1];
+    var idxArr=_useState(0);var idx=idxArr[0];var setIdx=idxArr[1];
+    var tabArr=_useState(0);var tab=tabArr[0];var setTab=tabArr[1];
     if(!cards||cards.length===0)return null;
     var safeIdx=Math.min(idx,cards.length-1);var cur=cards[safeIdx];
     var TABS=["Identification","Hypothesis","Exposure","Material","Correction","Pattern","Actions","Evidence"];
@@ -1959,7 +1911,7 @@ function App() {
     var init=props.init||{};var onSave=props.onSave;var onClose=props.onClose;
     var fields=[{key:"problema",label:"Problema",rows:2,required:true},{key:"causa_raiz",label:"Causa Raiz",rows:3,required:true},{key:"contencion",label:"Contencion",rows:2},{key:"accion_correctiva",label:"Accion Correctiva",rows:2},{key:"accion_preventiva",label:"Accion Preventiva",rows:2},{key:"patron_detectado",label:"Patron Detectado",rows:1},{key:"leccion_aprendida",label:"Leccion Aprendida",rows:2}];
     var initIds=init.event_ids||[];
-    var formArr=React.useState(function(){var ids=initIds;return Object.assign({rcca_id:genRccaId(ids,ev),event_ids:ids,modelo:init.modelo||"",linea:init.linea||"",fecha:init.fecha||new Date().toISOString().slice(0,10),problema:init.problema||"",causa_raiz:"",contencion:"",accion_correctiva:"",accion_preventiva:"",patron_detectado:"",leccion_aprendida:""},{}); });
+    var formArr=_useState(function(){var ids=initIds;return Object.assign({rcca_id:genRccaId(ids,ev),event_ids:ids,modelo:init.modelo||"",linea:init.linea||"",fecha:init.fecha||new Date().toISOString().slice(0,10),problema:init.problema||"",causa_raiz:"",contencion:"",accion_correctiva:"",accion_preventiva:"",patron_detectado:"",leccion_aprendida:""},{}); });
     var form=formArr[0];var setForm=formArr[1];
     function upd(k,v){var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});n[k]=v;setForm(n);}
     function toggleEvent(evId){
@@ -2075,8 +2027,8 @@ function App() {
 
   function LazyImg(props){
     var fname=props.fname;var className=props.className||"";var style=props.style||{};var onClick=props.onClick;
-    var srcArr=React.useState(null);var src=srcArr[0];var setSrc=srcArr[1];
-    var visibleArr=React.useState(false);var visible=visibleArr[0];var setVisible=visibleArr[1];
+    var srcArr=_useState(null);var src=srcArr[0];var setSrc=srcArr[1];
+    var visibleArr=_useState(false);var visible=visibleArr[0];var setVisible=visibleArr[1];
     var enqueuedRef=_useRef(false);var domRef=_useRef(null);
     React.useEffect(function(){var el=domRef.current;if(!el)return;if(!window.IntersectionObserver){setVisible(true);return;}var obs=new IntersectionObserver(function(entries){if(entries[0].isIntersecting){setVisible(true);obs.disconnect();}},{rootMargin:"200px"});obs.observe(el);return function(){obs.disconnect();};}, []);
     React.useEffect(function(){if(!visible||src||enqueuedRef.current)return;enqueuedRef.current=true;enqueueLoad(fname,function(url){setSrc(url);}); },[visible]);
@@ -2112,7 +2064,7 @@ function App() {
   }
 
   function PickerThumb(props){
-    var fname=props.fname;var srcArr=React.useState(_imgCache[fname]||null);var src=srcArr[0];var setSrc=srcArr[1];var queuedRef=_useRef(false);
+    var fname=props.fname;var srcArr=_useState(_imgCache[fname]||null);var src=srcArr[0];var setSrc=srcArr[1];var queuedRef=_useRef(false);
     React.useEffect(function(){var alive=true;if(src||queuedRef.current)return;queuedRef.current=true;enqueueLoad(fname,function(url){if(alive)setSrc(url);});return function(){alive=false;};}, [fname,src]);
     if(!src)return<div className="picker-thumb" style={{background:"#EEECEA"}}/>;
     return<img className="picker-thumb" src={src} alt={fname}/>;
@@ -2120,7 +2072,7 @@ function App() {
 
   function EvidenceCell(props){
     var e=props.e;var attached=evImgs[e.id]||[];
-    var showPickArr=React.useState(false);var showPick=showPickArr[0];var setShowPick=showPickArr[1];
+    var showPickArr=_useState(false);var showPick=showPickArr[0];var setShowPick=showPickArr[1];
     var pickerData=showPick?buildPickerDataForEvent(e,attached):null;var pickerImgs=pickerData?pickerData.list:[];
     return(
       <td style={{verticalAlign:"top",paddingTop:8,minWidth:80}}>
@@ -2173,9 +2125,7 @@ function App() {
               {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Modo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
             </div>
             <div style={{fontSize:10,lineHeight:1.4,color:syncBusy?"#CDE7C5":"rgba(255,255,255,.5)",padding:"8px 10px",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,background:"rgba(255,255,255,.03)"}}>
-             {authUser && authUser.email
-  ? ("Sesión: " + authUser.email + " · " + cloudStatus)
-  : (cloudStatus + (authReady ? "" : " · cargando"))}
+              {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(cloudStatus+(authReady?"":" · cargando"))}
             </div>
             {!authUser&&window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()&&(
               <>
@@ -2639,141 +2589,227 @@ function App() {
               )}
             </div>
           </div>
-<div className="tcard">
-  <div className="tcard-hdr">
-    <h3>Bitacora de eventos ({filtered.length})</h3>
-  </div>
 
-  <div style={{padding:"10px 14px"}}>
-    <div className="tscroll">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th><th>Fecha</th><th>Hora</th><th>Turno</th>
-            <th>Modelo</th><th>Linea</th><th>Tipo</th>
-            <th>Evento</th><th>Responsable</th>
-            <th>Estatus</th><th>RCCA</th><th>Evidencia</th>
-          </tr>
-        </thead>
+          <div className="tcard">
+            <div className="tcard-hdr">
+              <h3>Bitacora de eventos ({ev.length})</h3>
+              {imgNames.length>0&&<span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>{imgNames.length} imagen{imgNames.length!==1?"es":""}<span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span></span>}
+            </div>
+            <div className="tscroll">
+              <table>
+                <thead><tr><th>ID</th><th>Fecha</th><th>T</th><th>Linea</th><th>Tipo</th><th>Defecto SMT</th><th>Evento</th><th>Prioridad</th><th>Estatus</th><th>RCCA</th>{imgNames.length>0&&<th>Evidencia</th>}</tr></thead>
+                <tbody>
+                  {ev.map(function(e,i){return(
+                    <tr key={i}>
+                      <td><strong>{e.id}</strong></td>
+                      <td style={{whiteSpace:"nowrap",fontSize:10}}>{e.fecha}</td>
+                      <td>{e.turno}</td>
+                      <td style={{maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.linea_estacion}</td>
+                      <td><span style={{fontSize:9,background:"#EDF5F3",color:"#1E5545",padding:"2px 5px",borderRadius:4,fontWeight:600}}>{e.tipo_evento}</span></td>
+                      <td style={{maxWidth:100}}>{e.defecto_smt&&e.defecto_smt!=="N/A"?<span className="badge bt" style={{fontSize:8.5,whiteSpace:"normal"}}>{e.defecto_smt}</span>:<span style={{color:"#C8C2BA",fontSize:10}}>-</span>}</td>
+                      <td style={{maxWidth:170,fontSize:10.5}}>{e.evento_detectado}</td>
+                      <td><span className={bprio(e.prioridad)}>{e.prioridad}</span></td>
+                      <td><span className={best(e.estatus)}>{e.estatus}</span></td>
+                      <td style={{verticalAlign:"top",paddingTop:8}}><RccaCell evId={e.id} modelo={e.modelo} linea={e.linea_estacion} fecha={e.fecha} problema={e.evento_detectado}/></td>
+                      {imgNames.length>0&&<EvidenceCell e={e}/>}
+                    </tr>
+                  );})}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-        <tbody>
-          {filtered.map(function(e,i){
-            return (
-              <tr key={i}>
-                <td>{e.id}</td>
-                <td>{e.fecha}</td>
-                <td>{e.hora}</td>
-                <td>{e.turno}</td>
-                <td>{e.modelo}</td>
-                <td>{e.linea_estacion}</td>
-                <td>{e.tipo_evento}</td>
-                <td>{e.evento_detectado}</td>
-                <td>{e.responsable_sugerido}</td>
+          {pend.length>0&&<div className="tcard" style={{marginTop:14}}><div className="tcard-hdr"><h3>Pendientes operativos ({pend.length})</h3></div><div className="plist">{pend.map(function(e,i){return<PendItem key={i} e={e}/>;})}</div></div>}
+          {rccaList.length>0&&<InvestigationCarousel cards={rccaList} allRcca={rccaList}/>}
 
-                <td>
-                  <span className={best(e.estatus)}>
-                    {e.estatus}
-                  </span>
-                </td>
+          {/* ═══ HIPOCAMPO DIGITAL ═══ */}
+          {ev.length > 0 && (
+            <div style={{background:"linear-gradient(135deg,#0A1A0C 0%,#1A3D1E 40%,#0D2B10 100%)",borderRadius:18,overflow:"hidden",marginTop:14,marginBottom:14,border:"1px solid #2A5A30",boxShadow:"0 8px 32px rgba(0,0,0,.3)"}}>
 
-                <td>
-                  <RccaCell
-                    evId={e.id}
-                    modelo={e.modelo}
-                    linea={e.linea_estacion}
-                    fecha={e.fecha}
-                    problema={e.evento_detectado}
-                  />
-                </td>
+              {/* Header - Cerebro */}
+              <div style={{padding:"24px 24px 16px",textAlign:"center",position:"relative"}}>
+                <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 30%,rgba(72,168,130,.12) 0%,transparent 60%)",pointerEvents:"none"}}/>
+                <div style={{position:"relative",zIndex:1}}>
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:".2em",textTransform:"uppercase",color:"#48A882",marginBottom:8}}>Operational Memory Architecture</div>
+                  <div style={{fontSize:28,fontWeight:800,color:"#fff",lineHeight:1.1,marginBottom:4}}>Hipocampo Digital</div>
+                  <div style={{fontSize:12,color:"rgba(255,255,255,.45)",fontWeight:400}}>De experiencia dispersa a memoria organizacional</div>
 
-                <td>
-                  <EvidenceCell e={e}/>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
+                  {/* Neural pathway SVG */}
+                  <svg width="100%" height="40" viewBox="0 0 400 40" preserveAspectRatio="xMidYMid meet" style={{marginTop:12,opacity:.6}}>
+                    <line x1="0" y1="20" x2="400" y2="20" stroke="#2A5A30" strokeWidth="1"/>
+                    <circle cx="80" cy="20" r="3" fill="#48A882" opacity=".5"><animate attributeName="opacity" values=".2;1;.2" dur="2s" repeatCount="indefinite"/></circle>
+                    <circle cx="200" cy="20" r="4" fill="#48A882"><animate attributeName="opacity" values=".3;1;.3" dur="2s" begin=".5s" repeatCount="indefinite"/></circle>
+                    <circle cx="320" cy="20" r="3" fill="#48A882" opacity=".5"><animate attributeName="opacity" values=".2;1;.2" dur="2s" begin="1s" repeatCount="indefinite"/></circle>
+                    <polyline points="60,20 70,10 90,30 100,20" fill="none" stroke="#48A882" strokeWidth="1.5" opacity=".4"/>
+                    <polyline points="180,20 190,10 210,30 220,20" fill="none" stroke="#48A882" strokeWidth="1.5" opacity=".4"/>
+                    <polyline points="300,20 310,10 330,30 340,20" fill="none" stroke="#48A882" strokeWidth="1.5" opacity=".4"/>
+                  </svg>
+                </div>
+              </div>
 
-{/* ═════════ PENDIENTES ═════════ */}
-{pend.length > 0 && (
-  <div className="tcard" style={{marginTop:14}}>
-    <div className="tcard-hdr">
-      <h3>Pendientes ({pend.length})</h3>
-    </div>
+              {/* Three pillars */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:1,background:"#1A3D1E"}}>
 
-    <div className="plist">
-      {pend.map(function(e,i){
-        return <PendItem key={i} e={e}/>;
-      })}
-    </div>
-  </div>
-)}
+                {/* TraceOps - Centro */}
+                <div style={{background:"linear-gradient(180deg,#0D2B10,#132E16)",padding:"18px 16px",textAlign:"center"}}>
+                  <div style={{width:40,height:40,borderRadius:12,background:"rgba(72,168,130,.15)",border:"1.5px solid rgba(72,168,130,.3)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",color:"#48A882",fontSize:16,fontWeight:800}}>O</div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#48A882",marginBottom:3}}>TraceOps</div>
+                  <div style={{fontSize:9,color:"rgba(255,255,255,.4)",marginBottom:12,lineHeight:1.4}}>Deteccion de incidentes</div>
+                  <div style={{fontSize:32,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:4}}>{ev.length}</div>
+                  <div style={{fontSize:9,color:"rgba(255,255,255,.35)"}}>incidentes extraidos</div>
+                  <div style={{marginTop:10,display:"flex",justifyContent:"center",gap:6}}>
+                    <span style={{fontSize:8,background:"rgba(192,57,43,.2)",color:"#E74C3C",borderRadius:4,padding:"2px 7px",fontWeight:600}}>{crit.length} crit</span>
+                    <span style={{fontSize:8,background:"rgba(72,168,130,.15)",color:"#48A882",borderRadius:4,padding:"2px 7px",fontWeight:600}}>{cerr.length} cerr</span>
+                  </div>
+                </div>
 
-{/* ═════════ RCCA CAROUSEL ═════════ */}
-{rccaList.length > 0 && (
-  <InvestigationCarousel
-    cards={rccaList}
-    allRcca={rccaList}
-  />
-)}
+                {/* LessonTrace - Memoria */}
+                <div style={{background:"linear-gradient(180deg,#1A1508,#1E1A0C)",padding:"18px 16px",textAlign:"center"}}>
+                  <div style={{width:40,height:40,borderRadius:12,background:"rgba(184,120,32,.12)",border:"1.5px solid rgba(184,120,32,.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",color:"#D4960A",fontSize:16,fontWeight:800}}>L</div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#D4960A",marginBottom:3}}>LessonTrace</div>
+                  <div style={{fontSize:9,color:"rgba(255,255,255,.4)",marginBottom:12,lineHeight:1.4}}>Memoria organizacional</div>
+                  {(function(){
+                    var withLesson = rccaList.filter(function(r){ return r.leccion_aprendida && r.leccion_aprendida.trim().length > 5; });
+                    var withCausa = rccaList.filter(function(r){ return r.causa_raiz && r.causa_raiz.trim().length > 5; });
+                    return (
+                      <div>
+                        <div style={{fontSize:32,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:4}}>{withLesson.length}</div>
+                        <div style={{fontSize:9,color:"rgba(255,255,255,.35)"}}>lecciones registradas</div>
+                        <div style={{marginTop:10,display:"flex",justifyContent:"center",gap:6}}>
+                          <span style={{fontSize:8,background:"rgba(184,120,32,.15)",color:"#D4960A",borderRadius:4,padding:"2px 7px",fontWeight:600}}>{withCausa.length} causas raiz</span>
+                          <span style={{fontSize:8,background:"rgba(107,45,168,.15)",color:"#9B59B6",borderRadius:4,padding:"2px 7px",fontWeight:600}}>{rccaList.length} RCCA</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
 
-{/* ═════════ HIPOCAMPO ═════════ */}
-{ev.length > 0 && (
-  <div style={{
-    background:"linear-gradient(135deg,#0A1A0C,#1A3D1E,#0D2B10)",
-    borderRadius:18,
-    marginTop:14,
-    marginBottom:14,
-    border:"1px solid #2A5A30"
-  }}>
+                {/* Yokoten - Compartir */}
+                <div style={{background:"linear-gradient(180deg,#0C1020,#101428)",padding:"18px 16px",textAlign:"center"}}>
+                  <div style={{width:40,height:40,borderRadius:12,background:"rgba(41,82,163,.12)",border:"1.5px solid rgba(41,82,163,.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",color:"#5B9BD5",fontSize:16,fontWeight:800}}>Y</div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#5B9BD5",marginBottom:3}}>Yokoten</div>
+                  <div style={{fontSize:9,color:"rgba(255,255,255,.4)",marginBottom:12,lineHeight:1.4}}>Compartir conocimiento</div>
+                  {(function(){
+                    var yokoCount = 0;
+                    var yokoItems = [];
+                    rccaList.forEach(function(r){
+                      if (!r.accion_correctiva || r.accion_correctiva.trim().length < 10) return;
+                      var otherEvents = ev.filter(function(e){
+                        var linked = r.event_ids && r.event_ids.indexOf(e.id) >= 0;
+                        if (linked) return false;
+                        var sameModel = r.modelo && e.modelo && r.modelo.toLowerCase() === e.modelo.toLowerCase();
+                        var sameDef = r.problema && e.defecto_smt && e.defecto_smt !== "N/A" && r.problema.toLowerCase().indexOf(e.defecto_smt.toLowerCase()) >= 0;
+                        var sameType = r.patron_detectado && e.tipo_evento && r.patron_detectado.toLowerCase().indexOf(e.tipo_evento.toLowerCase()) >= 0;
+                        return sameModel || sameDef || sameType;
+                      });
+                      if (otherEvents.length > 0) {
+                        yokoCount += otherEvents.length;
+                        yokoItems.push({rcca:r, targets:otherEvents.length});
+                      }
+                    });
+                    return (
+                      <div>
+                        <div style={{fontSize:32,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:4}}>{yokoCount}</div>
+                        <div style={{fontSize:9,color:"rgba(255,255,255,.35)"}}>oportunidades detectadas</div>
+                        <div style={{marginTop:10,display:"flex",justifyContent:"center",gap:6}}>
+                          <span style={{fontSize:8,background:"rgba(91,155,213,.15)",color:"#5B9BD5",borderRadius:4,padding:"2px 7px",fontWeight:600}}>{yokoItems.length} soluciones replicables</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
 
-    <div style={{padding:20,textAlign:"center"}}>
-      <div style={{fontSize:26,fontWeight:800,color:"#fff"}}>
-        Hipocampo Digital
-      </div>
-      <div style={{fontSize:11,color:"#48A882"}}>
-        Memoria Operacional
-      </div>
-    </div>
+              </div>
 
-    <div style={{
-      display:"grid",
-      gridTemplateColumns:"1fr 1fr 1fr",
-      textAlign:"center"
-    }}>
-      <div>
-        <div style={{fontSize:24,color:"#fff"}}>{ev.length}</div>
-        <div style={{fontSize:10,color:"#48A882"}}>Eventos</div>
-      </div>
+              {/* LessonTrace detail - Lecciones aprendidas */}
+              {rccaList.length > 0 && (function(){
+                var lessons = rccaList.filter(function(r){ return r.leccion_aprendida && r.leccion_aprendida.trim().length > 5; });
+                if (lessons.length === 0) return null;
+                return (
+                  <div style={{borderTop:"1px solid #2A5A30",padding:"16px 20px",background:"rgba(30,26,12,.6)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                      <div style={{width:6,height:6,borderRadius:50,background:"#D4960A"}}/>
+                      <span style={{fontSize:10.5,fontWeight:700,color:"#D4960A",letterSpacing:".06em",textTransform:"uppercase"}}>LessonTrace — Memoria Organizacional</span>
+                      <span style={{fontSize:9,color:"rgba(255,255,255,.3)",marginLeft:"auto"}}>{lessons.length} leccion{lessons.length!==1?"es":""}</span>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {lessons.slice(0,5).map(function(r){
+                        return (
+                          <div key={r.rcca_id} style={{background:"rgba(255,255,255,.04)",border:"1px solid rgba(184,120,32,.15)",borderRadius:10,padding:"10px 14px"}}>
+                            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:6}}>
+                              <div>
+                                <span style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#D4960A"}}>{r.rcca_id}</span>
+                                {r.modelo && <span style={{fontSize:8.5,color:"rgba(255,255,255,.3)",marginLeft:8}}>{r.modelo}</span>}
+                                {r.linea && <span style={{fontSize:8.5,color:"rgba(255,255,255,.3)",marginLeft:6}}>{r.linea}</span>}
+                              </div>
+                            </div>
+                            <div style={{fontSize:11,color:"rgba(255,255,255,.75)",lineHeight:1.45,marginBottom:6}}>{r.leccion_aprendida.slice(0,120)}{r.leccion_aprendida.length>120?"...":""}</div>
+                            {r.causa_raiz && <div style={{fontSize:9.5,color:"rgba(255,255,255,.35)",borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:5}}>Causa raiz: {r.causa_raiz.slice(0,80)}{r.causa_raiz.length>80?"...":""}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
-      <div>
-        <div style={{fontSize:24,color:"#fff"}}>{rccaList.length}</div>
-        <div style={{fontSize:10,color:"#D4960A"}}>RCCA</div>
-      </div>
+              {/* Yokoten detail - Soluciones replicables */}
+              {rccaList.length > 0 && ev.length > 0 && (function(){
+                var yokoItems = [];
+                rccaList.forEach(function(r){
+                  if (!r.accion_correctiva || r.accion_correctiva.trim().length < 10) return;
+                  var targets = ev.filter(function(e){
+                    var linked = r.event_ids && r.event_ids.indexOf(e.id) >= 0;
+                    if (linked) return false;
+                    var sameModel = r.modelo && e.modelo && e.modelo !== "N/D" && r.modelo.toLowerCase() === e.modelo.toLowerCase();
+                    var sameDef = r.problema && e.defecto_smt && e.defecto_smt !== "N/A" && r.problema.toLowerCase().indexOf(e.defecto_smt.toLowerCase()) >= 0;
+                    var sameType = r.patron_detectado && e.tipo_evento && r.patron_detectado.toLowerCase().indexOf(e.tipo_evento.toLowerCase()) >= 0;
+                    return sameModel || sameDef || sameType;
+                  });
+                  if (targets.length > 0) yokoItems.push({rcca:r, targets:targets});
+                });
+                if (yokoItems.length === 0) return null;
+                return (
+                  <div style={{borderTop:"1px solid #2A5A30",padding:"16px 20px",background:"rgba(12,16,32,.6)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                      <div style={{width:6,height:6,borderRadius:50,background:"#5B9BD5"}}/>
+                      <span style={{fontSize:10.5,fontWeight:700,color:"#5B9BD5",letterSpacing:".06em",textTransform:"uppercase"}}>Yokoten — Compartir Conocimiento</span>
+                      <span style={{fontSize:9,color:"rgba(255,255,255,.3)",marginLeft:"auto"}}>{yokoItems.length} solucion{yokoItems.length!==1?"es":""} replicable{yokoItems.length!==1?"s":""}</span>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {yokoItems.slice(0,4).map(function(y){
+                        return (
+                          <div key={y.rcca.rcca_id} style={{background:"rgba(255,255,255,.04)",border:"1px solid rgba(91,155,213,.15)",borderRadius:10,padding:"10px 14px"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
+                              <span style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#5B9BD5"}}>{y.rcca.rcca_id}</span>
+                              <span style={{fontSize:8.5,background:"rgba(91,155,213,.12)",color:"#5B9BD5",borderRadius:4,padding:"1px 7px",fontWeight:600}}>Solucion probada</span>
+                              <span style={{fontSize:8.5,color:"rgba(255,255,255,.3)",marginLeft:"auto"}}>{y.targets.length} evento{y.targets.length!==1?"s":""} aplicable{y.targets.length!==1?"s":""}</span>
+                            </div>
+                            <div style={{fontSize:10.5,color:"rgba(255,255,255,.7)",lineHeight:1.4,marginBottom:8}}>{y.rcca.accion_correctiva.slice(0,100)}{y.rcca.accion_correctiva.length>100?"...":""}</div>
+                            <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                              <span style={{fontSize:8,color:"rgba(255,255,255,.25)",marginRight:4}}>Aplicar a:</span>
+                              {y.targets.slice(0,4).map(function(e){
+                                return <span key={e.id} style={{fontSize:8,fontFamily:"monospace",background:"rgba(91,155,213,.1)",color:"#5B9BD5",borderRadius:3,padding:"1px 6px"}}>{e.id}</span>;
+                              })}
+                              {y.targets.length > 4 && <span style={{fontSize:8,color:"rgba(255,255,255,.25)"}}>+{y.targets.length-4} mas</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
-      <div>
-        <div style={{fontSize:24,color:"#fff"}}>
-          {rccaList.filter(r=>r.accion_correctiva).length}
-        </div>
-        <div style={{fontSize:10,color:"#5B9BD5"}}>Yokoten</div>
-      </div>
-    </div>
+              {/* Footer - Tagline */}
+              <div style={{borderTop:"1px solid #2A5A30",padding:"12px 20px",textAlign:"center",background:"rgba(0,0,0,.2)"}}>
+                <div style={{fontSize:10,color:"rgba(255,255,255,.25)",letterSpacing:".1em"}}>De Experiencia a Memoria Organizacional</div>
+              </div>
 
-    <div style={{
-      textAlign:"center",
-      padding:10,
-      fontSize:10,
-      color:"#aaa"
-    }}>
-      De experiencia a conocimiento
-    </div>
+            </div>
+          )}
 
-  </div>
-)}
+          <div className="foot">
             <p><strong>TraceOps</strong> by SMTintel - ALDA - {new Date().toLocaleDateString("es-MX")}</p>
             <button className="dlbtn" style={{padding:"8px 16px",fontSize:12}} onClick={download}>Descargar Excel</button>
           </div>
