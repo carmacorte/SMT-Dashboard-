@@ -49,45 +49,80 @@ body{
   background:#F4F3F0;color:var(--g900);min-height:100vh;
   -webkit-font-smoothing:antialiased;letter-spacing:-.01em
 }
-#root{display:flex;min-height:100vh}
-.sidebar{width:260px;background:#0F1F13;color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .3s cubic-bezier(.4,0,.2,1);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent}
-.sidebar.collapsed{transform:translateX(-260px)}
+#root{display:block;min-height:100vh}
+body{touch-action:manipulation}
+.sidebar{width:280px;background:linear-gradient(180deg,#0F1F13 0%,#0A170D 100%);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:120;transition:transform .32s cubic-bezier(.4,0,.2,1),box-shadow .32s ease;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;box-shadow:20px 0 40px rgba(0,0,0,.08)}
+.sidebar.collapsed{transform:translateX(-100%)}
 .sidebar-header{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
 .sidebar-brand{display:flex;align-items:center;gap:12px;margin-bottom:4px}
 .sidebar-brand h2{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.1}
 .sidebar-brand h2 span{color:#48A882;font-weight:400;font-size:12px;display:block;margin-top:2px}
 .sidebar-section{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06)}
 .sidebar-section-title{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:10px}
-.sidebar-api-input{width:100%;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 10px;font-size:11px;color:#fff;font-family:'Courier New',monospace;background:rgba(255,255,255,.05);outline:none;transition:border-color .15s}
-.sidebar-api-input:focus{border-color:#48A882}
+.sidebar-api-input{width:100%;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;font-size:11px;color:#fff;font-family:'Courier New',monospace;background:rgba(255,255,255,.05);outline:none;transition:border-color .15s,background .15s}
+.sidebar-api-input:focus{border-color:#48A882;background:rgba(255,255,255,.08)}
 .sidebar-api-input::placeholder{color:rgba(255,255,255,.25)}
-.sidebar-api-note{font-size:9px;color:rgba(255,255,255,.3);margin-top:6px}
-.sidebar-api-note a{color:#48A882;text-decoration:none}
-.sidebar-btn{width:100%;display:flex;align-items:center;gap:10px;padding:10px 14px;border:none;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:rgba(255,255,255,.6);text-align:left}
-.sidebar-btn:hover{background:rgba(255,255,255,.06);color:#fff}
-.sidebar-btn.active{background:rgba(72,168,130,.15);color:#48A882}
-.sidebar-btn svg{flex-shrink:0;opacity:.7}
-.sidebar-btn.active svg{opacity:1}
-.sidebar-nuevo{width:100%;background:#1E5C48;color:#fff;border:none;border-radius:10px;padding:10px 14px;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8;justify-content:center;transition:all .15s;box-shadow:0 2px 8px rgba(30,92,72,.3)}
-.sidebar-nuevo:hover{background:#2A7A60;transform:translateY(-1px)}
-.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid rgba(255,255,255,.06)}
-.sidebar-footer p{font-size:9px;color:rgba(255,255,255,.2);line-height:1.4}
-.sidebar-toggle{position:fixed;top:16px;left:16px;z-index:101;width:40px;height:40px;border-radius:10px;border:1px solid #DDDBD7;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .2s;color:#3D3A36}
-.sidebar-toggle:hover{background:#1E5C48;color:#fff;border-color:#1E5C48}
-.sidebar-toggle.open{left:272px;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15);color:#fff}
-.sidebar-toggle.open:hover{background:rgba(255,255,255,.15)}
+.sidebar-api-note{font-size:9px;color:rgba(255,255,255,.3);margin-top:8px;line-height:1.4}
+.sidebar-api-note a{color:#5BC99E;text-decoration:none}
+.sidebar-btn,.sidebar-nuevo{width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;background:transparent;border:none;border-radius:12px;color:rgba(255,255,255,.7);font-size:12px;font-weight:500;cursor:pointer;transition:all .18s;text-align:left}
+.sidebar-btn:hover,.sidebar-nuevo:hover{background:rgba(255,255,255,.06);color:#fff}
+.sidebar-btn.active{background:linear-gradient(90deg,rgba(72,168,130,.18),rgba(72,168,130,.08));color:#8FDCC1;font-weight:600}
+.sidebar-btn svg,.sidebar-nuevo svg{flex-shrink:0}
+.sidebar-nuevo{background:#244E3E;color:#fff;font-weight:600;justify-content:center;padding:13px 14px}
+.sidebar-nuevo:hover{background:#306B56;transform:translateY(-1px)}
+.sidebar-footer{margin-top:auto;padding:18px 20px;border-top:1px solid rgba(255,255,255,.06)}
+.sidebar-footer p{font-size:9px;color:rgba(255,255,255,.25);line-height:1.4}
+.sidebar-toggle{display:none}
 .sidebar-overlay{display:none}
-.main-content{flex:1;margin-left:260px;max-width:820px;padding:32px 20px 80px;transition:margin-left .3s cubic-bezier(.4,0,.2,1)}
-.main-content.expanded{margin-left:0}
+.main-content{margin-left:280px;max-width:none;padding:96px 28px 80px;transition:margin-left .3s cubic-bezier(.4,0,.2,1),padding .3s cubic-bezier(.4,0,.2,1)}
+.main-content.expanded{margin-left:280px}
+.saas-topbar{position:fixed;top:0;left:280px;right:0;height:76px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 28px;z-index:110;background:rgba(244,243,240,.88);backdrop-filter:blur(18px);border-bottom:1px solid rgba(200,196,190,.65)}
+.saas-topbar-left{display:flex;align-items:center;gap:14px;min-width:0}
+.saas-topbar-brand{display:flex;flex-direction:column;min-width:0}
+.saas-topbar-title{font-size:16px;font-weight:800;color:#1A1714;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saas-topbar-subtitle{font-size:11px;color:#6A6560}
+.saas-topbar-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.saas-menu-btn,.saas-header-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #D7D3CC;background:#fff;color:#1A1714;border-radius:14px;height:44px;padding:0 16px;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.saas-menu-btn{width:44px;padding:0;display:none}
+.saas-header-btn.primary{background:#1E5C48;border-color:#1E5C48;color:#fff;box-shadow:0 6px 18px rgba(30,92,72,.22)}
+.saas-header-btn:hover,.saas-menu-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(0,0,0,.08)}
+.saas-header-btn.primary:hover{background:#174A3B;border-color:#174A3B}
+.saas-shell-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin:0 0 18px}
+.saas-hero-card{background:#fff;border:1px solid #E5E2DC;border-radius:22px;padding:18px 20px;box-shadow:0 10px 24px rgba(26,23,20,.04);display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.saas-hero-copy{min-width:240px;flex:1}
+.saas-hero-eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#2A7A60;margin-bottom:8px}
+.saas-hero-title{font-size:22px;font-weight:800;color:#1A1714;line-height:1.1;margin-bottom:8px}
+.saas-hero-desc{font-size:13px;line-height:1.6;color:#6A6560;max-width:560px}
+.saas-hero-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.saas-upload-card{background:linear-gradient(135deg,#143225 0%,#1D4936 100%);color:#fff;border-radius:22px;padding:18px 20px;min-width:260px;box-shadow:0 14px 28px rgba(20,50,37,.24)}
+.saas-upload-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.saas-upload-card p{font-size:11px;line-height:1.5;color:rgba(255,255,255,.74);margin-bottom:14px}
+.saas-upload-card .saas-header-btn{width:100%;justify-content:center;background:#fff;color:#143225;border-color:#fff}
+@media(max-width:1100px){
+.main-content{padding-left:22px;padding-right:22px}
+.saas-topbar{padding-left:22px;padding-right:22px}
+}
 @media(max-width:900px){
-.sidebar{transform:translateX(-260px)}
+.sidebar{transform:translateX(-100%);width:min(86vw,320px);box-shadow:24px 0 40px rgba(0,0,0,.28)}
 .sidebar.open{transform:translateX(0)}
-.sidebar-toggle{left:16px}
-.sidebar-toggle.open{left:272px}
-.sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;opacity:0;pointer-events:none;transition:opacity .3s}
+.sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(10,23,13,.42);z-index:109;opacity:0;pointer-events:none;transition:opacity .28s ease}
 .sidebar-overlay.show{opacity:1;pointer-events:auto}
-.main-content{margin-left:0;max-width:100%}
+.main-content{margin-left:0;padding:92px 16px 72px}
 .main-content.expanded{margin-left:0}
+.saas-topbar{left:0;height:72px;padding:14px 16px}
+.saas-menu-btn{display:inline-flex}
+.saas-topbar-brand{max-width:38vw}
+.saas-topbar-actions{gap:8px}
+.saas-header-btn{height:40px;padding:0 12px;font-size:11px}
+.saas-header-btn span.hide-mobile{display:none}
+}
+@media(max-width:560px){
+.saas-topbar-title{font-size:14px}
+.saas-topbar-subtitle{display:none}
+.saas-shell-intro{display:block}
+.saas-hero-card,.saas-upload-card{border-radius:18px}
+.saas-hero-title{font-size:18px}
+.saas-upload-card{min-width:0;margin-top:12px}
 }
 .hdr{background:var(--green);border-radius:20px;padding:28px 32px;margin-bottom:20px;display:flex;align-items:center;gap:22px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(30,92,72,.25)}
 .hdr::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.06) 0%,transparent 60%);pointer-events:none}
@@ -278,93 +313,6 @@ tr:hover td{background:var(--g50)}
 .anim-header-desc{animation:fade-up .6s .2s ease both}
 .anim-chips{animation:fade-up .5s .35s ease both}
 </style>
-
-<style id="traceops-addon-style">
-:root{
-  --traceops-sidebar-w: 228px;
-  --traceops-bg:#0f1d12;
-  --traceops-card:#16281a;
-  --traceops-card-2:#1e3323;
-  --traceops-line:#35553d;
-  --traceops-text:#eef4ec;
-  --traceops-muted:#a9bbab;
-  --traceops-accent:#7fb069;
-  --traceops-warn:#d6b65d;
-}
-body.traceops-with-addon{padding-left:calc(var(--traceops-sidebar-w) + 20px);}
-#traceopsSidebar{
-  position:fixed;top:12px;left:12px;bottom:12px;width:var(--traceops-sidebar-w);z-index:9998;
-  background:linear-gradient(180deg,#152318,#0f1812);color:var(--traceops-text);border:1px solid var(--traceops-line);
-  border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 40px rgba(0,0,0,.25);
-  font-family:Inter,Segoe UI,Arial,sans-serif;
-}
-#traceopsSidebar h3{margin:0;font-size:15px}
-#traceopsSidebar .traceops-nav a,
-#traceopsSidebar button,
-#traceopsSidebar .traceops-link{
-  display:flex;align-items:center;justify-content:flex-start;width:100%;border:1px solid var(--traceops-line);
-  background:rgba(255,255,255,.03);color:var(--traceops-text);padding:10px 12px;border-radius:12px;
-  text-decoration:none;font-size:13px;cursor:pointer;
-}
-#traceopsSidebar .traceops-nav,
-#traceopsSidebar .traceops-actions{display:flex;flex-direction:column;gap:8px}
-#traceopsSidebar .traceops-note{font-size:12px;color:var(--traceops-muted);line-height:1.4}
-#traceopsSidebar .traceops-small{font-size:11px;color:var(--traceops-muted)}
-#traceopsSidebar .traceops-accent{color:#cde5c3;background:rgba(127,176,105,.14);border-color:rgba(127,176,105,.35)}
-#traceopsSections{margin:20px 16px 28px 0;display:grid;gap:16px}
-.traceops-anchor-section{
-  background:linear-gradient(180deg,rgba(22,40,26,.95),rgba(14,26,18,.95));border:1px solid var(--traceops-line);
-  border-radius:20px;padding:18px;color:var(--traceops-text);font-family:Inter,Segoe UI,Arial,sans-serif;
-}
-.traceops-anchor-section h2{margin:0 0 10px;font-size:18px}
-.traceops-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.traceops-card{
-  background:rgba(255,255,255,.03);border:1px solid rgba(127,176,105,.18);border-radius:16px;padding:14px;
-}
-.traceops-stat{font-size:26px;font-weight:700}
-.traceops-label{font-size:12px;color:var(--traceops-muted);margin-top:4px}
-.traceops-list{display:grid;gap:10px}
-.traceops-pill{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(127,176,105,.12);border:1px solid rgba(127,176,105,.24);font-size:11px;margin-right:6px}
-#traceopsAssetsGallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
-.traceops-thumb{
-  aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#0f1812;border:1px solid rgba(127,176,105,.15);
-  display:flex;align-items:center;justify-content:center;color:var(--traceops-muted);font-size:11px;text-align:center;padding:8px;
-}
-.traceops-thumb img,.traceops-thumb video{width:100%;height:100%;object-fit:cover;display:block}
-#traceopsManualModal{
-  position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10001;display:none;align-items:center;justify-content:center;padding:20px;
-}
-#traceopsManualModal.traceops-open{display:flex}
-#traceopsManualModal .traceops-modal-body{
-  width:min(1000px,100%);height:min(88vh,860px);background:#101712;border:1px solid var(--traceops-line);border-radius:20px;overflow:hidden;
-  display:grid;grid-template-rows:auto 1fr;
-}
-.traceops-modal-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;color:var(--traceops-text)}
-.traceops-modal-header button{border:1px solid var(--traceops-line);background:rgba(255,255,255,.03);color:var(--traceops-text);padding:8px 12px;border-radius:12px;cursor:pointer}
-#traceopsManualFrame{width:100%;height:100%;border:0;background:#fff}
-#traceopsSidebarToggle{
-  position:fixed;left:12px;top:12px;z-index:10000;border:1px solid var(--traceops-line);background:#142117;color:#fff;
-  border-radius:12px;padding:10px 12px;display:none
-}
-.traceops-toast{
-  position:fixed;right:16px;bottom:16px;z-index:10002;background:#18241a;color:#fff;border:1px solid var(--traceops-line);
-  border-radius:14px;padding:12px 14px;box-shadow:0 12px 28px rgba(0,0,0,.25);font-family:Inter,Segoe UI,Arial,sans-serif;font-size:13px
-}
-@media (max-width: 900px){
-  body.traceops-with-addon{padding-left:0;padding-top:64px}
-  #traceopsSidebar{transform:translateX(-120%);transition:transform .2s ease;width:min(86vw,290px)}
-  #traceopsSidebar.traceops-open{transform:translateX(0)}
-  #traceopsSidebarToggle{display:block}
-}
-@media (max-width: 420px){
-  #traceopsSections{margin:12px}
-  .traceops-grid{grid-template-columns:1fr}
-  .traceops-anchor-section{padding:14px;border-radius:18px}
-  .traceops-card{padding:12px}
-  .traceops-stat{font-size:22px}
-}
-</style>
-
 </head>
 <body>
 <div id="root"></div>
@@ -1211,6 +1159,12 @@ function App() {
   var statsArr = _useState(null); var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
 
   React.useEffect(function(){
+    function onResize(){ if (window.innerWidth > 900) setSidebarOpen(true); }
+    window.addEventListener("resize", onResize);
+    return function(){ window.removeEventListener("resize", onResize); };
+  }, []);
+
+  React.useEffect(function(){
     try {
       var saved = sessionStorage.getItem("traceops_last_result");
       if (!saved) return;
@@ -1340,7 +1294,7 @@ function App() {
 
   async function handle(file){
     if(!file||!file.name.endsWith(".zip")){setErrMsg("Sube un .zip exportado de WhatsApp");setState("error");return;}
-    if(!apiKey.trim() && !(window.TRACEOPS_CONFIG && window.TRACEOPS_CONFIG.PROXY_URL)){setErrMsg("Ingresa tu API Key de Anthropic o configura PROXY_URL.");setState("error");return;}
+    if(!apiKey.trim()){setErrMsg("Ingresa tu API Key de Anthropic");setState("error");return;}
     fileNameRef.current=file.name;
     setState("loading");setProg(8);setProgStep(0);
     try{
@@ -1356,7 +1310,7 @@ function App() {
       setMsgStats(statsPayload);
       if(!clean.length) throw new Error("Sin mensajes operativos en el periodo. Aumenta el rango.");
       setProgStep(3);setProg(55);
-      var res=validateTraceOpsResult(await analyzeWithAI(clean,apiKey.trim()));
+      var res=await analyzeWithAI(clean,apiKey.trim());
       setProgStep(4);setProg(82);
       setEvImgs({});
       var bytes=await buildXlsx(res);
@@ -1752,11 +1706,11 @@ function App() {
           <div className="sidebar-api-note">Guardada en navegador. <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">Obtener key</a></div>
         </div>
         <div className="sidebar-section">
-          <div className="sidebar-section-title">Acciones</div>
+          <div className="sidebar-section-title">Acciones rapidas</div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {state==="done"&&<button className="sidebar-nuevo" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>Nuevo analisis</button>}
-            {state!=="done"&&<button className="sidebar-nuevo" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Cargar .zip</button>}
             {xlsxBytes&&<button className="sidebar-btn active" onClick={function(){download();if(isMobile())setSidebarOpen(false);}} style={{background:"rgba(122,148,72,.15)",color:"#8ABD6E"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Descargar .xlsx</button>}
+            <div style={{fontSize:10,lineHeight:1.5,color:"rgba(255,255,255,.38)",padding:"4px 2px 0"}}>La carga de ZIP vive en el header principal para que nunca quede bloqueada por el drawer.</div>
           </div>
         </div>
         <div className="sidebar-section" style={{flex:1}}>
@@ -1772,18 +1726,48 @@ function App() {
         </div>
       </div>
 
-      {/* Sidebar toggle button */}
-      <button className={"sidebar-toggle"+(sidebarOpen?" open":"")} onClick={function(){setSidebarOpen(!sidebarOpen);}}>
-        {sidebarOpen?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>}
-      </button>
-
-      {/* Mobile overlay */}
+      {/* App header */}
       <div className={"sidebar-overlay"+(sidebarOpen&&isMobile()?" show":"")} onClick={function(){setSidebarOpen(false);}}/>
+
+      <header className="saas-topbar">
+        <div className="saas-topbar-left">
+          <button className="saas-menu-btn" onClick={function(e){e.stopPropagation();setSidebarOpen(!sidebarOpen);}}>
+            {sidebarOpen?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>}
+          </button>
+          <div className="saas-topbar-brand">
+            <div className="saas-topbar-title">TraceOps Workspace</div>
+            <div className="saas-topbar-subtitle">Header + content + drawer · mobile safe</div>
+          </div>
+        </div>
+        <div className="saas-topbar-actions">
+          {state==="done"&&<button className="saas-header-btn" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg><span className="hide-mobile">Nuevo</span></button>}
+          <button className="saas-header-btn primary" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Cargar ZIP</span></button>
+          {xlsxBytes&&<button className="saas-header-btn" onClick={function(){download();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span className="hide-mobile">Descargar XLSX</span></button>}
+        </div>
+      </header>
 
       {/* Main content */}
       <div className={"main-content"+((!sidebarOpen||isMobile())?" expanded":"")}>
+        <div className="saas-shell-intro">
+          <div className="saas-hero-card">
+            <div className="saas-hero-copy">
+              <div className="saas-hero-eyebrow">Operational Event Intelligence</div>
+              <div className="saas-hero-title">Workspace tipo SaaS para analisis operativo</div>
+              <div className="saas-hero-desc">El flujo principal queda en el contenido: cargar ZIP, revisar filtros y descargar resultados. El drawer se reserva para configuracion y navegacion, evitando bloqueos en iOS y Android.</div>
+            </div>
+            <div className="saas-hero-actions">
+              <button className="saas-header-btn primary" onClick={function(){if(fileRef.current)fileRef.current.click();}}>Subir WhatsApp ZIP</button>
+              {xlsxBytes&&<button className="saas-header-btn" onClick={download}>Exportar XLSX</button>}
+            </div>
+          </div>
+          <div className="saas-upload-card">
+            <h3>Zona de carga principal</h3>
+            <p>La accion critica ya no vive detras del sidebar. En movil permanece visible arriba del contenido.</p>
+            <button className="saas-header-btn" onClick={function(){if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Seleccionar .zip</button>
+          </div>
+        </div>
 
-      {lightbox&&(
+{lightbox&&(
         <div className="lb-overlay" onClick={function(){setLightbox(null);}}>
           <div className="lb-box" onClick={function(e){e.stopPropagation();}}>
             <div className="lb-hdr">
@@ -2387,796 +2371,6 @@ window.addEventListener('unhandledrejection', function(e) {
   box.innerHTML = '<strong>UNHANDLED REJECTION</strong><br>' + (e.reason ? e.reason.toString() : 'unknown');
   document.body.appendChild(box);
 });
-</script>
-<script id="traceops-addon-script">
-(function(){
-  var CONFIG = window.TRACEOPS_CONFIG = Object.assign({
-    PROXY_URL: "",
-    DIRECT_BROWSER_ALLOWED: false,
-    MANUAL_URL: "OpsTrace Manual.pdf",
-    MAX_PROMPT_MESSAGES: 250,
-    ASSET_WARN_BYTES: 50 * 1024 * 1024
-  }, window.TRACEOPS_CONFIG || {});
-
-  var DB_NAME = "traceops_assets_db";
-  var DB_VERSION = 1;
-  var STORE = "assets";
-
-  function normalizeLocal(text) {
-    return (text || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^\w\s\-\/\.]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function isNoiseLocal(text) {
-    var short = normalizeLocal(text);
-    var trivial = ["ok","enterado","recibido","gracias","de nada","listo","va","copiado","entendido","si","no","claro","bien","perfecto","roger"];
-    if (!short || short.length < 4) return true;
-    return trivial.indexOf(short) >= 0;
-  }
-
-  function detectTypeLocal(text) {
-    var t = normalizeLocal(text);
-    if (!t) return null;
-    if (/seguridad|alarma|puerta|riesgo|acceso|celda/.test(t)) return "Seguridad";
-    if (/material|lcr|reel|etiquetad|faltante|rollo/.test(t)) return "Material";
-    if (/aoi|ict|wrong|orientation|defecto|scrap|open|short|cross|tablilla/.test(t)) return "Calidad";
-    if (/paro|deten|setup|fallando|feeder|linea|maquina|machine|stop/.test(t)) return "Proceso";
-    if (/produccion|eficiencia|lote|output|rendimiento/.test(t)) return "Produccion";
-    if (/sistema|red|servidor|software|erp|mes/.test(t)) return "Sistema";
-    return null;
-  }
-
-  function extractLineLocal(text) {
-    var raw = text || "";
-    var m = raw.match(/\b(?:L\s*\d+|BB\s*\d+|linea\s*\d+|line\s*\d+)\b/i);
-    if (!m) return "N/D";
-    return m[0].replace(/\s+/g, "").toUpperCase();
-  }
-
-  function extractStationLocal(text) {
-    var t = normalizeLocal(text);
-    if (/\baoi\b/.test(t)) return "AOI";
-    if (/\bict\b/.test(t)) return "ICT";
-    if (/\bsmt\b/.test(t)) return "SMT";
-    if (/\bpth\b/.test(t)) return "PTH";
-    if (/seguridad|celda/.test(t)) return "Seguridad";
-    return "N/D";
-  }
-
-  function timeToMinsLocal(dateIso, timeStr) {
-    var dp = (dateIso || "").split("-").map(Number);
-    var tp = (timeStr || "00:00").split(":").map(Number);
-    if (dp.length < 3) return 0;
-    return new Date(dp[0], dp[1] - 1, dp[2], tp[0] || 0, tp[1] || 0).getTime() / 60000;
-  }
-
-  function candidateDetectorLocal(msgs) {
-    return (msgs || [])
-      .filter(function(m) { return !isNoiseLocal(m.text); })
-      .map(function(m) {
-        return {
-          dateIso: m.dateIso,
-          timeStr: m.timeStr,
-          sender: m.sender,
-          text: m.text,
-          turno: m.turno,
-          type: detectTypeLocal(m.text)
-        };
-      })
-      .filter(function(m) { return Boolean(m.type); });
-  }
-
-  function clusterIncidentsLocal(candidates) {
-    var sorted = candidates.slice().sort(function(a, b) {
-      return timeToMinsLocal(a.dateIso, a.timeStr) - timeToMinsLocal(b.dateIso, b.timeStr);
-    });
-    var clusters = [];
-    sorted.forEach(function(msg) {
-      var msgTime = timeToMinsLocal(msg.dateIso, msg.timeStr);
-      var line = extractLineLocal(msg.text);
-      var station = extractStationLocal(msg.text);
-      var last = clusters[clusters.length - 1];
-      if (last) {
-        var dt = msgTime - last.lastTime;
-        var sameType = msg.type === last.type;
-        var lineOk = line === last.line || line === "N/D" || last.line === "N/D";
-        if (sameType && lineOk && dt <= 90) {
-          last.messages.push(msg);
-          last.lastTime = msgTime;
-          if (last.line === "N/D" && line !== "N/D") last.line = line;
-          if (last.station === "N/D" && station !== "N/D") last.station = station;
-          return;
-        }
-      }
-      clusters.push({
-        type: msg.type,
-        line: line,
-        station: station,
-        lastTime: msgTime,
-        messages: [msg]
-      });
-    });
-    return clusters;
-  }
-
-  window.normalizeLocal = normalizeLocal;
-  window.candidateDetectorLocal = candidateDetectorLocal;
-  window.clusterIncidentsLocal = clusterIncidentsLocal;
-
-  function openAssetsDb() {
-    return new Promise(function(resolve, reject) {
-      var req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = function(event) {
-        var db = event.target.result;
-        if (!db.objectStoreNames.contains(STORE)) {
-          db.createObjectStore(STORE, { keyPath: "key" });
-        }
-      };
-      req.onsuccess = function() { resolve(req.result); };
-      req.onerror = function() { reject(req.error || new Error("No fue posible abrir IndexedDB")); };
-    });
-  }
-
-  function idbTxn(mode, work) {
-    return openAssetsDb().then(function(db) {
-      return new Promise(function(resolve, reject) {
-        var tx = db.transaction(STORE, mode);
-        var store = tx.objectStore(STORE);
-        var value = work(store, resolve, reject);
-        tx.onerror = function() { reject(tx.error || new Error("Error de IndexedDB")); };
-        tx.oncomplete = function() {
-          if (value !== undefined) resolve(value);
-          db.close();
-        };
-      });
-    });
-  }
-
-  function putAssetRecord(record) {
-    return idbTxn("readwrite", function(store) { store.put(record); });
-  }
-
-  function getAllAssetRecords() {
-    return idbTxn("readonly", function(store, resolve) {
-      var req = store.getAll();
-      req.onsuccess = function() { resolve(req.result || []); };
-    });
-  }
-
-  function clearAssetsDb() {
-    return idbTxn("readwrite", function(store) { store.clear(); });
-  }
-
-  function humanSize(bytes) {
-    if (!bytes) return "0 B";
-    var units = ["B","KB","MB","GB"];
-    var idx = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-    return (bytes / Math.pow(1024, idx)).toFixed(idx ? 1 : 0) + " " + units[idx];
-  }
-
-  function normalizeAssetName(name) {
-    return (name || "asset")
-      .replace(/^.*[\\/]/, "")
-      .replace(/\s+/g, "_")
-      .replace(/[^\w.\-]/g, "_");
-  }
-
-  function inferMime(name) {
-    var base = (name || "").toLowerCase();
-    if (/\.(jpg|jpeg)$/.test(base)) return "image/jpeg";
-    if (/\.png$/.test(base)) return "image/png";
-    if (/\.gif$/.test(base)) return "image/gif";
-    if (/\.webp$/.test(base)) return "image/webp";
-    if (/\.mp4$/.test(base)) return "video/mp4";
-    if (/\.opus$/.test(base)) return "audio/opus";
-    if (/\.pdf$/.test(base)) return "application/pdf";
-    return "application/octet-stream";
-  }
-
-  function isImageName(name) {
-    return /\.(jpe?g|png|gif|webp)$/i.test(name || "");
-  }
-
-  function isRelevantAssetName(name) {
-    return /\.(jpe?g|png|gif|webp|mp4|opus|pdf)$/i.test(name || "");
-  }
-
-  async function persistAssetsFromZip(zip, sourceZipName) {
-    if (!zip || !window.JSZip) return { count: 0, totalBytes: 0, names: [] };
-    var names = Object.keys(zip.files || {});
-    var saved = [];
-    var totalBytes = 0;
-
-    for (var i = 0; i < names.length; i += 1) {
-      var fullName = names[i];
-      if (fullName.indexOf("__MACOSX") === 0) continue;
-      var entry = zip.files[fullName];
-      var base = fullName.split("/").pop();
-      if (!entry || entry.dir || !isRelevantAssetName(base)) continue;
-      var normalized = normalizeAssetName(base);
-      var buffer = await entry.async("arraybuffer");
-      var size = buffer.byteLength || 0;
-      totalBytes += size;
-      var isImg = isImageName(base);
-      var key = (isImg ? "img_" : "other_") + normalized;
-      await putAssetRecord({
-        key: key,
-        name: normalized,
-        originalName: base,
-        folder: isImg ? "images" : "other",
-        mime: inferMime(base),
-        size: size,
-        timestamp: new Date().toISOString(),
-        sourceZipName: sourceZipName || "chat.zip",
-        blob: new Blob([buffer], { type: inferMime(base) })
-      });
-      saved.push(normalized);
-    }
-
-    await putAssetRecord({
-      key: "assets:metadata",
-      names: saved,
-      asset_count: saved.length,
-      totalBytes: totalBytes,
-      timestamp: new Date().toISOString(),
-      source_zip_name: sourceZipName || "chat.zip"
-    });
-
-    if (totalBytes > CONFIG.ASSET_WARN_BYTES) {
-      toast("Assets cargados: " + humanSize(totalBytes) + ". Revisa cuota del navegador o exporta un ZIP.");
-    }
-    return { count: saved.length, totalBytes: totalBytes, names: saved };
-  }
-
-  async function exportAssetsZipFromDb() {
-    var records = await getAllAssetRecords();
-    if (!records.length) throw new Error("No hay assets persistidos en IndexedDB.");
-    var zip = new JSZip();
-    var images = zip.folder("assets/images");
-    var other = zip.folder("assets/other");
-    var meta = {
-      timestamp: new Date().toISOString(),
-      asset_count: 0,
-      names: [],
-      source_zip_name: "",
-      totalBytes: 0
-    };
-
-    for (var i = 0; i < records.length; i += 1) {
-      var record = records[i];
-      if (record.key === "assets:metadata") {
-        meta.source_zip_name = record.source_zip_name || meta.source_zip_name;
-        continue;
-      }
-      if (!record.blob) continue;
-      meta.asset_count += 1;
-      meta.names.push(record.originalName || record.name);
-      meta.totalBytes += record.size || 0;
-      var targetFolder = record.folder === "images" ? images : other;
-      targetFolder.file(record.originalName || record.name, record.blob);
-    }
-
-    zip.folder("assets").file("metadata.json", JSON.stringify(meta, null, 2));
-    var bytes = await zip.generateAsync({ type: "blob" });
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(bytes);
-    a.download = "TraceOps_assets_" + new Date().toISOString().slice(0, 10) + ".zip";
-    a.click();
-    setTimeout(function() { URL.revokeObjectURL(a.href); }, 1500);
-  }
-
-  async function renderPersistedAssets() {
-    var container = document.getElementById("traceopsAssetsGallery");
-    var metaLabel = document.getElementById("traceopsAssetsMeta");
-    if (!container || !metaLabel) return;
-    var records = await getAllAssetRecords();
-    var metadata = records.filter(function(r) { return r.key === "assets:metadata"; })[0] || null;
-    var items = records.filter(function(r) { return r.key !== "assets:metadata"; });
-    metaLabel.textContent = items.length
-      ? items.length + " assets persistidos • " + humanSize((metadata && metadata.totalBytes) || items.reduce(function(acc, item) { return acc + (item.size || 0); }, 0))
-      : "Sin assets persistidos";
-    container.innerHTML = "";
-    if (!items.length) {
-      container.innerHTML = '<div class="traceops-thumb" style="grid-column:1/-1">Sin imágenes o archivos persistidos todavía.</div>';
-      return;
-    }
-    for (var i = 0; i < items.length; i += 1) {
-      var record = items[i];
-      var card = document.createElement("div");
-      card.className = "traceops-thumb";
-      if (/^image\//.test(record.mime || "")) {
-        var img = document.createElement("img");
-        img.alt = record.originalName || record.name;
-        img.src = URL.createObjectURL(record.blob);
-        img.onload = function() { URL.revokeObjectURL(this.src); };
-        card.appendChild(img);
-      } else if (/^video\//.test(record.mime || "")) {
-        var video = document.createElement("video");
-        video.src = URL.createObjectURL(record.blob);
-        video.controls = true;
-        card.appendChild(video);
-      } else {
-        card.textContent = (record.originalName || record.name) + "\n" + humanSize(record.size || 0);
-      }
-      container.appendChild(card);
-    }
-  }
-
-  function buildLessonCards(result) {
-    var eventos = (result && result.eventos) || [];
-    return eventos.slice(0, 8).map(function(ev, idx) {
-      return {
-        title: ev.evento_detectado || ("Lección " + (idx + 1)),
-        rootCause: ev.notas || ev.impacto || ev.accion_requerida || "Sin resumen de causa raíz",
-        rccaId: ev.id || "N/D",
-        prioridad: ev.prioridad || "Media"
-      };
-    });
-  }
-
-  function buildYokotenItems(result) {
-    var eventos = (result && result.eventos) || [];
-    return eventos
-      .filter(function(ev) { return (ev.accion_requerida || "").trim(); })
-      .slice(0, 8)
-      .map(function(ev) {
-        return {
-          title: ev.accion_requerida,
-          eventRef: ev.id || "N/D",
-          area: ev.area_involucrada || "N/D",
-          status: ev.estatus || "Abierto"
-        };
-      });
-  }
-
-  function updateHipocampoUi(result) {
-    var data = result || loadPersistedResult();
-    var eventos = (data && data.eventos) || [];
-    var lessons = buildLessonCards(data || {});
-    var yokoten = buildYokotenItems(data || {});
-    var criticos = eventos.filter(function(ev) { return (ev.prioridad || "").toLowerCase() === "critica"; }).length;
-    var abiertos = eventos.filter(function(ev) { return (ev.estatus || "").toLowerCase() !== "cerrado"; }).length;
-
-    var opsStat = document.getElementById("traceopsOpsStat");
-    var lessonStat = document.getElementById("traceopsLessonStat");
-    var yokoStat = document.getElementById("traceopsYokoStat");
-    var lessonList = document.getElementById("traceopsLessonList");
-    var yokotenList = document.getElementById("traceopsYokotenList");
-    var dashboardBody = document.getElementById("traceopsDashboardBody");
-    if (!opsStat || !lessonStat || !yokoStat || !lessonList || !yokotenList || !dashboardBody) return;
-
-    opsStat.innerHTML = '<div class="traceops-stat">' + eventos.length + '</div><div class="traceops-label">incidentes extraídos • abiertos ' + abiertos + ' • críticos ' + criticos + '</div>';
-    lessonStat.innerHTML = '<div class="traceops-stat">' + lessons.length + '</div><div class="traceops-label">lecciones registradas</div>';
-    yokoStat.innerHTML = '<div class="traceops-stat">' + yokoten.length + '</div><div class="traceops-label">soluciones replicables</div>';
-
-    dashboardBody.innerHTML = eventos.length
-      ? '<div class="traceops-grid"><div class="traceops-card"><div class="traceops-stat">' + eventos.length + '</div><div class="traceops-label">Eventos</div></div><div class="traceops-card"><div class="traceops-stat">' + abiertos + '</div><div class="traceops-label">Pendientes</div></div><div class="traceops-card"><div class="traceops-stat">' + criticos + '</div><div class="traceops-label">Críticos</div></div></div>'
-      : '<div class="traceops-card">Sin análisis cargado todavía.</div>';
-
-    lessonList.innerHTML = lessons.length ? lessons.map(function(item) {
-      return '<div class="traceops-card"><strong>' + escapeHtml(item.title) + '</strong><div class="traceops-label">' + escapeHtml(item.rootCause) + '</div><div style="margin-top:8px"><span class="traceops-pill">RCCA ' + escapeHtml(item.rccaId) + '</span><span class="traceops-pill">' + escapeHtml(item.prioridad) + '</span></div></div>';
-    }).join("") : '<div class="traceops-card">Sin lecciones registradas.</div>';
-
-    yokotenList.innerHTML = yokoten.length ? yokoten.map(function(item) {
-      return '<div class="traceops-card"><strong>' + escapeHtml(item.title) + '</strong><div class="traceops-label">Evento ' + escapeHtml(item.eventRef) + ' • ' + escapeHtml(item.area) + ' • ' + escapeHtml(item.status) + '</div></div>';
-    }).join("") : '<div class="traceops-card">Sin soluciones Yokoten identificadas.</div>';
-  }
-
-  function escapeHtml(value) {
-    return String(value == null ? "" : value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  function toast(message) {
-    var node = document.createElement("div");
-    node.className = "traceops-toast";
-    node.textContent = message;
-    document.body.appendChild(node);
-    setTimeout(function() {
-      node.remove();
-    }, 3600);
-  }
-
-  function ensureSidebarUi() {
-    if (document.getElementById("traceopsSidebar")) return;
-    document.body.classList.add("traceops-with-addon");
-
-    var toggle = document.createElement("button");
-    toggle.id = "traceopsSidebarToggle";
-    toggle.type = "button";
-    toggle.textContent = "☰";
-    toggle.onclick = function() {
-      document.getElementById("traceopsSidebar").classList.toggle("traceops-open");
-    };
-    document.body.appendChild(toggle);
-
-    var sidebar = document.createElement("aside");
-    sidebar.id = "traceopsSidebar";
-    sidebar.innerHTML = ''
-      + '<h3>Hipocampo Digital</h3>'
-      + '<div class="traceops-note">Los datos y assets se almacenan localmente en este navegador. No se comparten sin autorización.</div>'
-      + '<div class="traceops-actions">'
-      + '  <button type="button" id="traceopsOpenManual">Manual</button>'
-      + '  <a class="traceops-link" id="traceopsDownloadManual" href="' + escapeAttr(CONFIG.MANUAL_URL) + '" download>Descargar manual</a>'
-      + '  <button type="button" class="traceops-accent" id="traceopsDownloadAssets">Descargar assets (.zip)</button>'
-      + '  <button type="button" id="traceopsClearAssets">Limpiar assets</button>'
-      + '</div>'
-      + '<div class="traceops-nav">'
-      + '  <a href="#dashboard">Dashboard</a>'
-      + '  <a href="#hipocampo">Hipocampo</a>'
-      + '  <a href="#lessontrace">LessonTrace</a>'
-      + '  <a href="#yokoten">Yokoten</a>'
-      + '</div>'
-      + '<div class="traceops-small" id="traceopsAssetsMeta">Sin assets persistidos</div>';
-    document.body.appendChild(sidebar);
-
-    var modal = document.createElement("div");
-    modal.id = "traceopsManualModal";
-    modal.innerHTML = ''
-      + '<div class="traceops-modal-body">'
-      + '  <div class="traceops-modal-header"><strong>OpsTrace Manual</strong><button type="button" id="traceopsCloseManual">Cerrar</button></div>'
-      + '  <iframe id="traceopsManualFrame" title="OpsTrace Manual" src="' + escapeAttr(CONFIG.MANUAL_URL) + '"></iframe>'
-      + '</div>';
-    document.body.appendChild(modal);
-
-    var sections = document.createElement("section");
-    sections.id = "traceopsSections";
-    sections.innerHTML = ''
-      + '<div id="dashboard" class="traceops-anchor-section"><h2>Dashboard</h2><div id="traceopsDashboardBody"></div></div>'
-      + '<div id="hipocampo" class="traceops-anchor-section"><h2>Hipocampo</h2><div class="traceops-grid"><div class="traceops-card" id="traceopsOpsStat"></div><div class="traceops-card" id="traceopsLessonStat"></div><div class="traceops-card" id="traceopsYokoStat"></div></div></div>'
-      + '<div id="lessontrace" class="traceops-anchor-section"><h2>LessonTrace</h2><div id="traceopsLessonList" class="traceops-list"></div></div>'
-      + '<div id="yokoten" class="traceops-anchor-section"><h2>Yokoten</h2><div id="traceopsYokotenList" class="traceops-list"></div></div>'
-      + '<div id="traceops-assets" class="traceops-anchor-section"><h2>Assets persistidos</h2><div id="traceopsAssetsGallery"></div></div>';
-
-    var root = document.getElementById("root");
-    if (root && root.parentNode) {
-      root.parentNode.insertBefore(sections, root.nextSibling);
-    } else {
-      document.body.appendChild(sections);
-    }
-
-    document.getElementById("traceopsOpenManual").onclick = function() {
-      document.getElementById("traceopsManualModal").classList.add("traceops-open");
-    };
-    document.getElementById("traceopsCloseManual").onclick = function() {
-      document.getElementById("traceopsManualModal").classList.remove("traceops-open");
-    };
-    document.getElementById("traceopsDownloadAssets").onclick = function() {
-      exportAssetsZipFromDb().catch(function(err) { toast(err.message || String(err)); });
-    };
-    document.getElementById("traceopsClearAssets").onclick = function() {
-      if (!window.confirm("¿Eliminar todos los assets guardados en este navegador?")) return;
-      clearAssetsDb().then(function() {
-        renderPersistedAssets();
-        toast("Assets eliminados.");
-      }).catch(function(err) {
-        toast(err.message || String(err));
-      });
-    };
-  }
-
-  function escapeAttr(value) {
-    return String(value == null ? "" : value).replace(/"/g, "&quot;");
-  }
-
-  function loadPersistedResult() {
-    try {
-      var raw = sessionStorage.getItem("traceops_last_result");
-      if (!raw) return null;
-      var payload = JSON.parse(raw);
-      return payload && payload.result ? payload.result : payload;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  function validateTraceOpsResult(result) {
-    if (!result || typeof result !== "object") throw new Error("La IA no devolvió un objeto JSON válido.");
-    var eventos = Array.isArray(result.eventos) ? result.eventos : [];
-    var kpis = Array.isArray(result.kpis) ? result.kpis : [];
-    var resumen = result.resumen && typeof result.resumen === "object" ? result.resumen : {};
-
-    result.eventos = eventos.map(function(ev, idx) {
-      return {
-        id: typeof ev.id === "string" && ev.id ? ev.id : "EVT-" + String(idx + 1).padStart(3, "0"),
-        fecha: String(ev.fecha || ""),
-        hora: String(ev.hora || ""),
-        turno: String(ev.turno || ""),
-        modelo: String(ev.modelo || "N/D"),
-        linea_estacion: String(ev.linea_estacion || "N/D"),
-        reporta: String(ev.reporta || ""),
-        area_involucrada: String(ev.area_involucrada || ""),
-        tipo_evento: String(ev.tipo_evento || ""),
-        evento_detectado: String(ev.evento_detectado || ""),
-        impacto: String(ev.impacto || ""),
-        accion_requerida: String(ev.accion_requerida || ""),
-        responsable_sugerido: String(ev.responsable_sugerido || ""),
-        estatus: String(ev.estatus || "Abierto"),
-        prioridad: String(ev.prioridad || "Media"),
-        fuente_chat: String(ev.fuente_chat || ""),
-        notas: String(ev.notas || ""),
-        defecto_smt: String(ev.defecto_smt || "N/A"),
-        accion_ejecutada: String(ev.accion_ejecutada || ""),
-        actores: Array.isArray(ev.actores) ? ev.actores : [],
-        estado_historia: String(ev.estado_historia || "Detectado")
-      };
-    });
-
-    result.kpis = kpis.map(function(kpi) {
-      return {
-        fechahora: String(kpi.fechahora || ""),
-        indicador: String(kpi.indicador || ""),
-        valor: Number(kpi.valor || 0),
-        unidad: String(kpi.unidad || ""),
-        fuente: String(kpi.fuente || "")
-      };
-    });
-
-    result.resumen = {
-      periodo: String(resumen.periodo || ""),
-      grupo: String(resumen.grupo || ""),
-      total_eventos: Number(resumen.total_eventos || result.eventos.length || 0),
-      alertas_criticas: Array.isArray(resumen.alertas_criticas) ? resumen.alertas_criticas : [],
-      acciones_pendientes: Array.isArray(resumen.acciones_pendientes) ? resumen.acciones_pendientes : [],
-      estatus_lineas: Array.isArray(resumen.estatus_lineas) ? resumen.estatus_lineas : []
-    };
-
-    return result;
-  }
-
-  function extractBalancedJson(rawText) {
-    var clean = String(rawText || "")
-      .replace(/```json/gi, "")
-      .replace(/```/g, "")
-      .replace(/\u0000/g, "")
-      .replace(/^json\s*/i, "")
-      .trim();
-
-    var first = clean.indexOf("{");
-    var last = clean.lastIndexOf("}");
-    if (first === -1 || last === -1 || last <= first) {
-      throw new Error("La IA devolvió una respuesta no parseable. Intenta reducir días o reintentar.");
-    }
-    return clean.slice(first, last + 1);
-  }
-
-  function salvageJsonString(raw) {
-    var fixed = String(raw || "");
-    fixed = fixed.replace(/^\s*json\s*/i, "");
-    fixed = fixed.replace(/```json/gi, "").replace(/```/g, "");
-    fixed = fixed.replace(/,\s*([}\]])/g, "$1");
-    fixed = fixed.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
-    fixed = fixed.replace(/\s+$/g, "");
-    var stack = [];
-    for (var i = 0; i < fixed.length; i += 1) {
-      var char = fixed[i];
-      if (char === "{") stack.push("}");
-      if (char === "[") stack.push("]");
-      if ((char === "}" || char === "]") && stack[stack.length - 1] === char) {
-        stack.pop();
-      }
-    }
-    if (stack.length) fixed += stack.reverse().join("");
-    var lastBrace = fixed.lastIndexOf("}");
-    if (lastBrace !== -1) fixed = fixed.slice(0, lastBrace + 1);
-    return fixed;
-  }
-
-  async function anthropicRequest(body, apiKey) {
-    var endpoint = CONFIG.PROXY_URL || "https://api.anthropic.com/v1/messages";
-    var headers = { "Content-Type": "application/json" };
-    if (!CONFIG.PROXY_URL) {
-      if (!CONFIG.DIRECT_BROWSER_ALLOWED) {
-        throw new Error("Configura PROXY_URL o habilita DIRECT_BROWSER_ALLOWED para pruebas controladas.");
-      }
-      headers["x-api-key"] = apiKey;
-      headers["anthropic-version"] = "2023-06-01";
-      headers["anthropic-dangerous-direct-browser-access"] = "true";
-    }
-
-    var resp = await fetch(endpoint, {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify(body)
-    });
-
-    if (!resp.ok) {
-      var err = await resp.json().catch(function() { return {}; });
-      if (resp.status === 401) {
-        throw new Error("API Key inválida. Verifica tu clave en console.anthropic.com o usa el proxy.");
-      }
-      if (resp.status === 429) {
-        throw new Error("Límite de uso alcanzado. Espera y reintenta. O reduzca el rango de días.");
-      }
-      throw new Error((err.error && err.error.message) || err.message || ("Error API " + resp.status));
-    }
-
-    return resp.json();
-  }
-
-  function buildClusterPayload(clusters) {
-    return clusters.map(function(cluster, i) {
-      var msgs = cluster.messages;
-      var first = msgs[0];
-      var last2 = msgs[msgs.length - 1];
-      var senders = msgs
-        .map(function(m) { return m.sender; })
-        .filter(function(s, idx, arr) { return arr.indexOf(s) === idx; })
-        .join(", ");
-      var texts = msgs.map(function(m) { return m.sender + ": " + m.text; }).join(" | ");
-      return "CLUSTER-" + String(i + 1).padStart(2, "0")
-        + " | " + (first.dateIso || "") + " " + (first.timeStr || "")
-        + " -> " + (last2.dateIso || "") + " " + (last2.timeStr || "")
-        + " | tipo:" + cluster.type
-        + " | linea:" + cluster.line
-        + " | estacion:" + cluster.station
-        + " | turno:" + (first.turno || "")
-        + " | actores:" + senders
-        + " | msgs:" + texts.slice(0, 320);
-    }).join("\n");
-  }
-
-  function estimateTokensLocal(text) {
-    if (!text) return 1;
-    return Math.max(1, Math.ceil(text.length / 3.7));
-  }
-
-  var TRACEOPS_SYSTEM_PROMPT =
-    "Eres experto en manufactura SMT/PCB/PTH. " +
-    "Analiza mensajes o clusters de WhatsApp de manufactura y extrae SOLO eventos operativos accionables. " +
-    "Si recibes CLUSTERS, cada cluster es un incidente. Extrae un evento por cluster. " +
-    "INCLUIR: paros linea, defectos calidad, falta material, FAI, LCR vencido, RMA, AOI/ICT, dano fisico. " +
-    "EXCLUIR: saludos, ok, gracias, emojis solos. " +
-    "Catalogo defecto_smt: Solder bridge|Missing component|Wrong component|Wrong orientation|Polarity inverted|" +
-    "Misaligned component|BGA short|BGA open|Lifted pad|Feeder misload|Machine stop|Wrong reel|Missing material|" +
-    "ICT open|ICT short|Functional test fail|N/A. " +
-    "tipo_evento: Calidad|Proceso|Material|Sistema|Seguridad|Produccion. " +
-    "actor_area: Produccion|Calidad|Proceso|Mantenimiento|Materiales|Ingenieria|PTH|SMT|AOI|ICT. " +
-    "estado_historia: Detectado|Contenido|Corregido|Validado|Cerrado. " +
-    "Para cada evento extrae: quien detecto, que accion se tomo, que actores participaron, cual es el estado real del ciclo de vida. " +
-    "Maximo 15 eventos. Solo JSON sin texto extra:" +
-    '{"eventos":[{"id":"EVT-001","fecha":"DD/MM/YYYY","hora":"HH:MM","turno":"1T|2T|3T",' +
-    '"modelo":"N/P o N/D","linea_estacion":"L1 o N/D","reporta":"nombre",' +
-    '"area_involucrada":"SMT|PTH|ICT|AOI|Calidad|Mantenimiento|Materiales|Produccion",' +
-    '"tipo_evento":"Calidad|Proceso|Material|Sistema|Seguridad|Produccion",' +
-    '"defecto_smt":"del catalogo o N/A","evento_detectado":"descripcion","impacto":"impacto",' +
-    '"accion_requerida":"accion","accion_ejecutada":"accion tomada o vacia si no hay",' +
-    '"responsable_sugerido":"responsable",' +
-    '"actores":["area1","area2"],' +
-    '"estado_historia":"Detectado|Contenido|Corregido|Validado|Cerrado",' +
-    '"estatus":"Abierto|En proceso|Cerrado","prioridad":"Critica|Alta|Media|Baja",' +
-    '"fuente_chat":"DD/MM/YY HH:MM nombre","notas":""}],' +
-    '"kpis":[{"fechahora":"DD/MM/YYYY HH:MM","indicador":"nombre","valor":0.0,"unidad":"%","fuente":"nombre"}],' +
-    '"resumen":{"periodo":"DD/MM/YYYY a DD/MM/YYYY","grupo":"nombre","total_eventos":0,' +
-    '"alertas_criticas":["alerta"],"acciones_pendientes":["accion"],"estatus_lineas":["linea"]},' +
-    '"directorio":[{"nombre":"nombre","departamento":"area","rol":"rol","mensajes":0,"eventos":0,"area_owner":"area"}]}';
-
-  async function analyzeWithAIRobust(msgs, apiKey) {
-    var candidates = candidateDetectorLocal(msgs);
-    var clusters = clusterIncidentsLocal(candidates);
-    var useClusterMode = candidates.length >= 3 && clusters.length >= 2;
-    var limitedMsgs = (msgs || []).slice(0, CONFIG.MAX_PROMPT_MESSAGES);
-    var userContent;
-
-    if (useClusterMode) {
-      var clusterPayload = buildClusterPayload(clusters);
-      console.log("[TraceOps Hybrid]", limitedMsgs.length, "msgs", candidates.length, "candidatos", clusters.length, "clusters", estimateTokensLocal(clusterPayload), "tokens cluster");
-      userContent = "Analiza estos " + clusters.length + " clusters pre-procesados de " + limitedMsgs.length + " mensajes. Cada CLUSTER = un incidente. Extrae un evento por cluster. Usa linea y estacion cuando esten disponibles. Solo JSON:\n\n" + clusterPayload;
-    } else {
-      var sample = limitedMsgs.map(function(m) {
-        return "[" + m.dateIso + " " + m.timeStr + "|" + m.turno + "|" + m.sender + "]:" + m.text;
-      }).join("\n");
-      userContent = "Analiza " + limitedMsgs.length + " mensajes de manufactura SMT/PTH/AOI/ICT. Extrae incidentes operativos accionables. Solo JSON:\n\n" + sample;
-    }
-
-    async function runAttempt(maxTokens) {
-      var payload = {
-        model: "claude-sonnet-4-20250514",
-        max_tokens: maxTokens,
-        system: TRACEOPS_SYSTEM_PROMPT,
-        messages: [
-          { role: "user", content: userContent },
-          { role: "assistant", content: "{" }
-        ]
-      };
-
-      var data = await anthropicRequest(payload, apiKey);
-      var raw = "";
-
-      if (data && Array.isArray(data.content)) {
-        raw = "{" + data.content.map(function(b) { return b.text || ""; }).join("");
-      } else if (data && typeof data.completion === "string") {
-        raw = data.completion;
-      } else if (data && typeof data.text === "string") {
-        raw = data.text;
-      } else if (data && data.response && Array.isArray(data.response.content)) {
-        raw = "{" + data.response.content.map(function(b) { return b.text || ""; }).join("");
-      } else {
-        raw = JSON.stringify(data || {});
-      }
-
-      var jsonStr = extractBalancedJson(raw);
-      try {
-        return validateTraceOpsResult(JSON.parse(jsonStr));
-      } catch (_) {
-        var salvaged = salvageJsonString(jsonStr);
-        return validateTraceOpsResult(JSON.parse(salvaged));
-      }
-    }
-
-    try {
-      return await runAttempt(6000);
-    } catch (error) {
-      if (/no parseable|JSON|Unexpected token|end of JSON|position/i.test(error.message || "")) {
-        try {
-          return await runAttempt(3500);
-        } catch (retryErr) {
-          throw new Error("Respuesta inválida de la IA. Reintentar con rango menor (1 o 3 días).");
-        }
-      }
-      throw error;
-    }
-  }
-
-  var originalReadZip = window.readZip;
-  if (typeof originalReadZip === "function") {
-    readZip = async function(file) {
-      var data = await originalReadZip(file);
-      if (window._zipRef) {
-        await persistAssetsFromZip(window._zipRef, file && file.name ? file.name : "chat.zip");
-      }
-      renderPersistedAssets();
-      return data;
-    };
-  }
-
-  if (typeof window.analyzeWithAI === "function") {
-    analyzeWithAI = analyzeWithAIRobust;
-  } else {
-    window.analyzeWithAI = analyzeWithAIRobust;
-  }
-
-  var originalBuildXlsx = window.buildXlsx;
-  if (typeof originalBuildXlsx === "function") {
-    buildXlsx = function(result) {
-      return originalBuildXlsx(validateTraceOpsResult(result));
-    };
-  }
-
-  window.validateTraceOpsResult = validateTraceOpsResult;
-  window.exportAssetsZipFromDb = exportAssetsZipFromDb;
-  window.clearAssetsDb = clearAssetsDb;
-  window.renderPersistedAssets = renderPersistedAssets;
-
-  function installResultObserver() {
-    var rawSetItem = sessionStorage.setItem.bind(sessionStorage);
-    sessionStorage.setItem = function(key, value) {
-      rawSetItem(key, value);
-      if (key === "traceops_last_result") {
-        setTimeout(function() {
-          updateHipocampoUi(loadPersistedResult());
-        }, 50);
-      }
-    };
-  }
-
-  document.addEventListener("DOMContentLoaded", function() {
-    ensureSidebarUi();
-    installResultObserver();
-    updateHipocampoUi(loadPersistedResult());
-    renderPersistedAssets();
-  });
-})();
-</script>
-
-</body>
+</script></body>
 
 </html>
