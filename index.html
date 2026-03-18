@@ -312,7 +312,159 @@ tr:hover td{background:var(--g50)}
 .anim-header-sub{animation:fade-up .6s .1s ease both}
 .anim-header-desc{animation:fade-up .6s .2s ease both}
 .anim-chips{animation:fade-up .5s .35s ease both}
+
+.saas-header-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:#fff;
+  border:1px solid #E5E2DD;
+  box-shadow:0 8px 24px rgba(26,23,20,.06);
+  color:#3E3935;
+  font-size:12px;
+  font-weight:600;
+}
+
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+window.TRACEOPS_SUPABASE = window.TRACEOPS_SUPABASE || {
+  url: "",
+  anonKey: "",
+  enabled: false
+};
+
+window.TraceOpsCloud = (function(){
+  function cfg(){
+    var raw = window.TRACEOPS_SUPABASE || {};
+    return {
+      url: (raw.url || "").trim(),
+      anonKey: (raw.anonKey || "").trim(),
+      enabled: !!raw.enabled
+    };
+  }
+
+  function isConfigured(){
+    var c = cfg();
+    return c.enabled && c.url && c.anonKey && window.supabase && typeof window.supabase.createClient === "function";
+  }
+
+  function getClient(){
+    if (!isConfigured()) return null;
+    if (!window.__traceopsSupabaseClient) {
+      var c = cfg();
+      window.__traceopsSupabaseClient = window.supabase.createClient(c.url, c.anonKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+    }
+    return window.__traceopsSupabaseClient;
+  }
+
+  async function getUser(){
+    var client = getClient();
+    if (!client) return null;
+    var out = await client.auth.getUser();
+    return out && out.data ? out.data.user : null;
+  }
+
+  async function signIn(email, password){
+    var client = getClient();
+    if (!client) throw new Error("Supabase no configurado.");
+    var out = await client.auth.signInWithPassword({ email: email, password: password });
+    if (out.error) throw out.error;
+    return out.data;
+  }
+
+  async function signUp(email, password){
+    var client = getClient();
+    if (!client) throw new Error("Supabase no configurado.");
+    var out = await client.auth.signUp({ email: email, password: password });
+    if (out.error) throw out.error;
+    return out.data;
+  }
+
+  async function signOut(){
+    var client = getClient();
+    if (!client) return;
+    var out = await client.auth.signOut();
+    if (out.error) throw out.error;
+  }
+
+  function onAuthChange(handler){
+    var client = getClient();
+    if (!client) return { data: { subscription: { unsubscribe: function(){} } } };
+    return client.auth.onAuthStateChange(function(evt, session){
+      handler(evt, session && session.user ? session.user : null, session);
+    });
+  }
+
+  async function listRcca(){
+    var client = getClient();
+    var user = await getUser();
+    if (!client || !user) return [];
+    var q = await client
+      .from("traceops_rcca_cases")
+      .select("rcca_id,payload,updated_at")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
+    if (q.error) throw q.error;
+    return (q.data || []).map(function(row){
+      var payload = row.payload || {};
+      payload.rcca_id = payload.rcca_id || row.rcca_id;
+      payload._cloud_updated_at = row.updated_at || null;
+      return payload;
+    });
+  }
+
+  async function upsertRcca(rcca){
+    var client = getClient();
+    var user = await getUser();
+    if (!client || !user) throw new Error("Sesion no disponible.");
+    var row = {
+      user_id: user.id,
+      rcca_id: rcca.rcca_id,
+      payload: Object.assign({}, rcca, {
+        updated_at: new Date().toISOString(),
+        source: rcca.source || "manual"
+      }),
+      updated_at: new Date().toISOString()
+    };
+    var q = await client.from("traceops_rcca_cases").upsert(row, { onConflict: "user_id,rcca_id" }).select("updated_at").single();
+    if (q.error) throw q.error;
+    return q.data;
+  }
+
+  async function removeRcca(rccaId){
+    var client = getClient();
+    var user = await getUser();
+    if (!client || !user) throw new Error("Sesion no disponible.");
+    var q = await client.from("traceops_rcca_cases").delete().eq("user_id", user.id).eq("rcca_id", rccaId);
+    if (q.error) throw q.error;
+  }
+
+  return {
+    cfg: cfg,
+    isConfigured: isConfigured,
+    getClient: getClient,
+    getUser: getUser,
+    signIn: signIn,
+    signUp: signUp,
+    signOut: signOut,
+    onAuthChange: onAuthChange,
+    listRcca: listRcca,
+    upsertRcca: upsertRcca,
+    removeRcca: removeRcca
+  };
+})();
+</script>
+
 </head>
 <body>
 <div id="root"></div>
@@ -1194,16 +1346,220 @@ function App() {
   var rccaDetailArr = _useState(null); var rccaDetail = rccaDetailArr[0]; var setRccaDetail = rccaDetailArr[1];
   var rccaFilterArr = _useState(""); var rccaFilter = rccaFilterArr[0]; var setRccaFilter = rccaFilterArr[1];
 
-  function saveRcca(rcca) {
-    var updated = rccaList.filter(function(r){ return r.rcca_id !== rcca.rcca_id; });
-    updated = [rcca].concat(updated);
-    try { localStorage.setItem(RCCA_KEY, JSON.stringify(updated)); } catch(_) {}
-    setRccaList(updated);
+  var authEmailArr = _useState(localStorage.getItem("traceops_auth_email") || "");
+  var authEmail = authEmailArr[0]; var setAuthEmail = authEmailArr[1];
+  var authPassArr = _useState("");
+  var authPassword = authPassArr[0]; var setAuthPassword = authPassArr[1];
+  var authModeArr = _useState("signin");
+  var authMode = authModeArr[0]; var setAuthMode = authModeArr[1];
+  var authUserArr = _useState(null);
+  var authUser = authUserArr[0]; var setAuthUser = authUserArr[1];
+  var authReadyArr = _useState(false);
+  var authReady = authReadyArr[0]; var setAuthReady = authReadyArr[1];
+  var cloudStatusArr = _useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "Configurando nube..." : "Modo local");
+  var cloudStatus = cloudStatusArr[0]; var setCloudStatus = cloudStatusArr[1];
+  var syncBusyArr = _useState(false);
+  var syncBusy = syncBusyArr[0]; var setSyncBusy = syncBusyArr[1];
+  var authErrArr = _useState("");
+  var authErrMsg = authErrArr[0]; var setAuthErrMsg = authErrArr[1];
+
+
+
+  function mergeRccaRecords(localItems, remoteItems) {
+    var map = {};
+    (localItems || []).forEach(function(item){
+      if (item && item.rcca_id) map[item.rcca_id] = item;
+    });
+    (remoteItems || []).forEach(function(item){
+      if (!item || !item.rcca_id) return;
+      var prev = map[item.rcca_id];
+      var prevTs = prev && prev.updated_at ? new Date(prev.updated_at).getTime() : 0;
+      var nextTs = item.updated_at ? new Date(item.updated_at).getTime() : 0;
+      if (!prev || nextTs >= prevTs) map[item.rcca_id] = Object.assign({}, prev || {}, item, { _synced: true });
+    });
+    return Object.keys(map).map(function(key){ return map[key]; }).sort(function(a,b){
+      var ta = a && a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      var tb = b && b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      return tb - ta;
+    });
   }
-  function deleteRcca(rcca_id) {
+
+  function persistRccaLocal(list) {
+    try { localStorage.setItem(RCCA_KEY, JSON.stringify(list || [])); } catch(_) {}
+    setRccaList(list || []);
+  }
+
+  async function refreshCloudRcca(opts) {
+    opts = opts || {};
+    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
+      setAuthReady(true);
+      setCloudStatus("Modo local");
+      return [];
+    }
+    try {
+      setSyncBusy(true);
+      var remoteItems = await window.TraceOpsCloud.listRcca();
+      var merged = mergeRccaRecords(opts.baseList || rccaList, remoteItems);
+      persistRccaLocal(merged);
+      setCloudStatus(remoteItems.length ? ("Sincronizado · " + remoteItems.length + " RCCA") : "Sesion activa · nube vacia");
+      return remoteItems;
+    } catch (err) {
+      setCloudStatus("Error nube: " + (err && err.message ? err.message : String(err)));
+      return [];
+    } finally {
+      setSyncBusy(false);
+      setAuthReady(true);
+    }
+  }
+
+  async function syncAllLocalToCloud(baseList) {
+    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured()) || !authUser) return;
+    var items = baseList || rccaList;
+    if (!items.length) {
+      setCloudStatus("Sesion activa · sin RCCA por subir");
+      return;
+    }
+    setSyncBusy(true);
+    try {
+      for (var i = 0; i < items.length; i++) {
+        await window.TraceOpsCloud.upsertRcca(items[i]);
+      }
+      setCloudStatus("Sincronizado · " + items.length + " RCCA");
+    } catch (err) {
+      setCloudStatus("Pendiente de sincronizacion");
+      throw err;
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
+  async function handleAuthSubmit() {
+    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
+      setAuthErrMsg("Configura TRACEOPS_SUPABASE.url y anonKey para habilitar nube.");
+      return;
+    }
+    if (!authEmail.trim() || !authPassword.trim()) {
+      setAuthErrMsg("Completa correo y contrasena.");
+      return;
+    }
+    setAuthErrMsg("");
+    setSyncBusy(true);
+    try {
+      localStorage.setItem("traceops_auth_email", authEmail.trim());
+      if (authMode === "signup") {
+        await window.TraceOpsCloud.signUp(authEmail.trim(), authPassword);
+        setCloudStatus("Cuenta creada. Revisa tu correo si Supabase pide confirmacion.");
+      } else {
+        await window.TraceOpsCloud.signIn(authEmail.trim(), authPassword);
+        setCloudStatus("Sesion iniciada.");
+      }
+      var currentUser = await window.TraceOpsCloud.getUser();
+      setAuthUser(currentUser);
+      await syncAllLocalToCloud(rccaList);
+      await refreshCloudRcca({ baseList: rccaList });
+      setAuthPassword("");
+    } catch (err) {
+      setAuthErrMsg(err && err.message ? err.message : String(err));
+      setCloudStatus("Error de autenticacion");
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
+  async function handleSignOut() {
+    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) return;
+    setSyncBusy(true);
+    try {
+      await window.TraceOpsCloud.signOut();
+      setAuthUser(null);
+      setCloudStatus("Modo local");
+      setAuthErrMsg("");
+    } catch (err) {
+      setAuthErrMsg(err && err.message ? err.message : String(err));
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
+  React.useEffect(function(){
+    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
+      setAuthReady(true);
+      setCloudStatus("Modo local · sin backend");
+      return;
+    }
+    var unsub = window.TraceOpsCloud.onAuthChange(function(evt, user){
+      setAuthUser(user || null);
+      if (user) {
+        setCloudStatus("Sesion activa");
+        refreshCloudRcca();
+      } else {
+        setCloudStatus("Modo local");
+        setAuthReady(true);
+      }
+    });
+    window.TraceOpsCloud.getUser().then(function(user){
+      setAuthUser(user || null);
+      if (user) {
+        setCloudStatus("Sesion activa");
+        refreshCloudRcca();
+      } else {
+        setAuthReady(true);
+        setCloudStatus("Listo para iniciar sesion");
+      }
+    }).catch(function(err){
+      setAuthReady(true);
+      setCloudStatus("Error nube: " + (err && err.message ? err.message : String(err)));
+    });
+    return function(){
+      try {
+        var sub = unsub && unsub.data && unsub.data.subscription;
+        if (sub && typeof sub.unsubscribe === "function") sub.unsubscribe();
+      } catch(_){}
+    };
+  }, []);
+
+  async function saveRcca(rcca) {
+    var normalized = Object.assign({}, rcca, {
+      source: rcca.source || "manual",
+      updated_at: new Date().toISOString(),
+      owner_email: authUser && authUser.email ? authUser.email : (rcca.owner_email || "")
+    });
+    var updated = rccaList.filter(function(item){ return item.rcca_id !== normalized.rcca_id; });
+    updated = [normalized].concat(updated);
+    persistRccaLocal(updated);
+    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured()) || !authUser) {
+      setCloudStatus("Guardado local");
+      return;
+    }
+    try {
+      setSyncBusy(true);
+      await window.TraceOpsCloud.upsertRcca(normalized);
+      setCloudStatus("Guardado en nube");
+      await refreshCloudRcca({ baseList: updated });
+    } catch (err) {
+      setCloudStatus("Guardado local · nube pendiente");
+      setAuthErrMsg(err && err.message ? err.message : String(err));
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+  async function deleteRcca(rcca_id) {
     var updated = rccaList.filter(function(r){ return r.rcca_id !== rcca_id; });
-    try { localStorage.setItem(RCCA_KEY, JSON.stringify(updated)); } catch(_) {}
-    setRccaList(updated);
+    persistRccaLocal(updated);
+    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured()) || !authUser) {
+      setCloudStatus("Eliminado local");
+      return;
+    }
+    try {
+      setSyncBusy(true);
+      await window.TraceOpsCloud.removeRcca(rcca_id);
+      setCloudStatus("Eliminado en nube");
+    } catch (err) {
+      setCloudStatus("Eliminado local · nube pendiente");
+      setAuthErrMsg(err && err.message ? err.message : String(err));
+    } finally {
+      setSyncBusy(false);
+    }
   }
   function exportRcca() {
     var blob = new Blob([JSON.stringify(rccaList,null,2)],{type:"application/json"});
@@ -1705,6 +2061,42 @@ function App() {
           <input className="sidebar-api-input" type="password" placeholder="sk-ant-api03-..." value={apiKey} onChange={function(e){saveKey(e.target.value);}}/>
           <div className="sidebar-api-note">Guardada en navegador. <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">Obtener key</a></div>
         </div>
+
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">Cuenta y sincronizacion RCCA</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{fontSize:10,lineHeight:1.5,color:"rgba(255,255,255,.62)"}}>
+              {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Modo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
+            </div>
+            <div style={{fontSize:10,lineHeight:1.4,color:syncBusy?"#CDE7C5":"rgba(255,255,255,.5)",padding:"8px 10px",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,background:"rgba(255,255,255,.03)"}}>
+              {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(cloudStatus+(authReady?"":" · cargando"))}
+            </div>
+            {!authUser&&window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()&&(
+              <>
+                <div style={{display:"flex",gap:6}}>
+                  <button className={"sidebar-btn"+(authMode==="signin"?" active":"")} style={{flex:1,justifyContent:"center"}} onClick={function(){setAuthMode("signin");}}>Entrar</button>
+                  <button className={"sidebar-btn"+(authMode==="signup"?" active":"")} style={{flex:1,justifyContent:"center"}} onClick={function(){setAuthMode("signup");}}>Crear cuenta</button>
+                </div>
+                <input className="sidebar-api-input" type="email" placeholder="correo@empresa.com" value={authEmail} onChange={function(e){setAuthEmail(e.target.value);}}/>
+                <input className="sidebar-api-input" type="password" placeholder="Contrasena" value={authPassword} onChange={function(e){setAuthPassword(e.target.value);}}/>
+                <button className="sidebar-btn active" onClick={handleAuthSubmit} disabled={syncBusy} style={{justifyContent:"center",opacity:syncBusy?.65:1}}>
+                  {syncBusy?"Procesando...":(authMode==="signup"?"Crear cuenta y sincronizar":"Entrar y sincronizar")}
+                </button>
+              </>
+            )}
+            {authUser&&(
+              <>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="sidebar-btn active" style={{flex:1,justifyContent:"center"}} onClick={function(){syncAllLocalToCloud();}}>Subir local</button>
+                  <button className="sidebar-btn" style={{flex:1,justifyContent:"center"}} onClick={function(){refreshCloudRcca();}}>Traer nube</button>
+                </div>
+                <button className="sidebar-btn" style={{justifyContent:"center"}} onClick={handleSignOut}>Cerrar sesion</button>
+              </>
+            )}
+            {authErrMsg&&<div style={{fontSize:10,lineHeight:1.45,color:"#FFB3B3",background:"rgba(192,57,43,.12)",border:"1px solid rgba(192,57,43,.22)",borderRadius:10,padding:"8px 10px"}}>{authErrMsg}</div>}
+          </div>
+        </div>
+
         <div className="sidebar-section">
           <div className="sidebar-section-title">Acciones rapidas</div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
@@ -1740,6 +2132,10 @@ function App() {
           </div>
         </div>
         <div className="saas-topbar-actions">
+          <div className="saas-header-pill" title={cloudStatus}>
+            <span style={{display:"inline-block",width:8,height:8,borderRadius:99,background:authUser?"#2A7A60":"#B87820"}}></span>
+            <span className="hide-mobile">{authUser?"Nube RCCA":"Local RCCA"}</span>
+          </div>
           {state==="done"&&<button className="saas-header-btn" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg><span className="hide-mobile">Nuevo</span></button>}
           <button className="saas-header-btn primary" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Cargar ZIP</span></button>
           {xlsxBytes&&<button className="saas-header-btn" onClick={function(){download();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span className="hide-mobile">Descargar XLSX</span></button>}
@@ -1754,6 +2150,10 @@ function App() {
               <div className="saas-hero-eyebrow">Operational Event Intelligence</div>
               <div className="saas-hero-title">Workspace tipo SaaS para analisis operativo</div>
               <div className="saas-hero-desc">El flujo principal queda en el contenido: cargar ZIP, revisar filtros y descargar resultados. El drawer se reserva para configuracion y navegacion, evitando bloqueos en iOS y Android.</div>
+              <div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:8}}>
+                <span style={{fontSize:11,padding:"6px 10px",borderRadius:999,border:"1px solid #D9E6DE",background:"#F7FBF9",color:"#2A7A60"}}>{authUser&&authUser.email?("RCCA nube: "+authUser.email):"RCCA en este navegador"}</span>
+                <span style={{fontSize:11,padding:"6px 10px",borderRadius:999,border:"1px solid #EEECEA",background:"#fff",color:"#6A6560"}}>{cloudStatus}</span>
+              </div>
             </div>
             <div className="saas-hero-actions">
               <button className="saas-header-btn primary" onClick={function(){if(fileRef.current)fileRef.current.click();}}>Subir WhatsApp ZIP</button>
@@ -1764,6 +2164,9 @@ function App() {
             <h3>Zona de carga principal</h3>
             <p>La accion critica ya no vive detras del sidebar. En movil permanece visible arriba del contenido.</p>
             <button className="saas-header-btn" onClick={function(){if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Seleccionar .zip</button>
+            <div style={{marginTop:12,fontSize:11,lineHeight:1.55,color:"#6A6560"}}>
+              Para compartir RCCA manuales entre celular y computadora, configura <strong>TRACEOPS_SUPABASE</strong> en este HTML y usa la misma cuenta en ambos dispositivos.
+            </div>
           </div>
         </div>
 
