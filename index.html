@@ -381,15 +381,51 @@ window.TraceOpsCloud = (function(){
     return out && out.data ? out.data.user : null;
   }
 
-  async function signIn(email, password){
-    var client = getClient();
-    if (!client) throw new Error("Supabase no configurado.");
-    var out = await client.auth.signInWithPassword({ email: email, password: password });
-    if (out.error) throw out.error;
-    return out.data;
+async function initApp(){
+  var client = getClient();
+  if (!client) return;
+
+  const { data } = await client.auth.getSession();
+
+  if (data && data.session) {
+    console.log("Sesión activa detectada");
+
+    // 🔥 AUTO LOAD
+    await loadRccasFromCloud();
+  }
+}
+async function loadRccasFromCloud(){
+  var client = getClient();
+  if (!client) {
+    console.warn("No hay cliente Supabase");
+    return;
   }
 
-  async function signUp(email, password){
+  const { data, error } = await client
+    .from('traceops_rcca_cases')
+    .select('*')
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    console.error("Error cargando RCCA:", error);
+    return;
+  }
+
+  console.log("RCCA desde nube:", data);
+
+  // 🔥 NORMALIZAR (ESTO ES CLAVE)
+  const rccas = (data || []).map(row => row.payload);
+
+  console.log("RCCA normalizados:", rccas);
+
+  // 🔥🔥🔥 ESTA ES LA LINEA QUE TE FALTA
+  if (typeof renderInvestigationCarousel === "function") {
+    renderInvestigationCarousel(rccas);
+  } else {
+    console.warn("renderInvestigationCarousel no existe");
+  }
+} 
+async function signUp(email, password){
     var client = getClient();
     if (!client) throw new Error("Supabase no configurado.");
     var out = await client.auth.signUp({ email: email, password: password });
