@@ -1250,7 +1250,16 @@ async function buildXlsx(result) {
 </script>
 
 <script type="text/babel">
-var _useState = React.useState;
+var _useStateFilters = _useState({
+    fecha: "",
+    tipo: "",
+    defecto: "",
+    estatus: "",
+    sort: ""
+  });
+
+  var filters = _useStateFilters[0];
+  var setFilters = _useStateFilters[1];
 var _useRef = React.useRef;
 var _useCallback = React.useCallback;
 
@@ -2592,7 +2601,7 @@ function App() {
 
           <div className="tcard">
             <div className="tcard-hdr">
-              <h3>Bitacora de eventos ({ev.length})</h3>
+              <h3>Bitacora de eventos ({filtered.length})</h3>
               {imgNames.length>0&&<span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>{imgNames.length} imagen{imgNames.length!==1?"es":""}<span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span></span>}
             </div>
             <div className="tscroll">
