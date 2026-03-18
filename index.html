@@ -1250,19 +1250,31 @@ async function buildXlsx(result) {
 </script>
 
 <script type="text/babel">
-var _useStateFilters = _useState({
-    fecha: "",
-    tipo: "",
-    defecto: "",
-    estatus: "",
-    sort: ""
-  });
 
-  var filters = _useStateFilters[0];
-  var setFilters = _useStateFilters[1];
+// 🔥 HOOKS (DEBEN IR PRIMERO SIEMPRE)
+var _useState = React.useState;
 var _useRef = React.useRef;
 var _useCallback = React.useCallback;
+  // 🔥 APP PRINCIPAL
+function App(){
 
+  // ==============================
+  // 🔥 FILTER STATE (YA CORREGIDO)
+  // ==============================
+var _useStateFilters = React.useState({
+  fecha: "",
+  tipo: "",
+  defecto: "",
+  estatus: "",
+  sort: ""
+});
+
+var filters = _useStateFilters[0];
+var setFilters = _useStateFilters[1];
+
+var _useRef = React.useRef;
+var _useCallback = React.useCallback;
+  
 function to24h(h, min, sec, mer) {
   var hour = parseInt(h);
   var m = (mer || "").toLowerCase().replace(/[\s.]/g, "");
