@@ -1972,16 +1972,39 @@ function App() {
 
   function RccaForm(props){
     var init=props.init||{};var onSave=props.onSave;var onClose=props.onClose;
+    var isEdit=!!init.rcca_id;
     var fields=[{key:"problema",label:"Problema",rows:2,required:true},{key:"causa_raiz",label:"Causa Raiz",rows:3,required:true},{key:"contencion",label:"Contencion",rows:2},{key:"accion_correctiva",label:"Accion Correctiva",rows:2},{key:"accion_preventiva",label:"Accion Preventiva",rows:2},{key:"patron_detectado",label:"Patron Detectado",rows:1},{key:"leccion_aprendida",label:"Leccion Aprendida",rows:2}];
-    var initIds=init.event_ids||[];
-    var formArr=_useState(function(){var ids=initIds;return Object.assign({rcca_id:genRccaId(ids,ev),event_ids:ids,modelo:init.modelo||"",linea:init.linea||"",fecha:init.fecha||new Date().toISOString().slice(0,10),problema:init.problema||"",causa_raiz:"",contencion:"",accion_correctiva:"",accion_preventiva:"",patron_detectado:"",leccion_aprendida:""},{}); });
+    var initIds=(init.event_ids||[]).slice();
+    var formArr=_useState(function(){
+      var ids=initIds;
+      return Object.assign({
+        rcca_id:init.rcca_id||genRccaId(ids,ev),
+        original_rcca_id:init.rcca_id||genRccaId(ids,ev),
+        event_ids:ids,
+        modelo:init.modelo||"",
+        linea:init.linea||"",
+        fecha:init.fecha||new Date().toISOString().slice(0,10),
+        problema:init.problema||"",
+        causa_raiz:init.causa_raiz||"",
+        contencion:init.contencion||"",
+        accion_correctiva:init.accion_correctiva||"",
+        accion_preventiva:init.accion_preventiva||"",
+        patron_detectado:init.patron_detectado||"",
+        leccion_aprendida:init.leccion_aprendida||"",
+        source:init.source||"manual",
+        owner_email:init.owner_email||"",
+        created_at:init.created_at||"",
+        updated_at:init.updated_at||""
+      },{});
+    });
     var form=formArr[0];var setForm=formArr[1];
     function upd(k,v){var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});n[k]=v;setForm(n);}
     function toggleEvent(evId){
       var cur=form.event_ids;var newIds=cur.indexOf(evId)>=0?cur.filter(function(x){return x!==evId;}):cur.concat([evId]);
       var firstEv=newIds.length>0?ev.find(function(e){return e.id===newIds[0];}):null;
       var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});
-      n.event_ids=newIds;n.rcca_id=genRccaId(newIds,ev);
+      n.event_ids=newIds;
+      n.rcca_id=isEdit?(form.original_rcca_id||form.rcca_id):genRccaId(newIds,ev);
       if(firstEv){
         if(!form.modelo||form.modelo===init.modelo)n.modelo=firstEv.modelo||"";
         if(!form.linea||form.linea===init.linea)n.linea=firstEv.linea_estacion||"";
@@ -1994,10 +2017,14 @@ function App() {
       <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9998,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={function(){onClose();}}>
         <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:820,maxHeight:"90vh",overflow:"auto",paddingBottom:32}} onClick={function(e){e.stopPropagation();}}>
           <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",zIndex:1}}>
-            <div><div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>Nueva RCCA</div><div style={{fontSize:10,fontFamily:"monospace",color:"#2A7A60",fontWeight:600,marginTop:2}}>{form.rcca_id}</div></div>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>{isEdit?"Editar RCCA":"Nueva RCCA"}</div>
+              <div style={{fontSize:10,fontFamily:"monospace",color:"#2A7A60",fontWeight:600,marginTop:2}}>{form.rcca_id}</div>
+            </div>
             <button onClick={onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cancelar</button>
           </div>
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
+            {isEdit&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:8,padding:"8px 12px",fontSize:10.5,color:"#8B6A1E"}}>Modo edicion activo. Puedes corregir texto y eventos vinculados sin perder el mismo RCCA ID.</div>}
             <div>
               <div style={{fontSize:10,fontWeight:700,color:"#2A7A60",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Vincular a eventos ({form.event_ids.length} seleccionados)</div>
               {ev.length===0?<div style={{fontSize:11,color:"#8A8580",fontStyle:"italic"}}>No hay eventos cargados</div>:(
@@ -2029,7 +2056,7 @@ function App() {
                 <textarea value={form[f.key]} rows={f.rows} onChange={function(e){upd(f.key,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
               </div>
             );})}
-            <button onClick={function(){if(!form.problema||!form.causa_raiz){alert("Completa Problema y Causa Raiz");return;}onSave(form);onClose();}} style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>Guardar RCCA</button>
+            <button onClick={function(){if(!form.problema||!form.causa_raiz){alert("Completa Problema y Causa Raiz");return;}onSave(form);onClose();}} style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>{isEdit?"Actualizar RCCA":"Guardar RCCA"}</button>
           </div>
         </div>
       </div>
@@ -2041,7 +2068,7 @@ function App() {
       <div style={{background:"#fff",border:"1.5px solid "+(score>=70?"#B8DECE":score>=50?"#F5E4A0":"#DDDBD7"),borderRadius:10,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:8}}>
           <div><span style={{fontSize:9,fontWeight:700,fontFamily:"monospace",color:"#2A7A60"}}>{r.rcca_id}</span>{score>0&&<span style={{marginLeft:6,fontSize:9,fontWeight:700,color:score>=70?"#1A7A3C":score>=50?"#B87820":"#8A8580",background:score>=70?"#EBF8EE":score>=50?"#FEF9E8":"#F8F7F5",borderRadius:99,padding:"1px 7px"}}>{score}%</span>}</div>
-          <div style={{display:"flex",gap:5}}><button onClick={function(){setRccaDetail(r);}} style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E5C48",cursor:"pointer"}}>Ver</button><button onClick={function(){deleteRcca(r.rcca_id);}} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>x</button></div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button onClick={function(){setRccaDetail(r);}} style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E5C48",cursor:"pointer"}}>Ver</button><button onClick={function(){setRccaForm(Object.assign({},r,{event_ids:(r.event_ids||[]).slice()}));}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#2952A3",cursor:"pointer"}}>Editar</button><button onClick={function(){deleteRcca(r.rcca_id);}} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>x</button></div>
         </div>
         <div style={{fontSize:11.5,fontWeight:600,color:"#1A1714",marginBottom:5,lineHeight:1.3}}>{r.problema}</div>
         <div style={{fontSize:10,color:"#2A7A60",background:"#EAF5F0",borderRadius:4,padding:"3px 8px",marginBottom:6,lineHeight:1.4}}>{r.causa_raiz?r.causa_raiz.slice(0,80)+(r.causa_raiz.length>80?"...":""):""}</div>
@@ -2306,7 +2333,7 @@ function App() {
           <div style={{background:"#fff",borderRadius:16,maxWidth:680,width:"100%",maxHeight:"85vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
             <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <div><div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>RCCA Detail</div><div style={{fontSize:10,color:"#2A7A60",fontFamily:"monospace"}}>{rccaDetail.rcca_id}</div></div>
-              <button onClick={function(){setRccaDetail(null);}} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cerrar</button>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button onClick={function(){setRccaForm(Object.assign({},rccaDetail,{event_ids:(rccaDetail.event_ids||[]).slice()}));setRccaDetail(null);}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#2952A3",fontWeight:600}}>Editar</button><button onClick={function(){setRccaDetail(null);}} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cerrar</button></div>
             </div>
             <div style={{padding:"18px 20px",display:"flex",flexDirection:"column",gap:12}}>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
