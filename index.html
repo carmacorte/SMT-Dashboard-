@@ -281,33 +281,57 @@ tr:hover td{background:var(--g50)}
 .picker-meta{padding:6px 7px 8px}
 .picker-date{font-size:9px;font-weight:700;color:var(--green);line-height:1.2}
 .picker-time,.picker-sender{font-size:8.5px;color:var(--g500);line-height:1.2;margin-top:1px}
-.ic-wrap{position:relative;width:100%;padding:20px 0 16px;background:#F4F3F0;border-radius:14px;margin-bottom:14px;border:1px solid #DDDBD7;overflow:hidden}
-.ic-stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:380px;padding:0 8px}
-.ic-card{position:absolute;background:#fff;border-radius:16px;border:1px solid #DDDBD7;overflow:hidden;cursor:pointer;transition:all .4s cubic-bezier(.25,.46,.45,.94);will-change:transform}
-.ic-card.active{position:relative;width:calc(100% - 80px);max-width:480px;box-shadow:0 12px 40px rgba(0,0,0,.18);border-color:#2A7A60;z-index:3;cursor:default;transform:translateX(0) scale(1)}
-.ic-card.prev{width:calc(100% - 120px);max-width:380px;transform:translateX(-65%) scale(.82) rotateY(8deg);opacity:.6;z-index:2;filter:brightness(.85);box-shadow:0 4px 16px rgba(0,0,0,.12)}
-.ic-card.next{width:calc(100% - 120px);max-width:380px;transform:translateX(65%) scale(.82) rotateY(-8deg);opacity:.6;z-index:2;filter:brightness(.85);box-shadow:0 4px 16px rgba(0,0,0,.12)}
-.ic-card.far-prev{transform:translateX(-90%) scale(.65) rotateY(12deg);opacity:.3;z-index:1}
-.ic-card.far-next{transform:translateX(90%) scale(.65) rotateY(-12deg);opacity:.3;z-index:1}
-.ic-card-head{padding:14px 16px 10px;border-bottom:1px solid #EEECEA;display:flex;align-items:flex-start;gap:10px}
+.ic-wrap{position:relative;width:100%;padding:12px 0 10px;background:#F4F3F0;border-radius:16px;margin-bottom:14px;border:1px solid #DDDBD7;overflow:hidden}
+.ic-stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:332px;padding:0 6px}
+.ic-card{position:absolute;background:#fff;border-radius:18px;border:1px solid #DDDBD7;overflow:hidden;cursor:pointer;transition:all .35s cubic-bezier(.25,.46,.45,.94);will-change:transform}
+.ic-card.active{position:relative;width:calc(100% - 44px);max-width:456px;box-shadow:0 10px 28px rgba(0,0,0,.14);border-color:#2A7A60;z-index:3;cursor:default;transform:translateX(0) scale(1)}
+.ic-card.prev{width:calc(100% - 94px);max-width:340px;transform:translateX(-74%) scale(.78) rotateY(7deg);opacity:.32;z-index:2;filter:brightness(.92);box-shadow:0 3px 12px rgba(0,0,0,.10)}
+.ic-card.next{width:calc(100% - 94px);max-width:340px;transform:translateX(74%) scale(.78) rotateY(-7deg);opacity:.32;z-index:2;filter:brightness(.92);box-shadow:0 3px 12px rgba(0,0,0,.10)}
+.ic-card.far-prev{transform:translateX(-102%) scale(.62) rotateY(10deg);opacity:.08;z-index:1}
+.ic-card.far-next{transform:translateX(102%) scale(.62) rotateY(-10deg);opacity:.08;z-index:1}
+.ic-card-head{padding:12px 14px 8px;border-bottom:1px solid #EEECEA;display:flex;align-items:flex-start;gap:8px}
 .ic-tabs{display:flex;overflow-x:auto;border-bottom:1px solid #EEECEA;background:#F8F7F5;scrollbar-width:none}
 .ic-tabs::-webkit-scrollbar{display:none}
-.ic-tab{flex-shrink:0;padding:8px 13px;font-size:9.5px;font-weight:600;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;color:#8A8580;transition:all .15s;white-space:nowrap}
+.ic-tab{flex:1 1 0;padding:10px 6px;font-size:10.5px;font-weight:700;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;color:#8A8580;transition:all .15s;white-space:nowrap;text-align:center}
 .ic-tab.on{border-bottom-color:#1E5C48;color:#1E5C48;background:#fff}
-.ic-body{padding:14px 16px;min-height:160px;overflow-y:auto;max-height:300px}
-.ic-field{margin-bottom:10px}
-.ic-field-label{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8A8580;margin-bottom:3px}
-.ic-field-val{font-size:11.5px;color:#1A1714;line-height:1.45}
+.ic-face-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.ic-face-btn{min-height:36px;border-radius:999px;padding:0 10px;font-size:10.5px;font-weight:800;cursor:pointer}
+.ic-body{padding:12px 14px;min-height:132px;overflow-y:auto;max-height:256px}
+.ic-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ic-field{margin-bottom:8px}
+.ic-field-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8A8580;margin-bottom:3px}
+.ic-field-val{font-size:11px;color:#1A1714;line-height:1.4}
 .ic-field-val.empty{color:#C8C4BE;font-style:italic}
-.ic-badge{display:inline-block;font-size:9px;font-weight:600;border-radius:4px;padding:2px 7px;margin:2px 3px 2px 0}
-.ic-nav{display:flex;align-items:center;justify-content:center;gap:16px;padding:14px 0 4px;position:relative;z-index:10}
-.ic-nav-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid #DDDBD7;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#3D3A36;transition:all .15s;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.ic-badge{display:inline-block;font-size:8.5px;font-weight:700;border-radius:999px;padding:3px 8px;margin:2px 3px 2px 0}
+.ic-nav{display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 0 2px;position:relative;z-index:10}
+.ic-nav-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid #DDDBD7;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:#3D3A36;transition:all .15s;box-shadow:0 2px 6px rgba(0,0,0,.08)}
 .ic-nav-btn:hover{background:#1E5C48;color:#fff;border-color:#1E5C48}
 .ic-nav-btn:disabled{opacity:.3;cursor:default;box-shadow:none}
-.ic-dots{display:flex;gap:5px;align-items:center}
+.ic-dots{display:flex;gap:4px;align-items:center}
 .ic-dot{width:6px;height:6px;border-radius:50%;background:#DDDBD7;transition:all .25s}
-.ic-dot.on{background:#1E5C48;width:20px;border-radius:3px}
-.ic-related{background:#FEF9E8;border:1px solid #F5E4A0;border-radius:8px;padding:10px 13px;margin-top:10px}
+.ic-dot.on{background:#1E5C48;width:18px;border-radius:3px}
+.ic-related{background:#FEF9E8;border:1px solid #F5E4A0;border-radius:10px;padding:8px 10px;margin-top:10px}
+@media(max-width:600px){
+.ic-wrap{padding:10px 0 8px;border-radius:16px}
+.ic-wrap > div:first-child{padding:0 12px 8px !important}
+.ic-stage{min-height:292px;padding:0 4px}
+.ic-card.active{width:calc(100% - 16px);max-width:none}
+.ic-card.prev{width:calc(100% - 56px);transform:translateX(-84%) scale(.76);opacity:.22}
+.ic-card.next{width:calc(100% - 56px);transform:translateX(84%) scale(.76);opacity:.22}
+.ic-card.far-prev,.ic-card.far-next{display:none}
+.ic-card-head{padding:10px 12px 8px}
+.ic-tab{padding:9px 4px;font-size:10px}
+.ic-face-btn{min-height:34px;font-size:10px}
+.ic-body{padding:10px 12px;max-height:246px;min-height:124px}
+.ic-grid-2{gap:7px}
+.ic-field{margin-bottom:7px}
+.ic-field-label{font-size:7.8px}
+.ic-field-val{font-size:10.5px;line-height:1.36}
+.ic-nav{gap:10px;padding:8px 0 0}
+.ic-nav-btn{width:32px;height:32px;font-size:14px}
+.ic-dot.on{width:16px}
+.ic-related{padding:8px 9px}
+}
 @media(max-width:600px){
 .cmp{grid-template-columns:1fr}
 .cmpc.aft{border-left:none;border-top:1px solid var(--g200)}
@@ -1918,7 +1942,7 @@ function App() {
     function setFaceAndReset(nextFace){setFace(nextFace);setTab(0);}
     function getCardClass(i){var diff=i-safeIdx;if(diff===0)return"ic-card active";if(diff===-1)return"ic-card prev";if(diff===1)return"ic-card next";if(diff===-2)return"ic-card far-prev";if(diff===2)return"ic-card far-next";return"ic-card far-prev";}
     function Field(p){return(<div className="ic-field"><div className="ic-field-label">{p.label}</div>{p.value?<div className="ic-field-val">{p.value}</div>:<div className="ic-field-val empty">-</div>}</div>);}
-    function MetricTile(p){return(<div style={{background:p.bg||"#F8F7F5",border:"1px solid "+(p.border||"#DDDBD7"),borderRadius:12,padding:"9px 8px",minHeight:60,display:"flex",flexDirection:"column",justifyContent:"center",textAlign:"center"}}><div style={{fontSize:9,fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:p.color||"#6A6560",marginBottom:4}}>{p.label}</div><div style={{fontSize:13,fontWeight:700,color:p.valueColor||"#1A1714",lineHeight:1.2}}>{p.value||"-"}</div></div>);}
+    function MetricTile(p){return(<div style={{background:p.bg||"#F8F7F5",border:"1px solid "+(p.border||"#DDDBD7"),borderRadius:14,padding:"8px 7px",minHeight:54,display:"flex",flexDirection:"column",justifyContent:"center",textAlign:"center"}}><div style={{fontSize:8.2,fontWeight:800,letterSpacing:".06em",textTransform:"uppercase",color:p.color||"#6A6560",marginBottom:3}}>{p.label}</div><div style={{fontSize:11.5,fontWeight:800,color:p.valueColor||"#1A1714",lineHeight:1.15}}>{p.value||"-"}</div></div>);}
     function getDateValue(v){if(!v)return 0;var iso=/^\d{4}-\d{2}-\d{2}$/;if(iso.test(v)){var d=new Date(v+"T00:00:00");return isNaN(d.getTime())?0:d.getTime();}var parts=v.split("/");if(parts.length===3){var d2=new Date(parts[2]+"-"+parts[1].padStart(2,"0")+"-"+parts[0].padStart(2,"0")+"T00:00:00");return isNaN(d2.getTime())?0:d2.getTime();}var d3=new Date(v);return isNaN(d3.getTime())?0:d3.getTime();}
     function daysOpen(v){var t=getDateValue(v);if(!t)return"-";return Math.max(0,Math.floor((Date.now()-t)/86400000))+" d";}
     function getTopValue(list,getter){var counts={};var best="";var bestN=0;list.forEach(function(item){var val=(getter(item)||"").trim();if(!val||val==="N/D"||val==="N/A")return;counts[val]=(counts[val]||0)+1;if(counts[val]>bestN){best=val;bestN=counts[val];}});return best;}
@@ -1945,9 +1969,9 @@ function App() {
     var actions=[{l:"Contencion",v:cur.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Accion Correctiva",v:cur.accion_correctiva,color:"#2952A3",bg:"#EBF0FC"},{l:"Accion Preventiva",v:cur.accion_preventiva,color:"#1A7A3C",bg:"#EBF8EE"}];
     return(
       <div className="ic-wrap">
-        <div style={{padding:"0 20px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-          <div><div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>RCCA Card Deck</div><div style={{fontSize:10,color:"#8A8580"}}>Carta de dos caras: operacion al frente, analisis fino al reverso</div></div>
-          <div style={{fontSize:9,color:"#2A7A60",fontWeight:700,background:"#EAF5F0",borderRadius:99,padding:"3px 10px",border:"1px solid #B8DECE"}}>{cards.length} RCCA</div>
+        <div style={{padding:"0 14px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
+          <div><div style={{fontSize:12,fontWeight:800,color:"#1A1714"}}>Deck RCCA</div><div style={{fontSize:9.5,color:"#8A8580"}}>Resumen al frente, analisis fino al reverso</div></div>
+          <div style={{fontSize:8.5,color:"#2A7A60",fontWeight:800,background:"#EAF5F0",borderRadius:99,padding:"3px 9px",border:"1px solid #B8DECE"}}>{cards.length} RCCA</div>
         </div>
         <div className="ic-stage" style={{perspective:"1200px"}}>
           {cards.map(function(card,i){
@@ -1958,40 +1982,40 @@ function App() {
               <div key={card.rcca_id||i} className={getCardClass(i)} onClick={function(){if(i!==safeIdx){setIdx(i);setFace("summary");setTab(0);}}} style={{position:i===safeIdx?"relative":"absolute"}}>
                 <div className="ic-card-head">
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
                       <div style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#2A7A60"}}>{card.rcca_id}</div>
-                      <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
-                        <span style={Object.assign({fontSize:8.5,borderRadius:999,padding:"2px 8px",fontWeight:700},statusStyle(card.estatus_rcca||"NUEVO"))}>{card.estatus_rcca||"NUEVO"}</span>
-                        <span style={{fontSize:8.5,background:"#F8F7F5",color:"#6A6560",borderRadius:999,padding:"2px 8px",fontWeight:700,border:"1px solid #DDDBD7"}}>{card.tipo_caso||inferTypeFor(card)}</span>
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"flex-end",maxWidth:"42%"}}>
+                        <span style={Object.assign({fontSize:8,borderRadius:999,padding:"2px 7px",fontWeight:800},statusStyle(card.estatus_rcca||"NUEVO"))}>{card.estatus_rcca||"NUEVO"}</span>
+                        <span style={{fontSize:8,background:"#F8F7F5",color:"#6A6560",borderRadius:999,padding:"2px 7px",fontWeight:800,border:"1px solid #DDDBD7"}}>{card.tipo_caso||inferTypeFor(card)}</span>
                       </div>
                     </div>
-                    <div style={{fontSize:12,fontWeight:700,color:"#1A1714",lineHeight:1.25,marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cTitle}</div>
-                    <div style={{fontSize:10,color:"#8A8580",lineHeight:1.4,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.modelo||"-"} • {card.linea||"-"} • {card.fecha||"-"}</div>
+                    <div style={{fontSize:11.5,fontWeight:800,color:"#1A1714",lineHeight:1.22,marginTop:4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",minHeight:28}}>{cTitle}</div>
+                    <div style={{fontSize:9.5,color:"#8A8580",lineHeight:1.3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.modelo||"-"} • {card.linea||"-"} • {card.fecha||"-"}</div>
                   </div>
                 </div>
                 {i===safeIdx&&(
                   <div>
-                    <div style={{padding:"12px 16px 0"}}>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,marginBottom:12}}>
+                    <div style={{padding:"10px 12px 0"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:6,marginBottom:8}}>
                         <MetricTile label="Sev" value={severityStars(severity)} color="#C0392B" border="#F1C8C2" bg="#FEF0EE"/>
                         <MetricTile label="Rec" value={"R"+recurrence} color="#B87820" border="#F5E4A0" bg="#FEF9E8"/>
                         <MetricTile label="Mad" value={"M"+maturity} color="#6B2DA8" border="#DBCDF8" bg="#F5F0FE"/>
                         <MetricTile label="Ev" value={String((cur.event_ids||[]).length).padStart(2,"0")} color="#1E5C48" border="#B8DECE" bg="#EAF5F0"/>
                       </div>
-                      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
-                        <button onClick={function(){setFaceAndReset("summary");}} style={{background:face==="summary"?"#1E5C48":"#fff",color:face==="summary"?"#fff":"#1E5C48",border:"1px solid #1E5C48",borderRadius:999,padding:"8px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Cara A · Resumen</button>
-                        <button onClick={function(){setFaceAndReset("analysis");}} style={{background:face==="analysis"?"#2952A3":"#fff",color:face==="analysis"?"#fff":"#2952A3",border:"1px solid #2952A3",borderRadius:999,padding:"8px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Cara B · Analisis</button>
+                      <div className="ic-face-switch">
+                        <button className="ic-face-btn" onClick={function(){setFaceAndReset("summary");}} style={{background:face==="summary"?"#1E5C48":"#fff",color:face==="summary"?"#fff":"#1E5C48",border:"1px solid #1E5C48"}}>A · Resumen</button>
+                        <button className="ic-face-btn" onClick={function(){setFaceAndReset("analysis");}} style={{background:face==="analysis"?"#2952A3":"#fff",color:face==="analysis"?"#fff":"#2952A3",border:"1px solid #2952A3"}}>B · Analisis</button>
                       </div>
                     </div>
                     <div className="ic-tabs">{activeTabs.map(function(tlabel,ti){return<button key={ti} className={"ic-tab"+(tab===ti?" on":"")} onClick={function(){setTab(ti);}}>{tlabel}</button>;})}</div>
                     <div className="ic-body">
-                      {face==="summary"&&tab===0&&<div><Field label="Titulo" value={title}/><Field label="Problema" value={cur.problema}/><Field label="Tipo de caso" value={typeLabel}/><Field label="Estatus" value={statusLabel}/><Field label="Modelo" value={cur.modelo}/><Field label="Linea" value={cur.linea}/><Field label="Fecha" value={cur.fecha}/><Field label="Owner" value={cur.owner_email}/></div>}
-                      {face==="summary"&&tab===1&&<div><Field label="Eventos vinculados" value={evIds}/><Field label="Estacion dominante" value={topStation}/><Field label="Defecto dominante" value={topDefect}/><Field label="Primera deteccion" value={firstSeen?firstSeen.fecha:"-"}/><Field label="Ultima deteccion" value={lastSeen?lastSeen.fecha:"-"}/>{cur.event_ids&&cur.event_ids.length>0&&(<div style={{marginTop:8}}><div className="ic-field-label">Linked</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>{cur.event_ids.map(function(id){return<span key={id} className="ic-badge" style={{background:"#EAF5F0",color:"#2A7A60"}}>{id}</span>;})}</div></div>)}</div>}
+                      {face==="summary"&&tab===0&&<div><Field label="Titulo" value={title}/><Field label="Problema" value={cur.problema}/><div className="ic-grid-2"><Field label="Tipo de caso" value={typeLabel}/><Field label="Estatus" value={statusLabel}/><Field label="Modelo" value={cur.modelo}/><Field label="Linea" value={cur.linea}/><Field label="Fecha" value={cur.fecha}/><Field label="Owner" value={cur.owner_email}/></div></div>}
+                      {face==="summary"&&tab===1&&<div><Field label="Eventos vinculados" value={evIds}/><div className="ic-grid-2"><Field label="Estacion dominante" value={topStation}/><Field label="Defecto dominante" value={topDefect}/><Field label="Primera deteccion" value={firstSeen?firstSeen.fecha:"-"}/><Field label="Ultima deteccion" value={lastSeen?lastSeen.fecha:"-"}/></div>{cur.event_ids&&cur.event_ids.length>0&&(<div style={{marginTop:6}}><div className="ic-field-label">Linked</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>{cur.event_ids.map(function(id){return<span key={id} className="ic-badge" style={{background:"#EAF5F0",color:"#2A7A60"}}>{id}</span>;})}</div></div>)}</div>}
                       {face==="summary"&&tab===2&&<div style={{display:"flex",flexDirection:"column",gap:8}}>{actions.map(function(a){return(<div key={a.l} style={{background:a.bg,border:"1px solid "+a.color+"40",borderRadius:7,padding:"9px 12px"}}><div className="ic-field-label" style={{color:a.color}}>{a.l}</div><div className="ic-field-val">{a.v||"-"}</div></div>);})}<div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:7,padding:"9px 12px"}}><div className="ic-field-label">Leccion aprendida</div><div className="ic-field-val">{cur.leccion_aprendida||"-"}</div></div></div>}
                       {face==="analysis"&&tab===0&&<div><Field label="Hipotesis" value={cur.hipotesis}/><Field label="Causa raiz" value={cur.causa_raiz}/><Field label="Validacion" value={cur.validacion}/><Field label="Patron detectado" value={cur.patron_detectado}/><Field label="Leccion aprendida" value={cur.leccion_aprendida}/></div>}
-                      {face==="analysis"&&tab===1&&<div><Field label="Evidencia resumen" value={cur.evidencia_resumen}/><Field label="Material afectado" value={cur.material_afectado}/><Field label="Alcance / exposicion" value={cur.alcance_exposicion}/><Field label="Eventos fuente" value={evIds}/><Field label="Problema base" value={cur.problema}/></div>}
+                      {face==="analysis"&&tab===1&&<div><Field label="Evidencia resumen" value={cur.evidencia_resumen}/><div className="ic-grid-2"><Field label="Material afectado" value={cur.material_afectado}/><Field label="Alcance / exposicion" value={cur.alcance_exposicion}/><Field label="Eventos fuente" value={evIds}/><Field label="Problema base" value={cur.problema}/></div></div>}
                       {face==="analysis"&&tab===2&&<div><div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}><MetricTile label="Severidad" value={severityStars(severity)} color="#C0392B" border="#F1C8C2" bg="#FEF0EE"/><MetricTile label="Recurrencia" value={"R"+recurrence} color="#B87820" border="#F5E4A0" bg="#FEF9E8"/><MetricTile label="Madurez" value={"M"+maturity} color="#6B2DA8" border="#DBCDF8" bg="#F5F0FE"/><MetricTile label="Dias abierto" value={daysOpen(cur.fecha)} color="#2952A3" border="#C8D7F8" bg="#EBF0FC"/><MetricTile label="Estacion top" value={topStation} color="#1E5C48" border="#B8DECE" bg="#EAF5F0"/><MetricTile label="Defecto top" value={topDefect} color="#6A6560" border="#DDDBD7" bg="#F8F7F5"/><MetricTile label="Relacionados" value={String(related.length)} color="#B87820" border="#F5E4A0" bg="#FEF9E8"/><MetricTile label="Eventos" value={String((cur.event_ids||[]).length)} color="#1E5C48" border="#B8DECE" bg="#EAF5F0"/></div></div>}
-                      {related.length>0&&(<div className="ic-related" style={{marginTop:12}}><div style={{fontSize:9,fontWeight:700,color:"#B87820",marginBottom:6,textTransform:"uppercase"}}>Casos relacionados</div>{related.map(function(r){var ri=cards.findIndex(function(c){return c.rcca_id===r.rcca_id;});return(<div key={r.rcca_id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,cursor:ri>=0?"pointer":"default"}} onClick={function(){if(ri>=0){setIdx(ri);setFace("summary");setTab(0);}}}><span style={{fontSize:9,fontFamily:"monospace",color:"#B87820",fontWeight:700}}>{r.rcca_id}</span><span style={{fontSize:9,color:"#6A6560",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.titulo_corto||r.problema}</span>{ri>=0&&<span style={{fontSize:8,color:"#2A7A60",fontWeight:600}}>Go</span>}</div>);})}</div>)}
+                      {related.length>0&&(face==="analysis"&&tab===2||face==="summary"&&tab===1)&&(<div className="ic-related" style={{marginTop:10}}><div style={{fontSize:8.5,fontWeight:800,color:"#B87820",marginBottom:6,textTransform:"uppercase"}}>Casos relacionados</div>{related.map(function(r){var ri=cards.findIndex(function(c){return c.rcca_id===r.rcca_id;});return(<div key={r.rcca_id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,cursor:ri>=0?"pointer":"default"}} onClick={function(){if(ri>=0){setIdx(ri);setFace("summary");setTab(0);}}}><span style={{fontSize:8.5,fontFamily:"monospace",color:"#B87820",fontWeight:700}}>{r.rcca_id}</span><span style={{fontSize:8.5,color:"#6A6560",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.titulo_corto||r.problema}</span>{ri>=0&&<span style={{fontSize:8,color:"#2A7A60",fontWeight:700}}>Go</span>}</div>);})}</div>)}
                     </div>
                   </div>
                 )}
