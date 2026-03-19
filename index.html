@@ -1371,6 +1371,54 @@ function LogoSVG() {
   );
 }
 
+
+function traceOpsSafeStorageError(err){
+  return err && err.message ? err.message : String(err || "Error de almacenamiento");
+}
+
+function traceOpsOpenDb(){
+  return new Promise(function(resolve,reject){
+    try{
+      if(!window.indexedDB){ reject(new Error("IndexedDB no disponible")); return; }
+      var req = window.indexedDB.open("traceops_local_db", 1);
+      req.onupgradeneeded = function(ev){
+        var db = ev.target.result;
+        if(!db.objectStoreNames.contains("kv")) db.createObjectStore("kv");
+      };
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror = function(){ reject(req.error || new Error("No se pudo abrir IndexedDB")); };
+    }catch(err){ reject(err); }
+  });
+}
+
+async function traceOpsDbGet(key){
+  var db = await traceOpsOpenDb();
+  return new Promise(function(resolve,reject){
+    try{
+      var tx = db.transaction("kv","readonly");
+      var store = tx.objectStore("kv");
+      var req = store.get(key);
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror = function(){ reject(req.error || new Error("No se pudo leer IndexedDB")); };
+      tx.oncomplete = function(){ try{ db.close(); }catch(_){} };
+      tx.onerror = function(){ reject(tx.error || new Error("Transaccion IndexedDB fallida")); };
+    }catch(err){ try{ db.close(); }catch(_){} reject(err); }
+  });
+}
+
+async function traceOpsDbSet(key,value){
+  var db = await traceOpsOpenDb();
+  return new Promise(function(resolve,reject){
+    try{
+      var tx = db.transaction("kv","readwrite");
+      var store = tx.objectStore("kv");
+      store.put(value,key);
+      tx.oncomplete = function(){ try{ db.close(); }catch(_){} resolve(true); };
+      tx.onerror = function(){ try{ db.close(); }catch(_){} reject(tx.error || new Error("No se pudo guardar en IndexedDB")); };
+    }catch(err){ try{ db.close(); }catch(_){} reject(err); }
+  });
+}
+
 function App() {
   var stateArr = _useState("idle");
   var state = stateArr[0]; var setState = stateArr[1];
@@ -1426,6 +1474,24 @@ function App() {
   var galPageArr = _useState(0); var galPage = galPageArr[0]; var setGalPage = galPageArr[1];
   var GAL_PAGE_SIZE = 48;
   var RCCA_KEY = "traceops_rcca";
+  var RCCA_DRAFT_KEY = "traceops_rcca_form_draft_v1";
+  function readRccaDraft(){
+    try { var raw = localStorage.getItem(RCCA_DRAFT_KEY); return raw ? JSON.parse(raw) : null; } catch(_) { return null; }
+  }
+  function writeRccaDraft(payload){
+    try {
+      if (!payload) { localStorage.removeItem(RCCA_DRAFT_KEY); return true; }
+      localStorage.setItem(RCCA_DRAFT_KEY, JSON.stringify(payload));
+      return true;
+    } catch(_) { return false; }
+  }
+  function clearRccaDraft(){
+    try { localStorage.removeItem(RCCA_DRAFT_KEY); } catch(_) {}
+  }
+  function isFreshRccaDraft(draft){
+    var ts = draft && draft.ts ? new Date(draft.ts).getTime() : 0;
+    return !!(ts && (Date.now() - ts < 24*60*60*1000));
+  }
   var rccaArr = _useState(function(){
     try { var raw = localStorage.getItem(RCCA_KEY); return raw ? JSON.parse(raw) : []; } catch(_) { return []; }
   });
@@ -1450,8 +1516,37 @@ function App() {
   var syncBusy = syncBusyArr[0]; var setSyncBusy = syncBusyArr[1];
   var authErrArr = _useState("");
   var authErrMsg = authErrArr[0]; var setAuthErrMsg = authErrArr[1];
+  var storageErrArr = _useState("");
+  var storageErrMsg = storageErrArr[0]; var setStorageErrMsg = storageErrArr[1];
 
+  React.useEffect(function(){
+    try {
+      var draft = readRccaDraft();
+      if (!draft || !draft.form || !isFreshRccaDraft(draft)) return;
+      setRccaForm(Object.assign({}, draft.form, { __restored_draft: true }));
+    } catch(_) {}
+  }, []);
 
+  React.useEffect(function(){
+    var active = true;
+    (async function(){
+      var loaded = null;
+      try {
+        loaded = await traceOpsDbGet(RCCA_KEY);
+      } catch(_) {}
+      if (!active) return;
+      if (Array.isArray(loaded) && loaded.length) {
+        setRccaList(loaded);
+        return;
+      }
+      try {
+        var raw = localStorage.getItem(RCCA_KEY);
+        var parsed = raw ? JSON.parse(raw) : [];
+        if (active && Array.isArray(parsed) && parsed.length) setRccaList(parsed);
+      } catch(_) {}
+    })();
+    return function(){ active = false; };
+  }, []);
 
   function mergeRccaRecords(localItems, remoteItems) {
     var map = {};
@@ -1472,9 +1567,24 @@ function App() {
     });
   }
 
-  function persistRccaLocal(list) {
-    try { localStorage.setItem(RCCA_KEY, JSON.stringify(list || [])); } catch(_) {}
-    setRccaList(list || []);
+  async function persistRccaLocal(list) {
+    var payload = list || [];
+    setRccaList(payload);
+    var lastErr = null;
+    try {
+      await traceOpsDbSet(RCCA_KEY, payload);
+      try { localStorage.removeItem(RCCA_KEY); } catch(_) {}
+      return { ok:true, mode:"indexeddb" };
+    } catch (err) {
+      lastErr = err;
+    }
+    try {
+      localStorage.setItem(RCCA_KEY, JSON.stringify(payload));
+      return { ok:true, mode:"localStorage" };
+    } catch (err2) {
+      lastErr = err2;
+    }
+    return { ok:false, error:lastErr };
   }
   
   async function refreshCloudRcca(opts) {
@@ -1488,7 +1598,7 @@ function App() {
       setSyncBusy(true);
       var remoteItems = await window.TraceOpsCloud.listRcca();
       var merged = mergeRccaRecords(opts.baseList || rccaList, remoteItems);
-      persistRccaLocal(merged);
+      await persistRccaLocal(merged);
       setCloudStatus(remoteItems.length ? ("Sincronizado · " + remoteItems.length + " RCCA") : "Sesion activa · nube vacia");
       return remoteItems;
     } catch (err) {
@@ -1621,26 +1731,44 @@ function App() {
     });
     var updated = rccaList.filter(function(item){ return item.rcca_id !== normalized.rcca_id; });
     updated = [normalized].concat(updated);
-    persistRccaLocal(updated);
+    var persistResult = await persistRccaLocal(updated);
+    if (!persistResult || !persistResult.ok) {
+      var msg = "No se pudo guardar el RCCA localmente. El caso parece exceder el limite de almacenamiento del navegador. Exporta/limpia datos o inicia sesion en nube. Detalle: " + traceOpsSafeStorageError(persistResult && persistResult.error);
+      setCloudStatus("Error de almacenamiento local");
+      setStorageErrMsg(msg);
+      alert(msg);
+      return false;
+    }
+    setStorageErrMsg("");
+    clearRccaDraft();
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured()) || !authUser) {
       setCloudStatus("Guardado local");
-      return;
+      return true;
     }
     try {
       setSyncBusy(true);
       await window.TraceOpsCloud.upsertRcca(normalized);
       setCloudStatus("Guardado en nube");
       await refreshCloudRcca({ baseList: updated });
+      return true;
     } catch (err) {
       setCloudStatus("Guardado local · nube pendiente");
       setAuthErrMsg(err && err.message ? err.message : String(err));
+      return true;
     } finally {
       setSyncBusy(false);
     }
   }
   async function deleteRcca(rcca_id) {
     var updated = rccaList.filter(function(r){ return r.rcca_id !== rcca_id; });
-    persistRccaLocal(updated);
+    var persistResult = await persistRccaLocal(updated);
+    if (!persistResult || !persistResult.ok) {
+      var msg = "No se pudo actualizar el almacenamiento local al eliminar RCCA. " + traceOpsSafeStorageError(persistResult && persistResult.error);
+      setStorageErrMsg(msg);
+      alert(msg);
+      return;
+    }
+    setStorageErrMsg("");
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured()) || !authUser) {
       setCloudStatus("Eliminado local");
       return;
@@ -2116,7 +2244,11 @@ function App() {
 
   function RccaForm(props){
     var init=props.init||{};var onSave=props.onSave;var onClose=props.onClose;
+    var incomingDraft = readRccaDraft();
+    var canUseDraft = !!(incomingDraft && incomingDraft.form && isFreshRccaDraft(incomingDraft) && ((init.rcca_id && incomingDraft.form && (incomingDraft.form.original_rcca_id===init.rcca_id || incomingDraft.form.rcca_id===init.rcca_id)) || (!init.rcca_id && incomingDraft.mode==="new") || init.__restored_draft));
+    if (canUseDraft) init = Object.assign({}, init, incomingDraft.form, { __restored_draft: true });
     var isEdit=!!init.rcca_id;
+    var restoredDraft=!!init.__restored_draft;
     var basicFields=[{key:"problema",label:"Problema",rows:2,required:true},{key:"causa_raiz",label:"Causa Raiz",rows:3,required:true},{key:"contencion",label:"Contencion",rows:2},{key:"accion_correctiva",label:"Accion Correctiva",rows:2},{key:"accion_preventiva",label:"Accion Preventiva",rows:2},{key:"patron_detectado",label:"Patron Detectado",rows:1},{key:"leccion_aprendida",label:"Leccion Aprendida",rows:2}];
     var insightFields=[{key:"hipotesis",label:"Hipotesis",rows:2},{key:"evidencia_resumen",label:"Evidencia Resumen",rows:3},{key:"validacion",label:"Validacion",rows:2},{key:"alcance_exposicion",label:"Alcance / Exposicion",rows:2},{key:"material_afectado",label:"Material Afectado",rows:2}];
     var initIds=(init.event_ids||[]).slice();
@@ -2156,10 +2288,37 @@ function App() {
       },{});
     });
     var form=formArr[0];var setForm=formArr[1];
-    var insightsOpenArr=_useState(function(){return !!(init.hipotesis||init.evidencia_resumen||init.validacion||init.alcance_exposicion||init.material_afectado);});
+    var insightsOpenArr=_useState(function(){return typeof init.__draft_insights_open === "boolean" ? init.__draft_insights_open : !!(init.hipotesis||init.evidencia_resumen||init.validacion||init.alcance_exposicion||init.material_afectado);});
     var insightsOpen=insightsOpenArr[0];var setInsightsOpen=insightsOpenArr[1];
-    var frontOpenArr=_useState(function(){return !!(init.titulo_corto||init.tipo_caso||init.estatus_rcca||init.severidad||init.recurrencia||init.madurez_analisis||init.estacion_dominante||init.defecto_dominante);});
+    var frontOpenArr=_useState(function(){return typeof init.__draft_front_open === "boolean" ? init.__draft_front_open : !!(init.titulo_corto||init.tipo_caso||init.estatus_rcca||init.severidad||init.recurrencia||init.madurez_analisis||init.estacion_dominante||init.defecto_dominante);});
     var frontOpen=frontOpenArr[0];var setFrontOpen=frontOpenArr[1];
+    React.useEffect(function(){
+      var payload = {
+        ts:new Date().toISOString(),
+        mode:isEdit?"edit":"new",
+        form:Object.assign({}, form, { __draft_front_open: frontOpen, __draft_insights_open: insightsOpen })
+      };
+      var t = setTimeout(function(){ writeRccaDraft(payload); }, 120);
+      return function(){ clearTimeout(t); };
+    }, [form, isEdit, frontOpen, insightsOpen]);
+    React.useEffect(function(){
+      function persistNow(){
+        writeRccaDraft({
+          ts:new Date().toISOString(),
+          mode:isEdit?"edit":"new",
+          form:Object.assign({}, form, { __draft_front_open: frontOpen, __draft_insights_open: insightsOpen })
+        });
+      }
+      function onVisibility(){ if(document.visibilityState === "hidden") persistNow(); }
+      window.addEventListener("pagehide", persistNow);
+      window.addEventListener("beforeunload", persistNow);
+      document.addEventListener("visibilitychange", onVisibility);
+      return function(){
+        window.removeEventListener("pagehide", persistNow);
+        window.removeEventListener("beforeunload", persistNow);
+        document.removeEventListener("visibilitychange", onVisibility);
+      };
+    }, [form, isEdit, frontOpen, insightsOpen]);
     function upd(k,v){var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});n[k]=v;setForm(n);}
     function toggleEvent(evId){
       var cur=form.event_ids;var newIds=cur.indexOf(evId)>=0?cur.filter(function(x){return x!==evId;}):cur.concat([evId]);
@@ -2190,7 +2349,7 @@ function App() {
             <button onClick={onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cancelar</button>
           </div>
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
-            {isEdit&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:8,padding:"8px 12px",fontSize:10.5,color:"#8B6A1E"}}>Modo edicion activo. Puedes corregir texto y eventos vinculados sin perder el mismo RCCA ID.</div>}
+            {restoredDraft&&<div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"8px 12px",fontSize:10.5,color:"#1E5C48"}}>Se recupero un borrador local del formulario para que continues sin perder texto.</div>}{isEdit&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:8,padding:"8px 12px",fontSize:10.5,color:"#8B6A1E"}}>Modo edicion activo. Puedes corregir texto y eventos vinculados sin perder el mismo RCCA ID.</div>}
             <div>
               <div style={{fontSize:10,fontWeight:700,color:"#2A7A60",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Vincular a eventos ({form.event_ids.length} seleccionados)</div>
               {ev.length===0?<div style={{fontSize:11,color:"#8A8580",fontStyle:"italic"}}>No hay eventos cargados</div>:(
@@ -2243,7 +2402,7 @@ function App() {
               <button onClick={function(){setInsightsOpen(!insightsOpen);}} style={{width:"100%",textAlign:"left",padding:"11px 12px",background:insightsOpen?"#EBF0FC":"#F8F7F5",border:"none",borderBottom:insightsOpen?"1px solid #D8E1F7":"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,fontWeight:700,color:"#2952A3",textTransform:"uppercase",letterSpacing:".06em"}}>Insights opcionales</span><span style={{fontSize:11,color:"#2952A3",fontWeight:700}}>{insightsOpen?"Ocultar":"Mostrar"}</span></button>
               {insightsOpen&&<div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>{insightFields.map(function(f){return(<div key={f.key}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.label}</div><textarea value={form[f.key]} rows={f.rows} onChange={function(e){upd(f.key,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/></div>);})}</div>}
             </div>
-            <button onClick={function(){if(!form.problema||!form.causa_raiz){alert("Completa Problema y Causa Raiz");return;}onSave(form);onClose();}} style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>{isEdit?"Actualizar RCCA":"Guardar RCCA"}</button>
+            <button onClick={async function(){if(!form.problema||!form.causa_raiz){alert("Completa Problema y Causa Raiz");return;}var ok = await onSave(form);if(ok!==false) onClose();}} style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>{isEdit?"Actualizar RCCA":"Guardar RCCA"}</button>
           </div>
         </div>
       </div>
@@ -2526,7 +2685,7 @@ function App() {
           </div>
         </div>
       )}
-      {rccaForm&&<RccaForm init={rccaForm} onSave={saveRcca} onClose={function(){setRccaForm(null);}}/>}
+      {rccaForm&&<RccaForm init={rccaForm} onSave={saveRcca} onClose={function(){clearRccaDraft();setRccaForm(null);}}/>}
       {rccaDetail&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9997,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={function(){setRccaDetail(null);}}>
           <div style={{background:"#fff",borderRadius:16,maxWidth:720,width:"100%",maxHeight:"85vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
