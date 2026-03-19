@@ -175,6 +175,15 @@ body{touch-action:manipulation}
 .tscroll{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:11.5px}
 th{background:var(--g50);padding:9px 14px;text-align:left;font-weight:600;color:var(--g500);font-size:10px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid var(--g200);white-space:nowrap}
+.sortable-th{cursor:pointer;user-select:none;transition:background .15s,color .15s}
+.sortable-th:hover{background:#EEF5F1;color:var(--green)}
+.sortable-th.active{color:var(--green);background:#EAF5F0}
+.sortable-th .sort-wrap{display:inline-flex;align-items:center;gap:6px}
+.sortable-th .sort-arrow{font-size:10px;font-weight:800;color:inherit;opacity:.9}
+.table-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.table-sort-chip{display:inline-flex;align-items:center;gap:6px;background:#EAF5F0;border:1px solid #C0DECE;color:#1E5545;border-radius:999px;padding:5px 10px;font-size:10px;font-weight:700}
+.table-reset-btn{border:1px solid #D7D3CC;background:#fff;color:#3D3A36;border-radius:10px;padding:6px 10px;font-size:10.5px;font-weight:700;cursor:pointer;transition:all .15s}
+.table-reset-btn:hover{border-color:var(--green);color:var(--green)}
 td{padding:10px 14px;border-bottom:1px solid var(--g100);color:var(--g700);vertical-align:top;line-height:1.5}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--g50)}
@@ -1358,6 +1367,8 @@ function App() {
   var sbArr = _useState(window.innerWidth > 900); var sidebarOpen = sbArr[0]; var setSidebarOpen = sbArr[1];
   var isMobile = function(){ return window.innerWidth <= 900; };
   var statsArr = _useState(null); var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
+  var bitSortKeyArr = _useState("fecha"); var bitacoraSortKey = bitSortKeyArr[0]; var setBitacoraSortKey = bitSortKeyArr[1];
+  var bitSortDirArr = _useState("desc"); var bitacoraSortDir = bitSortDirArr[0]; var setBitacoraSortDir = bitSortDirArr[1];
 
   React.useEffect(function(){
     function onResize(){ if (window.innerWidth > 900) setSidebarOpen(true); }
@@ -1748,12 +1759,64 @@ function App() {
     setProg(0);setProgStep(0);setMsgStats(null);setErrMsg("");setPersonaFiltro("");
     setZipImgNames([]);setImgMeta({});setEvImgs({});setLightbox(null);setGalPage(0);
     setFilterMode("quick");setDateFrom("");setDateTo("");setWeekNum("");setWeekYear(new Date().getFullYear());
+    setBitacoraSortKey("fecha");setBitacoraSortDir("desc");
     setRccaForm(null);setRccaDetail(null);
   }
 
   var ev=(result&&result.eventos)?result.eventos:[];
   var kpis=(result&&result.kpis)?result.kpis:[];
   var res=(result&&result.resumen)?result.resumen:{};
+
+  function parseBitacoraDateValue(e){
+    var fecha=e&&e.fecha?e.fecha:"";
+    var hora=e&&e.hora?e.hora:"00:00";
+    if(!fecha) return 0;
+    var parts=fecha.split("/");
+    if(parts.length!==3) return 0;
+    var hp=hora.split(":");
+    return new Date(parseInt(parts[2],10),parseInt(parts[1],10)-1,parseInt(parts[0],10),parseInt(hp[0]||"0",10),parseInt(hp[1]||"0",10),0).getTime();
+  }
+
+  function bitacoraSortLabel(key){
+    return ({id:"ID",fecha:"Fecha",turno:"Turno",linea_estacion:"Linea",tipo_evento:"Tipo",defecto_smt:"Defecto SMT",evento_detectado:"Evento",prioridad:"Prioridad",estatus:"Estatus"})[key]||"Fecha";
+  }
+
+  function toggleBitacoraSort(key){
+    if(bitacoraSortKey===key){
+      setBitacoraSortDir(bitacoraSortDir==="asc"?"desc":"asc");
+      return;
+    }
+    setBitacoraSortKey(key);
+    setBitacoraSortDir(key==="fecha"?"desc":"asc");
+  }
+
+  function getBitacoraSortIndicator(key){
+    if(bitacoraSortKey!==key) return "↕";
+    return bitacoraSortDir==="asc"?"↑":"↓";
+  }
+
+  function getBitacoraSortValue(e,key){
+    if(key==="fecha") return parseBitacoraDateValue(e);
+    if(key==="prioridad") return ({Critica:4,Alta:3,Media:2,Baja:1})[e.prioridad]||0;
+    if(key==="estatus") return ({Abierto:3,"En proceso":2,Cerrado:1})[e.estatus]||0;
+    if(key==="turno") return ({"1T":1,"1T-Sab":2,"1T-Dom":3,"2T":4,"2T-Sab":5,"2T-Dom":6,"3T":7})[e.turno]||99;
+    var value=e&&e[key]!=null?e[key]:"";
+    if(typeof value==="number") return value;
+    return String(value).toLowerCase().trim();
+  }
+
+  var bitacoraEventos = ev.slice().sort(function(a,b){
+    var av=getBitacoraSortValue(a,bitacoraSortKey);
+    var bv=getBitacoraSortValue(b,bitacoraSortKey);
+    var cmp=0;
+    if(typeof av==="number"&&typeof bv==="number") cmp=av-bv;
+    else cmp=String(av).localeCompare(String(bv),"es",{numeric:true,sensitivity:"base"});
+    if(cmp===0){
+      cmp=parseBitacoraDateValue(a)-parseBitacoraDateValue(b);
+      if(cmp===0) cmp=String(a.id||"").localeCompare(String(b.id||""),"es",{numeric:true,sensitivity:"base"});
+    }
+    return bitacoraSortDir==="asc"?cmp:-cmp;
+  });
   var pend=ev.filter(function(e){return e.estatus!=="Cerrado";});
   var crit=ev.filter(function(e){return e.prioridad==="Critica"&&e.estatus!=="Cerrado";});
   var cerr=ev.filter(function(e){return e.estatus==="Cerrado";});
@@ -2593,13 +2656,29 @@ function App() {
           <div className="tcard">
             <div className="tcard-hdr">
               <h3>Bitacora de eventos ({ev.length})</h3>
-              {imgNames.length>0&&<span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>{imgNames.length} imagen{imgNames.length!==1?"es":""}<span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span></span>}
+              <div className="table-tools">
+                <span className="table-sort-chip">Orden: {bitacoraSortLabel(bitacoraSortKey)} {bitacoraSortDir==="asc"?"↑":"↓"}</span>
+                <button className="table-reset-btn" onClick={function(){setBitacoraSortKey("fecha");setBitacoraSortDir("desc");}}>Restablecer</button>
+                {imgNames.length>0&&<span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>{imgNames.length} imagen{imgNames.length!==1?"es":""}<span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span></span>}
+              </div>
             </div>
             <div className="tscroll">
               <table>
-                <thead><tr><th>ID</th><th>Fecha</th><th>T</th><th>Linea</th><th>Tipo</th><th>Defecto SMT</th><th>Evento</th><th>Prioridad</th><th>Estatus</th><th>RCCA</th>{imgNames.length>0&&<th>Evidencia</th>}</tr></thead>
+                <thead><tr>
+                  <th className={"sortable-th"+(bitacoraSortKey==="id"?" active":"")} onClick={function(){toggleBitacoraSort("id");}}><span className="sort-wrap">ID <span className="sort-arrow">{getBitacoraSortIndicator("id")}</span></span></th>
+                  <th className={"sortable-th"+(bitacoraSortKey==="fecha"?" active":"")} onClick={function(){toggleBitacoraSort("fecha");}}><span className="sort-wrap">Fecha <span className="sort-arrow">{getBitacoraSortIndicator("fecha")}</span></span></th>
+                  <th className={"sortable-th"+(bitacoraSortKey==="turno"?" active":"")} onClick={function(){toggleBitacoraSort("turno");}}><span className="sort-wrap">T <span className="sort-arrow">{getBitacoraSortIndicator("turno")}</span></span></th>
+                  <th className={"sortable-th"+(bitacoraSortKey==="linea_estacion"?" active":"")} onClick={function(){toggleBitacoraSort("linea_estacion");}}><span className="sort-wrap">Linea <span className="sort-arrow">{getBitacoraSortIndicator("linea_estacion")}</span></span></th>
+                  <th className={"sortable-th"+(bitacoraSortKey==="tipo_evento"?" active":"")} onClick={function(){toggleBitacoraSort("tipo_evento");}}><span className="sort-wrap">Tipo <span className="sort-arrow">{getBitacoraSortIndicator("tipo_evento")}</span></span></th>
+                  <th className={"sortable-th"+(bitacoraSortKey==="defecto_smt"?" active":"")} onClick={function(){toggleBitacoraSort("defecto_smt");}}><span className="sort-wrap">Defecto SMT <span className="sort-arrow">{getBitacoraSortIndicator("defecto_smt")}</span></span></th>
+                  <th className={"sortable-th"+(bitacoraSortKey==="evento_detectado"?" active":"")} onClick={function(){toggleBitacoraSort("evento_detectado");}}><span className="sort-wrap">Evento <span className="sort-arrow">{getBitacoraSortIndicator("evento_detectado")}</span></span></th>
+                  <th className={"sortable-th"+(bitacoraSortKey==="prioridad"?" active":"")} onClick={function(){toggleBitacoraSort("prioridad");}}><span className="sort-wrap">Prioridad <span className="sort-arrow">{getBitacoraSortIndicator("prioridad")}</span></span></th>
+                  <th className={"sortable-th"+(bitacoraSortKey==="estatus"?" active":"")} onClick={function(){toggleBitacoraSort("estatus");}}><span className="sort-wrap">Estatus <span className="sort-arrow">{getBitacoraSortIndicator("estatus")}</span></span></th>
+                  <th>RCCA</th>
+                  {imgNames.length>0&&<th>Evidencia</th>}
+                </tr></thead>
                 <tbody>
-                  {ev.map(function(e,i){return(
+                  {bitacoraEventos.map(function(e,i){return(
                     <tr key={i}>
                       <td><strong>{e.id}</strong></td>
                       <td style={{whiteSpace:"nowrap",fontSize:10}}>{e.fecha}</td>
