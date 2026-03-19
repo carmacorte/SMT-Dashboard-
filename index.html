@@ -1909,51 +1909,89 @@ function App() {
   function InvestigationCarousel(props){
     var cards=props.cards;var allRcca=props.allRcca||[];
     var idxArr=_useState(0);var idx=idxArr[0];var setIdx=idxArr[1];
+    var faceArr=_useState("summary");var face=faceArr[0];var setFace=faceArr[1];
     var tabArr=_useState(0);var tab=tabArr[0];var setTab=tabArr[1];
     if(!cards||cards.length===0)return null;
-    var safeIdx=Math.min(idx,cards.length-1);var cur=cards[safeIdx];
-    var TABS=["Identification","Hypothesis","Exposure","Material","Correction","Pattern","Actions","Evidence"];
+    var safeIdx=Math.min(idx,cards.length-1);var cur=cards[safeIdx]||{};
+    var FACE_TABS={summary:["General","Eventos","Acciones"],analysis:["Analisis","Evidencia","Stats"]};
+    var activeTabs=face==="summary"?FACE_TABS.summary:FACE_TABS.analysis;
+    function setFaceAndReset(nextFace){setFace(nextFace);setTab(0);}
     function getCardClass(i){var diff=i-safeIdx;if(diff===0)return"ic-card active";if(diff===-1)return"ic-card prev";if(diff===1)return"ic-card next";if(diff===-2)return"ic-card far-prev";if(diff===2)return"ic-card far-next";return"ic-card far-prev";}
     function Field(p){return(<div className="ic-field"><div className="ic-field-label">{p.label}</div>{p.value?<div className="ic-field-val">{p.value}</div>:<div className="ic-field-val empty">-</div>}</div>);}
+    function MetricTile(p){return(<div style={{background:p.bg||"#F8F7F5",border:"1px solid "+(p.border||"#DDDBD7"),borderRadius:12,padding:"9px 8px",minHeight:60,display:"flex",flexDirection:"column",justifyContent:"center",textAlign:"center"}}><div style={{fontSize:9,fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:p.color||"#6A6560",marginBottom:4}}>{p.label}</div><div style={{fontSize:13,fontWeight:700,color:p.valueColor||"#1A1714",lineHeight:1.2}}>{p.value||"-"}</div></div>);}
+    function getDateValue(v){if(!v)return 0;var iso=/^\d{4}-\d{2}-\d{2}$/;if(iso.test(v)){var d=new Date(v+"T00:00:00");return isNaN(d.getTime())?0:d.getTime();}var parts=v.split("/");if(parts.length===3){var d2=new Date(parts[2]+"-"+parts[1].padStart(2,"0")+"-"+parts[0].padStart(2,"0")+"T00:00:00");return isNaN(d2.getTime())?0:d2.getTime();}var d3=new Date(v);return isNaN(d3.getTime())?0:d3.getTime();}
+    function daysOpen(v){var t=getDateValue(v);if(!t)return"-";return Math.max(0,Math.floor((Date.now()-t)/86400000))+" d";}
+    function getTopValue(list,getter){var counts={};var best="";var bestN=0;list.forEach(function(item){var val=(getter(item)||"").trim();if(!val||val==="N/D"||val==="N/A")return;counts[val]=(counts[val]||0)+1;if(counts[val]>bestN){best=val;bestN=counts[val];}});return best;}
+    function inferTypeFor(item){if(item.tipo_caso)return item.tipo_caso;var txt=[item.problema||"",item.causa_raiz||"",item.patron_detectado||""].join(" ").toLowerCase();if(txt.indexOf("aoi")>=0)return"AOI";if(txt.indexOf("ict")>=0)return"ICT";if(txt.indexOf("bga")>=0)return"BGA";if(txt.indexOf("material")>=0)return"MATERIAL";if(txt.indexOf("proceso")>=0)return"PROCESO";return"GENERAL";}
+    function inferStatus(){if(cur.estatus_rcca)return cur.estatus_rcca; if(cur.leccion_aprendida&&cur.accion_preventiva)return"CERRADO"; if(cur.causa_raiz&&cur.accion_correctiva)return"VALIDANDO"; if(cur.causa_raiz)return"EN ANALISIS"; return"NUEVO";}
+    function inferSeverity(){if(cur.severidad)return String(cur.severidad);var list=(cur.event_ids||[]).map(function(id){return ev.find(function(e){return e.id===id;});}).filter(Boolean);var maxP=0;list.forEach(function(item){var p=item.prioridad||"";if(p==="Critica")maxP=Math.max(maxP,5);else if(p==="Alta")maxP=Math.max(maxP,4);else if(p==="Media")maxP=Math.max(maxP,3);else if(p==="Baja")maxP=Math.max(maxP,2);});return String(maxP||3);}
+    function inferRecurrence(){if(cur.recurrencia)return String(cur.recurrencia);var n=(cur.event_ids||[]).length;if(n>=5)return"5";if(n===4)return"4";if(n===3)return"3";if(n===2)return"2";return"1";}
+    function inferMaturity(){if(cur.madurez_analisis)return String(cur.madurez_analisis);if(cur.leccion_aprendida&&cur.accion_preventiva)return"5";if(cur.validacion)return"4";if(cur.hipotesis||cur.causa_raiz)return"3";if(cur.contencion)return"2";return"1";}
+    function severityStars(v){var n=parseInt(v||"0",10)||0;return "★★★★★".slice(0,n)+"☆☆☆☆☆".slice(0,5-n);}
+    function statusStyle(v){var palette={"NUEVO":["#F8F7F5","#8A8580","#DDDBD7"],"EN ANALISIS":["#EBF0FC","#2952A3","#C8D7F8"],"CONTENIDO":["#FEF9E8","#B87820","#F5E4A0"],"VALIDANDO":["#F5F0FE","#6B2DA8","#DBCDF8"],"CERRADO":["#EAF5F0","#1E5C48","#B8DECE"]};var p=palette[v]||["#F8F7F5","#6A6560","#DDDBD7"];return{background:p[0],color:p[1],border:"1px solid "+p[2]};}
+    var linkedEvents=(cur.event_ids||[]).map(function(id){return ev.find(function(e){return e.id===id;});}).filter(Boolean);
     var evIds=cur.event_ids&&cur.event_ids.length>0?cur.event_ids.join(", "):null;
-    var actions=[{l:"Immediate/Containment",v:cur.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Corrective Action",v:cur.accion_correctiva,color:"#2952A3",bg:"#EBF0FC"},{l:"Preventive Action",v:cur.accion_preventiva,color:"#1A7A3C",bg:"#EBF8EE"},{l:"Lesson Learned",v:cur.leccion_aprendida,color:"#6B2DA8",bg:"#F5F0FE"}];
-    var related=allRcca.filter(function(r){if(!r||r.rcca_id===cur.rcca_id)return false;return(r.modelo&&cur.modelo&&r.modelo.toLowerCase()===cur.modelo.toLowerCase())||(r.linea&&cur.linea&&r.linea.toLowerCase()===cur.linea.toLowerCase());}).slice(0,3);
-    var sevColor=cur.prioridad==="Critica"?"#C0392B":cur.prioridad==="Alta"?"#B87820":cur.prioridad==="Media"?"#2952A3":"#2A7A60";
+    var related=allRcca.filter(function(r){if(!r||r.rcca_id===cur.rcca_id)return false;return(r.modelo&&cur.modelo&&r.modelo.toLowerCase()===cur.modelo.toLowerCase())||(r.linea&&cur.linea&&r.linea.toLowerCase()===cur.linea.toLowerCase())||(r.tipo_caso&&cur.tipo_caso&&r.tipo_caso===cur.tipo_caso);}).slice(0,3);
+    var title=cur.titulo_corto||cur.problema||"-";
+    var typeLabel=inferTypeFor(cur);
+    var statusLabel=inferStatus();
+    var severity=inferSeverity();
+    var recurrence=inferRecurrence();
+    var maturity=inferMaturity();
+    var topStation=cur.estacion_dominante||getTopValue(linkedEvents,function(item){return item.linea_estacion;})||cur.linea||"-";
+    var topDefect=cur.defecto_dominante||getTopValue(linkedEvents,function(item){return item.defecto_smt;})||"-";
+    var firstSeen=linkedEvents.slice().sort(function(a,b){return getDateValue(a.fecha)-getDateValue(b.fecha);})[0];
+    var lastSeen=linkedEvents.slice().sort(function(a,b){return getDateValue(b.fecha)-getDateValue(a.fecha);})[0];
+    var actions=[{l:"Contencion",v:cur.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Accion Correctiva",v:cur.accion_correctiva,color:"#2952A3",bg:"#EBF0FC"},{l:"Accion Preventiva",v:cur.accion_preventiva,color:"#1A7A3C",bg:"#EBF8EE"}];
     return(
       <div className="ic-wrap">
         <div style={{padding:"0 20px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-          <div><div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>Investigation Carousel</div><div style={{fontSize:10,color:"#8A8580"}}>{cards.length} case{cards.length!==1?"s":""} en memoria RCCA</div></div>
-          <div style={{fontSize:9,color:sevColor,fontWeight:700,background:sevColor+"14",borderRadius:99,padding:"3px 10px",border:"1px solid "+sevColor+"30"}}>{cur.rcca_id}</div>
+          <div><div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>RCCA Card Deck</div><div style={{fontSize:10,color:"#8A8580"}}>Carta de dos caras: operacion al frente, analisis fino al reverso</div></div>
+          <div style={{fontSize:9,color:"#2A7A60",fontWeight:700,background:"#EAF5F0",borderRadius:99,padding:"3px 10px",border:"1px solid #B8DECE"}}>{cards.length} RCCA</div>
         </div>
         <div className="ic-stage" style={{perspective:"1200px"}}>
           {cards.map(function(card,i){
             var diff=i-safeIdx;if(Math.abs(diff)>2)return null;
+            var cStatus=card.estatus_rcca||"NUEVO";
+            var cTitle=card.titulo_corto||card.problema||"-";
             return(
-              <div key={card.rcca_id||i} className={getCardClass(i)} onClick={function(){if(i!==safeIdx){setIdx(i);setTab(0);}}} style={{position:i===safeIdx?"relative":"absolute"}}>
+              <div key={card.rcca_id||i} className={getCardClass(i)} onClick={function(){if(i!==safeIdx){setIdx(i);setFace("summary");setTab(0);}}} style={{position:i===safeIdx?"relative":"absolute"}}>
                 <div className="ic-card-head">
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#2A7A60",marginBottom:3}}>{card.rcca_id}</div>
-                    <div style={{fontSize:11,fontWeight:600,color:"#1A1714",lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.problema||"-"}</div>
-                    <div style={{display:"flex",gap:5,marginTop:4,flexWrap:"wrap"}}>
-                      {card.modelo&&<span style={{fontSize:8.5,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"1px 6px"}}>{card.modelo}</span>}
-                      {card.linea&&<span style={{fontSize:8.5,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"1px 6px"}}>{card.linea}</span>}
-                      {card.fecha&&<span style={{fontSize:8.5,color:"#8A8580"}}>{card.fecha}</span>}
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                      <div style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#2A7A60"}}>{card.rcca_id}</div>
+                      <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                        <span style={Object.assign({fontSize:8.5,borderRadius:999,padding:"2px 8px",fontWeight:700},statusStyle(card.estatus_rcca||"NUEVO"))}>{card.estatus_rcca||"NUEVO"}</span>
+                        <span style={{fontSize:8.5,background:"#F8F7F5",color:"#6A6560",borderRadius:999,padding:"2px 8px",fontWeight:700,border:"1px solid #DDDBD7"}}>{card.tipo_caso||inferTypeFor(card)}</span>
+                      </div>
                     </div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#1A1714",lineHeight:1.25,marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cTitle}</div>
+                    <div style={{fontSize:10,color:"#8A8580",lineHeight:1.4,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.modelo||"-"} • {card.linea||"-"} • {card.fecha||"-"}</div>
                   </div>
                 </div>
                 {i===safeIdx&&(
                   <div>
-                    <div className="ic-tabs">{TABS.map(function(tlabel,ti){return<button key={ti} className={"ic-tab"+(tab===ti?" on":"")} onClick={function(){setTab(ti);}}>{tlabel}</button>;})}</div>
+                    <div style={{padding:"12px 16px 0"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,marginBottom:12}}>
+                        <MetricTile label="Sev" value={severityStars(severity)} color="#C0392B" border="#F1C8C2" bg="#FEF0EE"/>
+                        <MetricTile label="Rec" value={"R"+recurrence} color="#B87820" border="#F5E4A0" bg="#FEF9E8"/>
+                        <MetricTile label="Mad" value={"M"+maturity} color="#6B2DA8" border="#DBCDF8" bg="#F5F0FE"/>
+                        <MetricTile label="Ev" value={String((cur.event_ids||[]).length).padStart(2,"0")} color="#1E5C48" border="#B8DECE" bg="#EAF5F0"/>
+                      </div>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                        <button onClick={function(){setFaceAndReset("summary");}} style={{background:face==="summary"?"#1E5C48":"#fff",color:face==="summary"?"#fff":"#1E5C48",border:"1px solid #1E5C48",borderRadius:999,padding:"8px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Cara A · Resumen</button>
+                        <button onClick={function(){setFaceAndReset("analysis");}} style={{background:face==="analysis"?"#2952A3":"#fff",color:face==="analysis"?"#fff":"#2952A3",border:"1px solid #2952A3",borderRadius:999,padding:"8px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Cara B · Analisis</button>
+                      </div>
+                    </div>
+                    <div className="ic-tabs">{activeTabs.map(function(tlabel,ti){return<button key={ti} className={"ic-tab"+(tab===ti?" on":"")} onClick={function(){setTab(ti);}}>{tlabel}</button>;})}</div>
                     <div className="ic-body">
-                      {tab===0&&<div><Field label="RCCA ID" value={cur.rcca_id}/><Field label="Model" value={cur.modelo}/><Field label="Line" value={cur.linea}/><Field label="Date" value={cur.fecha}/><Field label="Problem" value={cur.problema}/><Field label="Events" value={evIds}/></div>}
-                      {tab===1&&<div><Field label="Root Cause" value={cur.causa_raiz}/><Field label="Pattern" value={cur.patron_detectado}/><Field label="Context" value={cur.problema}/></div>}
-                      {tab===2&&<div><Field label="Detection" value={cur.contencion}/><Field label="Confirmed" value={cur.causa_raiz}/></div>}
-                      {tab===3&&<div><Field label="Material" value={cur.modelo}/><Field label="Scope" value={cur.problema}/><Field label="Containment" value={cur.contencion}/></div>}
-                      {tab===4&&<div><Field label="Containment" value={cur.contencion}/><Field label="Corrective" value={cur.accion_correctiva}/></div>}
-                      {tab===5&&<div><Field label="Pattern" value={cur.patron_detectado}/><Field label="Weakness" value={cur.causa_raiz}/></div>}
-                      {tab===6&&<div><div style={{display:"flex",flexDirection:"column",gap:8}}>{actions.map(function(a){return(<div key={a.l} style={{background:a.bg,border:"1px solid "+a.color+"40",borderRadius:7,padding:"9px 12px"}}><div className="ic-field-label" style={{color:a.color}}>{a.l}</div><div className="ic-field-val">{a.v||"-"}</div></div>);})}</div></div>}
-                      {tab===7&&<div><Field label="Events" value={evIds}/><Field label="Lesson" value={cur.leccion_aprendida}/>{cur.event_ids&&cur.event_ids.length>0&&(<div style={{marginTop:8}}><div className="ic-field-label">Linked</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>{cur.event_ids.map(function(id){return<span key={id} className="ic-badge" style={{background:"#EAF5F0",color:"#2A7A60"}}>{id}</span>;})}</div></div>)}</div>}
-                      {related.length>0&&(<div className="ic-related" style={{marginTop:12}}><div style={{fontSize:9,fontWeight:700,color:"#B87820",marginBottom:6,textTransform:"uppercase"}}>Casos relacionados</div>{related.map(function(r){var ri=cards.findIndex(function(c){return c.rcca_id===r.rcca_id;});return(<div key={r.rcca_id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,cursor:ri>=0?"pointer":"default"}} onClick={function(){if(ri>=0){setIdx(ri);setTab(0);}}}><span style={{fontSize:9,fontFamily:"monospace",color:"#B87820",fontWeight:700}}>{r.rcca_id}</span><span style={{fontSize:9,color:"#6A6560",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.problema}</span>{ri>=0&&<span style={{fontSize:8,color:"#2A7A60",fontWeight:600}}>Go</span>}</div>);})}</div>)}
+                      {face==="summary"&&tab===0&&<div><Field label="Titulo" value={title}/><Field label="Problema" value={cur.problema}/><Field label="Tipo de caso" value={typeLabel}/><Field label="Estatus" value={statusLabel}/><Field label="Modelo" value={cur.modelo}/><Field label="Linea" value={cur.linea}/><Field label="Fecha" value={cur.fecha}/><Field label="Owner" value={cur.owner_email}/></div>}
+                      {face==="summary"&&tab===1&&<div><Field label="Eventos vinculados" value={evIds}/><Field label="Estacion dominante" value={topStation}/><Field label="Defecto dominante" value={topDefect}/><Field label="Primera deteccion" value={firstSeen?firstSeen.fecha:"-"}/><Field label="Ultima deteccion" value={lastSeen?lastSeen.fecha:"-"}/>{cur.event_ids&&cur.event_ids.length>0&&(<div style={{marginTop:8}}><div className="ic-field-label">Linked</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>{cur.event_ids.map(function(id){return<span key={id} className="ic-badge" style={{background:"#EAF5F0",color:"#2A7A60"}}>{id}</span>;})}</div></div>)}</div>}
+                      {face==="summary"&&tab===2&&<div style={{display:"flex",flexDirection:"column",gap:8}}>{actions.map(function(a){return(<div key={a.l} style={{background:a.bg,border:"1px solid "+a.color+"40",borderRadius:7,padding:"9px 12px"}}><div className="ic-field-label" style={{color:a.color}}>{a.l}</div><div className="ic-field-val">{a.v||"-"}</div></div>);})}<div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:7,padding:"9px 12px"}}><div className="ic-field-label">Leccion aprendida</div><div className="ic-field-val">{cur.leccion_aprendida||"-"}</div></div></div>}
+                      {face==="analysis"&&tab===0&&<div><Field label="Hipotesis" value={cur.hipotesis}/><Field label="Causa raiz" value={cur.causa_raiz}/><Field label="Validacion" value={cur.validacion}/><Field label="Patron detectado" value={cur.patron_detectado}/><Field label="Leccion aprendida" value={cur.leccion_aprendida}/></div>}
+                      {face==="analysis"&&tab===1&&<div><Field label="Evidencia resumen" value={cur.evidencia_resumen}/><Field label="Material afectado" value={cur.material_afectado}/><Field label="Alcance / exposicion" value={cur.alcance_exposicion}/><Field label="Eventos fuente" value={evIds}/><Field label="Problema base" value={cur.problema}/></div>}
+                      {face==="analysis"&&tab===2&&<div><div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}><MetricTile label="Severidad" value={severityStars(severity)} color="#C0392B" border="#F1C8C2" bg="#FEF0EE"/><MetricTile label="Recurrencia" value={"R"+recurrence} color="#B87820" border="#F5E4A0" bg="#FEF9E8"/><MetricTile label="Madurez" value={"M"+maturity} color="#6B2DA8" border="#DBCDF8" bg="#F5F0FE"/><MetricTile label="Dias abierto" value={daysOpen(cur.fecha)} color="#2952A3" border="#C8D7F8" bg="#EBF0FC"/><MetricTile label="Estacion top" value={topStation} color="#1E5C48" border="#B8DECE" bg="#EAF5F0"/><MetricTile label="Defecto top" value={topDefect} color="#6A6560" border="#DDDBD7" bg="#F8F7F5"/><MetricTile label="Relacionados" value={String(related.length)} color="#B87820" border="#F5E4A0" bg="#FEF9E8"/><MetricTile label="Eventos" value={String((cur.event_ids||[]).length)} color="#1E5C48" border="#B8DECE" bg="#EAF5F0"/></div></div>}
+                      {related.length>0&&(<div className="ic-related" style={{marginTop:12}}><div style={{fontSize:9,fontWeight:700,color:"#B87820",marginBottom:6,textTransform:"uppercase"}}>Casos relacionados</div>{related.map(function(r){var ri=cards.findIndex(function(c){return c.rcca_id===r.rcca_id;});return(<div key={r.rcca_id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,cursor:ri>=0?"pointer":"default"}} onClick={function(){if(ri>=0){setIdx(ri);setFace("summary");setTab(0);}}}><span style={{fontSize:9,fontFamily:"monospace",color:"#B87820",fontWeight:700}}>{r.rcca_id}</span><span style={{fontSize:9,color:"#6A6560",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.titulo_corto||r.problema}</span>{ri>=0&&<span style={{fontSize:8,color:"#2A7A60",fontWeight:600}}>Go</span>}</div>);})}</div>)}
                     </div>
                   </div>
                 )}
@@ -1962,9 +2000,9 @@ function App() {
           })}
         </div>
         <div className="ic-nav">
-          <button className="ic-nav-btn" disabled={safeIdx===0} onClick={function(){if(safeIdx>0){setIdx(safeIdx-1);setTab(0);}}}>&#8249;</button>
+          <button className="ic-nav-btn" disabled={safeIdx===0} onClick={function(){if(safeIdx>0){setIdx(safeIdx-1);setFace("summary");setTab(0);}}}>&#8249;</button>
           <div className="ic-dots">{cards.map(function(_,i){return<div key={i} className={"ic-dot"+(i===safeIdx?" on":"")}/>;})}</div>
-          <button className="ic-nav-btn" disabled={safeIdx===cards.length-1} onClick={function(){if(safeIdx<cards.length-1){setIdx(safeIdx+1);setTab(0);}}}>&#8250;</button>
+          <button className="ic-nav-btn" disabled={safeIdx===cards.length-1} onClick={function(){if(safeIdx<cards.length-1){setIdx(safeIdx+1);setFace("summary");setTab(0);}}}>&#8250;</button>
         </div>
       </div>
     );
@@ -1973,7 +2011,8 @@ function App() {
   function RccaForm(props){
     var init=props.init||{};var onSave=props.onSave;var onClose=props.onClose;
     var isEdit=!!init.rcca_id;
-    var fields=[{key:"problema",label:"Problema",rows:2,required:true},{key:"causa_raiz",label:"Causa Raiz",rows:3,required:true},{key:"contencion",label:"Contencion",rows:2},{key:"accion_correctiva",label:"Accion Correctiva",rows:2},{key:"accion_preventiva",label:"Accion Preventiva",rows:2},{key:"patron_detectado",label:"Patron Detectado",rows:1},{key:"leccion_aprendida",label:"Leccion Aprendida",rows:2}];
+    var basicFields=[{key:"problema",label:"Problema",rows:2,required:true},{key:"causa_raiz",label:"Causa Raiz",rows:3,required:true},{key:"contencion",label:"Contencion",rows:2},{key:"accion_correctiva",label:"Accion Correctiva",rows:2},{key:"accion_preventiva",label:"Accion Preventiva",rows:2},{key:"patron_detectado",label:"Patron Detectado",rows:1},{key:"leccion_aprendida",label:"Leccion Aprendida",rows:2}];
+    var insightFields=[{key:"hipotesis",label:"Hipotesis",rows:2},{key:"evidencia_resumen",label:"Evidencia Resumen",rows:3},{key:"validacion",label:"Validacion",rows:2},{key:"alcance_exposicion",label:"Alcance / Exposicion",rows:2},{key:"material_afectado",label:"Material Afectado",rows:2}];
     var initIds=(init.event_ids||[]).slice();
     var formArr=_useState(function(){
       var ids=initIds;
@@ -1984,6 +2023,14 @@ function App() {
         modelo:init.modelo||"",
         linea:init.linea||"",
         fecha:init.fecha||new Date().toISOString().slice(0,10),
+        titulo_corto:init.titulo_corto||"",
+        tipo_caso:init.tipo_caso||"",
+        estatus_rcca:init.estatus_rcca||"",
+        severidad:init.severidad||"",
+        recurrencia:init.recurrencia||"",
+        madurez_analisis:init.madurez_analisis||"",
+        estacion_dominante:init.estacion_dominante||"",
+        defecto_dominante:init.defecto_dominante||"",
         problema:init.problema||"",
         causa_raiz:init.causa_raiz||"",
         contencion:init.contencion||"",
@@ -1991,6 +2038,11 @@ function App() {
         accion_preventiva:init.accion_preventiva||"",
         patron_detectado:init.patron_detectado||"",
         leccion_aprendida:init.leccion_aprendida||"",
+        hipotesis:init.hipotesis||"",
+        evidencia_resumen:init.evidencia_resumen||"",
+        validacion:init.validacion||"",
+        alcance_exposicion:init.alcance_exposicion||"",
+        material_afectado:init.material_afectado||"",
         source:init.source||"manual",
         owner_email:init.owner_email||"",
         created_at:init.created_at||"",
@@ -1998,6 +2050,10 @@ function App() {
       },{});
     });
     var form=formArr[0];var setForm=formArr[1];
+    var insightsOpenArr=_useState(function(){return !!(init.hipotesis||init.evidencia_resumen||init.validacion||init.alcance_exposicion||init.material_afectado);});
+    var insightsOpen=insightsOpenArr[0];var setInsightsOpen=insightsOpenArr[1];
+    var frontOpenArr=_useState(function(){return !!(init.titulo_corto||init.tipo_caso||init.estatus_rcca||init.severidad||init.recurrencia||init.madurez_analisis||init.estacion_dominante||init.defecto_dominante);});
+    var frontOpen=frontOpenArr[0];var setFrontOpen=frontOpenArr[1];
     function upd(k,v){var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});n[k]=v;setForm(n);}
     function toggleEvent(evId){
       var cur=form.event_ids;var newIds=cur.indexOf(evId)>=0?cur.filter(function(x){return x!==evId;}):cur.concat([evId]);
@@ -2008,11 +2064,15 @@ function App() {
       if(firstEv){
         if(!form.modelo||form.modelo===init.modelo)n.modelo=firstEv.modelo||"";
         if(!form.linea||form.linea===init.linea)n.linea=firstEv.linea_estacion||"";
+        if(!form.estacion_dominante)n.estacion_dominante=firstEv.linea_estacion||"";
+        if(!form.defecto_dominante&&firstEv.defecto_smt&&firstEv.defecto_smt!=="N/A")n.defecto_dominante=firstEv.defecto_smt;
         if(!form.fecha||form.fecha===init.fecha){var dp=(firstEv.fecha||"").split("/");n.fecha=dp.length===3?dp[2]+"-"+dp[1].padStart(2,"0")+"-"+dp[0].padStart(2,"0"):form.fecha;}
         if(!form.problema&&firstEv.evento_detectado)n.problema=firstEv.evento_detectado;
+        if(!form.titulo_corto&&firstEv.evento_detectado)n.titulo_corto=firstEv.evento_detectado.slice(0,52);
       }
       setForm(n);
     }
+    function SelectField(p){return(<div key={p.k}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{p.l}</div><select value={form[p.k]} onChange={function(e){upd(p.k,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}><option value="">-</option>{p.opts.map(function(opt){return<option key={opt.v} value={opt.v}>{opt.l}</option>;})}</select></div>);}
     return(
       <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9998,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={function(){onClose();}}>
         <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:820,maxHeight:"90vh",overflow:"auto",paddingBottom:32}} onClick={function(e){e.stopPropagation();}}>
@@ -2050,12 +2110,33 @@ function App() {
                 <div key={f.k}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.l}</div><input value={form[f.k]} onChange={function(e){upd(f.k,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
               );})}
             </div>
-            {fields.map(function(f){return(
+            <div style={{border:"1px solid #DDDBD7",borderRadius:10,overflow:"hidden"}}>
+              <button onClick={function(){setFrontOpen(!frontOpen);}} style={{width:"100%",textAlign:"left",padding:"11px 12px",background:frontOpen?"#F5F0FE":"#F8F7F5",border:"none",borderBottom:frontOpen?"1px solid #E6DDF9":"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,fontWeight:700,color:"#6B2DA8",textTransform:"uppercase",letterSpacing:".06em"}}>Frente de tarjeta</span><span style={{fontSize:11,color:"#6B2DA8",fontWeight:700}}>{frontOpen?"Ocultar":"Mostrar"}</span></button>
+              {frontOpen&&<div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+                <div><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>Titulo corto</div><input value={form.titulo_corto} onChange={function(e){upd("titulo_corto",e.target.value);}} placeholder="Resumen corto para la carta" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                  {SelectField({k:"tipo_caso",l:"Tipo de caso",opts:[{v:"GENERAL",l:"GENERAL"},{v:"SMT",l:"SMT"},{v:"AOI",l:"AOI"},{v:"ICT",l:"ICT"},{v:"BGA",l:"BGA"},{v:"PTH",l:"PTH"},{v:"MATERIAL",l:"MATERIAL"},{v:"PROCESO",l:"PROCESO"},{v:"SISTEMA",l:"SISTEMA"},{v:"TEST",l:"TEST"}]})}
+                  {SelectField({k:"estatus_rcca",l:"Estatus",opts:[{v:"NUEVO",l:"NUEVO"},{v:"EN ANALISIS",l:"EN ANALISIS"},{v:"CONTENIDO",l:"CONTENIDO"},{v:"VALIDANDO",l:"VALIDANDO"},{v:"CERRADO",l:"CERRADO"}]})}
+                  {SelectField({k:"severidad",l:"Severidad",opts:[{v:"1",l:"1"},{v:"2",l:"2"},{v:"3",l:"3"},{v:"4",l:"4"},{v:"5",l:"5"}]})}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                  {SelectField({k:"recurrencia",l:"Recurrencia",opts:[{v:"1",l:"1"},{v:"2",l:"2"},{v:"3",l:"3"},{v:"4",l:"4"},{v:"5",l:"5"}]})}
+                  {SelectField({k:"madurez_analisis",l:"Madurez",opts:[{v:"1",l:"1"},{v:"2",l:"2"},{v:"3",l:"3"},{v:"4",l:"4"},{v:"5",l:"5"}]})}
+                  <div><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>Estacion dominante</div><input value={form.estacion_dominante} onChange={function(e){upd("estacion_dominante",e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
+                </div>
+                <div><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>Defecto dominante</div><input value={form.defecto_dominante} onChange={function(e){upd("defecto_dominante",e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
+              </div>}
+            </div>
+            {basicFields.map(function(f){return(
               <div key={f.key}>
                 <div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.label}{f.required&&<span style={{color:"#C0392B"}}> *</span>}</div>
                 <textarea value={form[f.key]} rows={f.rows} onChange={function(e){upd(f.key,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
               </div>
             );})}
+            <div style={{border:"1px solid #DDDBD7",borderRadius:10,overflow:"hidden"}}>
+              <button onClick={function(){setInsightsOpen(!insightsOpen);}} style={{width:"100%",textAlign:"left",padding:"11px 12px",background:insightsOpen?"#EBF0FC":"#F8F7F5",border:"none",borderBottom:insightsOpen?"1px solid #D8E1F7":"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,fontWeight:700,color:"#2952A3",textTransform:"uppercase",letterSpacing:".06em"}}>Insights opcionales</span><span style={{fontSize:11,color:"#2952A3",fontWeight:700}}>{insightsOpen?"Ocultar":"Mostrar"}</span></button>
+              {insightsOpen&&<div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>{insightFields.map(function(f){return(<div key={f.key}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.label}</div><textarea value={form[f.key]} rows={f.rows} onChange={function(e){upd(f.key,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/></div>);})}</div>}
+            </div>
             <button onClick={function(){if(!form.problema||!form.causa_raiz){alert("Completa Problema y Causa Raiz");return;}onSave(form);onClose();}} style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>{isEdit?"Actualizar RCCA":"Guardar RCCA"}</button>
           </div>
         </div>
@@ -2064,19 +2145,31 @@ function App() {
   }
 
   function RccaCard(props){var r=props.r;var score=props.score;
+    var title=r.titulo_corto||r.problema;
+    var status=r.estatus_rcca||"NUEVO";
+    var type=r.tipo_caso||"GENERAL";
+    var sev=r.severidad?"Sev "+r.severidad:null;
+    var rec=r.recurrencia?"Rec R"+r.recurrencia:null;
+    var mad=r.madurez_analisis?"Mad M"+r.madurez_analisis:null;
     return(
-      <div style={{background:"#fff",border:"1.5px solid "+(score>=70?"#B8DECE":score>=50?"#F5E4A0":"#DDDBD7"),borderRadius:10,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+      <div style={{background:"#fff",border:"1.5px solid "+(score>=70?"#B8DECE":score>=50?"#F5E4A0":"#DDDBD7"),borderRadius:12,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:8}}>
-          <div><span style={{fontSize:9,fontWeight:700,fontFamily:"monospace",color:"#2A7A60"}}>{r.rcca_id}</span>{score>0&&<span style={{marginLeft:6,fontSize:9,fontWeight:700,color:score>=70?"#1A7A3C":score>=50?"#B87820":"#8A8580",background:score>=70?"#EBF8EE":score>=50?"#FEF9E8":"#F8F7F5",borderRadius:99,padding:"1px 7px"}}>{score}%</span>}</div>
+          <div style={{minWidth:0,flex:1}}><div><span style={{fontSize:9,fontWeight:700,fontFamily:"monospace",color:"#2A7A60"}}>{r.rcca_id}</span>{score>0&&<span style={{marginLeft:6,fontSize:9,fontWeight:700,color:score>=70?"#1A7A3C":score>=50?"#B87820":"#8A8580",background:score>=70?"#EBF8EE":score>=50?"#FEF9E8":"#F8F7F5",borderRadius:99,padding:"1px 7px"}}>{score}%</span>}</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:4}}><span style={{fontSize:8.5,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:999,padding:"2px 7px",color:"#6A6560",fontWeight:700}}>{type}</span><span style={{fontSize:8.5,background:status==="CERRADO"?"#EAF5F0":status==="VALIDANDO"?"#F5F0FE":status==="CONTENIDO"?"#FEF9E8":status==="EN ANALISIS"?"#EBF0FC":"#F8F7F5",border:"1px solid "+(status==="CERRADO"?"#B8DECE":status==="VALIDANDO"?"#DBCDF8":status==="CONTENIDO"?"#F5E4A0":status==="EN ANALISIS"?"#C8D7F8":"#DDDBD7"),borderRadius:999,padding:"2px 7px",color:status==="CERRADO"?"#1E5C48":status==="VALIDANDO"?"#6B2DA8":status==="CONTENIDO"?"#B87820":status==="EN ANALISIS"?"#2952A3":"#6A6560",fontWeight:700}}>{status}</span></div></div>
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button onClick={function(){setRccaDetail(r);}} style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E5C48",cursor:"pointer"}}>Ver</button><button onClick={function(){setRccaForm(Object.assign({},r,{event_ids:(r.event_ids||[]).slice()}));}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#2952A3",cursor:"pointer"}}>Editar</button><button onClick={function(){deleteRcca(r.rcca_id);}} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>x</button></div>
         </div>
-        <div style={{fontSize:11.5,fontWeight:600,color:"#1A1714",marginBottom:5,lineHeight:1.3}}>{r.problema}</div>
-        <div style={{fontSize:10,color:"#2A7A60",background:"#EAF5F0",borderRadius:4,padding:"3px 8px",marginBottom:6,lineHeight:1.4}}>{r.causa_raiz?r.causa_raiz.slice(0,80)+(r.causa_raiz.length>80?"...":""):""}</div>
+        <div style={{fontSize:12,fontWeight:700,color:"#1A1714",marginBottom:5,lineHeight:1.3}}>{title}</div>
+        <div style={{fontSize:10.5,color:"#6A6560",marginBottom:6,lineHeight:1.4}}>{r.problema?r.problema.slice(0,92)+(r.problema.length>92?"...":""):""}</div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
+          {sev&&<span style={{fontSize:9,background:"#FEF0EE",border:"1px solid #F1C8C2",borderRadius:999,padding:"2px 7px",color:"#C0392B",fontWeight:700}}>{sev}</span>}
+          {rec&&<span style={{fontSize:9,background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:999,padding:"2px 7px",color:"#B87820",fontWeight:700}}>{rec}</span>}
+          {mad&&<span style={{fontSize:9,background:"#F5F0FE",border:"1px solid #DBCDF8",borderRadius:999,padding:"2px 7px",color:"#6B2DA8",fontWeight:700}}>{mad}</span>}
+          {r.event_ids&&<span style={{fontSize:9,background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:999,padding:"2px 7px",color:"#1E5C48",fontWeight:700}}>Ev {r.event_ids.length}</span>}
+        </div>
         <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
           {r.modelo&&<span style={{fontSize:9,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:4,padding:"2px 7px",color:"#6A6560"}}>{r.modelo}</span>}
           {r.linea&&<span style={{fontSize:9,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:4,padding:"2px 7px",color:"#6A6560"}}>{r.linea}</span>}
           {r.fecha&&<span style={{fontSize:9,color:"#8A8580"}}>{r.fecha}</span>}
-          {r.event_ids&&r.event_ids.length>0&&r.event_ids.map(function(id){return<span key={id} style={{fontSize:9,fontFamily:"monospace",background:"#EAF5F0",color:"#2A7A60",borderRadius:4,padding:"2px 6px"}}>{id}</span>;})}
+          {r.event_ids&&r.event_ids.length>0&&r.event_ids.slice(0,3).map(function(id){return<span key={id} style={{fontSize:9,fontFamily:"monospace",background:"#EAF5F0",color:"#2A7A60",borderRadius:4,padding:"2px 6px"}}>{id}</span>;})}
         </div>
       </div>
     );
@@ -2330,18 +2423,29 @@ function App() {
       {rccaForm&&<RccaForm init={rccaForm} onSave={saveRcca} onClose={function(){setRccaForm(null);}}/>}
       {rccaDetail&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9997,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={function(){setRccaDetail(null);}}>
-          <div style={{background:"#fff",borderRadius:16,maxWidth:680,width:"100%",maxHeight:"85vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
-            <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{background:"#fff",borderRadius:16,maxWidth:720,width:"100%",maxHeight:"85vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
+            <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
               <div><div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>RCCA Detail</div><div style={{fontSize:10,color:"#2A7A60",fontFamily:"monospace"}}>{rccaDetail.rcca_id}</div></div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button onClick={function(){setRccaForm(Object.assign({},rccaDetail,{event_ids:(rccaDetail.event_ids||[]).slice()}));setRccaDetail(null);}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#2952A3",fontWeight:600}}>Editar</button><button onClick={function(){setRccaDetail(null);}} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cerrar</button></div>
             </div>
             <div style={{padding:"18px 20px",display:"flex",flexDirection:"column",gap:12}}>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                {rccaDetail.modelo&&<span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"3px 9px",fontWeight:600}}>{rccaDetail.modelo}</span>}
-                {rccaDetail.linea&&<span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:4,padding:"3px 9px",fontWeight:600}}>{rccaDetail.linea}</span>}
-                <span style={{fontSize:10,color:"#8A8580"}}>{rccaDetail.fecha}</span>
+              <div>
+                <div style={{fontSize:18,fontWeight:800,color:"#1A1714",lineHeight:1.2}}>{rccaDetail.titulo_corto||rccaDetail.problema||"-"}</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
+                  <span style={{fontSize:10,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:999,padding:"3px 9px",fontWeight:700,color:"#6A6560"}}>{rccaDetail.tipo_caso||"GENERAL"}</span>
+                  <span style={{fontSize:10,background:rccaDetail.estatus_rcca==="CERRADO"?"#EAF5F0":rccaDetail.estatus_rcca==="VALIDANDO"?"#F5F0FE":rccaDetail.estatus_rcca==="CONTENIDO"?"#FEF9E8":rccaDetail.estatus_rcca==="EN ANALISIS"?"#EBF0FC":"#F8F7F5",border:"1px solid "+(rccaDetail.estatus_rcca==="CERRADO"?"#B8DECE":rccaDetail.estatus_rcca==="VALIDANDO"?"#DBCDF8":rccaDetail.estatus_rcca==="CONTENIDO"?"#F5E4A0":rccaDetail.estatus_rcca==="EN ANALISIS"?"#C8D7F8":"#DDDBD7"),borderRadius:999,padding:"3px 9px",fontWeight:700,color:rccaDetail.estatus_rcca==="CERRADO"?"#1E5C48":rccaDetail.estatus_rcca==="VALIDANDO"?"#6B2DA8":rccaDetail.estatus_rcca==="CONTENIDO"?"#B87820":rccaDetail.estatus_rcca==="EN ANALISIS"?"#2952A3":"#6A6560"}}>{rccaDetail.estatus_rcca||"NUEVO"}</span>
+                  {rccaDetail.modelo&&<span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 9px",fontWeight:600}}>{rccaDetail.modelo}</span>}
+                  {rccaDetail.linea&&<span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 9px",fontWeight:600}}>{rccaDetail.linea}</span>}
+                  <span style={{fontSize:10,color:"#8A8580"}}>{rccaDetail.fecha}</span>
+                </div>
               </div>
-              {[{l:"Problema",v:rccaDetail.problema,color:"#C0392B",bg:"#FEF0EE"},{l:"Causa Raiz",v:rccaDetail.causa_raiz,color:"#2952A3",bg:"#EBF0FC"},{l:"Contencion",v:rccaDetail.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Accion Correctiva",v:rccaDetail.accion_correctiva,color:"#1A7A3C",bg:"#EBF8EE"},{l:"Accion Preventiva",v:rccaDetail.accion_preventiva,color:"#2A7A60",bg:"#EAF5F0"},{l:"Patron",v:rccaDetail.patron_detectado,color:"#6B2DA8",bg:"#F5F0FE"},{l:"Leccion",v:rccaDetail.leccion_aprendida,color:"#1A1714",bg:"#F8F7F5"}].filter(function(f){return f.v;}).map(function(f){return(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8}}>
+                <div style={{background:"#FEF0EE",border:"1px solid #F1C8C2",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontSize:9,fontWeight:700,color:"#C0392B",textTransform:"uppercase"}}>Sev</div><div style={{fontSize:13,fontWeight:700,color:"#C0392B"}}>{rccaDetail.severidad||"-"}</div></div>
+                <div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontSize:9,fontWeight:700,color:"#B87820",textTransform:"uppercase"}}>Rec</div><div style={{fontSize:13,fontWeight:700,color:"#B87820"}}>{rccaDetail.recurrencia?"R"+rccaDetail.recurrencia:"-"}</div></div>
+                <div style={{background:"#F5F0FE",border:"1px solid #DBCDF8",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontSize:9,fontWeight:700,color:"#6B2DA8",textTransform:"uppercase"}}>Mad</div><div style={{fontSize:13,fontWeight:700,color:"#6B2DA8"}}>{rccaDetail.madurez_analisis?"M"+rccaDetail.madurez_analisis:"-"}</div></div>
+                <div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontSize:9,fontWeight:700,color:"#1E5C48",textTransform:"uppercase"}}>Eventos</div><div style={{fontSize:13,fontWeight:700,color:"#1E5C48"}}>{rccaDetail.event_ids&&rccaDetail.event_ids.length?rccaDetail.event_ids.length:"0"}</div></div>
+              </div>
+              {[{l:"Problema",v:rccaDetail.problema,color:"#C0392B",bg:"#FEF0EE"},{l:"Hipotesis",v:rccaDetail.hipotesis,color:"#6B2DA8",bg:"#F5F0FE"},{l:"Causa Raiz",v:rccaDetail.causa_raiz,color:"#2952A3",bg:"#EBF0FC"},{l:"Evidencia Resumen",v:rccaDetail.evidencia_resumen,color:"#1E5C48",bg:"#EAF5F0"},{l:"Validacion",v:rccaDetail.validacion,color:"#2952A3",bg:"#EBF0FC"},{l:"Alcance / Exposicion",v:rccaDetail.alcance_exposicion,color:"#B87820",bg:"#FEF9E8"},{l:"Material Afectado",v:rccaDetail.material_afectado,color:"#6A6560",bg:"#F8F7F5"},{l:"Contencion",v:rccaDetail.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Accion Correctiva",v:rccaDetail.accion_correctiva,color:"#1A7A3C",bg:"#EBF8EE"},{l:"Accion Preventiva",v:rccaDetail.accion_preventiva,color:"#2A7A60",bg:"#EAF5F0"},{l:"Patron",v:rccaDetail.patron_detectado,color:"#6B2DA8",bg:"#F5F0FE"},{l:"Leccion",v:rccaDetail.leccion_aprendida,color:"#1A1714",bg:"#F8F7F5"}].filter(function(f){return f.v;}).map(function(f){return(
                 <div key={f.l} style={{background:f.bg,border:"1px solid "+f.color+"30",borderRadius:8,padding:"10px 14px"}}>
                   <div style={{fontSize:9.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:f.color,marginBottom:5}}>{f.l}</div>
                   <div style={{fontSize:12,color:"#1A1714",lineHeight:1.5}}>{f.v}</div>
