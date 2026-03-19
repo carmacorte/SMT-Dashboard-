@@ -1393,6 +1393,10 @@ function App() {
   var statsArr = _useState(null); var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
   var bitSortKeyArr = _useState("fecha"); var bitacoraSortKey = bitSortKeyArr[0]; var setBitacoraSortKey = bitSortKeyArr[1];
   var bitSortDirArr = _useState("desc"); var bitacoraSortDir = bitSortDirArr[0]; var setBitacoraSortDir = bitSortDirArr[1];
+  var vfDateFromArr = _useState(""); var viewDateFrom = vfDateFromArr[0]; var setViewDateFrom = vfDateFromArr[1];
+  var vfDateToArr = _useState(""); var viewDateTo = vfDateToArr[0]; var setViewDateTo = vfDateToArr[1];
+  var vfHourFromArr = _useState(""); var viewHourFrom = vfHourFromArr[0]; var setViewHourFrom = vfHourFromArr[1];
+  var vfHourToArr = _useState(""); var viewHourTo = vfHourToArr[0]; var setViewHourTo = vfHourToArr[1];
 
   React.useEffect(function(){
     function onResize(){ if (window.innerWidth > 900) setSidebarOpen(true); }
@@ -1784,12 +1788,90 @@ function App() {
     setZipImgNames([]);setImgMeta({});setEvImgs({});setLightbox(null);setGalPage(0);
     setFilterMode("quick");setDateFrom("");setDateTo("");setWeekNum("");setWeekYear(new Date().getFullYear());
     setBitacoraSortKey("fecha");setBitacoraSortDir("desc");
+    setViewDateFrom("");setViewDateTo("");setViewHourFrom("");setViewHourTo("");
     setRccaForm(null);setRccaDetail(null);
   }
 
-  var ev=(result&&result.eventos)?result.eventos:[];
-  var kpis=(result&&result.kpis)?result.kpis:[];
+  var evAll=(result&&result.eventos)?result.eventos:[];
+  var kpisAll=(result&&result.kpis)?result.kpis:[];
   var res=(result&&result.resumen)?result.resumen:{};
+
+  function eventDateToIso(fechaStr){
+    if(!fechaStr) return "";
+    var parts=String(fechaStr).split("/");
+    if(parts.length!==3) return "";
+    return parts[2]+"-"+String(parts[1]).padStart(2,"0")+"-"+String(parts[0]).padStart(2,"0");
+  }
+
+  function parseChatDateTimeMs(value){
+    if(!value) return null;
+    var raw=String(value).trim();
+    if(!raw) return null;
+    var main=raw.split(" - ")[0].trim();
+    var parts=main.split(" ");
+    var datePart=parts[0]||"";
+    var timePart=parts[1]||"00:00";
+    var dp=datePart.split("/");
+    if(dp.length!==3) return null;
+    var tp=parseClockParts(timePart);
+    return new Date(parseInt(dp[2],10),parseInt(dp[1],10)-1,parseInt(dp[0],10),tp.h,tp.m,tp.s).getTime();
+  }
+
+  function matchesHourRange(hourValue,fromValue,toValue){
+    var hv=parseInt(hourValue,10);
+    if(isNaN(hv)) return false;
+    var hasFrom=fromValue!==""&&fromValue!=null;
+    var hasTo=toValue!==""&&toValue!=null;
+    if(!hasFrom&&!hasTo) return true;
+    var fromHour=hasFrom?parseInt(fromValue,10):0;
+    var toHour=hasTo?parseInt(toValue,10):23;
+    if(isNaN(fromHour)) fromHour=0;
+    if(isNaN(toHour)) toHour=23;
+    if(fromHour<=toHour) return hv>=fromHour&&hv<=toHour;
+    return hv>=fromHour||hv<=toHour;
+  }
+
+  function hasViewFilter(){
+    return !!(viewDateFrom||viewDateTo||viewHourFrom!==""||viewHourTo!=="");
+  }
+
+  function filterEventRange(evRow){
+    var iso=eventDateToIso(evRow&&evRow.fecha);
+    if(viewDateFrom&&(!iso||iso<viewDateFrom)) return false;
+    if(viewDateTo&&(!iso||iso>viewDateTo)) return false;
+    if(viewHourFrom!==""||viewHourTo!==""){
+      var hourPart=evRow&&evRow.hora?String(evRow.hora).split(":")[0]:"";
+      if(!matchesHourRange(hourPart,viewHourFrom,viewHourTo)) return false;
+    }
+    return true;
+  }
+
+  function filterKpiRange(kpiRow){
+    if(!hasViewFilter()) return true;
+    var ms=parseChatDateTimeMs(kpiRow&&kpiRow.fechahora);
+    if(ms==null) return false;
+    var d=new Date(ms);
+    var iso=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    if(viewDateFrom&&iso<viewDateFrom) return false;
+    if(viewDateTo&&iso>viewDateTo) return false;
+    if(viewHourFrom!==""||viewHourTo!==""){
+      if(!matchesHourRange(d.getHours(),viewHourFrom,viewHourTo)) return false;
+    }
+    return true;
+  }
+
+  var ev=evAll.filter(filterEventRange);
+  var kpis=kpisAll.filter(filterKpiRange);
+  var visibleEventCount=ev.length;
+  var totalEventCount=evAll.length;
+  var filteredOutCount=totalEventCount-visibleEventCount;
+  var eventTimes=ev.map(parseEventDateTimeMs).filter(function(ms){return ms!=null;}).sort(function(a,b){return a-b;});
+  function formatLocalMs(ms){var d=new Date(ms);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
+  var visibleRangeLabel=eventTimes.length>0?(formatLocalMs(eventTimes[0])+" - "+formatLocalMs(eventTimes[eventTimes.length-1])):"Sin eventos en el rango";
+
+  function clearViewFilters(){
+    setViewDateFrom("");setViewDateTo("");setViewHourFrom("");setViewHourTo("");
+  }
 
   function parseBitacoraDateValue(e){
     var fecha=e&&e.fecha?e.fecha:"";
@@ -2645,6 +2727,30 @@ function App() {
               </div>
             </div>
           )}
+
+          <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+            <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+              <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Filtro de analisis</h3><span style={{fontSize:10,color:"#8A8580"}}>Acota el dashboard por fecha y hora sobre el archivo ya cargado</span></div>
+              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{fontSize:9.5,color:"#2A7A60",fontWeight:600,background:"#EAF5F0",borderRadius:99,padding:"4px 10px"}}>{visibleEventCount} de {totalEventCount} eventos</span>
+                {hasViewFilter()&&<button onClick={clearViewFilters} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:7,padding:"4px 11px",fontSize:10,color:"#6A6560",cursor:"pointer"}}>Limpiar</button>}
+              </div>
+            </div>
+            <div style={{padding:"12px 16px",display:"grid",gridTemplateColumns:isMobile()?"1fr 1fr":"repeat(4,minmax(0,1fr))",gap:10,borderBottom:"1px solid #EEECEA"}}>
+              <label style={{display:"flex",flexDirection:"column",gap:5}}><span style={{fontSize:10,fontWeight:700,color:"#8A8580",textTransform:"uppercase",letterSpacing:".06em"}}>Fecha desde</span><input type="date" value={viewDateFrom} onChange={function(e){setViewDateFrom(e.target.value);}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"9px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/></label>
+              <label style={{display:"flex",flexDirection:"column",gap:5}}><span style={{fontSize:10,fontWeight:700,color:"#8A8580",textTransform:"uppercase",letterSpacing:".06em"}}>Fecha hasta</span><input type="date" value={viewDateTo} onChange={function(e){setViewDateTo(e.target.value);}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"9px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/></label>
+              <label style={{display:"flex",flexDirection:"column",gap:5}}><span style={{fontSize:10,fontWeight:700,color:"#8A8580",textTransform:"uppercase",letterSpacing:".06em"}}>Hora desde</span><select value={viewHourFrom} onChange={function(e){setViewHourFrom(e.target.value);}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"9px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}><option value="">Todo el dia</option>{Array.from({length:24},function(_,i){var hh=String(i).padStart(2,"0");return<option key={hh} value={String(i)}>{hh}:00</option>;})}</select></label>
+              <label style={{display:"flex",flexDirection:"column",gap:5}}><span style={{fontSize:10,fontWeight:700,color:"#8A8580",textTransform:"uppercase",letterSpacing:".06em"}}>Hora hasta</span><select value={viewHourTo} onChange={function(e){setViewHourTo(e.target.value);}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"9px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}><option value="">Todo el dia</option>{Array.from({length:24},function(_,i){var hh=String(i).padStart(2,"0");return<option key={hh} value={String(i)}>{hh}:59</option>;})}</select></label>
+            </div>
+            <div style={{padding:"10px 16px",background:"#FAFAF9",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+              <span style={{fontSize:10,color:"#8A8580"}}>Vista activa:</span>
+              <span style={{fontSize:10.5,fontWeight:600,color:"#2A7A60",background:"#EAF5F0",borderRadius:99,padding:"4px 10px"}}>{visibleRangeLabel}</span>
+              {(viewHourFrom!==""||viewHourTo!=="")&&<span style={{fontSize:10.5,fontWeight:600,color:"#2952A3",background:"#EBF0FC",borderRadius:99,padding:"4px 10px"}}>{(viewHourFrom!==""?String(viewHourFrom).padStart(2,"0")+":00":"00:00")+" - "+(viewHourTo!==""?String(viewHourTo).padStart(2,"0")+":59":"23:59")}</span>}
+              {filteredOutCount>0&&<span style={{fontSize:10,color:"#8A8580"}}>{filteredOutCount} evento{filteredOutCount!==1?"s":""} fuera del rango</span>}
+            </div>
+          </div>
+
+          {visibleEventCount===0&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:14,padding:"14px 16px",marginBottom:14,fontSize:12,color:"#8B6A1E"}}>No hay eventos dentro del rango seleccionado. Ajusta las fechas u horas para volver a poblar KPIs, timeline y bitacora.</div>}
 
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
             {[{v:ev.length,l:"Total eventos",c:"#1E5C48"},{v:crit.length,l:"Criticos",c:"#C0392B"},{v:pend.length,l:"Pendientes",c:"#2952A3"},{v:cerr.length,l:"Cerrados",c:"#1A7A3C"}].map(function(k,i){return<div key={i} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}><div style={{fontSize:28,fontWeight:800,color:k.c,lineHeight:1,marginBottom:4}}>{k.v}</div><div style={{fontSize:10.5,color:"#8A8580",fontWeight:500}}>{k.l}</div></div>;})}</div>
