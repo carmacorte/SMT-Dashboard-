@@ -995,7 +995,7 @@ async function analyzeWithAI(msgs, apiKey) {
     var err = await resp.json().catch(function() { return {}; });
 
     if (resp.status === 401) {
-      throw new Error("API Key invalida. Verifica en console.anthropic.com");
+      throw new Error("API Key invalida. Verifica tu configuracion.");
     }
     if (resp.status === 429) {
       throw new Error("Limite de uso alcanzado. Espera e intenta de nuevo.");
@@ -1873,7 +1873,7 @@ function App() {
 
   async function handle(file){
     if(!file||!file.name.endsWith(".zip")){setErrMsg("Sube un .zip exportado de WhatsApp");setState("error");return;}
-    if(!apiKey.trim()){setErrMsg("Ingresa tu API Key de Anthropic");setState("error");return;}
+    if(!apiKey.trim()){setErrMsg("Ingresa tu API Key");setState("error");return;}
     fileNameRef.current=file.name;
     setState("loading");setProg(8);setProgStep(0);
     try{
@@ -2562,8 +2562,8 @@ function App() {
         </div>
         <div className="sidebar-section">
           <div className="sidebar-section-title">API Key</div>
-          <input className="sidebar-api-input" type="password" placeholder="sk-ant-api03-..." value={apiKey} onChange={function(e){saveKey(e.target.value);}}/>
-          <div className="sidebar-api-note">Guardada en navegador. <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">Obtener key</a></div>
+          <input className="sidebar-api-input" type="password" placeholder="Pega tu API key aqui" value={apiKey} onChange={function(e){saveKey(e.target.value);}}/>
+          <div className="sidebar-api-note">Guardada en navegador.</div>
         </div>
 
         <div className="sidebar-section">
