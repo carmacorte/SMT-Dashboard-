@@ -891,7 +891,7 @@ async function analyzeWithAI(msgs, apiKey) {
         " | estacion:" + cluster.station +
         " | turno:" + (first.turno || "") +
         " | actores:" + senders +
-        " | msgs:" + texts.slice(0, 320)
+        " | msgs:" + texts.slice(0, 480)
       );
     }).join("\n");
   }
@@ -1995,12 +1995,24 @@ function App() {
     var evDef = (evItem.defecto_smt||"").toLowerCase().trim();
     var rcProb = (rcca.problema||"").toLowerCase().trim();
     var evTipo = (evItem.tipo_evento||"").toLowerCase().trim();
+    var evFindings = (evItem.engineer_findings||"").toLowerCase().trim();
+    var rcCausa = (rcca.causa_raiz||"").toLowerCase().trim();
+    var rcAccion = (rcca.accion_correctiva||"").toLowerCase().trim();
     if (evModelo && rcModelo && evModelo!=="n/d" && evModelo===rcModelo) score+=40;
     else if (evModelo && rcModelo && evModelo!=="n/d" && (rcModelo.indexOf(evModelo)>=0||evModelo.indexOf(rcModelo)>=0)) score+=20;
     if (evLinea && rcLinea && evLinea!=="n/d" && evLinea===rcLinea) score+=25;
     else if (evLinea && rcLinea && evLinea!=="n/d" && (rcLinea.indexOf(evLinea)>=0||evLinea.indexOf(rcLinea)>=0)) score+=12;
     if (evDef && evDef!=="n/a" && rcProb && rcProb.indexOf(evDef)>=0) score+=25;
     else if (evDef && evDef!=="n/a" && rcProb && evDef.split(" ").some(function(w){ return w.length>3&&rcProb.indexOf(w)>=0; })) score+=12;
+    if (evDef && evDef!=="n/a" && rcCausa && evDef.split(" ").some(function(w){ return w.length>3&&rcCausa.indexOf(w)>=0; })) score+=10;
+    if (evFindings && (rcProb || rcCausa || rcAccion)) {
+      var efWords = evFindings.split(/\s+/).filter(function(w){ return w.length>4; });
+      var matches = efWords.filter(function(w){
+        return (rcProb && rcProb.indexOf(w)>=0) || (rcCausa && rcCausa.indexOf(w)>=0) || (rcAccion && rcAccion.indexOf(w)>=0);
+      });
+      if (matches.length>=3) score+=20;
+      else if (matches.length>=1) score+=8;
+    }
     if (evTipo && rcca.patron_detectado && rcca.patron_detectado.toLowerCase().indexOf(evTipo)>=0) score+=10;
     return Math.min(score, 100);
   }
