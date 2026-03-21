@@ -2300,6 +2300,7 @@ function App() {
 
   function bprio(p){return({Critica:"badge bc",Alta:"badge ba",Media:"badge bm",Baja:"badge bb"})[p]||"badge";}
   function best(s){return({Abierto:"badge bo","En proceso":"badge be",Cerrado:"badge bce"})[s]||"badge";}
+  function engineerSnippet(v,limit){var s=String(v||"").replace(/\s+/g," ").trim();if(!s)return"";return s.length>(limit||180)?s.slice(0,(limit||180)-1)+"…":s;}
 
   function PendItem(props){
     var e=props.e;
@@ -2307,6 +2308,7 @@ function App() {
       <div className={"pitem"+(e.prioridad==="Critica"?" cr":e.prioridad==="Alta"?" al":"")}>
         <div className="pitem-top"><span className="pitem-id">{e.id} - {e.fecha} - {e.turno}</span><span className={bprio(e.prioridad)}>{e.prioridad}</span></div>
         <h4>{e.evento_detectado}</h4><p>{e.accion_requerida}</p>
+        {e.engineer_findings&&<div style={{marginTop:8,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:10,padding:"8px 10px"}}><div style={{fontSize:9,fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:"#2952A3",marginBottom:4}}>Engineer findings</div><div style={{fontSize:11,lineHeight:1.45,color:"#1A1714"}}>{engineerSnippet(e.engineer_findings,260)}</div></div>}
         <div className="pmeta">
           <span className="ptag">{e.linea_estacion}</span>
           <span className="ptag">{e.responsable_sugerido}</span>
@@ -3286,6 +3288,7 @@ function App() {
                   <th className={"sortable-th"+(bitacoraSortKey==="tipo_evento"?" active":"")} onClick={function(){toggleBitacoraSort("tipo_evento");}}><span className="sort-wrap">Tipo <span className="sort-arrow">{getBitacoraSortIndicator("tipo_evento")}</span></span></th>
                   <th className={"sortable-th"+(bitacoraSortKey==="defecto_smt"?" active":"")} onClick={function(){toggleBitacoraSort("defecto_smt");}}><span className="sort-wrap">Defecto SMT <span className="sort-arrow">{getBitacoraSortIndicator("defecto_smt")}</span></span></th>
                   <th className={"sortable-th"+(bitacoraSortKey==="evento_detectado"?" active":"")} onClick={function(){toggleBitacoraSort("evento_detectado");}}><span className="sort-wrap">Evento <span className="sort-arrow">{getBitacoraSortIndicator("evento_detectado")}</span></span></th>
+                  <th>Engineer findings</th>
                   <th className={"sortable-th"+(bitacoraSortKey==="prioridad"?" active":"")} onClick={function(){toggleBitacoraSort("prioridad");}}><span className="sort-wrap">Prioridad <span className="sort-arrow">{getBitacoraSortIndicator("prioridad")}</span></span></th>
                   <th className={"sortable-th"+(bitacoraSortKey==="estatus"?" active":"")} onClick={function(){toggleBitacoraSort("estatus");}}><span className="sort-wrap">Estatus <span className="sort-arrow">{getBitacoraSortIndicator("estatus")}</span></span></th>
                   <th>RCCA</th>
@@ -3301,6 +3304,7 @@ function App() {
                       <td><span style={{fontSize:9,background:"#EDF5F3",color:"#1E5545",padding:"2px 5px",borderRadius:4,fontWeight:600}}>{e.tipo_evento}</span></td>
                       <td style={{maxWidth:100}}>{e.defecto_smt&&e.defecto_smt!=="N/A"?<span className="badge bt" style={{fontSize:8.5,whiteSpace:"normal"}}>{e.defecto_smt}</span>:<span style={{color:"#C8C2BA",fontSize:10}}>-</span>}</td>
                       <td style={{maxWidth:170,fontSize:10.5}}>{e.evento_detectado}</td>
+                      <td style={{maxWidth:240,minWidth:180,fontSize:10.2,lineHeight:1.4,color:e.engineer_findings?"#1A1714":"#B8B4AE"}}>{e.engineer_findings?<div><div style={{fontSize:8.4,fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:"#2952A3",marginBottom:3}}>Engineer</div><div>{engineerSnippet(e.engineer_findings,220)}</div></div>:"-"}</td>
                       <td><span className={bprio(e.prioridad)}>{e.prioridad}</span></td>
                       <td><span className={best(e.estatus)}>{e.estatus}</span></td>
                       <td style={{verticalAlign:"top",paddingTop:8}}><RccaCell evId={e.id} modelo={e.modelo} linea={e.linea_estacion} fecha={e.fecha} problema={e.evento_detectado}/></td>
