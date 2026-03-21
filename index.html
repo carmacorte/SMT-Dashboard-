@@ -1075,67 +1075,91 @@ async function analyzeWithAI(msgs, apiKey) {
     return n;
   }
 
-  function formatFindingLocal(msg) {
-    return "[" + (msg.dateDisp || msg.dateIso || "") + " " + (msg.timeStr || "") + " " + (msg.sender || "") + "] " + String(msg.text || "").replace(/\s+/g, " ").trim();
+  function formatFindingLocal(msg, textOverride) {
+    var body = String(textOverride != null ? textOverride : (msg && msg.text) || "").replace(/\s+/g, " ").trim();
+    return "[" + ((msg && (msg.dateDisp || msg.dateIso)) || "") + " " + ((msg && msg.timeStr) || "") + " " + ((msg && msg.sender) || "") + "] " + body;
   }
 
-  function engineerHasStrongSignalLocal(text) {
-    var t = normalizeLooseLocal(text || "");
-    return /(?:\bu\d{2,4}\b|\bict\b|\baoi\b|\bspi\d*\b|\b5dx\b|\bxray\b|\bflux\b|\bpogo\b|test point|test points|wrong component|material mix|\bshort\b|\bopen\b|\bbridge\b|soldadura|reflu|reflow|residuo|residuos|limpieza|owner\s*:|escalad|causa|hipotesis|mitigacion|contencion|validacion|fixtura|feeder|reel|kitting|pallet|autopressfit)/.test(t);
+  function engineerHasStrongSignalLocal(text, anchor) {
+    var t = normalizeLooseLocal(text);
+    if (!t) return false;
+    var techHits = technicalHitCountLocal(t);
+    var parts = extractPartsLocal(text);
+    var models = extractModelTokensLocal(text);
+    var partOverlap = overlapCountLocal(parts, (anchor && anchor.components) || []);
+    var modelOverlap = overlapCountLocal(models, (anchor && anchor.modelTokens) || []);
+    var stationMatch = !!(anchor && anchor.station && anchor.station !== "N/D" && extractStationLocal(text) === anchor.station);
+    var explicit = /(\b(?:u|r|c|l|q|d|tp)\d{1,4}\b|\b(?:aoi|spi|ict|xray|5dx)\b|\bflux\b|\bpogo\b|\btest points?\b|\bowner\b|\bescalad\w*\b|\bmitigaci\w*\b|\bcausa\b|\bhipotesis\b|\bwrong component\b|\bmaterial mix\b)/i.test(text || "");
+    return explicit || partOverlap > 0 || (modelOverlap > 0 && techHits >= 2) || (stationMatch && techHits >= 3) || techHits >= 4;
   }
 
   function engineerLooksOperationalOnlyLocal(text) {
-    var t = normalizeLooseLocal(text || "");
-    var op = /(?:gracias|xfavor|favor|de acuerdo|conforme a tu request|se mantiene el monitoreo|cada hora|monitoreando|en espera|quien esta ahora|quien estara|mandando update|update de control|buen dia team|buenas tardes|necesitamos tecnico|hay avance|compartir recomendaciones|soporte|request|seguimiento)/.test(t);
-    return op && !engineerHasStrongSignalLocal(t);
+    var t = normalizeLooseLocal(text);
+    if (!t) return true;
+    if (/(\b(?:u|r|c|l|q|d|tp)\d{1,4}\b|\b(?:aoi|spi|ict|xray|5dx)\b|\bflux\b|\bpogo\b|\btest points?\b|\bowner\b|\bescalad\w*\b|\bmitigaci\w*\b|\bcausa\b|\bhipotesis\b|\bwrong component\b|\bmaterial mix\b)/i.test(text || "")) return false;
+    var noisy = [
+      'gracias', 'graciasss', 'en espera', 'quien esta', 'quien estara', 'mandando update',
+      'cada hora', 'monitoreando', 'monitoreo cada hora', 'necesitamos tecnico', 'dando soporte',
+      'favor de apoyar', 'favor de revisar', 'favor de solicitar', 'buen dia team', 'como accion adicional',
+      'como lo vamos a estar', 'como lo revisamos en piso', 'se mantiene el monitoreo', 'soporte', 'update',
+      'reubicar', 'linea llena', 'alarmandose', 'espera de sus comentarios'
+    ];
+    var hits = 0;
+    noisy.forEach(function(k){ if (t.indexOf(k) >= 0) hits += 1; });
+    return hits >= 2 || (hits >= 1 && technicalHitCountLocal(t) <= 1);
   }
 
-  function normalizeEngineerFindingsLocal(raw, anchor) {
-    if (!raw) return "";
-    var pieces = String(raw).split(/\s+\|\|\s+/).map(function(x) { return String(x || "").trim(); }).filter(Boolean);
-    var seen = {};
-    var ranked = [];
-
-    pieces.forEach(function(piece) {
-      var body = piece.replace(/^\[[^\]]+\]\s*/, "").trim();
-      var norm = normalizeLooseLocal(body);
-      if (!norm || seen[norm]) return;
-      seen[norm] = true;
-      if (engineerLooksOperationalOnlyLocal(body)) return;
-
-      var partOverlap = overlapCountLocal(extractPartsLocal(body), (anchor && anchor.components) || []);
-      var modelOverlap = overlapCountLocal(extractModelTokensLocal(body), (anchor && anchor.modelTokens) || []);
-      var stationHit = (anchor && anchor.station && anchor.station !== "N/D" && extractStationLocal(body) === anchor.station) ? 1 : 0;
-      var lineHit = (anchor && anchor.line && anchor.line !== "N/D" && extractLineLocal(body) === anchor.line) ? 1 : 0;
-      var techHits = technicalHitCountLocal(body);
-      var score = 0;
-
-      if (partOverlap > 0) score += 8 + partOverlap * 2;
-      if (modelOverlap > 0) score += 4 + modelOverlap * 2;
-      if (stationHit) score += 2;
-      if (lineHit) score += 1;
-      if (techHits > 0) score += Math.min(8, techHits + 1);
-      if (engineerHasStrongSignalLocal(body)) score += 6;
-      if (/owner\s*:|escalad|5dx|flux|pogo|test point|test points|aoi|spi|ict|short|open|bridge/i.test(norm)) score += 4;
-      if (score < 10) return;
-
-      ranked.push({ piece: piece, score: score, body: body });
+  function extractFindingCoreLocal(text, anchor) {
+    var src = String(text || '').replace(/
+/g, '
+');
+    var pieces = src
+      .split(/
++|\s*\|\|\s*|(?<=[\.!?])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9•-])/)
+      .map(function(s){ return String(s || '').replace(/\s+/g,' ').trim(); })
+      .filter(Boolean);
+    var kept = [];
+    pieces.forEach(function(p){
+      if (p.length < 18) return;
+      var hasSignal = engineerHasStrongSignalLocal(p, anchor);
+      var opOnly = engineerLooksOperationalOnlyLocal(p);
+      var anchorOverlap = overlapCountLocal(extractPartsLocal(p), (anchor && anchor.components) || []) > 0 ||
+        overlapCountLocal(extractModelTokensLocal(p), (anchor && anchor.modelTokens) || []) > 0 ||
+        !!(anchor && anchor.station && anchor.station !== 'N/D' && extractStationLocal(p) === anchor.station);
+      if (hasSignal || (anchorOverlap && !opOnly)) kept.push(p);
     });
-
-    ranked.sort(function(a, b) {
-      if (b.score !== a.score) return b.score - a.score;
-      return a.body.length - b.body.length;
-    });
-
+    if (!kept.length) {
+      var compact = src.replace(/\s+/g,' ').trim();
+      if (engineerHasStrongSignalLocal(compact, anchor) && !engineerLooksOperationalOnlyLocal(compact)) kept = [compact];
+    }
     var out = [];
-    var totalLen = 0;
-    ranked.forEach(function(item) {
-      if (out.length >= 2 || totalLen >= 700) return;
-      out.push(item.piece);
-      totalLen += item.piece.length;
+    var seen = {};
+    kept.forEach(function(p){
+      var k = normalizeLooseLocal(p).slice(0, 140);
+      if (!k || seen[k]) return;
+      seen[k] = true;
+      out.push(p);
     });
+    return out.slice(0, 3).join(' • ');
+  }
 
-    return out.join(" || ");
+  function normalizeEngineerFindingsLocal(text, anchor) {
+    var raw = String(text || '').trim();
+    if (!raw) return '';
+    var chunks = raw.split(/\s*\|\|\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
+    var cleaned = [];
+    var seen = {};
+    chunks.forEach(function(chunk){
+      var core = extractFindingCoreLocal(chunk, anchor);
+      if (!core) return;
+      if (engineerLooksOperationalOnlyLocal(core) && !engineerHasStrongSignalLocal(core, anchor)) return;
+      var key = normalizeLooseLocal(core).slice(0, 160);
+      if (!key || seen[key]) return;
+      seen[key] = true;
+      cleaned.push(core);
+    });
+    if (!cleaned.length) return '';
+    return cleaned.slice(0, 2).join(' || ').slice(0, 700);
   }
 
   function enrichEngineerFindingsLocal(parsed) {
@@ -1154,34 +1178,28 @@ async function analyzeWithAI(msgs, apiKey) {
         var msgTimeMs = timeToMinsLocal(m.dateIso, m.timeStr) * 60000;
         if (!msgTimeMs || msgTimeMs <= (evTimeMs + 5 * 60000) || msgTimeMs > (evTimeMs + followWindowMs)) return;
         if (!m.text || m.text.length < 60) return;
-        if (engineerLooksOperationalOnlyLocal(m.text)) return;
 
         var msgParts = extractPartsLocal(m.text);
         var msgModels = extractModelTokensLocal(m.text);
         var partOverlap = overlapCountLocal(msgParts, anchor.components);
         var modelOverlap = overlapCountLocal(msgModels, anchor.modelTokens);
-        var stationMatch = (anchor.station !== "N/D" && extractStationLocal(m.text) === anchor.station);
-        var lineMatch = (anchor.line !== "N/D" && extractLineLocal(m.text) === anchor.line);
         var techHits = technicalHitCountLocal(m.text);
-        var strongSignal = engineerHasStrongSignalLocal(m.text);
         var score = 0;
 
         if (partOverlap > 0) score += 8 + partOverlap * 2;
         if (modelOverlap > 0) score += 4 + modelOverlap * 2;
-        if (lineMatch) score += 2;
-        if (stationMatch) score += 3;
-        if (techHits > 0) score += Math.min(8, techHits + 1);
-        if (strongSignal) score += 5;
+        if (anchor.line !== "N/D" && extractLineLocal(m.text) === anchor.line) score += 2;
+        if (anchor.station !== "N/D" && extractStationLocal(m.text) === anchor.station) score += 2;
+        if (techHits > 0) score += Math.min(6, techHits + 1);
         score += senderLooksTechnicalLocal(m);
         if (/\bcaso\s+(?:u|r|c|l|q|d|tp)?\d{1,4}\b/i.test(m.text)) score += 2;
         if (/owner\s*:/i.test(m.text)) score += 2;
         if (/escalad|5dx|flux|pogo|test point|test points|mitigacion|limpieza/i.test(normalizeLooseLocal(m.text))) score += 3;
         if (anchorTextNorm && normalizeLooseLocal(m.text).indexOf(anchorTextNorm.slice(0, 24)) >= 0) score += 2;
 
-        var hasAnchor = partOverlap > 0 || modelOverlap > 0 || stationMatch || lineMatch;
-        if (!hasAnchor && !strongSignal) return;
-        if (!strongSignal && partOverlap === 0 && modelOverlap === 0 && techHits < 4) return;
-        if (score < 10) return;
+        var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(m.text) === anchor.station);
+        if (!hasAnchor && techHits < 3) return;
+        if (score < 8) return;
 
         hits.push({ msg: m, ms: msgTimeMs, score: score });
       });
@@ -1195,16 +1213,19 @@ async function analyzeWithAI(msgs, apiKey) {
       var seen = {};
       var totalLen = 0;
       hits.forEach(function(h) {
-        if (picked.length >= 3 || totalLen >= 1200) return;
-        var k = normalizeLooseLocal(h.msg.text).slice(0, 120);
+        if (picked.length >= 2 || totalLen >= 800) return;
+        var core = String(h.core || '').trim();
+        if (!core) return;
+        var k = normalizeLooseLocal(core).slice(0, 140);
         if (!k || seen[k]) return;
         seen[k] = true;
         picked.push(h);
-        totalLen += String(h.msg.text || "").length;
+        totalLen += core.length;
       });
 
       picked.sort(function(a, b) { return a.ms - b.ms; });
-      var followText = normalizeEngineerFindingsLocal(picked.map(function(h) { return formatFindingLocal(h.msg); }).join(" || "), anchor);
+      var followText = picked.map(function(h) { return formatFindingLocal(h.msg, h.core); }).join(" || ");
+      followText = normalizeEngineerFindingsLocal(followText, anchor);
       var existing = normalizeEngineerFindingsLocal(String(ev.engineer_findings || "").trim(), anchor);
 
       if (!existing) {
