@@ -1079,6 +1079,65 @@ async function analyzeWithAI(msgs, apiKey) {
     return "[" + (msg.dateDisp || msg.dateIso || "") + " " + (msg.timeStr || "") + " " + (msg.sender || "") + "] " + String(msg.text || "").replace(/\s+/g, " ").trim();
   }
 
+  function engineerHasStrongSignalLocal(text) {
+    var t = normalizeLooseLocal(text || "");
+    return /(?:\bu\d{2,4}\b|\bict\b|\baoi\b|\bspi\d*\b|\b5dx\b|\bxray\b|\bflux\b|\bpogo\b|test point|test points|wrong component|material mix|\bshort\b|\bopen\b|\bbridge\b|soldadura|reflu|reflow|residuo|residuos|limpieza|owner\s*:|escalad|causa|hipotesis|mitigacion|contencion|validacion|fixtura|feeder|reel|kitting|pallet|autopressfit)/.test(t);
+  }
+
+  function engineerLooksOperationalOnlyLocal(text) {
+    var t = normalizeLooseLocal(text || "");
+    var op = /(?:gracias|xfavor|favor|de acuerdo|conforme a tu request|se mantiene el monitoreo|cada hora|monitoreando|en espera|quien esta ahora|quien estara|mandando update|update de control|buen dia team|buenas tardes|necesitamos tecnico|hay avance|compartir recomendaciones|soporte|request|seguimiento)/.test(t);
+    return op && !engineerHasStrongSignalLocal(t);
+  }
+
+  function normalizeEngineerFindingsLocal(raw, anchor) {
+    if (!raw) return "";
+    var pieces = String(raw).split(/\s+\|\|\s+/).map(function(x) { return String(x || "").trim(); }).filter(Boolean);
+    var seen = {};
+    var ranked = [];
+
+    pieces.forEach(function(piece) {
+      var body = piece.replace(/^\[[^\]]+\]\s*/, "").trim();
+      var norm = normalizeLooseLocal(body);
+      if (!norm || seen[norm]) return;
+      seen[norm] = true;
+      if (engineerLooksOperationalOnlyLocal(body)) return;
+
+      var partOverlap = overlapCountLocal(extractPartsLocal(body), (anchor && anchor.components) || []);
+      var modelOverlap = overlapCountLocal(extractModelTokensLocal(body), (anchor && anchor.modelTokens) || []);
+      var stationHit = (anchor && anchor.station && anchor.station !== "N/D" && extractStationLocal(body) === anchor.station) ? 1 : 0;
+      var lineHit = (anchor && anchor.line && anchor.line !== "N/D" && extractLineLocal(body) === anchor.line) ? 1 : 0;
+      var techHits = technicalHitCountLocal(body);
+      var score = 0;
+
+      if (partOverlap > 0) score += 8 + partOverlap * 2;
+      if (modelOverlap > 0) score += 4 + modelOverlap * 2;
+      if (stationHit) score += 2;
+      if (lineHit) score += 1;
+      if (techHits > 0) score += Math.min(8, techHits + 1);
+      if (engineerHasStrongSignalLocal(body)) score += 6;
+      if (/owner\s*:|escalad|5dx|flux|pogo|test point|test points|aoi|spi|ict|short|open|bridge/i.test(norm)) score += 4;
+      if (score < 10) return;
+
+      ranked.push({ piece: piece, score: score, body: body });
+    });
+
+    ranked.sort(function(a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.body.length - b.body.length;
+    });
+
+    var out = [];
+    var totalLen = 0;
+    ranked.forEach(function(item) {
+      if (out.length >= 2 || totalLen >= 700) return;
+      out.push(item.piece);
+      totalLen += item.piece.length;
+    });
+
+    return out.join(" || ");
+  }
+
   function enrichEngineerFindingsLocal(parsed) {
     if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
     var followWindowMs = 5 * 24 * 60 * 60000;
@@ -1095,28 +1154,34 @@ async function analyzeWithAI(msgs, apiKey) {
         var msgTimeMs = timeToMinsLocal(m.dateIso, m.timeStr) * 60000;
         if (!msgTimeMs || msgTimeMs <= (evTimeMs + 5 * 60000) || msgTimeMs > (evTimeMs + followWindowMs)) return;
         if (!m.text || m.text.length < 60) return;
+        if (engineerLooksOperationalOnlyLocal(m.text)) return;
 
         var msgParts = extractPartsLocal(m.text);
         var msgModels = extractModelTokensLocal(m.text);
         var partOverlap = overlapCountLocal(msgParts, anchor.components);
         var modelOverlap = overlapCountLocal(msgModels, anchor.modelTokens);
+        var stationMatch = (anchor.station !== "N/D" && extractStationLocal(m.text) === anchor.station);
+        var lineMatch = (anchor.line !== "N/D" && extractLineLocal(m.text) === anchor.line);
         var techHits = technicalHitCountLocal(m.text);
+        var strongSignal = engineerHasStrongSignalLocal(m.text);
         var score = 0;
 
         if (partOverlap > 0) score += 8 + partOverlap * 2;
         if (modelOverlap > 0) score += 4 + modelOverlap * 2;
-        if (anchor.line !== "N/D" && extractLineLocal(m.text) === anchor.line) score += 2;
-        if (anchor.station !== "N/D" && extractStationLocal(m.text) === anchor.station) score += 2;
-        if (techHits > 0) score += Math.min(6, techHits + 1);
+        if (lineMatch) score += 2;
+        if (stationMatch) score += 3;
+        if (techHits > 0) score += Math.min(8, techHits + 1);
+        if (strongSignal) score += 5;
         score += senderLooksTechnicalLocal(m);
         if (/\bcaso\s+(?:u|r|c|l|q|d|tp)?\d{1,4}\b/i.test(m.text)) score += 2;
         if (/owner\s*:/i.test(m.text)) score += 2;
         if (/escalad|5dx|flux|pogo|test point|test points|mitigacion|limpieza/i.test(normalizeLooseLocal(m.text))) score += 3;
         if (anchorTextNorm && normalizeLooseLocal(m.text).indexOf(anchorTextNorm.slice(0, 24)) >= 0) score += 2;
 
-        var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(m.text) === anchor.station);
-        if (!hasAnchor && techHits < 3) return;
-        if (score < 8) return;
+        var hasAnchor = partOverlap > 0 || modelOverlap > 0 || stationMatch || lineMatch;
+        if (!hasAnchor && !strongSignal) return;
+        if (!strongSignal && partOverlap === 0 && modelOverlap === 0 && techHits < 4) return;
+        if (score < 10) return;
 
         hits.push({ msg: m, ms: msgTimeMs, score: score });
       });
@@ -1139,8 +1204,8 @@ async function analyzeWithAI(msgs, apiKey) {
       });
 
       picked.sort(function(a, b) { return a.ms - b.ms; });
-      var followText = picked.map(function(h) { return formatFindingLocal(h.msg); }).join(" || ");
-      var existing = String(ev.engineer_findings || "").trim();
+      var followText = normalizeEngineerFindingsLocal(picked.map(function(h) { return formatFindingLocal(h.msg); }).join(" || "), anchor);
+      var existing = normalizeEngineerFindingsLocal(String(ev.engineer_findings || "").trim(), anchor);
 
       if (!existing) {
         ev.engineer_findings = followText || "";
@@ -1148,8 +1213,12 @@ async function analyzeWithAI(msgs, apiKey) {
         var normExisting = normalizeLooseLocal(existing);
         var normFollow = normalizeLooseLocal(followText);
         if (normExisting.indexOf(normFollow.slice(0, 80)) === -1 && normFollow.indexOf(normExisting.slice(0, 80)) === -1) {
-          ev.engineer_findings = existing + " || " + followText;
+          ev.engineer_findings = normalizeEngineerFindingsLocal(existing + " || " + followText, anchor);
+        } else {
+          ev.engineer_findings = existing;
         }
+      } else {
+        ev.engineer_findings = existing;
       }
 
       return ev;
