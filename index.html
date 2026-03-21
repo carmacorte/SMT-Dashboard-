@@ -974,6 +974,190 @@ async function analyzeWithAI(msgs, apiKey) {
     '"alertas_criticas":["alerta"],"acciones_pendientes":["accion"],"estatus_lineas":["linea"]},' +
     '"directorio":[{"nombre":"nombre","departamento":"area","rol":"rol","mensajes":0,"eventos":0,"area_owner":"area"}]}';
 
+  function uniqLocal(arr) {
+    var out = [];
+    var seen = {};
+    (arr || []).forEach(function(x) {
+      var k = String(x || "").trim();
+      if (!k || seen[k]) return;
+      seen[k] = true;
+      out.push(k);
+    });
+    return out;
+  }
+
+  function normalizeLooseLocal(text) {
+    return String(text || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  function extractPartsLocal(text) {
+    return uniqLocal((String(text || "").toUpperCase().match(/\b(?:U|R|C|L|Q|D|TP)\d{1,4}\b/g) || []));
+  }
+
+  function extractModelTokensLocal(text) {
+    return uniqLocal(
+      normalizeLooseLocal(text)
+        .split(/\s+/)
+        .filter(function(tok) {
+          if (!tok || tok === "n" || tok === "d" || tok === "nd") return false;
+          if (tok.length < 3) return false;
+          if (/^(caso|owner|linea|estacion|evento|detectado|accion|reporta|responsable|abierto|cerrado|proceso|calidad|material|sistema|seguridad|produccion|smt|pth|ict|aoi|mod|modelo|falla|fallas|pass|open|short|wrong|component|components|loading|setup|engineer|findings|analisis|analizado|mitigacion|validacion|reporte|root|cause)$/.test(tok)) return false;
+          return true;
+        })
+    );
+  }
+
+  function parseEventDateTimeMsLocal(ev) {
+    if (!ev || !ev.fecha) return null;
+    var dp = String(ev.fecha).split("/");
+    if (dp.length !== 3) return null;
+    var tp = String(ev.hora || "00:00").split(":");
+    var dd = parseInt(dp[0], 10) || 1;
+    var mm = parseInt(dp[1], 10) || 1;
+    var yy = parseInt(dp[2], 10) || 2000;
+    var hh = parseInt(tp[0], 10) || 0;
+    var mi = parseInt(tp[1], 10) || 0;
+    return new Date(yy, mm - 1, dd, hh, mi, 0).getTime();
+  }
+
+  function technicalHitCountLocal(text) {
+    var t = normalizeLooseLocal(text);
+    var keys = [
+      "owner", "escalado", "escalar", "analizado", "analisis", "findings", "causa", "hipotesis",
+      "mitigacion", "contencion", "validacion", "inspeccion", "inspection", "ict", "aoi", "5dx", "xray",
+      "flux", "test point", "test points", "pogo", "componente", "componentes", "wrong", "open", "short",
+      "bridge", "soldadura", "limpieza", "residuo", "residuos", "fixtura", "recomendacion", "preventiva",
+      "preventivo", "monitoreo", "pallet", "autopressfit", "feeder", "reel", "material mix", "wrong p n"
+    ];
+    var hits = 0;
+    keys.forEach(function(k) {
+      if (t.indexOf(k) >= 0) hits += 1;
+    });
+    return hits;
+  }
+
+  function senderLooksTechnicalLocal(msg) {
+    var s = normalizeLooseLocal((msg && msg.sender) || "");
+    var t = normalizeLooseLocal((msg && msg.text) || "").slice(0, 160);
+    var combo = s + " " + t;
+    return /(eng|engineer|ingenier|qa|quality|calidad|maint|maintenance|mantenimiento|proceso|process|smt|pth|ict|aoi|superintendent|superintendente|tecnico|tec|manager|owner)/.test(combo) ? 1 : 0;
+  }
+
+  function buildEventAnchorLocal(ev, evTimeMs) {
+    var sourceTexts = msgs.filter(function(m) {
+      var ms = timeToMinsLocal(m.dateIso, m.timeStr) * 60000;
+      return evTimeMs && ms >= (evTimeMs - 90 * 60000) && ms <= (evTimeMs + 180 * 60000);
+    }).map(function(m) { return m.text; }).join(" ");
+
+    var anchorText = [
+      ev.evento_detectado, ev.accion_requerida, ev.accion_ejecutada, ev.notas,
+      ev.modelo, ev.linea_estacion, ev.defecto_smt, sourceTexts
+    ].join(" ");
+
+    return {
+      components: extractPartsLocal(anchorText),
+      modelTokens: extractModelTokensLocal([ev.modelo, ev.evento_detectado, sourceTexts].join(" ")).slice(0, 10),
+      line: extractLineLocal([ev.linea_estacion, ev.evento_detectado, sourceTexts].join(" ")),
+      station: extractStationLocal([ev.linea_estacion, ev.evento_detectado, sourceTexts].join(" "))
+    };
+  }
+
+  function overlapCountLocal(a, b) {
+    var setB = {};
+    (b || []).forEach(function(x) { setB[x] = true; });
+    var n = 0;
+    (a || []).forEach(function(x) { if (setB[x]) n += 1; });
+    return n;
+  }
+
+  function formatFindingLocal(msg) {
+    return "[" + (msg.dateDisp || msg.dateIso || "") + " " + (msg.timeStr || "") + " " + (msg.sender || "") + "] " + String(msg.text || "").replace(/\s+/g, " ").trim();
+  }
+
+  function enrichEngineerFindingsLocal(parsed) {
+    if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
+    var followWindowMs = 5 * 24 * 60 * 60000;
+
+    parsed.eventos = (parsed.eventos || []).map(function(ev) {
+      var evTimeMs = parseEventDateTimeMsLocal(ev);
+      if (!evTimeMs) return ev;
+
+      var anchor = buildEventAnchorLocal(ev, evTimeMs);
+      var anchorTextNorm = normalizeLooseLocal([ev.modelo, ev.evento_detectado, ev.linea_estacion].join(" "));
+      var hits = [];
+
+      msgs.forEach(function(m) {
+        var msgTimeMs = timeToMinsLocal(m.dateIso, m.timeStr) * 60000;
+        if (!msgTimeMs || msgTimeMs <= (evTimeMs + 5 * 60000) || msgTimeMs > (evTimeMs + followWindowMs)) return;
+        if (!m.text || m.text.length < 60) return;
+
+        var msgParts = extractPartsLocal(m.text);
+        var msgModels = extractModelTokensLocal(m.text);
+        var partOverlap = overlapCountLocal(msgParts, anchor.components);
+        var modelOverlap = overlapCountLocal(msgModels, anchor.modelTokens);
+        var techHits = technicalHitCountLocal(m.text);
+        var score = 0;
+
+        if (partOverlap > 0) score += 8 + partOverlap * 2;
+        if (modelOverlap > 0) score += 4 + modelOverlap * 2;
+        if (anchor.line !== "N/D" && extractLineLocal(m.text) === anchor.line) score += 2;
+        if (anchor.station !== "N/D" && extractStationLocal(m.text) === anchor.station) score += 2;
+        if (techHits > 0) score += Math.min(6, techHits + 1);
+        score += senderLooksTechnicalLocal(m);
+        if (/\bcaso\s+(?:u|r|c|l|q|d|tp)?\d{1,4}\b/i.test(m.text)) score += 2;
+        if (/owner\s*:/i.test(m.text)) score += 2;
+        if (/escalad|5dx|flux|pogo|test point|test points|mitigacion|limpieza/i.test(normalizeLooseLocal(m.text))) score += 3;
+        if (anchorTextNorm && normalizeLooseLocal(m.text).indexOf(anchorTextNorm.slice(0, 24)) >= 0) score += 2;
+
+        var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(m.text) === anchor.station);
+        if (!hasAnchor && techHits < 3) return;
+        if (score < 8) return;
+
+        hits.push({ msg: m, ms: msgTimeMs, score: score });
+      });
+
+      hits.sort(function(a, b) {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.ms - b.ms;
+      });
+
+      var picked = [];
+      var seen = {};
+      var totalLen = 0;
+      hits.forEach(function(h) {
+        if (picked.length >= 3 || totalLen >= 1200) return;
+        var k = normalizeLooseLocal(h.msg.text).slice(0, 120);
+        if (!k || seen[k]) return;
+        seen[k] = true;
+        picked.push(h);
+        totalLen += String(h.msg.text || "").length;
+      });
+
+      picked.sort(function(a, b) { return a.ms - b.ms; });
+      var followText = picked.map(function(h) { return formatFindingLocal(h.msg); }).join(" || ");
+      var existing = String(ev.engineer_findings || "").trim();
+
+      if (!existing) {
+        ev.engineer_findings = followText || "";
+      } else if (followText) {
+        var normExisting = normalizeLooseLocal(existing);
+        var normFollow = normalizeLooseLocal(followText);
+        if (normExisting.indexOf(normFollow.slice(0, 80)) === -1 && normFollow.indexOf(normExisting.slice(0, 80)) === -1) {
+          ev.engineer_findings = existing + " || " + followText;
+        }
+      }
+
+      return ev;
+    });
+
+    return parsed;
+  }
+
   var resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -1023,18 +1207,24 @@ async function analyzeWithAI(msgs, apiKey) {
   }
 
   var jsonStr = clean.slice(s, e + 1);
+  var parsed = null;
 
   try {
-    return JSON.parse(jsonStr);
+    parsed = JSON.parse(jsonStr);
   } catch (_) {}
 
-  var fixed = jsonStr.replace(/,\s*([}\]])/g, "$1");
+  if (!parsed) {
+    var fixed = jsonStr.replace(/,\s*([}\]])/g, "$1");
+    try {
+      parsed = JSON.parse(fixed);
+    } catch (_) {}
+  }
 
-  try {
-    return JSON.parse(fixed);
-  } catch (_) {}
+  if (!parsed) {
+    throw new Error("Error procesando respuesta. Intenta con 1 o 3 dias.");
+  }
 
-  throw new Error("Error procesando respuesta. Intenta con 1 o 3 dias.");
+  return enrichEngineerFindingsLocal(parsed);
 }
 
 async function buildXlsx(result) {
