@@ -845,7 +845,8 @@ async function analyzeWithAI(msgs, apiKey) {
         var sameType = msg.type === last.type;
         var lineOk = line === last.line || line === "N/D" || last.line === "N/D";
 
-        if (sameType && lineOk && dt <= 90) {
+        // PATCH 1: 180 min window to capture post-incident engineer findings
+        if (sameType && lineOk && dt <= 180) {
           last.messages.push(msg);
           last.lastTime = msgTime;
           if (last.line === "N/D" && line !== "N/D") last.line = line;
@@ -955,13 +956,14 @@ async function analyzeWithAI(msgs, apiKey) {
     "actor_area: Produccion|Calidad|Proceso|Mantenimiento|Materiales|Ingenieria|PTH|SMT|AOI|ICT. " +
     "estado_historia: Detectado|Contenido|Corregido|Validado|Cerrado. " +
     "Para cada evento extrae: quien detecto, que accion se tomo, que actores participaron, cual es el estado real del ciclo de vida. " +
+    "ENGINEER FINDINGS: Si en los mensajes del cluster hay una respuesta POSTERIOR al reporte inicial donde el engineer, tecnico de calidad, SMT o responsable tecnico responde con analisis, findings de componentes (ej: U108, U519), causa probable, resultados de inspeccion, hipotesis tecnica o plan de accion especifico, captura esa respuesta completa en el campo engineer_findings. Este campo es CRITICO para el seguimiento de causa raiz. " +
     "Maximo 15 eventos. Solo JSON sin texto extra:" +
     '{"eventos":[{"id":"EVT-001","fecha":"DD/MM/YYYY","hora":"HH:MM","turno":"1T|2T|3T",' +
     '"modelo":"N/P o N/D","linea_estacion":"L1 o N/D","reporta":"nombre",' +
     '"area_involucrada":"SMT|PTH|ICT|AOI|Calidad|Mantenimiento|Materiales|Produccion",' +
     '"tipo_evento":"Calidad|Proceso|Material|Sistema|Seguridad|Produccion",' +
     '"defecto_smt":"del catalogo o N/A","evento_detectado":"descripcion","impacto":"impacto",' +
-    '"accion_requerida":"accion","accion_ejecutada":"accion tomada o vacia si no hay",' +
+    '"accion_requerida":"accion","accion_ejecutada":"accion tomada o vacia si no hay","engineer_findings":"respuesta tecnica del engineer si existe en mensajes posteriores al incidente, o vacia",' +
     '"responsable_sugerido":"responsable",' +
     '"actores":["area1","area2"],' +
     '"estado_historia":"Detectado|Contenido|Corregido|Validado|Cerrado",' +
@@ -1070,7 +1072,7 @@ async function buildXlsx(result) {
 
   var H = ["ID","Fecha","Hora","Turno","Modelo","Linea_Estacion","Reporta","Area_involucrada",
            "Tipo_evento","Defecto_SMT","Evento_detectado","Impacto","Accion_requerida","Accion_ejecutada",
-           "Actores","Responsable_sugerido","Estado_historia","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
+           "Engineer_Findings","Actores","Responsable_sugerido","Estado_historia","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
 
   function addEvSheet(name, evArr) {
     var ws = wb.addWorksheet(name);
@@ -1082,6 +1084,7 @@ async function buildXlsx(result) {
         e.id, e.fecha, e.hora, e.turno, e.modelo, e.linea_estacion, e.reporta,
         e.area_involucrada, e.tipo_evento, e.defecto_smt || "N/A", e.evento_detectado,
         e.impacto, e.accion_requerida, e.accion_ejecutada || "",
+        e.engineer_findings || "",
         actoresStr, e.responsable_sugerido,
         e.estado_historia || "Detectado",
         e.estatus, e.prioridad,
@@ -1103,7 +1106,7 @@ async function buildXlsx(result) {
         else cell.fill = hFill(ri % 2 === 0 ? "FFFFFF" : C.alt);
       });
     });
-    ws.columns = [6,12,8,6,16,18,18,20,14,20,40,26,30,30,24,22,14,12,10,10,28,28].map(function(w){ return {width:w}; });
+    ws.columns = [6,12,8,6,16,18,18,20,14,20,40,26,30,30,36,24,22,14,12,10,10,28,28].map(function(w){ return {width:w}; });
     ws.views = [{state:"frozen",ySplit:1}];
   }
 
@@ -1140,7 +1143,7 @@ async function buildXlsx(result) {
 
   wsIS.addRow([]);
 
-  var storyH = ["ID","Fecha","Linea","Modelo","Evento_detectado","Actor_reporta","Actores_involucrados","Accion_ejecutada","Estado_historia","Impacto","Prioridad","Notas"];
+  var storyH = ["ID","Fecha","Linea","Modelo","Evento_detectado","Actor_reporta","Actores_involucrados","Accion_ejecutada","Engineer_Findings","Estado_historia","Impacto","Prioridad","Notas"];
   var shRow = wsIS.addRow(storyH);
   shRow.height = 16;
   for (var ci2 = 1; ci2 <= storyH.length; ci2++) {
@@ -1155,6 +1158,7 @@ async function buildXlsx(result) {
       e.id, e.fecha, e.linea_estacion, e.modelo,
       e.evento_detectado, e.reporta, actoresStr2,
       e.accion_ejecutada || e.accion_requerida,
+      e.engineer_findings || "",
       e.estado_historia || "Detectado",
       e.impacto, e.prioridad, e.notas
     ]);
@@ -1171,7 +1175,7 @@ async function buildXlsx(result) {
     });
   });
 
-  wsIS.columns = [8,12,16,18,40,20,28,36,16,26,10,30].map(function(w){ return {width:w}; });
+  wsIS.columns = [8,12,16,18,40,20,28,36,36,16,26,10,30].map(function(w){ return {width:w}; });
   wsIS.views = [{state:"frozen",ySplit:4}];
 
   var wsKpi = wb.addWorksheet("KPIs_chat");
