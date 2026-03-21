@@ -1110,12 +1110,9 @@ async function analyzeWithAI(msgs, apiKey) {
   }
 
   function extractFindingCoreLocal(text, anchor) {
-    var src = String(text || '').replace(/
-/g, '
-');
+    var src = String(text || '').replace(/\r/g, '\n');
     var pieces = src
-      .split(/
-+|\s*\|\|\s*|(?<=[\.!?])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9•-])/)
+      .split(/\n+|\s*\|\|\s*|(?<=[\.!?])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9•-])/)
       .map(function(s){ return String(s || '').replace(/\s+/g,' ').trim(); })
       .filter(Boolean);
     var kept = [];
