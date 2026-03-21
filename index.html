@@ -1245,6 +1245,121 @@ async function analyzeWithAI(msgs, apiKey) {
     return parsed;
   }
 
+  function inferSeverityScoreLocal(ev, recurrenceCount) {
+    var raw = normalizeLooseLocal([
+      ev.prioridad, ev.impacto, ev.evento_detectado, ev.accion_requerida,
+      ev.accion_ejecutada, ev.engineer_findings, ev.defecto_smt, ev.tipo_evento,
+      ev.estado_historia, ev.estatus
+    ].join(" "));
+    var score = 2;
+    if ((ev.prioridad||"") === "Critica" || /(linea parada|paro de linea|sin red|cliente|escalad|scrap|seguridad|wrong component|material mix|bga short|ict short|corto|bridge)/.test(raw)) {
+      score = 5;
+    } else if ((ev.prioridad||"") === "Alta" || /(rework|rechaza|fail|falla|short|open|aoi|ict|spi|5dx|xray|missing component|wrong orientation|wrong reel|machine stop|material)/.test(raw)) {
+      score = 4;
+    } else if ((ev.prioridad||"") === "Media" || /(observacion|seguimiento|monitoreo|pendiente|espera|validacion)/.test(raw)) {
+      score = 3;
+    }
+    if ((recurrenceCount||0) >= 3) score = Math.max(score, 4);
+    else if ((recurrenceCount||0) >= 2) score = Math.max(score, 3);
+    return score;
+  }
+
+  function inferRcaCategoryLocal(ev) {
+    var raw = normalizeLooseLocal([
+      ev.defecto_smt, ev.tipo_evento, ev.evento_detectado, ev.impacto,
+      ev.accion_requerida, ev.accion_ejecutada, ev.engineer_findings
+    ].join(" "));
+    if (/(wrong component|wrong reel|missing material|material mix|feeder misload|feeder|reel|kitting|kit|supply|material|loading)/.test(raw)) return "Material / Supply";
+    if (/(machine stop|alarm|maintenance|mantenimiento|fixtura|fixture|autopressfit|motor|equipo|setup|pict\d+)/.test(raw)) return "Equipo / Mantenimiento";
+    if (/(ict|functional test|fct|test points|pogo|open|short)/.test(raw) && /(ict|functional test|fct|pogo|test points)/.test(raw)) return "Prueba / ICT / FCT";
+    if (/(aoi|spi|xray|5dx|inspeccion|inspection)/.test(raw)) return "Calidad / Inspeccion";
+    if (/(solder bridge|bga|paste|stencil|reflow|reflujo|polarity|orientation|misaligned|lifted pad|smt|soldadura)/.test(raw)) return "Proceso SMT";
+    if (/(ingenieria|engineering|design|bom|ecad|cisco)/.test(raw)) return "Diseño / Ingenieria";
+    if (/(metodo|proceso|instruccion|work instruction|estandar|procedimiento)/.test(raw)) return "Metodo / Setup";
+    if ((ev.tipo_evento||"") === "Sistema") return "Sistema / IT";
+    return "Proceso SMT";
+  }
+
+  function inferBusinessImpactLocal(ev, severityScore, recurrenceCount) {
+    var raw = normalizeLooseLocal([
+      ev.impacto, ev.evento_detectado, ev.accion_requerida, ev.engineer_findings,
+      ev.estatus, ev.prioridad, ev.defecto_smt
+    ].join(" "));
+    if (severityScore >= 5 || /(linea parada|paro de linea|sin red|cliente|escalad|scrap|seguridad|alto impacto)/.test(raw)) return "Alto";
+    if (severityScore >= 4 || (recurrenceCount||0) >= 2 || /(rework|contencion manual|manual|espera|rechaza|falla|medio impacto)/.test(raw)) return "Medio";
+    return "Bajo";
+  }
+
+  function inferProbableCauseLocal(ev, category) {
+    var raw = normalizeLooseLocal([ev.defecto_smt, ev.evento_detectado, ev.engineer_findings].join(" "));
+    if (/flux|pogo|test points?/.test(raw)) return "Contaminacion o endurecimiento de flux en puntos de prueba/contacto.";
+    if (/wrong component|material mix|wrong reel|feeder|reel|kitting/.test(raw)) return "Mezcla de materiales o carga incorrecta de reel/feeder durante setup o retorno de material.";
+    if (/solder bridge|bga|short|corto|reflow|reflujo|soldadura/.test(raw)) return "Condicion de soldadura/puente o exceso de pasta en componente critico.";
+    if (/aoi|spi|ict|5dx|xray/.test(raw)) return "Cobertura insuficiente de inspeccion/prueba o condicion de contacto en estacion critica.";
+    if (category === "Equipo / Mantenimiento") return "Desajuste o condicion anomala de equipo/fixtura/setup que requiere mantenimiento y validacion.";
+    if (category === "Material / Supply") return "Desviacion de material, suministro o trazabilidad que impacta el setup o el ensamble.";
+    return "Causa probable por confirmar con validacion en piso y evidencia tecnica.";
+  }
+
+  function inferAutoRecommendationLocal(ev, category, severityScore, impact) {
+    var raw = normalizeLooseLocal([ev.defecto_smt, ev.evento_detectado, ev.engineer_findings, ev.accion_requerida].join(" "));
+    if (/wrong component|material mix|wrong reel|feeder|reel|kitting/.test(raw)) {
+      return "Bloquear feeder/reel afectado, validar P/N contra BOM, auditar retorno de material y kitting, y liberar solo con doble verificacion.";
+    }
+    if (/flux|pogo|test points?/.test(raw)) {
+      return "Limpiar test points/pogo pins, confirmar condicion en ICT/AOI/SPI, documentar evidencia y escalar a ingenieria si persiste.";
+    }
+    if (/solder bridge|bga|short|corto|reflow|reflujo|soldadura|u\d+/.test(raw)) {
+      return "Validar volumen de pasta, stencil y perfil de reflujo; confirmar defecto en componente reportado con AOI/5DX/Xray antes de liberar.";
+    }
+    if (/aoi|spi|ict|functional test|fct/.test(raw)) {
+      return "Ejecutar corrida de validacion en estacion critica, confirmar cobertura de inspeccion/prueba y cerrar con evidencia objetiva.";
+    }
+    if (category === "Equipo / Mantenimiento") {
+      return "Revisar equipo/fixtura/setup, aplicar mantenimiento correctivo y confirmar corrida estable antes de reanudar produccion.";
+    }
+    if (impact === "Alto" || severityScore >= 5) {
+      return "Aplicar contencion inmediata, asignar owner por area, escalar en el turno y cerrar con validacion documentada.";
+    }
+    return "Validar en piso, asignar owner, confirmar causa probable y documentar accion correctiva/preventiva reutilizable.";
+  }
+
+  function recurrenceKeyLocal(ev) {
+    var model = normalizeLooseLocal(ev.modelo || "n/d") || "n/d";
+    var defect = normalizeLooseLocal(ev.defecto_smt || ev.tipo_evento || "n/a") || "n/a";
+    var line = normalizeLooseLocal(extractLineLocal(ev.linea_estacion || "") || ev.linea_estacion || "n/d") || "n/d";
+    var parts = extractPartsLocal([ev.evento_detectado, ev.engineer_findings].join(" "));
+    var partKey = parts.length ? parts.slice(0, 2).join("+") : "";
+    return [model, defect, partKey || line].join("|");
+  }
+
+  function applyCommercialIntelligenceLocal(parsed) {
+    if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
+    var counts = {};
+    (parsed.eventos || []).forEach(function(ev) {
+      var key = recurrenceKeyLocal(ev);
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    parsed.eventos = (parsed.eventos || []).map(function(ev) {
+      var recCount = counts[recurrenceKeyLocal(ev)] || 1;
+      var category = inferRcaCategoryLocal(ev);
+      var sev = inferSeverityScoreLocal(ev, recCount);
+      var impactBiz = inferBusinessImpactLocal(ev, sev, recCount);
+      var probable = inferProbableCauseLocal(ev, category);
+      var recAI = inferAutoRecommendationLocal(ev, category, sev, impactBiz);
+      ev.severidad_score = sev;
+      ev.categoria_rca = category;
+      ev.evento_recurrente = recCount >= 2 ? "Si" : "No";
+      ev.recurrencia_count = recCount;
+      ev.impacto_negocio = impactBiz;
+      ev.causa_probable_ai = probable;
+      ev.recomendacion_ai = recAI;
+      return ev;
+    });
+    return parsed;
+  }
+
+
   var resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -1311,7 +1426,7 @@ async function analyzeWithAI(msgs, apiKey) {
     throw new Error("Error procesando respuesta. Intenta con 1 o 3 dias.");
   }
 
-  return enrichEngineerFindingsLocal(parsed);
+  return applyCommercialIntelligenceLocal(enrichEngineerFindingsLocal(parsed));
 }
 
 async function buildXlsx(result) {
@@ -1349,7 +1464,8 @@ async function buildXlsx(result) {
 
   var H = ["ID","Fecha","Hora","Turno","Modelo","Linea_Estacion","Reporta","Area_involucrada",
            "Tipo_evento","Defecto_SMT","Evento_detectado","Impacto","Accion_requerida","Accion_ejecutada",
-           "Engineer_Findings","Actores","Responsable_sugerido","Estado_historia","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
+           "Engineer_Findings","Severity_score","Categoria_RCA","Evento_recurrente","Impacto_negocio","Recomendacion_AI",
+           "Actores","Responsable_sugerido","Estado_historia","Estatus","Prioridad","Aging_dias","Fuente_chat","Notas"];
 
   function addEvSheet(name, evArr) {
     var ws = wb.addWorksheet(name);
@@ -1372,18 +1488,24 @@ async function buildXlsx(result) {
       row.eachCell({includeEmpty:false}, function(cell, col) {
         cell.font = dFont();
         cell.alignment = {wrapText:true, vertical:"top"};
-        if (col === 17) {
+        if (col === 16) {
+          cell.fill = hFill(({5:"F4CCCC",4:"FCE4D6",3:"FFF2CC",2:"E2F0D9",1:"EEF5FB"})[e.severidad_score] || "FFFFFF");
+        } else if (col === 18) {
+          cell.fill = hFill((e.evento_recurrente === "Si") ? "FFF2CC" : "E2F0D9");
+        } else if (col === 19) {
+          cell.fill = hFill(({Alto:"F4CCCC",Medio:"FFF2CC",Bajo:"E2F0D9"})[e.impacto_negocio] || "FFFFFF");
+        } else if (col === 23) {
           var ehFill = ({
             Detectado:"FCE8D0", Contenido:"FFF2CC", Corregido:"D0E8FC",
             Validado:"D0F0D8", Cerrado:"E2F0D9"
           })[e.estado_historia] || "FFFFFF";
           cell.fill = hFill(ehFill);
-        } else if (col === 18) cell.fill = hFill(estFill(e.estatus));
-        else if (col === 19) cell.fill = hFill(prioFill(e.prioridad));
+        } else if (col === 24) cell.fill = hFill(estFill(e.estatus));
+        else if (col === 25) cell.fill = hFill(prioFill(e.prioridad));
         else cell.fill = hFill(ri % 2 === 0 ? "FFFFFF" : C.alt);
       });
     });
-    ws.columns = [6,12,8,6,16,18,18,20,14,20,40,26,30,30,36,24,22,14,12,10,10,28,28].map(function(w){ return {width:w}; });
+    ws.columns = [6,12,8,6,16,18,18,20,14,20,40,26,30,30,36,10,22,12,14,34,24,22,14,12,10,10,28,28].map(function(w){ return {width:w}; });
     ws.views = [{state:"frozen",ySplit:1}];
   }
 
@@ -1420,7 +1542,7 @@ async function buildXlsx(result) {
 
   wsIS.addRow([]);
 
-  var storyH = ["ID","Fecha","Linea","Modelo","Evento_detectado","Actor_reporta","Actores_involucrados","Accion_ejecutada","Engineer_Findings","Estado_historia","Impacto","Prioridad","Notas"];
+  var storyH = ["ID","Fecha","Linea","Modelo","Evento_detectado","Actor_reporta","Actores_involucrados","Accion_ejecutada","Engineer_Findings","Severity_score","Categoria_RCA","Evento_recurrente","Impacto_negocio","Recomendacion_AI","Estado_historia","Impacto","Prioridad","Notas"];
   var shRow = wsIS.addRow(storyH);
   shRow.height = 16;
   for (var ci2 = 1; ci2 <= storyH.length; ci2++) {
@@ -1435,7 +1557,8 @@ async function buildXlsx(result) {
       e.id, e.fecha, e.linea_estacion, e.modelo,
       e.evento_detectado, e.reporta, actoresStr2,
       e.accion_ejecutada || e.accion_requerida,
-      e.engineer_findings || "",
+      e.engineer_findings || "", e.severidad_score || "", e.categoria_rca || "",
+      e.evento_recurrente || "No", e.impacto_negocio || "", e.recomendacion_ai || "",
       e.estado_historia || "Detectado",
       e.impacto, e.prioridad, e.notas
     ]);
@@ -1446,13 +1569,19 @@ async function buildXlsx(result) {
       if (col === 9) {
         var ef = eColors[e.estado_historia] || "FFFFFF";
         cell.fill = hFill(ef);
+      } else if (col === 10) {
+        cell.fill = hFill(({5:"F4CCCC",4:"FCE4D6",3:"FFF2CC",2:"E2F0D9",1:"EEF5FB"})[e.severidad_score] || "FFFFFF");
+      } else if (col === 12) {
+        cell.fill = hFill((e.evento_recurrente === "Si") ? "FFF2CC" : "E2F0D9");
+      } else if (col === 13) {
+        cell.fill = hFill(({Alto:"F4CCCC",Medio:"FFF2CC",Bajo:"E2F0D9"})[e.impacto_negocio] || "FFFFFF");
       } else {
         cell.fill = hFill(ri%2===0 ? "FFFFFF" : C.alt);
       }
     });
   });
 
-  wsIS.columns = [8,12,16,18,40,20,28,36,36,16,26,10,30].map(function(w){ return {width:w}; });
+  wsIS.columns = [8,12,16,18,40,20,28,32,36,10,20,12,14,34,16,26,10,30].map(function(w){ return {width:w}; });
   wsIS.views = [{state:"frozen",ySplit:4}];
 
   var wsKpi = wb.addWorksheet("KPIs_chat");
@@ -1525,6 +1654,50 @@ async function buildXlsx(result) {
     r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
   });
   wsDash.columns = [28,10,10,10,10,10,12,10].map(function(w){ return {width:w}; });
+
+  var topSeverity = ev.slice().sort(function(a,b){ return (b.severidad_score||0)-(a.severidad_score||0) || (String(b.impacto_negocio||"")>String(a.impacto_negocio||"" )?1:-1); }).slice(0,10);
+
+  var wsDash2 = wb.addWorksheet("Dashboard");
+  wsDash2.mergeCells("A1:D1");
+  var d2 = wsDash2.getCell("A1");
+  d2.value = "Dashboard ejecutivo - TraceOps";
+  d2.fill = hFill(C.hBg); d2.font = hFont(13);
+  wsDash2.getRow(1).height = 22;
+  wsDash2.addRow([]);
+  [["Eventos",ev.length],["Criticos(score>=5)",ev.filter(function(e){return (e.severidad_score||0)>=5;}).length],["Recurrentes",ev.filter(function(e){return e.evento_recurrente==="Si";}).length],["Impacto alto",ev.filter(function(e){return e.impacto_negocio==="Alto";}).length]].forEach(function(kv){ var r=wsDash2.addRow(kv); r.eachCell({includeEmpty:false}, function(c){ c.font=dFont(); }); });
+  wsDash2.addRow([]);
+  var sevHdr = wsDash2.addRow(["Severity_score","Eventos"]); sevHdr.eachCell({includeEmpty:false}, function(c){ c.fill=hFill(C.hBg); c.font=hFont(); });
+  [5,4,3,2,1].forEach(function(s){ var r=wsDash2.addRow([s, ev.filter(function(e){return (e.severidad_score||0)===s;}).length]); r.eachCell({includeEmpty:false}, function(c){ c.font=dFont(); }); });
+  wsDash2.addRow([]);
+  var catHdr = wsDash2.addRow(["Categoria_RCA","Eventos"]); catHdr.eachCell({includeEmpty:false}, function(c){ c.fill=hFill(C.hBg); c.font=hFont(); });
+  var catCounts={}; ev.forEach(function(e){ var k=e.categoria_rca||"N/D"; catCounts[k]=(catCounts[k]||0)+1; });
+  Object.keys(catCounts).sort(function(a,b){return catCounts[b]-catCounts[a];}).forEach(function(k){ var r=wsDash2.addRow([k,catCounts[k]]); r.eachCell({includeEmpty:false}, function(c){ c.font=dFont(); }); });
+  wsDash2.columns = [28,12,28,12].map(function(w){ return {width:w}; });
+
+  var wsAuto = wb.addWorksheet("RCCA_automatico");
+  var autoH = ["Evento","Fecha","Modelo","Linea","Categoria_RCA","Severity_score","Impacto_negocio","Evento_recurrente","Causa_probable","Recomendacion_AI"];
+  wsAuto.addRow(autoH); styleHdr(wsAuto, autoH.length);
+  ev.filter(function(e){ return (e.severidad_score||0)>=4 || e.evento_recurrente==="Si" || e.impacto_negocio==="Alto"; }).forEach(function(e,ri){
+    var r = wsAuto.addRow([e.evento_detectado,e.fecha,e.modelo,e.linea_estacion,e.categoria_rca,e.severidad_score,e.impacto_negocio,e.evento_recurrente,e.causa_probable_ai||"",e.recomendacion_ai||""]); 
+    r.eachCell({includeEmpty:false}, function(c, col){ c.font=dFont(); c.alignment={wrapText:true,vertical:"top"}; c.fill=hFill(ri%2===0?"FFFFFF":C.alt); });
+  });
+  wsAuto.columns = [40,12,18,18,22,10,14,14,40,44].map(function(w){ return {width:w}; });
+  wsAuto.views = [{state:"frozen",ySplit:1}];
+
+  var wsExec = wb.addWorksheet("Resumen_ejecutivo");
+  wsExec.mergeCells("A1:E1");
+  var ex = wsExec.getCell("A1");
+  ex.value = "Top 3 problemas de la semana + accion recomendada";
+  ex.fill = hFill(C.hBg); ex.font = hFont(13);
+  wsExec.getRow(1).height = 22;
+  wsExec.addRow([]);
+  var execH = wsExec.addRow(["Evento","Categoria_RCA","Severity_score","Impacto_negocio","Recomendacion_AI"]);
+  execH.eachCell({includeEmpty:false}, function(c){ c.fill=hFill(C.hBg); c.font=hFont(); });
+  topSeverity.slice(0,3).forEach(function(e,ri){
+    var r = wsExec.addRow([e.evento_detectado,e.categoria_rca,e.severidad_score,e.impacto_negocio,e.recomendacion_ai||""]); 
+    r.eachCell({includeEmpty:false}, function(c,col){ c.font=dFont(); c.alignment={wrapText:true,vertical:"top"}; c.fill=hFill(ri%2===0?"FFFFFF":C.alt); });
+  });
+  wsExec.columns = [42,24,12,16,48].map(function(w){ return {width:w}; });
 
   var wsDir = wb.addWorksheet("Directorio_Equipo");
   var dH = ["Nombre","Departamento","Rol","Mensajes","Eventos","Area_owner"];
@@ -2408,6 +2581,7 @@ function App() {
         <div className="pitem-top"><span className="pitem-id">{e.id} - {e.fecha} - {e.turno}</span><span className={bprio(e.prioridad)}>{e.prioridad}</span></div>
         <h4>{e.evento_detectado}</h4><p>{e.accion_requerida}</p>
         {e.engineer_findings&&<div style={{marginTop:8,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:10,padding:"8px 10px"}}><div style={{fontSize:9,fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:"#2952A3",marginBottom:4}}>Engineer findings</div><div style={{fontSize:11,lineHeight:1.45,color:"#1A1714"}}>{engineerSnippet(e.engineer_findings,260)}</div></div>}
+        {(e.severidad_score||e.categoria_rca||e.evento_recurrente||e.impacto_negocio||e.recomendacion_ai)&&<div style={{marginTop:8,background:"#FCFBF8",border:"1px solid #E7E2D8",borderRadius:10,padding:"8px 10px"}}><div style={{fontSize:9,fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:"#6A6560",marginBottom:6}}>Inteligencia comercial</div><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:e.recomendacion_ai?6:0}}><span className="ptag">Sev {e.severidad_score||"-"}</span><span className="ptag">{e.categoria_rca||"N/D"}</span><span className="ptag">Rec: {e.evento_recurrente||"No"}</span><span className="ptag">Impacto: {e.impacto_negocio||"Bajo"}</span></div>{e.recomendacion_ai&&<div style={{fontSize:11,lineHeight:1.45,color:"#1A1714"}}><strong style={{color:"#6B2DA8"}}>Recomendacion AI:</strong> {engineerSnippet(e.recomendacion_ai,220)}</div>}</div>}
         <div className="pmeta">
           <span className="ptag">{e.linea_estacion}</span>
           <span className="ptag">{e.responsable_sugerido}</span>
@@ -3143,7 +3317,7 @@ function App() {
               <h3 style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>Excel listo para junta</h3>
               <p style={{fontSize:11,color:"rgba(242,236,200,.6)"}}>{(res.periodo||"")+" - "+ev.length+" eventos - "+((msgStats&&msgStats.clean)||0)+" msgs"}</p>
               <div style={{display:"flex",alignItems:"center",gap:6,marginTop:5}}><div style={{width:6,height:6,borderRadius:50,background:"#8ABD6E"}}/><span style={{fontSize:9.5,color:"rgba(200,220,160,.8)",fontWeight:500}}>Guardado en historial{elapsed>0&&" - "+String(Math.floor(elapsed/60)).padStart(2,"0")+":"+String(elapsed%60).padStart(2,"0")}</span></div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>{["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){return<span key={s} style={{background:"rgba(200,216,150,.12)",border:"1px solid rgba(200,216,150,.2)",borderRadius:4,padding:"2px 8px",fontSize:9,color:"#F2ECC8"}}>{s}</span>;})}</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>{["Dashboard","RCCA_automatico","Resumen_ejecutivo","Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){return<span key={s} style={{background:"rgba(200,216,150,.12)",border:"1px solid rgba(200,216,150,.2)",borderRadius:4,padding:"2px 8px",fontSize:9,color:"#F2ECC8"}}>{s}</span>;})}</div>
             </div>
             <button onClick={download} style={{background:"#7A9448",color:"#fff",border:"none",borderRadius:10,padding:"12px 22px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,boxShadow:"0 2px 8px rgba(122,148,72,.35)"}}>Descargar .xlsx</button>
           </div>
@@ -3388,6 +3562,11 @@ function App() {
                   <th className={"sortable-th"+(bitacoraSortKey==="defecto_smt"?" active":"")} onClick={function(){toggleBitacoraSort("defecto_smt");}}><span className="sort-wrap">Defecto SMT <span className="sort-arrow">{getBitacoraSortIndicator("defecto_smt")}</span></span></th>
                   <th className={"sortable-th"+(bitacoraSortKey==="evento_detectado"?" active":"")} onClick={function(){toggleBitacoraSort("evento_detectado");}}><span className="sort-wrap">Evento <span className="sort-arrow">{getBitacoraSortIndicator("evento_detectado")}</span></span></th>
                   <th>Engineer findings</th>
+                  <th>Sev</th>
+                  <th>Categoria RCA</th>
+                  <th>Rec</th>
+                  <th>Impacto negocio</th>
+                  <th>Recomendacion AI</th>
                   <th className={"sortable-th"+(bitacoraSortKey==="prioridad"?" active":"")} onClick={function(){toggleBitacoraSort("prioridad");}}><span className="sort-wrap">Prioridad <span className="sort-arrow">{getBitacoraSortIndicator("prioridad")}</span></span></th>
                   <th className={"sortable-th"+(bitacoraSortKey==="estatus"?" active":"")} onClick={function(){toggleBitacoraSort("estatus");}}><span className="sort-wrap">Estatus <span className="sort-arrow">{getBitacoraSortIndicator("estatus")}</span></span></th>
                   <th>RCCA</th>
@@ -3404,6 +3583,11 @@ function App() {
                       <td style={{maxWidth:100}}>{e.defecto_smt&&e.defecto_smt!=="N/A"?<span className="badge bt" style={{fontSize:8.5,whiteSpace:"normal"}}>{e.defecto_smt}</span>:<span style={{color:"#C8C2BA",fontSize:10}}>-</span>}</td>
                       <td style={{maxWidth:170,fontSize:10.5}}>{e.evento_detectado}</td>
                       <td style={{maxWidth:240,minWidth:180,fontSize:10.2,lineHeight:1.4,color:e.engineer_findings?"#1A1714":"#B8B4AE"}}>{e.engineer_findings?<div><div style={{fontSize:8.4,fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",color:"#2952A3",marginBottom:3}}>Engineer</div><div>{engineerSnippet(e.engineer_findings,220)}</div></div>:"-"}</td>
+                      <td><span className="ptag">{e.severidad_score||"-"}</span></td>
+                      <td style={{maxWidth:120,fontSize:10.2,lineHeight:1.35}}>{e.categoria_rca||"-"}</td>
+                      <td><span className="ptag">{e.evento_recurrente||"No"}</span></td>
+                      <td><span className="ptag">{e.impacto_negocio||"-"}</span></td>
+                      <td style={{maxWidth:180,minWidth:150,fontSize:10.2,lineHeight:1.35,color:e.recomendacion_ai?"#1A1714":"#B8B4AE"}}>{e.recomendacion_ai?engineerSnippet(e.recomendacion_ai,160):"-"}</td>
                       <td><span className={bprio(e.prioridad)}>{e.prioridad}</span></td>
                       <td><span className={best(e.estatus)}>{e.estatus}</span></td>
                       <td style={{verticalAlign:"top",paddingTop:8}}><RccaCell evId={e.id} modelo={e.modelo} linea={e.linea_estacion} fecha={e.fecha} problema={e.evento_detectado}/></td>
