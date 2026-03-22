@@ -31,6 +31,7 @@ window.onerror = function(msg, src, line, col, err) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -390,6 +391,269 @@ tr:hover td{background:var(--g50)}
   .ops-hero-title span{font-size:30px}
   .ops-hero-subtitle{font-size:15px;line-height:1.55}
   .ops-hero-btn{width:100%}
+}
+
+
+/* ===== Liquid Glass UI embed ===== */
+:root{
+  --lg-bg:#000000;
+  --lg-panel:rgba(255,255,255,.055);
+  --lg-panel-strong:rgba(255,255,255,.095);
+  --lg-panel-border:rgba(255,255,255,.16);
+  --lg-text:#F5F7FA;
+  --lg-text-soft:rgba(245,247,250,.72);
+  --lg-muted:rgba(245,247,250,.48);
+  --lg-accent:#8CCFB4;
+  --lg-accent-2:#BFD8FF;
+}
+html,body{background:#000 !important;color:var(--lg-text);font-family:'Barlow',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif !important}
+body::before{
+  content:"";
+  position:fixed;inset:0;pointer-events:none;z-index:-2;
+  background:
+    radial-gradient(900px 560px at 50% -10%, rgba(95,171,140,.18), transparent 56%),
+    radial-gradient(620px 360px at 82% 12%, rgba(79,125,255,.08), transparent 50%),
+    linear-gradient(180deg, rgba(255,255,255,.02), transparent 18%);
+}
+body::after{
+  content:"";
+  position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.38;
+  background-image:linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px);
+  background-size:100% 28px;
+}
+#root{background:transparent}
+.liquid-glass,.liquid-glass-strong{
+  position:relative;
+  background:var(--lg-panel);
+  border-radius:28px;
+  backdrop-filter:blur(16px) saturate(140%);
+  -webkit-backdrop-filter:blur(16px) saturate(140%);
+  box-shadow:
+    0 20px 60px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.12);
+}
+.liquid-glass::before,.liquid-glass-strong::before{
+  content:"";
+  position:absolute;inset:0;padding:1px;border-radius:inherit;
+  background:linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.06) 38%, rgba(255,255,255,.10));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  pointer-events:none;
+}
+.liquid-glass::after,.liquid-glass-strong::after{
+  content:"";
+  position:absolute;left:12%;right:12%;top:0;height:34%;
+  border-radius:inherit;
+  background:linear-gradient(180deg, rgba(255,255,255,.18), transparent 88%);
+  opacity:.55;pointer-events:none;
+}
+.liquid-glass-strong{
+  background:var(--lg-panel-strong);
+  backdrop-filter:blur(24px) saturate(155%);
+  -webkit-backdrop-filter:blur(24px) saturate(155%);
+  box-shadow:
+    0 28px 80px rgba(0,0,0,.42),
+    inset 0 1px 0 rgba(255,255,255,.18);
+}
+.liquid-pill{
+  display:inline-flex;align-items:center;gap:8px;
+  border-radius:999px;padding:8px 14px;
+  background:rgba(255,255,255,.06);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+  color:var(--lg-text-soft);
+}
+.liquid-btn,.liquid-btn-white{
+  border-radius:999px;border:none;cursor:pointer;
+  transition:transform .22s ease, box-shadow .22s ease, background .22s ease, color .22s ease;
+  font-family:'Barlow',sans-serif;font-weight:600;
+}
+.liquid-btn{
+  background:rgba(255,255,255,.08);color:#F8FAFC;
+  box-shadow:0 10px 28px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.16);
+}
+.liquid-btn:hover,.liquid-btn-white:hover{transform:translateY(-1px) scale(1.01)}
+.liquid-btn-white{
+  background:#fff;color:#020303;
+  box-shadow:0 14px 28px rgba(255,255,255,.12), inset 0 -1px 0 rgba(0,0,0,.08);
+}
+.liquid-title,.ops-hero-title,.saas-topbar-title{
+  font-family:'Instrument Serif',serif !important;
+  font-style:italic;
+  letter-spacing:-.04em;
+}
+.saas-topbar{
+  left:22px !important; right:22px !important; top:18px !important; height:64px !important;
+  padding:10px 14px !important;
+  border:none !important;
+  border-radius:999px !important;
+  background:rgba(10,12,16,.55) !important;
+  backdrop-filter:blur(18px) saturate(140%) !important;
+  -webkit-backdrop-filter:blur(18px) saturate(140%) !important;
+  box-shadow:0 16px 50px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+.saas-topbar:before{
+  content:""; position:absolute; inset:0; padding:1px; border-radius:inherit;
+  background:linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.06), rgba(255,255,255,.1));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+}
+.saas-topbar-title{font-size:30px !important; color:#fff !important; line-height:.88 !important}
+.saas-topbar-subtitle{color:rgba(255,255,255,.54) !important; font-size:11px !important}
+.saas-topbar-brand{gap:0}
+.saas-header-btn,.saas-menu-btn,.saas-header-pill{
+  background:rgba(255,255,255,.06) !important;
+  border:none !important;
+  color:#F2F6F8 !important;
+  box-shadow:0 10px 24px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.14) !important;
+  backdrop-filter:blur(12px) !important;
+  -webkit-backdrop-filter:blur(12px) !important;
+}
+.saas-header-btn.primary{
+  background:#fff !important;
+  color:#020303 !important;
+  box-shadow:0 12px 30px rgba(255,255,255,.14), inset 0 -1px 0 rgba(0,0,0,.08) !important;
+}
+.sidebar{
+  background:linear-gradient(180deg, rgba(8,10,14,.96), rgba(4,5,7,.92)) !important;
+  border-right:1px solid rgba(255,255,255,.08);
+  box-shadow:24px 0 60px rgba(0,0,0,.34) !important;
+}
+.main-content{
+  margin-left:280px;
+  padding:112px 28px 90px !important;
+  background:transparent !important;
+}
+.ops-hero{
+  min-height:540px !important;
+  border-radius:32px !important;
+  background:rgba(255,255,255,.06) !important;
+  border:none !important;
+  box-shadow:0 28px 90px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.14) !important;
+}
+.ops-hero-content{padding:54px 34px 34px !important;max-width:700px !important}
+.ops-hero-eyebrow{color:rgba(255,255,255,.58) !important;letter-spacing:.16em !important}
+.ops-hero-title{font-size:76px !important;line-height:.86 !important;color:#fff !important;margin-bottom:16px !important}
+.ops-hero-title span{color:rgba(255,255,255,.72) !important;font-size:62px !important}
+.ops-hero-subtitle{font-size:21px !important;line-height:1.55 !important;color:rgba(255,255,255,.76) !important;max-width:580px !important}
+.ops-hero-chips span{
+  background:rgba(255,255,255,.05) !important;
+  color:rgba(255,255,255,.84) !important;
+  border:none !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+  padding:9px 14px !important;
+  font-size:11px !important;
+}
+.ops-hero-btn.primary{background:#fff !important;color:#020303 !important;box-shadow:0 14px 28px rgba(255,255,255,.12), inset 0 -1px 0 rgba(0,0,0,.08) !important}
+.ops-hero-btn.ghost{background:rgba(255,255,255,.08) !important;color:#F5F7FA !important;border:none !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.liquid-hero-shell{margin:0 0 28px;display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px;align-items:stretch}
+.liquid-hero-card,.liquid-side-card,.liquid-section-card,.liquid-history-card,.liquid-upload-card,.liquid-filter-card,.liquid-result-card{position:relative}
+.liquid-hero-card,.liquid-side-card,.liquid-upload-card,.liquid-filter-card,.liquid-history-card,.liquid-result-card{
+  border-radius:28px;
+  background:rgba(255,255,255,.055);
+  backdrop-filter:blur(18px) saturate(145%);
+  -webkit-backdrop-filter:blur(18px) saturate(145%);
+  box-shadow:0 20px 58px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.14);
+}
+.liquid-hero-card:before,.liquid-side-card:before,.liquid-upload-card:before,.liquid-filter-card:before,.liquid-history-card:before,.liquid-result-card:before{
+  content:"";position:absolute;inset:0;padding:1px;border-radius:inherit;
+  background:linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.06), rgba(255,255,255,.1));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+}
+.liquid-hero-card{padding:30px 30px 28px}
+.liquid-side-card{padding:24px;display:flex;flex-direction:column;justify-content:space-between}
+.liquid-kicker{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.54);margin-bottom:14px}
+.liquid-display{font-family:'Instrument Serif',serif;font-style:italic;font-size:72px;line-height:.86;color:#fff;letter-spacing:-.05em;margin:0 0 16px}
+.liquid-display span{display:block;color:rgba(255,255,255,.72)}
+.liquid-body{font-size:18px;line-height:1.65;color:rgba(255,255,255,.72);max-width:620px}
+.liquid-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.liquid-btn-large{padding:14px 22px;font-size:14px}
+.liquid-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 14px;border-radius:999px;
+  background:rgba(255,255,255,.05);
+  color:rgba(255,255,255,.74);font-size:12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+}
+.liquid-chip-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.liquid-chip-row span{
+  padding:8px 14px;border-radius:999px;
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.82);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+  font-size:11px;font-weight:500;
+}
+.liquid-upload-card,.liquid-filter-card,.liquid-history-card,.liquid-result-card{padding:22px}
+.liquid-upload-drop{
+  border-radius:26px;
+  background:rgba(255,255,255,.035);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.liquid-upload-drop .title{font-size:30px;font-family:'Instrument Serif',serif;font-style:italic;color:#fff;letter-spacing:-.03em}
+.liquid-upload-drop .sub{font-size:14px;color:rgba(255,255,255,.6)}
+.liquid-filter-title,.liquid-section-title{font-size:36px;font-family:'Instrument Serif',serif;font-style:italic;color:#fff;letter-spacing:-.04em;line-height:.96}
+.liquid-section-sub{font-size:14px;line-height:1.55;color:rgba(255,255,255,.58)}
+.liquid-tabbar{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.liquid-tab{border:none;background:rgba(255,255,255,.05);color:rgba(255,255,255,.58);border-radius:999px;padding:10px 16px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+.liquid-tab.active{background:rgba(255,255,255,.14);color:#fff}
+.liquid-filter-pill{border:none;background:rgba(255,255,255,.06);color:rgba(255,255,255,.66);border-radius:999px;padding:9px 15px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.liquid-filter-pill.active{background:#fff;color:#020303}
+.liquid-input{
+  background:rgba(255,255,255,.06) !important;
+  border:none !important;color:#fff !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+  border-radius:16px !important;
+}
+.liquid-input::placeholder{color:rgba(255,255,255,.35)}
+.liquid-inline-note{background:rgba(255,184,0,.08);color:#E4C686;border-radius:18px;padding:12px 14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.liquid-inline-note.danger{background:rgba(255,104,104,.09);color:#F0B1B1}
+.errc{background:rgba(255,85,85,.12) !important;border:none !important;color:#FFD6D6 !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.resetbtn{background:rgba(255,255,255,.08) !important;border:none !important;color:#fff !important;padding:10px 16px !important;border-radius:999px !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+#results-section > div:first-child{
+  background:rgba(255,255,255,.08) !important;
+  border-radius:30px !important;
+  box-shadow:0 22px 60px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.14) !important;
+}
+#results-section > div:first-child button{
+  background:#fff !important;color:#020303 !important;border-radius:999px !important;
+  box-shadow:0 14px 28px rgba(255,255,255,.12) !important;
+}
+#recent-analyses .history-title{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.54)}
+#recent-analyses .history-clear{font-size:11px;color:rgba(255,255,255,.5);background:none;border:none;cursor:pointer}
+#recent-analyses .history-item{
+  background:rgba(255,255,255,.05);
+  border-radius:22px;
+  box-shadow:0 14px 36px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.1);
+}
+#recent-analyses .history-item .meta-chip{background:rgba(255,255,255,.08) !important;color:rgba(255,255,255,.76) !important}
+.tcard,.pf-card,.cmp,.foot,.ic-wrap{
+  background:rgba(255,255,255,.045) !important;
+  border:none !important;
+  color:#fff !important;
+  box-shadow:0 18px 48px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.1) !important;
+}
+.tcard-hdr,.pf-hdr{
+  background:rgba(255,255,255,.035) !important;
+  border-bottom:1px solid rgba(255,255,255,.06) !important;
+}
+.tcard-hdr h3,.pf-hdr h3,th,td,.pitem h4,.pf-name,.kin .nm,.foot strong{color:#fff !important}
+th,td,.pitem p,.pf-dept,.kin .ts,.foot p,.api-note,.pstep,.sidebar-api-note,.sidebar-footer p{color:rgba(255,255,255,.58) !important}
+table tr:hover td{background:rgba(255,255,255,.025) !important}
+@media(max-width:900px){
+  .saas-topbar{left:14px !important;right:14px !important;top:10px !important}
+  .main-content{padding:94px 16px 78px !important}
+  .liquid-hero-shell{grid-template-columns:1fr;gap:14px}
+}
+@media(max-width:768px){
+  .ops-hero{min-height:430px !important}
+  .ops-hero-content{padding:30px 20px 22px !important}
+  .ops-hero-title{font-size:46px !important}
+  .ops-hero-title span{font-size:38px !important}
+  .ops-hero-subtitle{font-size:16px !important}
+  .liquid-display{font-size:48px}
+  .liquid-filter-title,.liquid-section-title{font-size:28px}
 }
 
 </style>
@@ -3312,28 +3576,33 @@ function App() {
 
       {/* Main content */}
       <div className={"main-content"+((!sidebarOpen||isMobile())?" expanded":"")}>
-        <div className="saas-shell-intro">
-          <div className="saas-hero-card">
-            <div className="saas-hero-copy">
-              <div className="saas-hero-eyebrow">Operational Event Intelligence</div>
-              <div className="saas-hero-title">Workspace tipo SaaS para analisis operativo</div>
-              <div className="saas-hero-desc">El flujo principal queda en el contenido: cargar ZIP, revisar filtros y descargar resultados. El drawer se reserva para configuracion y navegacion, evitando bloqueos en iOS y Android.</div>
-              <div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:8}}>
-                <span style={{fontSize:11,padding:"6px 10px",borderRadius:999,border:"1px solid #D9E6DE",background:"#F7FBF9",color:"#2A7A60"}}>{authUser&&authUser.email?("RCCA nube: "+authUser.email):"RCCA en este navegador"}</span>
-                <span style={{fontSize:11,padding:"6px 10px",borderRadius:999,border:"1px solid #EEECEA",background:"#fff",color:"#6A6560"}}>{cloudStatus}</span>
-              </div>
+        
+        <div className="liquid-hero-shell">
+          <div className="liquid-hero-card liquid-glass-strong">
+            <div className="liquid-kicker">Operational Event Intelligence</div>
+            <div className="liquid-display">TraceOps<span>by SMTintel</span></div>
+            <div className="liquid-body">Convierte conversaciones operativas dispersas en memoria estructurada de incidentes de manufactura, hallazgos técnicos reutilizables y rutas RCCA vivas para planta.</div>
+            <div className="liquid-actions">
+              <button className="liquid-btn-white liquid-btn-large" onClick={function(){if(fileRef.current)fileRef.current.click();}}>Cargar ZIP</button>
+              {history.length>0&&<button className="liquid-btn liquid-btn-large" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Ver analisis recientes</button>}
             </div>
-            <div className="saas-hero-actions">
-              <button className="saas-header-btn primary" onClick={function(){if(fileRef.current)fileRef.current.click();}}>Subir WhatsApp ZIP</button>
-              {xlsxBytes&&<button className="saas-header-btn" onClick={download}>Exportar XLSX</button>}
+            <div className="liquid-chip-row">
+              {["TraceOps","SMT","AOI","Incident Story","Root Cause"].map(function(t){return <span key={t}>{t}</span>;})}
             </div>
           </div>
-          <div className="saas-upload-card">
-            <h3>Zona de carga principal</h3>
-            <p>La accion critica ya no vive detras del sidebar. En movil permanece visible arriba del contenido.</p>
-            <button className="saas-header-btn" onClick={function(){if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Seleccionar .zip</button>
-            <div style={{marginTop:12,fontSize:11,lineHeight:1.55,color:"#6A6560"}}>
-              Para compartir RCCA manuales entre celular y computadora, configura <strong>TRACEOPS_SUPABASE</strong> en este HTML y usa la misma cuenta en ambos dispositivos.
+          <div className="liquid-side-card liquid-glass">
+            <div>
+              <div className="liquid-kicker">Workspace status</div>
+              <div style={{fontSize:17,fontWeight:600,color:"#fff",lineHeight:1.3,marginBottom:10}}>Captura, filtra, analiza y exporta desde una sola vista.</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:14}}>
+                <span className="liquid-badge">{authUser&&authUser.email?("RCCA nube: "+authUser.email):"RCCA local"}</span>
+                <span className="liquid-badge">{cloudStatus}</span>
+              </div>
+              <div style={{fontSize:13,lineHeight:1.6,color:"rgba(255,255,255,.6)"}}>La navegación vive en el drawer. La acción crítica permanece visible arriba del contenido para que el flujo sea rápido y seguro en iPhone y escritorio.</div>
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:18}}>
+              <button className="liquid-btn-white" style={{padding:"12px 18px",fontSize:13}} onClick={function(){if(fileRef.current)fileRef.current.click();}}>Subir WhatsApp ZIP</button>
+              {xlsxBytes&&<button className="liquid-btn" style={{padding:"12px 18px",fontSize:13}} onClick={download}>Exportar XLSX</button>}
             </div>
           </div>
         </div>
@@ -3413,58 +3682,109 @@ function App() {
         </div>
       </div>
 
+      
       {state==="idle"&&(
         <div>
-          <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
-            <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}} onChange={function(e){handle(e.target.files[0]);}}/>
-            <div style={{padding:"48px 32px",textAlign:"center"}}>
-              <div style={{width:48,height:48,borderRadius:12,background:"#EEF3EA",border:"1px solid #C8D8BC",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",color:"#4A7A50"}}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+          <div className="liquid-upload-card liquid-glass" style={{marginBottom:18}}>
+            <div
+              className="liquid-upload-drop"
+              onDragOver={function(e){e.preventDefault();setDrag(true);}}
+              onDragLeave={function(){setDrag(false);}}
+              onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}}
+              onClick={function(){fileRef.current.click();}}
+              style={{cursor:"pointer",padding:"52px 32px",marginBottom:0,outline:drag?"1px solid rgba(255,255,255,.22)":"none"}}
+            >
+              <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}} onChange={function(e){handle(e.target.files[0]);}}/>
+              <div style={{width:62,height:62,borderRadius:22,background:"rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 22px",boxShadow:"inset 0 1px 0 rgba(255,255,255,.12)"}}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.82)" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
               </div>
-              <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>Arrastra el .zip de WhatsApp</div>
-              <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>o haz clic para seleccionar</div>
-              <button style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:99,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:"0 2px 8px rgba(30,92,72,.25)"}} onClick={function(e){e.stopPropagation();fileRef.current.click();}}>Seleccionar archivo</button>
+              <div className="title" style={{textAlign:"center",marginBottom:6}}>Arrastra el ZIP operativo</div>
+              <div className="sub" style={{textAlign:"center",marginBottom:24}}>WhatsApp, .eml o .mbox dentro del mismo archivo. Diseñado para captura rápida, revisión clara y exportación inmediata.</div>
+              <div style={{display:"flex",justifyContent:"center"}}>
+                <button className="liquid-btn-white" style={{padding:"14px 24px",fontSize:14}} onClick={function(e){e.stopPropagation();fileRef.current.click();}}>Seleccionar archivo</button>
+              </div>
             </div>
           </div>
 
-          <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
-            <div style={{display:"flex",borderBottom:"1px solid #EEECEA"}}>
-              {[["quick","Rapido"],["week","Por semana"],["range","Rango"]].map(function(tab){var active=filterMode===tab[0];return<button key={tab[0]} style={{flex:1,padding:"10px 6px",border:"none",borderBottom:active?"2px solid #1E5C48":"2px solid transparent",background:"transparent",fontSize:12,fontWeight:active?700:500,color:active?"#1E5C48":"#8A8580",cursor:"pointer"}} onClick={function(){setFilterMode(tab[0]);}}>{tab[1]}</button>;})}
+          <div className="liquid-filter-card liquid-glass" style={{marginBottom:14}}>
+            <div className="liquid-filter-title">Filtro de analisis</div>
+            <div className="liquid-section-sub" style={{marginTop:8,marginBottom:18}}>Acota el dashboard por fecha y hora sobre el archivo ya cargado. Mantén el ruido bajo y la señal alta.</div>
+            <div className="liquid-tabbar" style={{marginTop:0,marginBottom:18}}>
+              {[["quick","Rapido"],["week","Por semana"],["range","Rango"]].map(function(tab){
+                var active=filterMode===tab[0];
+                return <button key={tab[0]} className={"liquid-tab"+(active?" active":"")} onClick={function(){setFilterMode(tab[0]);}}>{tab[1]}</button>;
+              })}
             </div>
-            {filterMode==="quick"&&<div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:11.5,fontWeight:500,color:"#8A8580",marginRight:4}}>Ultimos:</span>{[1,3,7,14,30].map(function(d){return<button key={d} style={{border:days===d?"none":"1.5px solid #DDDBD7",background:days===d?"#1E5C48":"#fff",color:days===d?"#fff":"#6A6560",borderRadius:99,padding:"5px 14px",fontSize:12,fontWeight:days===d?700:500,cursor:"pointer"}} onClick={function(){setDays(d);}}>{d}d</button>;})}</div>}
-            {filterMode==="week"&&<div style={{padding:"12px 16px"}}><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Semana</span><input type="number" min="1" max="53" value={weekNum} onChange={function(e){setWeekNum(e.target.value);}} style={{width:60,border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:13,fontWeight:700,color:"#1A1714",textAlign:"center",outline:"none"}}/></div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>A&#241;o</span><input type="number" min="2020" max="2030" value={weekYear} onChange={function(e){setWeekYear(e.target.value);}} style={{width:76,border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:13,color:"#1A1714",textAlign:"center",outline:"none"}}/></div></div><WeekPreview weekNum={weekNum} weekYear={weekYear} setWeekNum={setWeekNum} setWeekYear={setWeekYear}/></div>}
-            {filterMode==="range"&&<div style={{padding:"12px 16px"}}><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Desde</span><input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/></div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Hasta</span><input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/></div></div>{dateFrom&&dateTo&&<div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"7px 12px",display:"inline-flex",alignItems:"center",gap:6}}><span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateFrom}</span><span style={{fontSize:10,color:"#8A8580"}}>→</span><span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateTo}</span><span style={{fontSize:9,color:"#6A8060",marginLeft:4}}>{Math.round(Math.abs(new Date(dateTo)-new Date(dateFrom))/86400000)+1} dias</span></div>}</div>}
+            {filterMode==="quick"&&(
+              <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                <span style={{fontSize:12,color:"rgba(255,255,255,.54)"}}>Ultimos:</span>
+                {[1,3,7,14,30].map(function(d){
+                  return <button key={d} className={"liquid-filter-pill"+(days===d?" active":"")} onClick={function(){setDays(d);}}>{d}d</button>;
+                })}
+              </div>
+            )}
+            {filterMode==="week"&&(
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:12,color:"rgba(255,255,255,.54)"}}>Semana</span>
+                    <input type="number" min="1" max="53" value={weekNum} onChange={function(e){setWeekNum(e.target.value);}} className="liquid-input" style={{width:76,padding:"10px 12px",fontSize:13,fontWeight:600,textAlign:"center",outline:"none"}}/>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:12,color:"rgba(255,255,255,.54)"}}>Año</span>
+                    <input type="number" min="2020" max="2035" value={weekYear} onChange={function(e){setWeekYear(e.target.value);}} className="liquid-input" style={{width:96,padding:"10px 12px",fontSize:13,fontWeight:600,textAlign:"center",outline:"none"}}/>
+                  </div>
+                </div>
+                <WeekPreview weekNum={weekNum} weekYear={weekYear} setWeekNum={setWeekNum} setWeekYear={setWeekYear}/>
+              </div>
+            )}
+            {filterMode==="range"&&(
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:12}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:12,color:"rgba(255,255,255,.54)"}}>Desde</span>
+                    <input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} className="liquid-input" style={{padding:"10px 12px",fontSize:12,outline:"none"}}/>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:12,color:"rgba(255,255,255,.54)"}}>Hasta</span>
+                    <input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} className="liquid-input" style={{padding:"10px 12px",fontSize:12,outline:"none"}}/>
+                  </div>
+                </div>
+                {dateFrom&&dateTo&&<div className="liquid-inline-note"><span style={{fontFamily:"monospace",fontWeight:700}}>{dateFrom}</span> → <span style={{fontFamily:"monospace",fontWeight:700}}>{dateTo}</span> · {Math.round(Math.abs(new Date(dateTo)-new Date(dateFrom))/86400000)+1} dias</div>}
+              </div>
+            )}
           </div>
-          {analysisWindowDays>7&&!adminOverride&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:12,padding:"10px 14px",marginBottom:14}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#8B6A1E",marginBottom:3}}>Rango amplio: {analysisWindowDays} dias</div>
-            <div style={{fontSize:10.5,color:"#8B6A1E"}}>Este rango incrementa consumo de tokens y ruido. Recomendado: 3 a 5 dias o separar por semana.</div>
+          {analysisWindowDays>7&&!adminOverride&&<div className="liquid-inline-note" style={{marginBottom:14}}>
+            <div style={{fontSize:11,fontWeight:700,marginBottom:3}}>Rango amplio: {analysisWindowDays} dias</div>
+            <div style={{fontSize:10.5}}>Este rango incrementa consumo de tokens y ruido. Recomendado: 3 a 5 dias o separar por semana.</div>
           </div>}
-          {adminOverride&&<div style={{background:"#FEF0EE",border:"1px solid #F4C7C3",borderRadius:12,padding:"10px 14px",marginBottom:14}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#9B2C22",marginBottom:3}}>Modo admin activo</div>
-            <div style={{fontSize:10.5,color:"#9B2C22"}}>Se ignoran advertencias de rango y se usa techo alto de salida para pruebas en este dispositivo.</div>
+          {adminOverride&&<div className="liquid-inline-note danger" style={{marginBottom:14}}>
+            <div style={{fontSize:11,fontWeight:700,marginBottom:3}}>Modo admin activo</div>
+            <div style={{fontSize:10.5}}>Se ignoran advertencias de rango y se usa techo alto de salida para pruebas en este dispositivo.</div>
           </div>}
         </div>
       )}
 
       <div id="recent-analyses">
+
       {state==="idle"&&history.length>0&&(
         <div style={{marginTop:8}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,paddingLeft:2}}>
-            <span style={{fontSize:12,fontWeight:700,color:"#3D3A36",letterSpacing:".04em",textTransform:"uppercase"}}>Analisis recientes</span>
-            <button onClick={function(){if(window.confirm("Borrar todo el historial?")){localStorage.removeItem(HIST_KEY);setHistory([]);}}} style={{fontSize:10,color:"#8A8580",background:"none",border:"none",cursor:"pointer",padding:"2px 6px"}}>Limpiar todo</button>
+            <span className="history-title">Analisis recientes</span>
+            <button className="history-clear" onClick={function(){if(window.confirm("Borrar todo el historial?")){localStorage.removeItem(HIST_KEY);setHistory([]);}}}>Limpiar todo</button>
           </div>
           {history.map(function(h){
             var date=new Date(h.savedAt);var dStr=date.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"});var tStr=date.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});var cc=h.criticos>0?"#C0392B":"#1A7A3C";
             return(
-              <div key={h.id} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 16px",marginBottom:8,boxShadow:"0 1px 2px rgba(0,0,0,.04)",display:"flex",alignItems:"center",gap:12}}>
+              <div key={h.id} className="history-item" style={{padding:"14px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12}}>
                 <div style={{width:3,alignSelf:"stretch",borderRadius:99,background:h.criticos>0?"#C0392B":"#1E5C48",flexShrink:0}}/>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:12,fontWeight:700,color:"#1A1714",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{h.grupo||h.fileName.replace(".zip","").replace("WhatsApp_Chat_-_","").replace(/_/g," ")}</div>
                   <div style={{fontSize:10.5,color:"#8A8580",marginBottom:4}}>{h.periodo||dStr}</div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    <span style={{fontSize:9.5,fontWeight:600,color:"#1E5C48",background:"#EAF5F0",borderRadius:4,padding:"2px 6px"}}>{h.totalEventos} eventos</span>
-                    <span style={{fontSize:9.5,fontWeight:600,color:cc,background:h.criticos>0?"#FEF0EE":"#EBF8EE",borderRadius:4,padding:"2px 6px"}}>{h.criticos} criticos</span>
-                    <span style={{fontSize:9.5,color:"#8A8580",background:"#F8F7F5",borderRadius:4,padding:"2px 6px"}}>{h.pendientes} pendientes</span>
+                    <span className="meta-chip" style={{fontSize:9.5,fontWeight:600,borderRadius:999,padding:"4px 8px"}}>{h.totalEventos} eventos</span>
+                    <span className="meta-chip" style={{fontSize:9.5,fontWeight:600,borderRadius:999,padding:"4px 8px",color:h.criticos>0?"#F5B3B3":"#9EE0C6"}}>{h.criticos} criticos</span>
+                    <span className="meta-chip" style={{fontSize:9.5,borderRadius:999,padding:"4px 8px"}}>{h.pendientes} pendientes</span>
                     {h.imgs>0&&<span style={{fontSize:9.5,color:"#6B2DA8",background:"#F5F0FE",borderRadius:4,padding:"2px 6px"}}>{h.imgs} imgs</span>}
                     {h.apiUsage&&<span style={{fontSize:9.5,color:h.apiUsage.cache_hit?"#1E5C48":"#2952A3",background:h.apiUsage.cache_hit?"#EAF5F0":"#EEF5FB",borderRadius:4,padding:"2px 6px"}}>{h.apiUsage.cache_hit?"cache":"api"} {((h.apiUsage.input_tokens||0)+(h.apiUsage.output_tokens||0)).toLocaleString()} tok</span>}
                   </div>
@@ -3520,10 +3840,10 @@ function App() {
 
       {state==="done"&&result&&(
         <div id="results-section">
-          <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
+          <div className="liquid-result-card liquid-glass-strong" style={{padding:"22px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:16}}>
             <div>
-              <h3 style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>Excel listo para junta</h3>
-              <p style={{fontSize:11,color:"rgba(242,236,200,.6)"}}>{(res.periodo||"")+" - "+ev.length+" eventos - "+((msgStats&&msgStats.clean)||0)+" msgs"}</p>
+              <h3 className="liquid-section-title" style={{fontSize:32,marginBottom:4}}>Excel listo para junta</h3>
+              <p style={{fontSize:13,color:"rgba(255,255,255,.62)"}}>{(res.periodo||"")+" - "+ev.length+" eventos - "+((msgStats&&msgStats.clean)||0)+" msgs"}</p>
               <div style={{display:"flex",alignItems:"center",gap:6,marginTop:5}}><div style={{width:6,height:6,borderRadius:50,background:"#8ABD6E"}}/><span style={{fontSize:9.5,color:"rgba(200,220,160,.8)",fontWeight:500}}>Guardado en historial{elapsed>0&&" - "+String(Math.floor(elapsed/60)).padStart(2,"0")+":"+String(elapsed%60).padStart(2,"0")}</span></div>
               <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>{["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){return<span key={s} style={{background:"rgba(200,216,150,.12)",border:"1px solid rgba(200,216,150,.2)",borderRadius:4,padding:"2px 8px",fontSize:9,color:"#F2ECC8"}}>{s}</span>;})}</div>
               {apiUsage&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:10}}>
@@ -3533,7 +3853,7 @@ function App() {
                 <span style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:99,padding:"4px 10px",fontSize:9.5,color:"#F2ECC8"}}>max {TRACEOPS_MAX_OUTPUT_TOKENS.toLocaleString()}</span>
               </div>}
             </div>
-            <button onClick={download} style={{background:"#7A9448",color:"#fff",border:"none",borderRadius:10,padding:"12px 22px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,boxShadow:"0 2px 8px rgba(122,148,72,.35)"}}>Descargar .xlsx</button>
+            <button onClick={download} className="liquid-btn-white" style={{padding:"14px 24px",fontSize:13,whiteSpace:"nowrap",flexShrink:0}}>Descargar .xlsx</button>
           </div>
 
           {imgNames.length>0&&(
