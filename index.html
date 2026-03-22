@@ -696,6 +696,124 @@ function cleanMsgs(msgs) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════
+// EML / MBOX PARSER — TraceOps v2026-03-21
+// Normaliza emails al mismo formato de mensajes WhatsApp
+// ═══════════════════════════════════════════════════════════════
+
+function decodeQuotedPrintable(str) {
+  return str
+    .replace(/=\r?\n/g, '')
+    .replace(/=([0-9A-Fa-f]{2})/g, function(_, hex) {
+      return String.fromCharCode(parseInt(hex, 16));
+    });
+}
+
+function decodeEmlEncoding(str, encoding) {
+  if (!str) return '';
+  var enc = (encoding || '').toLowerCase().trim();
+  if (enc === 'base64') {
+    try { return decodeURIComponent(escape(atob(str.replace(/\s/g, '')))); } catch(_) { return str; }
+  }
+  if (enc === 'quoted-printable') return decodeQuotedPrintable(str);
+  return str;
+}
+
+function parseEmlHeaders(lines) {
+  var headers = {};
+  var i = 0;
+  while (i < lines.length) {
+    if (!lines[i] || lines[i].trim() === '') { i++; break; }
+    var m = lines[i].match(/^([\w\-]+):\s*(.*)/);
+    if (m) {
+      var key = m[1].toLowerCase();
+      var val = m[2];
+      while (i + 1 < lines.length && /^[ \t]/.test(lines[i + 1])) {
+        i++; val += ' ' + lines[i].trim();
+      }
+      headers[key] = val;
+    }
+    i++;
+  }
+  return { headers: headers, bodyStart: i };
+}
+
+function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
+  var rawBody = lines.slice(bodyStart).join('\n');
+  var ct = (contentType || '').toLowerCase();
+  var boundaryM = ct.match(/boundary="?([^";]+)"?/i);
+  if (boundaryM) {
+    var boundary = boundaryM[1].trim();
+    var re = new RegExp('--' + boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    var parts = rawBody.split(re);
+    for (var pi = 0; pi < parts.length; pi++) {
+      var part = parts[pi];
+      if (!part || part.trim() === '--') continue;
+      var partLines = part.split(/\r?\n/);
+      var partInfo = parseEmlHeaders(partLines);
+      var partCt = (partInfo.headers['content-type'] || '').toLowerCase();
+      var partEnc = (partInfo.headers['content-transfer-encoding'] || '').toLowerCase().trim();
+      if (partCt.indexOf('text/plain') >= 0) {
+        return decodeEmlEncoding(partLines.slice(partInfo.bodyStart).join('\n').trim(), partEnc);
+      }
+    }
+  }
+  return decodeEmlEncoding(rawBody.trim(), encoding);
+}
+
+function parseEmlToMsg(rawText) {
+  if (!rawText || !rawText.trim()) return null;
+  var lines = rawText.split(/\r?\n/);
+  var info = parseEmlHeaders(lines);
+  var h = info.headers;
+
+  var dateObj = null;
+  try { dateObj = h['date'] ? new Date(h['date']) : null; } catch(_) {}
+  if (!dateObj || isNaN(dateObj.getTime())) dateObj = new Date();
+
+  var year = dateObj.getFullYear();
+  var month = dateObj.getMonth() + 1;
+  var day = dateObj.getDate();
+  var hour = dateObj.getHours();
+  var min = dateObj.getMinutes();
+  var dateIso = year + '-' + String(month).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+  var timeStr = String(hour).padStart(2,'0') + ':' + String(min).padStart(2,'0');
+
+  var fromRaw = h['from'] || 'email@desconocido';
+  var addrM = fromRaw.match(/<([^>]+)>/);
+  var addr = addrM ? addrM[1] : fromRaw.replace(/"/g,'').trim();
+  var displayM = fromRaw.match(/^"?([^"<]+)"?\s*</);
+  var sender = displayM ? displayM[1].trim() : addr;
+
+  var subject = h['subject'] || '';
+  var body = extractEmlBodyText(lines, info.bodyStart, h['content-type'] || '', h['content-transfer-encoding'] || '');
+  var text = (subject ? '[' + subject + '] ' : '') + body.replace(/\s+/g, ' ').trim();
+  if (text.length > 1200) text = text.slice(0, 1200) + '...';
+  if (!text || text.trim().length < 5) return null;
+
+  return {
+    dateIso: dateIso,
+    dateDisp: String(day).padStart(2,'0') + '/' + String(month).padStart(2,'0') + '/' + year,
+    timeStr: timeStr,
+    hour: hour,
+    turno: parseTurno(hour, min, dateIso),
+    sender: sender,
+    text: text,
+    source: 'email'
+  };
+}
+
+function parseMboxToMsgs(rawText) {
+  if (!rawText) return [];
+  var parts = rawText.split(/^From [^\r\n]*/m).filter(function(p) { return p && p.trim().length > 0; });
+  var results = [];
+  parts.forEach(function(part) {
+    var msg = parseEmlToMsg(part.trim());
+    if (msg) results.push(msg);
+  });
+  return results;
+}
+
 var _zipRef = null;
 var _imgCache = {};
 
@@ -707,48 +825,78 @@ async function readZip(file) {
   var txt = null;
   var imgNames = [];
   var imgMeta = {};
+  var emlMsgs = [];
+
   for (var i = 0; i < names.length; i++) {
     var name = names[i];
     if (name.startsWith("__MACOSX")) continue;
     var base = name.split("/").pop();
-    if (!txt && base.endsWith(".txt")) {
+    if (!base) continue;
+
+    // WhatsApp txt (existente)
+    if (!txt && base.endsWith(".txt") && !base.toLowerCase().endsWith(".eml")) {
       txt = await zip.files[name].async("string");
     }
+    // Imagenes (existente)
     if (/\.(jpe?g|png|webp)$/i.test(base)) {
       imgNames.push(base);
     }
+    // EML — nuevo
+    if (base.toLowerCase().endsWith(".eml")) {
+      try {
+        var emlRaw = await zip.files[name].async("string");
+        var msg = parseEmlToMsg(emlRaw);
+        if (msg) emlMsgs.push(msg);
+      } catch(_) {}
+    }
+    // MBOX — nuevo
+    if (base.toLowerCase().endsWith(".mbox")) {
+      try {
+        var mboxRaw = await zip.files[name].async("string");
+        var mboxMsgs = parseMboxToMsgs(mboxRaw);
+        emlMsgs = emlMsgs.concat(mboxMsgs);
+      } catch(_) {}
+    }
   }
-  if (!txt) throw new Error("No se encontro .txt en el ZIP");
-  var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
-  var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
-  var lastMeta = null;
-  txt.split(/\r?\n/).forEach(function(rawLine) {
-    var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g,"").trim();
-    var m = line.match(reA) || line.match(reB);
-    if (m) {
-      var isA = !!line.match(reA);
-      var d=m[1],mo=m[2],yr=m[3],h2=m[4],min2=m[5];
-      var mer=isA?(m[7]||""):"";
-      var sender=isA?m[8]:m[6];
-      var year=parseInt(yr); if(year<100) year+=2000;
-      var hour=parseInt(h2);
-      var mlow=(mer||"").toLowerCase().replace(/[\s.]/g,"");
-      if(mlow.indexOf("p")===0 && hour!==12) hour+=12;
-      if(mlow.indexOf("a")===0 && hour===12) hour=0;
-      lastMeta={
-        dateIso:year+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0"),
-        timeStr:String(hour).padStart(2,"0")+":"+min2,
-        sender:(sender||"").replace(/^~/,"").trim()
-      };
-    }
-    var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
-    if (adj && lastMeta) {
-      imgMeta[adj[1].trim()] = {
-        dateIso:lastMeta.dateIso, timeStr:lastMeta.timeStr, sender:lastMeta.sender
-      };
-    }
-  });
-  return { txt:txt, imgNames:imgNames, imgMeta:imgMeta };
+
+  // Construir imgMeta desde txt de WhatsApp si existe
+  if (txt) {
+    var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
+    var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
+    var lastMeta = null;
+    txt.split(/\r?\n/).forEach(function(rawLine) {
+      var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g,"").trim();
+      var m = line.match(reA) || line.match(reB);
+      if (m) {
+        var isA = !!line.match(reA);
+        var d=m[1],mo=m[2],yr=m[3],h2=m[4],min2=m[5];
+        var mer=isA?(m[7]||""):""; var sender=isA?m[8]:m[6];
+        var year=parseInt(yr); if(year<100) year+=2000;
+        var hour=parseInt(h2);
+        var mlow=(mer||"").toLowerCase().replace(/[\s.]/g,"");
+        if(mlow.indexOf("p")===0 && hour!==12) hour+=12;
+        if(mlow.indexOf("a")===0 && hour===12) hour=0;
+        lastMeta={
+          dateIso:year+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0"),
+          timeStr:String(hour).padStart(2,"0")+":"+min2,
+          sender:(sender||"").replace(/^~/,"").trim()
+        };
+      }
+      var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
+      if (adj && lastMeta) {
+        imgMeta[adj[1].trim()] = { dateIso:lastMeta.dateIso, timeStr:lastMeta.timeStr, sender:lastMeta.sender };
+      }
+    });
+  }
+
+  var hasWA = !!(txt && txt.trim().length > 0);
+  var hasEml = emlMsgs.length > 0;
+
+  if (!hasWA && !hasEml) {
+    throw new Error("No se encontro .txt de WhatsApp ni archivos .eml/.mbox en el ZIP");
+  }
+
+  return { txt: txt || "", imgNames: imgNames, imgMeta: imgMeta, emlMsgs: emlMsgs || [], hasWA: hasWA, hasEml: hasEml };
 }
 
 async function loadImg(fname) {
@@ -2217,12 +2365,24 @@ function App() {
       var zipData=await readZip(file);
       setZipImgNames(zipData.imgNames||[]); setImgMeta(zipData.imgMeta||{});
       setProgStep(1);setProg(22);
-      var all=parseWhatsApp(zipData.txt);
-      if(!all.length) throw new Error("No se encontraron mensajes con formato WhatsApp.");
+      var waAll = zipData.hasWA ? parseWhatsApp(zipData.txt) : [];
+      var emlAll = zipData.emlMsgs || [];
+      var all = waAll.concat(emlAll).sort(function(a,b){
+        var dc = a.dateIso.localeCompare(b.dateIso);
+        return dc !== 0 ? dc : a.timeStr.localeCompare(b.timeStr);
+      });
+      if(!all.length) throw new Error("No se encontraron mensajes en el ZIP (WhatsApp ni Email).");
       setProgStep(2);setProg(38);
       var filtered=filterMsgs(all,filterMode,days,dateFrom,dateTo,weekNum,weekYear);
       var clean=cleanMsgs(filtered);
-      var statsPayload={total:all.length,filtered:filtered.length,clean:clean.length,imgs:(zipData.imgNames||[]).length};
+      var statsPayload={
+        total:all.length,
+        filtered:filtered.length,
+        clean:clean.length,
+        imgs:(zipData.imgNames||[]).length,
+        waCount:waAll.length,
+        emlCount:emlAll.length
+      };
       setMsgStats(statsPayload);
       if(!clean.length) throw new Error("Sin mensajes operativos en el periodo. Aumenta el rango.");
       TRACEOPS_MAX_OUTPUT_TOKENS = traceOpsGetMaxOutputTokens(requestedDays, clean.length);
@@ -3176,8 +3336,6 @@ function App() {
           })}
         </div>
       )}
-
-      </div>
 
       {state==="loading"&&(
         <div style={{background:"#fff",border:"1.5px solid #DDDBD7",borderRadius:16,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
