@@ -1648,13 +1648,8 @@ function traceOpsBuildRangeLabel(filterMode, days, dateFrom, dateTo, weekNum, we
 }
 
 async function traceOpsHashFile(file){
-  try{
-    if (window.crypto && crypto.subtle && file && file.arrayBuffer) {
-      var buf = await file.arrayBuffer();
-      var digest = await crypto.subtle.digest("SHA-256", buf);
-      return Array.from(new Uint8Array(digest)).map(function(b){ return b.toString(16).padStart(2,"0"); }).join("");
-    }
-  }catch(_){}
+  // iOS Safari can crash if we read the whole ZIP twice (arrayBuffer for hash + unzip).
+  // Use a lightweight signature instead of a full SHA-256 to keep memory stable.
   return [file && file.name || "file", file && file.size || 0, file && file.lastModified || 0].join("|");
 }
 
@@ -2163,9 +2158,10 @@ function App() {
       var statsPayload={total:all.length,filtered:filtered.length,clean:clean.length,imgs:(zipData.imgNames||[]).length};
       setMsgStats(statsPayload);
       if(!clean.length) throw new Error("Sin mensajes operativos en el periodo. Aumenta el rango.");
-      var fileHash = await traceOpsHashFile(file);
+      var useLightCache = !(requestedDays>7 || (file && file.size && file.size>25*1024*1024));
+      var fileHash = useLightCache ? await traceOpsHashFile(file) : [file && file.name || "file", file && file.size || 0, file && file.lastModified || 0, "nocache"].join("|");
       var cacheKey = traceOpsBuildAnalysisCacheKey(fileHash, filterMode, days, dateFrom, dateTo, weekNum, weekYear);
-      var cached = await traceOpsDbGet(cacheKey).catch(function(){ return null; });
+      var cached = useLightCache ? await traceOpsDbGet(cacheKey).catch(function(){ return null; }) : null;
       if(cached && cached.result){
         var cachedResult = cached.result;
         var cachedUsage = Object.assign({}, cached.apiUsage || traceOpsUsageFromResult(cachedResult) || {}, { api_calls:0, cache_hit:true, cache_key:cacheKey });
@@ -2183,7 +2179,9 @@ function App() {
       setProgStep(3);setProg(55);
       var res=await analyzeWithAI(clean,apiKey.trim());
       setApiUsage(traceOpsUsageFromResult(res));
-      traceOpsDbSet(cacheKey,{savedAt:new Date().toISOString(), result:res, apiUsage:traceOpsUsageFromResult(res), fileName:fileNameRef.current, range:traceOpsBuildRangeLabel(filterMode, days, dateFrom, dateTo, weekNum, weekYear)}).catch(function(){});
+      if(useLightCache){
+        traceOpsDbSet(cacheKey,{savedAt:new Date().toISOString(), result:res, apiUsage:traceOpsUsageFromResult(res), fileName:fileNameRef.current, range:traceOpsBuildRangeLabel(filterMode, days, dateFrom, dateTo, weekNum, weekYear)}).catch(function(){});
+      }
       setProgStep(4);setProg(82);
       setEvImgs({});
       var bytes=await buildXlsx(res);
