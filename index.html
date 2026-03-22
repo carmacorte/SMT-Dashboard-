@@ -3371,9 +3371,9 @@ function App() {
           }}
         />
         <div className="ops-hero-content">
-          <div className="ops-hero-eyebrow">Operational Event Intelligence</div>
+          <div className="ops-hero-eyebrow">Operational intelligence for manufacturing</div>
           <h1 className="ops-hero-title">TraceOps<span>by SMTintel</span></h1>
-          <p className="ops-hero-subtitle">Convierte conversaciones operativas dispersas en incidentes estructurados, recomendaciones accionables y memoria RCCA reutilizable.</p>
+          <p className="ops-hero-subtitle">Transforma chats, correos y evidencia operativa en incidentes accionables, precedentes verificables y casos RCCA reutilizables.</p><p style={{margin:"10px 0 0",maxWidth:720,fontSize:14,lineHeight:1.7,color:"rgba(255,255,255,.72)"}}>Tu evidencia sigue siendo tuya. La IA solo verifica, compara y propone la mejor ruta de acción.</p>
           <div className="ops-hero-actions">
             <button className="ops-hero-btn primary" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Subir WhatsApp ZIP</button>
             {history.length>0 && (
@@ -3383,21 +3383,38 @@ function App() {
             )}
           </div>
           <div className="ops-hero-chips">
-            {["TraceOps","SMT","AOI","Incident Story","Root Cause"].map(function(t){return <span key={t}>{t}</span>;})}
+            {["No solo chats","Incidentes accionables","Memoria operativa","RCCA reutilizable","SMT / AOI / ICT"].map(function(t){return <span key={t}>{t}</span>;})}
           </div>
         </div>
       </div>
 
       {state==="idle"&&(
         <div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14,margin:"0 0 18px"}}>
+            <div style={{background:"linear-gradient(180deg,#0B1116,#091016)",border:"1px solid rgba(46,107,50,.22)",borderRadius:22,padding:"18px 18px 16px",boxShadow:"0 12px 28px rgba(0,0,0,.18)"}}>
+              <div style={{fontSize:11,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#7FB191",marginBottom:8}}>No solo reportes</div>
+              <div style={{fontSize:20,fontWeight:700,color:"#F4F7F8",lineHeight:1.2,marginBottom:8}}>Respuestas operativas reales</div>
+              <div style={{fontSize:13,lineHeight:1.7,color:"rgba(244,247,248,.68)"}}>TraceOps muestra qué pasó, dónde ocurrió y qué acción sigue, sin obligarte a leer todo el chat desde cero.</div>
+            </div>
+            <div style={{background:"linear-gradient(180deg,#0B1116,#091016)",border:"1px solid rgba(46,107,50,.22)",borderRadius:22,padding:"18px 18px 16px",boxShadow:"0 12px 28px rgba(0,0,0,.18)"}}>
+              <div style={{fontSize:11,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#7FB191",marginBottom:8}}>Tu evidencia sigue siendo tuya</div>
+              <div style={{fontSize:20,fontWeight:700,color:"#F4F7F8",lineHeight:1.2,marginBottom:8}}>La bóveda queda en TraceOps</div>
+              <div style={{fontSize:13,lineHeight:1.7,color:"rgba(244,247,248,.68)"}}>ZIP, correos, imágenes, metadatos y RCCAs permanecen en tu flujo. La IA solo interpreta, compara y propone.</div>
+            </div>
+            <div style={{background:"linear-gradient(180deg,#0B1116,#091016)",border:"1px solid rgba(46,107,50,.22)",borderRadius:22,padding:"18px 18px 16px",boxShadow:"0 12px 28px rgba(0,0,0,.18)"}}>
+              <div style={{fontSize:11,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#7FB191",marginBottom:8}}>Hecho para manufactura</div>
+              <div style={{fontSize:20,fontWeight:700,color:"#F4F7F8",lineHeight:1.2,marginBottom:8}}>SMT, AOI, ICT, PTH y RCCA</div>
+              <div style={{fontSize:13,lineHeight:1.7,color:"rgba(244,247,248,.68)"}}>Cada corrida fortalece la memoria operativa y acelera la siguiente decisión de calidad, proceso y contención.</div>
+            </div>
+          </div>
           <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
             <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}} onChange={function(e){handle(e.target.files[0]);}}/>
             <div style={{padding:"48px 32px",textAlign:"center"}}>
               <div style={{width:48,height:48,borderRadius:12,background:"#EEF3EA",border:"1px solid #C8D8BC",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",color:"#4A7A50"}}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
               </div>
-              <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>Arrastra el .zip de WhatsApp</div>
-              <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>o haz clic para seleccionar</div>
+              <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>Sube WhatsApp ZIP o correo operativo</div>
+              <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>ZIP de WhatsApp, .eml o .mbox — misma bóveda, mismo flujo</div>
               <button style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:99,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:"0 2px 8px rgba(30,92,72,.25)"}} onClick={function(e){e.stopPropagation();fileRef.current.click();}}>Seleccionar archivo</button>
             </div>
           </div>
