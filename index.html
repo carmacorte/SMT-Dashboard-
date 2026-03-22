@@ -1204,7 +1204,7 @@ async function analyzeWithAI(msgs, apiKey) {
       var ch = text[i];
       if (inString) {
         if (esc) { esc = false; continue; }
-        if (ch === "\") { esc = true; continue; }
+        if (ch === "\\") { esc = true; continue; }
         if (ch === '"') { inString = false; }
         continue;
       }
