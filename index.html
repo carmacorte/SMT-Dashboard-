@@ -9,7 +9,7 @@ window.TRACEOPS_SUPABASE = {
   anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV"
 };
 </script>
-<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 engineer-findings-clean -->
+<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 engineer-findings-hardened -->
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var box = document.createElement('div');
@@ -923,6 +923,14 @@ function parseMboxToMsgs(rawText) {
   return results;
 }
 
+function traceOpsIsStickerMediaLocal(baseName) {
+  var b = String(baseName || "").toLowerCase().trim();
+  if (!b) return false;
+  if (/\.webp$/i.test(b)) return true;
+  if (/(^|[_\-\s])(sticker|stickers|emoji|meme|funny|tenor|giphy|gif)([_\-\s]|\.)/i.test(b)) return true;
+  return false;
+}
+
 var _zipRef = null;
 var _imgCache = {};
 
@@ -933,6 +941,7 @@ async function readZip(file) {
   var names = Object.keys(zip.files);
   var txt = null;
   var imgNames = [];
+  var filteredMediaNames = [];
   var imgMeta = {};
   var emlMsgs = [];
 
@@ -946,9 +955,13 @@ async function readZip(file) {
     if (!txt && base.endsWith(".txt") && !base.toLowerCase().endsWith(".eml")) {
       txt = await zip.files[name].async("string");
     }
-    // Imagenes (existente)
+    // Imagenes (existente) — filtra stickers / noise multimedia
     if (/\.(jpe?g|png|webp)$/i.test(base)) {
-      imgNames.push(base);
+      if (traceOpsIsStickerMediaLocal(base)) {
+        filteredMediaNames.push(base);
+      } else {
+        imgNames.push(base);
+      }
     }
     // EML — nuevo
     if (base.toLowerCase().endsWith(".eml")) {
@@ -1005,7 +1018,15 @@ async function readZip(file) {
     throw new Error("No se encontro .txt de WhatsApp ni archivos .eml/.mbox en el ZIP");
   }
 
-  return { txt: txt || "", imgNames: imgNames, imgMeta: imgMeta, emlMsgs: emlMsgs || [], hasWA: hasWA, hasEml: hasEml };
+  return {
+    txt: txt || "",
+    imgNames: imgNames,
+    filteredMediaNames: filteredMediaNames,
+    imgMeta: imgMeta,
+    emlMsgs: emlMsgs || [],
+    hasWA: hasWA,
+    hasEml: hasEml
+  };
 }
 
 async function loadImg(fname) {
@@ -1336,6 +1357,18 @@ async function analyzeWithAI(msgs, apiKey) {
       /see attached file/i,
       /agile deviation notify/i,
       /effectiveto:/i,
+      /actualizacion de smt/i,
+      /\[actualizacion de smt\]/i,
+      /buen dia,\s*team/i,
+      /favor de tomar en cuenta/i,
+      /se reduce la corrida/i,
+      /adicion modelos npi/i,
+      /\bwo\s*:/i,
+      /plan smt/i,
+      /favor revisar/i,
+      /se informa/i,
+      /para su conocimiento/i,
+      /update de smt/i,
       /\bfrom:\b/i,
       /\bsubject:\b/i,
       /\bto:\b/i,
@@ -1571,7 +1604,41 @@ async function analyzeWithAI(msgs, apiKey) {
     var out = kept.slice(0, 3).join(" ");
     out = out.replace(/\s{2,}/g, " ").trim();
     if (out.length > 420) out = out.slice(0, 417) + "...";
+    if (findingLooksAdministrativeUpdateLocal(out) && !findingHasStrongTechnicalSignalLocal(out)) return "";
+    if (!findingHasStrongTechnicalSignalLocal(out) && out.length < 110) return "";
     return out;
+  }
+
+  function findingHasStrongTechnicalSignalLocal(text) {
+    var s = String(text || "");
+    if (!s) return false;
+    var techHits = technicalHitCountLocal(s);
+    var parts = extractPartsLocal(s).length;
+    var models = extractModelTokensLocal(s).length;
+    var hasRefdes = /(?:u|r|c|q|l|d|tp|ic|cn|fb)\d{1,4}/i.test(s);
+    var hasTechWords = /(?:causa|cause|hipotesis|hypothesis|validacion|validation|mitigacion|mitigation|inspeccion|inspection|analisis|analysis|flux|pogo|ict|aoi|bga|short|open|owner|escalad|conten(?:cion|tion)|componente|component)/i.test(s);
+    return techHits >= 3 || parts > 0 || models > 0 || hasRefdes || hasTechWords;
+  }
+
+  function findingLooksAdministrativeUpdateLocal(text) {
+    var s = normalizeLooseLocal(text);
+    if (!s) return false;
+    var pats = [
+      "actualizacion de smt",
+      "buen dia team",
+      "favor de tomar en cuenta",
+      "se reduce la corrida",
+      "adicion modelos npi",
+      "plan smt",
+      "wo ",
+      "favor revisar",
+      "se informa",
+      "para su conocimiento",
+      "update de smt"
+    ];
+    var score = 0;
+    pats.forEach(function(p) { if (s.indexOf(p) >= 0) score += 1; });
+    return score >= 2;
   }
 
   function findingSignalScoreLocal(text, msg, anchor) {
@@ -1630,8 +1697,10 @@ async function analyzeWithAI(msgs, apiKey) {
         if (anchorTextNorm && normalizeLooseLocal(cleanText).indexOf(anchorTextNorm.slice(0, 24)) >= 0) score += 2;
 
         var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(cleanText) === anchor.station);
+        if (findingLooksAdministrativeUpdateLocal(cleanText) && !findingHasStrongTechnicalSignalLocal(cleanText)) return;
         if (!hasAnchor && techHits < 3) return;
-        if (score < 9) return;
+        if (!findingHasStrongTechnicalSignalLocal(cleanText)) return;
+        if (score < 10) return;
 
         hits.push({ msg: m, ms: msgTimeMs, score: score, cleanText: cleanText });
       });
@@ -1672,6 +1741,12 @@ async function analyzeWithAI(msgs, apiKey) {
       }
 
       if (findingAdminNoiseScoreLocal(ev.engineer_findings || "") >= 4 && technicalHitCountLocal(ev.engineer_findings || "") < 3) {
+        ev.engineer_findings = "";
+      }
+      if (findingLooksAdministrativeUpdateLocal(ev.engineer_findings || "") && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) {
+        ev.engineer_findings = "";
+      }
+      if (ev.engineer_findings && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings)) {
         ev.engineer_findings = "";
       }
 
@@ -2300,6 +2375,7 @@ function App() {
 
   var pfArr = _useState(""); var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
   var imgsArr = _useState([]); var zipImgNames = imgsArr[0]; var setZipImgNames = imgsArr[1];
+  var mediaNoiseArr = _useState(0); var filteredMediaCount = mediaNoiseArr[0]; var setFilteredMediaCount = mediaNoiseArr[1];
   var imgMetaArr = _useState({}); var imgMeta = imgMetaArr[0]; var setImgMeta = imgMetaArr[1];
   var evImgsArr = _useState({}); var evImgs = evImgsArr[0]; var setEvImgs = evImgsArr[1];
   var lbArr = _useState(null); var lightbox = lbArr[0]; var setLightbox = lbArr[1];
@@ -2728,7 +2804,9 @@ function App() {
     setState("loading");setProg(8);setProgStep(0);
     try{
       var zipData=await readZip(file);
-      setZipImgNames(zipData.imgNames||[]); setImgMeta(zipData.imgMeta||{});
+      setZipImgNames(zipData.imgNames||[]);
+      setFilteredMediaCount((zipData.filteredMediaNames||[]).length);
+      setImgMeta(zipData.imgMeta||{});
       setProgStep(1);setProg(22);
       var waAll = zipData.hasWA ? parseWhatsApp(zipData.txt) : [];
       var emlAll = zipData.emlMsgs || [];
@@ -2745,6 +2823,7 @@ function App() {
         filtered:filtered.length,
         clean:clean.length,
         imgs:(zipData.imgNames||[]).length,
+        filteredMedia:(zipData.filteredMediaNames||[]).length,
         waCount:waAll.length,
         emlCount:emlAll.length
       };
@@ -3755,7 +3834,11 @@ function App() {
           {imgNames.length>0&&(
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
               <div style={{padding:"12px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-                <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Evidencias del chat</h3><span style={{fontSize:10,color:"#8A8580"}}>{imgNames.length} imagenes</span></div>
+                <div>
+                  <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Evidencias del chat</h3>
+                  <span style={{fontSize:10,color:"#8A8580"}}>{imgNames.length} imagenes</span>
+                  {filteredMediaCount>0&&<span style={{fontSize:10,color:"#B26B3B",marginLeft:8}}>{filteredMediaCount} stickers filtrados</span>}
+                </div>
                 <span style={{fontSize:10,fontWeight:600,color:"#2A7A60"}}>{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span>
               </div>
               {imgNames.length>GAL_PAGE_SIZE&&(
@@ -3979,6 +4062,7 @@ function App() {
                 <span className="table-sort-chip">Orden: {bitacoraSortLabel(bitacoraSortKey)} {bitacoraSortDir==="asc"?"↑":"↓"}</span>
                 <button className="table-reset-btn" onClick={function(){setBitacoraSortKey("fecha");setBitacoraSortDir("desc");}}>Restablecer</button>
                 {imgNames.length>0&&<span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>{imgNames.length} imagen{imgNames.length!==1?"es":""}<span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span></span>}
+                {filteredMediaCount>0&&<span style={{fontSize:10.5,color:"#B26B3B",fontWeight:600}}>{filteredMediaCount} sticker{filteredMediaCount!==1?"s":""} filtrado{filteredMediaCount!==1?"s":""}</span>}
               </div>
             </div>
             <div className="tscroll">
