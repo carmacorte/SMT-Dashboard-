@@ -2885,7 +2885,8 @@ function App() {
         traceOpsDbSet(cacheKey,{savedAt:new Date().toISOString(), result:res, apiUsage:traceOpsUsageFromResult(res), fileName:fileNameRef.current, range:traceOpsBuildRangeLabel(filterMode, days, dateFrom, dateTo, weekNum, weekYear)}).catch(function(){});
       }
       setProgStep(4);setProg(82);
-      setEvImgs({});
+      var autoEvImgs = traceOpsAutoAttachImagesToEvents((res&&res.eventos)||[], scopedImgs.names||[], zipData.imgMeta||{});
+      setEvImgs(autoEvImgs);
       var bytes=await buildXlsx(res);
       var totalSecs=Math.floor((Date.now()-startTimeRef.current)/1000);
       setProg(100);setResult(res);setXlsxBytes(bytes);setState("done");
@@ -3509,6 +3510,68 @@ function App() {
     return{list:contextual.slice(0,120),modeLabel:modeLabel,refText:formatEventRef(evRow)};
   }
 
+  function normSenderLocal(s){
+    return String(s||"").toLowerCase().replace(/^~/,"").replace(/[^a-z0-9]+/g," ").trim();
+  }
+
+  function traceOpsAutoAttachImagesToEvents(eventos, imageNames, metaMap){
+    var map = {};
+    var evs = (eventos||[]).slice();
+    var imgs = imageNames || [];
+    if(!evs.length || !imgs.length) return map;
+
+    imgs.forEach(function(fname){
+      var meta = (metaMap && metaMap[fname]) || {};
+      var imgMs = parseIsoDateTimeMs(meta.dateIso, meta.timeStr);
+      if(imgMs == null) return;
+
+      var bestEv = null;
+      var bestScore = -9999;
+
+      evs.forEach(function(ev){
+        var evMs = parseEventDateTimeMs(ev);
+        if(evMs == null) return;
+        if(!sameCalendarDay(imgMs, evMs)) return;
+
+        var diffMin = Math.abs(imgMs - evMs) / 60000;
+        var score = 0;
+
+        if (diffMin <= 5) score += 12;
+        else if (diffMin <= 15) score += 10;
+        else if (diffMin <= 60) score += 7;
+        else if (diffMin <= 180) score += 4;
+        else score += 1;
+
+        var imgSender = normSenderLocal(meta.sender || "");
+        var evSender = normSenderLocal(ev.reporta || "");
+        var respSender = normSenderLocal(ev.responsable_sugerido || "");
+        if (imgSender && evSender && imgSender === evSender) score += 4;
+        else if (imgSender && respSender && imgSender === respSender) score += 3;
+
+        var lineTxt = String(ev.linea_estacion || "");
+        var eventTxt = String(ev.evento_detectado || "");
+        var imgTextBlob = String(meta.sender || "") + " " + String(meta.dateIso || "");
+        if (/\b(?:aoi|ict|smt|pth)\b/i.test(lineTxt + " " + eventTxt + " " + imgTextBlob)) score += 1;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestEv = ev;
+        }
+      });
+
+      if(bestEv && bestScore >= 5){
+        if(!map[bestEv.id]) map[bestEv.id] = [];
+        map[bestEv.id].push(fname);
+      }
+    });
+
+    Object.keys(map).forEach(function(evId){
+      map[evId] = uniqueNames(map[evId]).slice(0,6);
+    });
+
+    return map;
+  }
+
   function PickerThumb(props){
     var fname=props.fname;var srcArr=_useState(_imgCache[fname]||null);var src=srcArr[0];var setSrc=srcArr[1];var queuedRef=_useRef(false);
     React.useEffect(function(){var alive=true;if(src||queuedRef.current)return;queuedRef.current=true;enqueueLoad(fname,function(url){if(alive)setSrc(url);});return function(){alive=false;};}, [fname,src]);
@@ -3870,7 +3933,7 @@ function App() {
                   {filteredMediaCount>0&&<span style={{fontSize:10,color:"#B26B3B",marginLeft:8}}>{filteredMediaCount} stickers filtrados</span>}
                   {mediaOutOfRangeCount>0&&<span style={{fontSize:10,color:"#7E7A76",marginLeft:8}}>{mediaOutOfRangeCount} fuera de rango</span>}
                 </div>
-                <span style={{fontSize:10,fontWeight:600,color:"#2A7A60"}}>{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span>
+                <span style={{fontSize:10,fontWeight:600,color:"#2A7A60"}}>{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas auto</span>
               </div>
               {imgNames.length>GAL_PAGE_SIZE&&(
                 <div style={{padding:"8px 16px",borderBottom:"1px solid #EEECEA",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:"#FAFAF9"}}>
@@ -4092,7 +4155,7 @@ function App() {
               <div className="table-tools">
                 <span className="table-sort-chip">Orden: {bitacoraSortLabel(bitacoraSortKey)} {bitacoraSortDir==="asc"?"↑":"↓"}</span>
                 <button className="table-reset-btn" onClick={function(){setBitacoraSortKey("fecha");setBitacoraSortDir("desc");}}>Restablecer</button>
-                {imgNames.length>0&&<span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>{imgNames.length} imagen{imgNames.length!==1?"es":""}<span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span></span>}
+                {imgNames.length>0&&<span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>{imgNames.length} imagen{imgNames.length!==1?"es":""}<span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas auto</span></span>}
                 {filteredMediaCount>0&&<span style={{fontSize:10.5,color:"#B26B3B",fontWeight:600}}>{filteredMediaCount} sticker{filteredMediaCount!==1?"s":""} filtrado{filteredMediaCount!==1?"s":""}</span>}
                 {mediaOutOfRangeCount>0&&<span style={{fontSize:10.5,color:"#7E7A76",fontWeight:600}}>{mediaOutOfRangeCount} fuera de rango</span>}
               </div>
