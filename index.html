@@ -1830,6 +1830,7 @@ var TRACEOPS_MAX_OUTPUT_TOKENS = 1800;
 var TRACEOPS_ANALYSIS_CACHE_PREFIX = "traceops_ai_cache::";
 
 function traceOpsGetMaxOutputTokens(requestedDays, cleanCount){
+  if (traceOpsIsAdminOverride()) return traceOpsAdminTokenCeiling();
   var d = Math.max(1, parseInt(requestedDays, 10) || 1);
   var c = Math.max(0, parseInt(cleanCount, 10) || 0);
   var t = 1800;
@@ -1881,6 +1882,18 @@ function traceOpsBuildAnalysisCacheKey(fileHash, filterMode, days, dateFrom, dat
 
 function traceOpsUsageFromResult(res){
   return (res && res.__traceops_api) ? res.__traceops_api : null;
+}
+
+function traceOpsIsAdminOverride(){
+  try { return localStorage.getItem("traceops_admin_override") === "1"; } catch(_) { return false; }
+}
+
+function traceOpsSetAdminOverride(flag){
+  try { localStorage.setItem("traceops_admin_override", flag ? "1" : "0"); } catch(_) {}
+}
+
+function traceOpsAdminTokenCeiling(){
+  return 6000;
 }
 
 
@@ -1985,6 +1998,8 @@ function App() {
   var syncBusy = syncBusyArr[0]; var setSyncBusy = syncBusyArr[1];
   var authErrArr = _useState("");
   var authErrMsg = authErrArr[0]; var setAuthErrMsg = authErrArr[1];
+  var adminOverrideArr = _useState(traceOpsIsAdminOverride());
+  var adminOverride = adminOverrideArr[0]; var setAdminOverride = adminOverrideArr[1];
   var storageErrArr = _useState("");
   var storageErrMsg = storageErrArr[0]; var setStorageErrMsg = storageErrArr[1];
 
@@ -2357,7 +2372,7 @@ function App() {
     if(!file||!file.name.endsWith(".zip")){setErrMsg("Sube un .zip exportado de WhatsApp");setState("error");return;}
     if(!apiKey.trim()){setErrMsg("Ingresa tu API Key");setState("error");return;}
     var requestedDays = traceOpsGetWindowDays(filterMode, days, dateFrom, dateTo, weekNum, weekYear);
-    if(requestedDays>7 && !window.confirm("Este rango cubre " + requestedDays + " dias y puede incrementar consumo de tokens y ruido. Se recomienda 3 a 5 dias. ¿Continuar de todos modos?")){return;}
+    if(requestedDays>7 && !adminOverride && !window.confirm("Este rango cubre " + requestedDays + " dias y puede incrementar consumo de tokens y ruido. Se recomienda 3 a 5 dias. ¿Continuar de todos modos?")){return;}
     fileNameRef.current=file.name;
     setApiUsage(null);
     setState("loading");setProg(8);setProgStep(0);
@@ -3141,6 +3156,22 @@ function App() {
             <button className={"sidebar-btn"+(false?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("rcca-section");if(el){el.scrollIntoView({behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>RCCA</button>
           </div>
         </div>
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">Modo admin</div>
+          <button className="sidebar-btn" onClick={function(){
+            var next = !adminOverride;
+            traceOpsSetAdminOverride(next);
+            setAdminOverride(next);
+          }} style={{justifyContent:"space-between",color:adminOverride?"#8FDCC1":"rgba(255,255,255,.78)",background:adminOverride?"rgba(72,168,130,.14)":"rgba(255,255,255,.04)",border:"1px solid "+(adminOverride?"rgba(72,168,130,.28)":"rgba(255,255,255,.08)")}}>
+            <span style={{display:"flex",alignItems:"center",gap:10}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15V3m0 0l-3 3m3-3l3 3M5 21h14"/></svg>
+              <span>Ignorar limites de testing</span>
+            </span>
+            <span style={{fontSize:10,fontWeight:800,padding:"4px 8px",borderRadius:999,background:adminOverride?"#244E3E":"rgba(255,255,255,.08)",color:adminOverride?"#fff":"rgba(255,255,255,.72)"}}>{adminOverride?"ACTIVO":"OFF"}</span>
+          </button>
+          <div className="sidebar-api-note" style={{marginTop:8}}>Override local para este dispositivo. Omite advertencias de rango y sube el limite de salida para pruebas.</div>
+        </div>
+
         <div className="sidebar-footer">
           <p>TraceOps by SMTintel - ALDA<br/>Operational Event Intelligence</p>
         </div>
@@ -3295,9 +3326,13 @@ function App() {
             {filterMode==="week"&&<div style={{padding:"12px 16px"}}><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Semana</span><input type="number" min="1" max="53" value={weekNum} onChange={function(e){setWeekNum(e.target.value);}} style={{width:60,border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:13,fontWeight:700,color:"#1A1714",textAlign:"center",outline:"none"}}/></div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>A&#241;o</span><input type="number" min="2020" max="2030" value={weekYear} onChange={function(e){setWeekYear(e.target.value);}} style={{width:76,border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:13,color:"#1A1714",textAlign:"center",outline:"none"}}/></div></div><WeekPreview weekNum={weekNum} weekYear={weekYear} setWeekNum={setWeekNum} setWeekYear={setWeekYear}/></div>}
             {filterMode==="range"&&<div style={{padding:"12px 16px"}}><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Desde</span><input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/></div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Hasta</span><input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/></div></div>{dateFrom&&dateTo&&<div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"7px 12px",display:"inline-flex",alignItems:"center",gap:6}}><span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateFrom}</span><span style={{fontSize:10,color:"#8A8580"}}>→</span><span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateTo}</span><span style={{fontSize:9,color:"#6A8060",marginLeft:4}}>{Math.round(Math.abs(new Date(dateTo)-new Date(dateFrom))/86400000)+1} dias</span></div>}</div>}
           </div>
-          {analysisWindowDays>7&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:12,padding:"10px 14px",marginBottom:14}}>
+          {analysisWindowDays>7&&!adminOverride&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:12,padding:"10px 14px",marginBottom:14}}>
             <div style={{fontSize:11,fontWeight:700,color:"#8B6A1E",marginBottom:3}}>Rango amplio: {analysisWindowDays} dias</div>
             <div style={{fontSize:10.5,color:"#8B6A1E"}}>Este rango incrementa consumo de tokens y ruido. Recomendado: 3 a 5 dias o separar por semana.</div>
+          </div>}
+          {adminOverride&&<div style={{background:"#FEF0EE",border:"1px solid #F4C7C3",borderRadius:12,padding:"10px 14px",marginBottom:14}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#9B2C22",marginBottom:3}}>Modo admin activo</div>
+            <div style={{fontSize:10.5,color:"#9B2C22"}}>Se ignoran advertencias de rango y se usa techo alto de salida para pruebas en este dispositivo.</div>
           </div>}
         </div>
       )}
