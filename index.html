@@ -688,6 +688,31 @@ function filterMsgs(msgs, mode, days, dateFrom, dateTo, weekNum, weekYear) {
   return sorted.filter(function(m){ return m.dateIso >= cutStr; });
 }
 
+function traceOpsFilterMediaNamesBySelectedRange(mediaNames, imgMeta, filteredMsgs) {
+  var out = { names: [], outsideRangeCount: 0, unknownDateCount: 0 };
+  var names = mediaNames || [];
+  if (!names.length) return out;
+  if (!filteredMsgs || !filteredMsgs.length) {
+    out.outsideRangeCount = names.length;
+    return out;
+  }
+  var allowedDates = {};
+  filteredMsgs.forEach(function(m) {
+    if (m && m.dateIso) allowedDates[m.dateIso] = true;
+  });
+  names.forEach(function(fname) {
+    var meta = (imgMeta && imgMeta[fname]) || null;
+    var dateIso = meta && meta.dateIso ? meta.dateIso : "";
+    if (!dateIso) {
+      out.unknownDateCount += 1;
+      return;
+    }
+    if (allowedDates[dateIso]) out.names.push(fname);
+    else out.outsideRangeCount += 1;
+  });
+  return out;
+}
+
 function cleanMsgs(msgs) {
   var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|cifrados de extremo|ahora es admin/i;
   var noise = /^(buenos d|buenas t|buen d|gracias|de nada|enterado|recibido|entendido)/i;
@@ -2376,6 +2401,7 @@ function App() {
   var pfArr = _useState(""); var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
   var imgsArr = _useState([]); var zipImgNames = imgsArr[0]; var setZipImgNames = imgsArr[1];
   var mediaNoiseArr = _useState(0); var filteredMediaCount = mediaNoiseArr[0]; var setFilteredMediaCount = mediaNoiseArr[1];
+  var mediaRangeArr = _useState(0); var mediaOutOfRangeCount = mediaRangeArr[0]; var setMediaOutOfRangeCount = mediaRangeArr[1];
   var imgMetaArr = _useState({}); var imgMeta = imgMetaArr[0]; var setImgMeta = imgMetaArr[1];
   var evImgsArr = _useState({}); var evImgs = evImgsArr[0]; var setEvImgs = evImgsArr[1];
   var lbArr = _useState(null); var lightbox = lbArr[0]; var setLightbox = lbArr[1];
@@ -2804,8 +2830,6 @@ function App() {
     setState("loading");setProg(8);setProgStep(0);
     try{
       var zipData=await readZip(file);
-      setZipImgNames(zipData.imgNames||[]);
-      setFilteredMediaCount((zipData.filteredMediaNames||[]).length);
       setImgMeta(zipData.imgMeta||{});
       setProgStep(1);setProg(22);
       var waAll = zipData.hasWA ? parseWhatsApp(zipData.txt) : [];
@@ -2817,13 +2841,19 @@ function App() {
       if(!all.length) throw new Error("No se encontraron mensajes en el ZIP (WhatsApp ni Email).");
       setProgStep(2);setProg(38);
       var filtered=filterMsgs(all,filterMode,days,dateFrom,dateTo,weekNum,weekYear);
+      var scopedImgs = traceOpsFilterMediaNamesBySelectedRange(zipData.imgNames||[], zipData.imgMeta||{}, filtered);
+      var scopedNoise = traceOpsFilterMediaNamesBySelectedRange(zipData.filteredMediaNames||[], zipData.imgMeta||{}, filtered);
+      setZipImgNames(scopedImgs.names||[]);
+      setFilteredMediaCount((scopedNoise.names||[]).length);
+      setMediaOutOfRangeCount((scopedImgs.outsideRangeCount||0)+(scopedImgs.unknownDateCount||0)+(scopedNoise.outsideRangeCount||0)+(scopedNoise.unknownDateCount||0));
       var clean=cleanMsgs(filtered);
       var statsPayload={
         total:all.length,
         filtered:filtered.length,
         clean:clean.length,
-        imgs:(zipData.imgNames||[]).length,
-        filteredMedia:(zipData.filteredMediaNames||[]).length,
+        imgs:(scopedImgs.names||[]).length,
+        filteredMedia:(scopedNoise.names||[]).length,
+        mediaOutsideRange:(scopedImgs.outsideRangeCount||0)+(scopedImgs.unknownDateCount||0)+(scopedNoise.outsideRangeCount||0)+(scopedNoise.unknownDateCount||0),
         waCount:waAll.length,
         emlCount:emlAll.length
       };
@@ -3836,8 +3866,9 @@ function App() {
               <div style={{padding:"12px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
                 <div>
                   <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Evidencias del chat</h3>
-                  <span style={{fontSize:10,color:"#8A8580"}}>{imgNames.length} imagenes</span>
+                  <span style={{fontSize:10,color:"#8A8580"}}>{imgNames.length} imagenes en rango</span>
                   {filteredMediaCount>0&&<span style={{fontSize:10,color:"#B26B3B",marginLeft:8}}>{filteredMediaCount} stickers filtrados</span>}
+                  {mediaOutOfRangeCount>0&&<span style={{fontSize:10,color:"#7E7A76",marginLeft:8}}>{mediaOutOfRangeCount} fuera de rango</span>}
                 </div>
                 <span style={{fontSize:10,fontWeight:600,color:"#2A7A60"}}>{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span>
               </div>
@@ -4063,6 +4094,7 @@ function App() {
                 <button className="table-reset-btn" onClick={function(){setBitacoraSortKey("fecha");setBitacoraSortDir("desc");}}>Restablecer</button>
                 {imgNames.length>0&&<span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>{imgNames.length} imagen{imgNames.length!==1?"es":""}<span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas</span></span>}
                 {filteredMediaCount>0&&<span style={{fontSize:10.5,color:"#B26B3B",fontWeight:600}}>{filteredMediaCount} sticker{filteredMediaCount!==1?"s":""} filtrado{filteredMediaCount!==1?"s":""}</span>}
+                {mediaOutOfRangeCount>0&&<span style={{fontSize:10.5,color:"#7E7A76",fontWeight:600}}>{mediaOutOfRangeCount} fuera de rango</span>}
               </div>
             </div>
             <div className="tscroll">
