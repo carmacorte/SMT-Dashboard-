@@ -1236,8 +1236,7 @@ async function analyzeWithAI(msgs, apiKey) {
   if (!parsed) {
     var fixed = jsonStr
       .replace(/,\s*([}\]])/g, "$1")
-      .replace(/
-/g, " ")
+      .replace(/\n/g, " ")
       .replace(/	/g, " ");
     try {
       parsed = JSON.parse(fixed);
