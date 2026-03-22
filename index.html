@@ -1196,17 +1196,37 @@ async function analyzeWithAI(msgs, apiKey) {
     throw new Error("Respuesta vacia. Intenta de nuevo.");
   }
 
-  var raw = "{" + data.content.map(function(b) { return b.text || ""; }).join("");
-  var clean = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-
-  var s = clean.indexOf("{");
-  var e = clean.lastIndexOf("}");
-
-  if (s === -1 || e === -1) {
-    throw new Error("JSON invalido. Reduce el rango de dias.");
+  function extractBalancedJsonObject(text) {
+    var start = text.indexOf("{");
+    if (start === -1) return "";
+    var depth = 0, inString = false, esc = false;
+    for (var i = start; i < text.length; i++) {
+      var ch = text[i];
+      if (inString) {
+        if (esc) { esc = false; continue; }
+        if (ch === "\") { esc = true; continue; }
+        if (ch === '"') { inString = false; }
+        continue;
+      }
+      if (ch === '"') { inString = true; continue; }
+      if (ch === "{") depth += 1;
+      else if (ch === "}") {
+        depth -= 1;
+        if (depth === 0) return text.slice(start, i + 1);
+      }
+    }
+    return text.slice(start);
   }
 
-  var jsonStr = clean.slice(s, e + 1);
+  var raw = "{" + data.content.map(function(b) { return b.text || ""; }).join("");
+  var clean = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  if (/^\{\s*\{/.test(clean)) clean = clean.replace(/^\{\s*\{/, "{");
+
+  var jsonStr = extractBalancedJsonObject(clean);
+  if (!jsonStr) {
+    throw new Error("JSON invalido. Reduce el rango o intenta de nuevo.");
+  }
+
   var parsed = null;
 
   try {
@@ -1214,14 +1234,21 @@ async function analyzeWithAI(msgs, apiKey) {
   } catch (_) {}
 
   if (!parsed) {
-    var fixed = jsonStr.replace(/,\s*([}\]])/g, "$1");
+    var fixed = jsonStr
+      .replace(/,\s*([}\]])/g, "$1")
+      .replace(/
+/g, " ")
+      .replace(/	/g, " ");
     try {
       parsed = JSON.parse(fixed);
     } catch (_) {}
   }
 
   if (!parsed) {
-    throw new Error("Error procesando respuesta. Intenta con 1 o 3 dias.");
+    if ((data.stop_reason || "") === "max_tokens") {
+      throw new Error("La respuesta de IA se truncó por limite de tokens. Usa 1 a 3 dias o reduce el rango.");
+    }
+    throw new Error("Error procesando respuesta de IA. Intenta de nuevo o usa 1 a 3 dias.");
   }
 
   var usage = data.usage || {};
@@ -1626,9 +1653,23 @@ async function traceOpsDbSet(key,value){
   });
 }
 
-var TRACEOPS_CACHE_VERSION = "v2026-03-22-token-save-1";
+var TRACEOPS_CACHE_VERSION = "v2026-03-22-token-save-2";
 var TRACEOPS_MAX_OUTPUT_TOKENS = 1800;
 var TRACEOPS_ANALYSIS_CACHE_PREFIX = "traceops_ai_cache::";
+
+function traceOpsGetMaxOutputTokens(requestedDays, cleanCount){
+  var d = Math.max(1, parseInt(requestedDays, 10) || 1);
+  var c = Math.max(0, parseInt(cleanCount, 10) || 0);
+  var t = 1800;
+  if (d <= 1) t = 1800;
+  else if (d <= 3) t = 2800;
+  else if (d <= 5) t = 3400;
+  else if (d <= 7) t = 4200;
+  else t = 5200;
+  if (c > 220) t += 400;
+  if (c > 320) t += 400;
+  return Math.min(6000, t);
+}
 
 function traceOpsGetWindowDays(filterMode, days, dateFrom, dateTo, weekNum, weekYear){
   if (filterMode === "quick") return Math.max(1, parseInt(days, 10) || 3);
@@ -2158,6 +2199,7 @@ function App() {
       var statsPayload={total:all.length,filtered:filtered.length,clean:clean.length,imgs:(zipData.imgNames||[]).length};
       setMsgStats(statsPayload);
       if(!clean.length) throw new Error("Sin mensajes operativos en el periodo. Aumenta el rango.");
+      TRACEOPS_MAX_OUTPUT_TOKENS = traceOpsGetMaxOutputTokens(requestedDays, clean.length);
       var useLightCache = !(requestedDays>7 || (file && file.size && file.size>25*1024*1024));
       var fileHash = useLightCache ? await traceOpsHashFile(file) : [file && file.name || "file", file && file.size || 0, file && file.lastModified || 0, "nocache"].join("|");
       var cacheKey = traceOpsBuildAnalysisCacheKey(fileHash, filterMode, days, dateFrom, dateTo, weekNum, weekYear);
