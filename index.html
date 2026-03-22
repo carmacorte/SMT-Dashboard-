@@ -1011,27 +1011,44 @@ async function readZip(file) {
     var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
     var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
     var lastMeta = null;
+    var lastTextAny = "";
+    var lastTextBySender = {};
     txt.split(/\r?\n/).forEach(function(rawLine) {
       var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g,"").trim();
       var m = line.match(reA) || line.match(reB);
       if (m) {
         var isA = !!line.match(reA);
         var d=m[1],mo=m[2],yr=m[3],h2=m[4],min2=m[5];
-        var mer=isA?(m[7]||""):""; var sender=isA?m[8]:m[6];
+        var mer=isA?(m[7]||""):""; var sender=isA?m[8]:m[6]; var text=isA?m[9]:m[7];
         var year=parseInt(yr); if(year<100) year+=2000;
         var hour=parseInt(h2);
         var mlow=(mer||"").toLowerCase().replace(/[\s.]/g,"");
         if(mlow.indexOf("p")===0 && hour!==12) hour+=12;
         if(mlow.indexOf("a")===0 && hour===12) hour=0;
+        var senderNorm=(sender||"").replace(/^~/,"").trim();
         lastMeta={
           dateIso:year+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0"),
           timeStr:String(hour).padStart(2,"0")+":"+min2,
-          sender:(sender||"").replace(/^~/,"").trim()
+          sender:senderNorm
         };
+        if (text && !/<adjunto:/i.test(text)) {
+          lastTextAny = String(text || "").replace(/\s+/g," ").trim();
+          if (senderNorm) lastTextBySender[senderNorm] = lastTextAny;
+        }
+      } else if (lastMeta && line && !line.startsWith("[")) {
+        var prev = lastTextBySender[lastMeta.sender] || lastTextAny || "";
+        var merged = (prev + " " + line).replace(/\s+/g," ").trim();
+        lastTextAny = merged;
+        if (lastMeta.sender) lastTextBySender[lastMeta.sender] = merged;
       }
       var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
       if (adj && lastMeta) {
-        imgMeta[adj[1].trim()] = { dateIso:lastMeta.dateIso, timeStr:lastMeta.timeStr, sender:lastMeta.sender };
+        imgMeta[adj[1].trim()] = {
+          dateIso:lastMeta.dateIso,
+          timeStr:lastMeta.timeStr,
+          sender:lastMeta.sender,
+          contextText:(lastTextBySender[lastMeta.sender] || lastTextAny || "").slice(0,320)
+        };
       }
     });
   }
@@ -3514,6 +3531,30 @@ function App() {
     return String(s||"").toLowerCase().replace(/^~/,"").replace(/[^a-z0-9]+/g," ").trim();
   }
 
+  function traceOpsTextBlobForEvent(ev){
+    return [
+      ev && ev.reporta || "",
+      ev && ev.responsable_sugerido || "",
+      ev && ev.modelo || "",
+      ev && ev.linea_estacion || "",
+      ev && ev.defecto_smt || "",
+      ev && ev.evento_detectado || "",
+      ev && ev.accion_requerida || "",
+      ev && ev.accion_ejecutada || "",
+      ev && ev.engineer_findings || ""
+    ].join(" ");
+  }
+
+  function traceOpsTokenOverlapScoreLocal(a, b){
+    var tokens = Array.from(new Set(normalizeLooseLocal(a).split(" ").filter(function(w){ return w && w.length > 3; })));
+    var blob = " " + normalizeLooseLocal(b) + " ";
+    var score = 0;
+    tokens.forEach(function(t){
+      if (blob.indexOf(" " + t + " ") >= 0) score += 1;
+    });
+    return score;
+  }
+
   function traceOpsAutoAttachImagesToEvents(eventos, imageNames, metaMap){
     var map = {};
     var evs = (eventos||[]).slice();
@@ -3527,6 +3568,10 @@ function App() {
 
       var bestEv = null;
       var bestScore = -9999;
+      var sameDayEvents = evs.filter(function(ev){
+        var evMs0 = parseEventDateTimeMs(ev);
+        return evMs0 != null && sameCalendarDay(imgMs, evMs0);
+      });
 
       evs.forEach(function(ev){
         var evMs = parseEventDateTimeMs(ev);
@@ -3536,22 +3581,27 @@ function App() {
         var diffMin = Math.abs(imgMs - evMs) / 60000;
         var score = 0;
 
-        if (diffMin <= 5) score += 12;
-        else if (diffMin <= 15) score += 10;
-        else if (diffMin <= 60) score += 7;
-        else if (diffMin <= 180) score += 4;
+        if (diffMin <= 5) score += 14;
+        else if (diffMin <= 15) score += 11;
+        else if (diffMin <= 30) score += 9;
+        else if (diffMin <= 60) score += 6;
+        else if (diffMin <= 180) score += 3;
         else score += 1;
 
         var imgSender = normSenderLocal(meta.sender || "");
         var evSender = normSenderLocal(ev.reporta || "");
         var respSender = normSenderLocal(ev.responsable_sugerido || "");
-        if (imgSender && evSender && imgSender === evSender) score += 4;
-        else if (imgSender && respSender && imgSender === respSender) score += 3;
+        if (imgSender && evSender && imgSender === evSender) score += 5;
+        else if (imgSender && respSender && imgSender === respSender) score += 4;
 
-        var lineTxt = String(ev.linea_estacion || "");
-        var eventTxt = String(ev.evento_detectado || "");
-        var imgTextBlob = String(meta.sender || "") + " " + String(meta.dateIso || "");
-        if (/\b(?:aoi|ict|smt|pth)\b/i.test(lineTxt + " " + eventTxt + " " + imgTextBlob)) score += 1;
+        var eventBlob = traceOpsTextBlobForEvent(ev);
+        var contextText = String(meta.contextText || "");
+        var overlap = traceOpsTokenOverlapScoreLocal(contextText, eventBlob);
+        score += Math.min(8, overlap * 2);
+
+        if (extractModelTokensLocal(contextText).length && overlap > 0) score += 2;
+        if (extractPartsLocal(contextText).length && overlap > 0) score += 3;
+        if (/\b(?:aoi|ict|smt|pth|socket|dimm|mix|mezcla|material|label|etiqueta|board|pcb)\b/i.test(contextText)) score += 1;
 
         if (score > bestScore) {
           bestScore = score;
@@ -3559,7 +3609,12 @@ function App() {
         }
       });
 
-      if(bestEv && bestScore >= 5){
+      if(!bestEv && sameDayEvents.length === 1){
+        bestEv = sameDayEvents[0];
+        bestScore = 3;
+      }
+
+      if(bestEv && bestScore >= 3){
         if(!map[bestEv.id]) map[bestEv.id] = [];
         map[bestEv.id].push(fname);
       }
