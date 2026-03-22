@@ -9,7 +9,7 @@ window.TRACEOPS_SUPABASE = {
   anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV"
 };
 </script>
-<meta charset="UTF-8"/><!-- TraceOps v2026-03-16 hybrid-engine -->
+<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 engineer-findings-clean -->
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var box = document.createElement('div');
@@ -814,7 +814,7 @@ function cleanEmailTextLocal(text) {
   }
   s = s.replace(/\n\s*>.*$/gm, ' ');
   s = s.replace(/https?:\/\/\S+/gi, ' ');
-  s = s.replace(/\b(?:AVISO DE CONFIDENCIALIDAD|CONFIDENTIALITY NOTICE|DISCLAIMER)\b[\s\S]*$/i, ' ');
+  s = s.replace(/\b(?:AVISO DE CONFIDENCIALIDAD|CONFIDENTIALITY NOTICE|DISCLAIMER|Microsoft Teams meeting|Join the meeting|Start Free Trial|Book a Demo)\b[\s\S]*$/i, ' ');
   s = s.replace(/\n{2,}/g, '\n');
   s = s.replace(/[ \t]+/g, ' ');
   s = s.replace(/\s*\n\s*/g, '\n');
@@ -1357,8 +1357,82 @@ async function analyzeWithAI(msgs, apiKey) {
     return n;
   }
 
-  function formatFindingLocal(msg) {
-    return "[" + (msg.dateDisp || msg.dateIso || "") + " " + (msg.timeStr || "") + " " + (msg.sender || "") + "] " + String(msg.text || "").replace(/\s+/g, " ").trim();
+  function findingAdminNoiseScoreLocal(text) {
+    var t = normalizeLooseLocal(text);
+    var pats = [
+      "auditoria", "audit", "agenda", "meeting", "reunion", "recordatorio", "reminder",
+      "autenticacion", "authentication", "password", "contrasena", "login", "signin", "efox",
+      "mantenimiento programado", "scheduled maintenance", "favor confirmar", "please confirm",
+      "book a demo", "start free trial", "trial", "demo", "copyright", "all rights reserved",
+      "politica de privacidad", "privacy policy", "unsubscribe", "click here", "notification",
+      "notificacion", "sistema caido", "portal", "sesion", "session expired"
+    ];
+    var score = 0;
+    pats.forEach(function(p) { if (t.indexOf(p) >= 0) score += 1; });
+    if (/\b(?:from|to|cc|bcc|subject|sent|date|de|para|asunto|enviado):\b/i.test(text)) score += 3;
+    if (/[A-Za-z0-9+\/]{90,}={0,2}/.test(text)) score += 4;
+    return score;
+  }
+
+  function cleanFindingTextLocal(text) {
+    if (!text) return "";
+    var s = cleanEmailTextLocal(String(text || ""));
+    s = s.replace(/\[[^\]]{0,120}\]\s*/g, function(m) {
+      return /subject|fw|fwd|re:/i.test(m) ? " " : m;
+    });
+    s = s.replace(/\b(?:from|to|cc|bcc|subject|sent|date|de|para|asunto|enviado):\s*[^\n]+/gi, " ");
+    s = s.replace(/[A-Za-z0-9+\/]{90,}={0,2}/g, " ");
+    s = s.replace(/\b(?:http|https):\/\/\S+/gi, " ");
+    s = s.replace(/\S+@\S+/g, " ");
+    s = s.replace(/\b(?:book a demo|start free trial|click here|unsubscribe|privacy policy|all rights reserved)\b[\s\S]*$/i, " ");
+    s = s.replace(/\s*\|\|\s*/g, " ");
+    s = s.replace(/\s{2,}/g, " ").trim();
+
+    var rawParts = s.split(/(?<=[\.!?;])\s+|\s+\u2022\s+|\s+-\s+/);
+    var kept = [];
+    rawParts.forEach(function(part) {
+      var p = String(part || "").trim();
+      if (!p || p.length < 18) return;
+      var tech = technicalHitCountLocal(p);
+      var admin = findingAdminNoiseScoreLocal(p);
+      var hasPart = extractPartsLocal(p).length > 0;
+      var hasModel = extractModelTokensLocal(p).length > 0;
+      if (admin >= 3 && tech < 3 && !hasPart && !hasModel) return;
+      if (tech === 0 && !hasPart && !hasModel && p.length < 70) return;
+      kept.push(p);
+    });
+
+    if (!kept.length) return "";
+    var out = kept.slice(0, 3).join(" ");
+    out = out.replace(/\s{2,}/g, " ").trim();
+    if (out.length > 420) out = out.slice(0, 417) + "...";
+    return out;
+  }
+
+  function findingSignalScoreLocal(text, msg, anchor) {
+    var clean = cleanFindingTextLocal(text);
+    if (!clean) return -999;
+    var parts = extractPartsLocal(clean);
+    var models = extractModelTokensLocal(clean);
+    var techHits = technicalHitCountLocal(clean);
+    var adminNoise = findingAdminNoiseScoreLocal(clean);
+    var score = 0;
+    score += overlapCountLocal(parts, anchor.components) * 4;
+    score += overlapCountLocal(models, anchor.modelTokens) * 2;
+    score += Math.min(10, techHits * 2);
+    score += senderLooksTechnicalLocal(msg) * 3;
+    if (/\b(?:owner|causa|hipotesis|analisis|validacion|mitigacion|contencion|escalado|recomendacion)\b/i.test(clean)) score += 4;
+    if (/\b(?:u|r|c|l|q|d|tp)\d{1,4}\b/i.test(clean)) score += 3;
+    if (anchor.line !== "N/D" && extractLineLocal(clean) === anchor.line) score += 2;
+    if (anchor.station !== "N/D" && extractStationLocal(clean) === anchor.station) score += 2;
+    score -= adminNoise * 3;
+    return score;
+  }
+
+  function formatFindingLocal(msg, cleanText) {
+    var body = cleanText || cleanFindingTextLocal(msg && msg.text);
+    if (!body) return "";
+    return "[" + (msg.dateDisp || msg.dateIso || "") + " " + (msg.timeStr || "") + " " + (msg.sender || "") + "] " + body;
   }
 
   function enrichEngineerFindingsLocal(parsed) {
@@ -1376,31 +1450,25 @@ async function analyzeWithAI(msgs, apiKey) {
       msgs.forEach(function(m) {
         var msgTimeMs = timeToMinsLocal(m.dateIso, m.timeStr) * 60000;
         if (!msgTimeMs || msgTimeMs <= (evTimeMs + 5 * 60000) || msgTimeMs > (evTimeMs + followWindowMs)) return;
-        if (!m.text || m.text.length < 60) return;
+        if (!m.text || m.text.length < 40) return;
 
-        var msgParts = extractPartsLocal(m.text);
-        var msgModels = extractModelTokensLocal(m.text);
+        var cleanText = cleanFindingTextLocal(m.text);
+        if (!cleanText || cleanText.length < 30) return;
+
+        var msgParts = extractPartsLocal(cleanText);
+        var msgModels = extractModelTokensLocal(cleanText);
         var partOverlap = overlapCountLocal(msgParts, anchor.components);
         var modelOverlap = overlapCountLocal(msgModels, anchor.modelTokens);
-        var techHits = technicalHitCountLocal(m.text);
-        var score = 0;
+        var techHits = technicalHitCountLocal(cleanText);
+        var score = findingSignalScoreLocal(cleanText, m, anchor);
 
-        if (partOverlap > 0) score += 8 + partOverlap * 2;
-        if (modelOverlap > 0) score += 4 + modelOverlap * 2;
-        if (anchor.line !== "N/D" && extractLineLocal(m.text) === anchor.line) score += 2;
-        if (anchor.station !== "N/D" && extractStationLocal(m.text) === anchor.station) score += 2;
-        if (techHits > 0) score += Math.min(6, techHits + 1);
-        score += senderLooksTechnicalLocal(m);
-        if (/\bcaso\s+(?:u|r|c|l|q|d|tp)?\d{1,4}\b/i.test(m.text)) score += 2;
-        if (/owner\s*:/i.test(m.text)) score += 2;
-        if (/escalad|5dx|flux|pogo|test point|test points|mitigacion|limpieza/i.test(normalizeLooseLocal(m.text))) score += 3;
-        if (anchorTextNorm && normalizeLooseLocal(m.text).indexOf(anchorTextNorm.slice(0, 24)) >= 0) score += 2;
+        if (anchorTextNorm && normalizeLooseLocal(cleanText).indexOf(anchorTextNorm.slice(0, 24)) >= 0) score += 2;
 
-        var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(m.text) === anchor.station);
+        var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(cleanText) === anchor.station);
         if (!hasAnchor && techHits < 3) return;
-        if (score < 8) return;
+        if (score < 9) return;
 
-        hits.push({ msg: m, ms: msgTimeMs, score: score });
+        hits.push({ msg: m, ms: msgTimeMs, score: score, cleanText: cleanText });
       });
 
       hits.sort(function(a, b) {
@@ -1412,17 +1480,17 @@ async function analyzeWithAI(msgs, apiKey) {
       var seen = {};
       var totalLen = 0;
       hits.forEach(function(h) {
-        if (picked.length >= 3 || totalLen >= 1200) return;
-        var k = normalizeLooseLocal(h.msg.text).slice(0, 120);
+        if (picked.length >= 2 || totalLen >= 700) return;
+        var k = normalizeLooseLocal(h.cleanText || h.msg.text).slice(0, 120);
         if (!k || seen[k]) return;
         seen[k] = true;
         picked.push(h);
-        totalLen += String(h.msg.text || "").length;
+        totalLen += String(h.cleanText || "").length;
       });
 
       picked.sort(function(a, b) { return a.ms - b.ms; });
-      var followText = picked.map(function(h) { return formatFindingLocal(h.msg); }).join(" || ");
-      var existing = String(ev.engineer_findings || "").trim();
+      var followText = picked.map(function(h) { return formatFindingLocal(h.msg, h.cleanText); }).filter(Boolean).join(" || ");
+      var existing = cleanFindingTextLocal(String(ev.engineer_findings || "").trim());
 
       if (!existing) {
         ev.engineer_findings = followText || "";
@@ -1431,7 +1499,15 @@ async function analyzeWithAI(msgs, apiKey) {
         var normFollow = normalizeLooseLocal(followText);
         if (normExisting.indexOf(normFollow.slice(0, 80)) === -1 && normFollow.indexOf(normExisting.slice(0, 80)) === -1) {
           ev.engineer_findings = existing + " || " + followText;
+        } else {
+          ev.engineer_findings = existing.length >= normFollow.length ? existing : followText;
         }
+      } else {
+        ev.engineer_findings = existing || "";
+      }
+
+      if (findingAdminNoiseScoreLocal(ev.engineer_findings || "") >= 4 && technicalHitCountLocal(ev.engineer_findings || "") < 3) {
+        ev.engineer_findings = "";
       }
 
       return ev;
@@ -3371,9 +3447,9 @@ function App() {
           }}
         />
         <div className="ops-hero-content">
-          <div className="ops-hero-eyebrow">Operational intelligence for manufacturing</div>
+          <div className="ops-hero-eyebrow">Operational Event Intelligence</div>
           <h1 className="ops-hero-title">TraceOps<span>by SMTintel</span></h1>
-          <p className="ops-hero-subtitle">Transforma chats, correos y evidencia operativa en incidentes accionables, precedentes verificables y casos RCCA reutilizables.</p><p style={{margin:"10px 0 0",maxWidth:720,fontSize:14,lineHeight:1.7,color:"rgba(255,255,255,.72)"}}>Tu evidencia sigue siendo tuya. La IA solo verifica, compara y propone la mejor ruta de acción.</p>
+          <p className="ops-hero-subtitle">Convierte conversaciones operativas dispersas en incidentes estructurados, recomendaciones accionables y memoria RCCA reutilizable.</p>
           <div className="ops-hero-actions">
             <button className="ops-hero-btn primary" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Subir WhatsApp ZIP</button>
             {history.length>0 && (
@@ -3383,38 +3459,21 @@ function App() {
             )}
           </div>
           <div className="ops-hero-chips">
-            {["No solo chats","Incidentes accionables","Memoria operativa","RCCA reutilizable","SMT / AOI / ICT"].map(function(t){return <span key={t}>{t}</span>;})}
+            {["TraceOps","SMT","AOI","Incident Story","Root Cause"].map(function(t){return <span key={t}>{t}</span>;})}
           </div>
         </div>
       </div>
 
       {state==="idle"&&(
         <div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14,margin:"0 0 18px"}}>
-            <div style={{background:"linear-gradient(180deg,#0B1116,#091016)",border:"1px solid rgba(46,107,50,.22)",borderRadius:22,padding:"18px 18px 16px",boxShadow:"0 12px 28px rgba(0,0,0,.18)"}}>
-              <div style={{fontSize:11,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#7FB191",marginBottom:8}}>No solo reportes</div>
-              <div style={{fontSize:20,fontWeight:700,color:"#F4F7F8",lineHeight:1.2,marginBottom:8}}>Respuestas operativas reales</div>
-              <div style={{fontSize:13,lineHeight:1.7,color:"rgba(244,247,248,.68)"}}>TraceOps muestra qué pasó, dónde ocurrió y qué acción sigue, sin obligarte a leer todo el chat desde cero.</div>
-            </div>
-            <div style={{background:"linear-gradient(180deg,#0B1116,#091016)",border:"1px solid rgba(46,107,50,.22)",borderRadius:22,padding:"18px 18px 16px",boxShadow:"0 12px 28px rgba(0,0,0,.18)"}}>
-              <div style={{fontSize:11,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#7FB191",marginBottom:8}}>Tu evidencia sigue siendo tuya</div>
-              <div style={{fontSize:20,fontWeight:700,color:"#F4F7F8",lineHeight:1.2,marginBottom:8}}>La bóveda queda en TraceOps</div>
-              <div style={{fontSize:13,lineHeight:1.7,color:"rgba(244,247,248,.68)"}}>ZIP, correos, imágenes, metadatos y RCCAs permanecen en tu flujo. La IA solo interpreta, compara y propone.</div>
-            </div>
-            <div style={{background:"linear-gradient(180deg,#0B1116,#091016)",border:"1px solid rgba(46,107,50,.22)",borderRadius:22,padding:"18px 18px 16px",boxShadow:"0 12px 28px rgba(0,0,0,.18)"}}>
-              <div style={{fontSize:11,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",color:"#7FB191",marginBottom:8}}>Hecho para manufactura</div>
-              <div style={{fontSize:20,fontWeight:700,color:"#F4F7F8",lineHeight:1.2,marginBottom:8}}>SMT, AOI, ICT, PTH y RCCA</div>
-              <div style={{fontSize:13,lineHeight:1.7,color:"rgba(244,247,248,.68)"}}>Cada corrida fortalece la memoria operativa y acelera la siguiente decisión de calidad, proceso y contención.</div>
-            </div>
-          </div>
           <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
             <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}} onChange={function(e){handle(e.target.files[0]);}}/>
             <div style={{padding:"48px 32px",textAlign:"center"}}>
               <div style={{width:48,height:48,borderRadius:12,background:"#EEF3EA",border:"1px solid #C8D8BC",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",color:"#4A7A50"}}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
               </div>
-              <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>Sube WhatsApp ZIP o correo operativo</div>
-              <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>ZIP de WhatsApp, .eml o .mbox — misma bóveda, mismo flujo</div>
+              <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>Arrastra el .zip de WhatsApp</div>
+              <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>o haz clic para seleccionar</div>
               <button style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:99,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:"0 2px 8px rgba(30,92,72,.25)"}} onClick={function(e){e.stopPropagation();fileRef.current.click();}}>Seleccionar archivo</button>
             </div>
           </div>
