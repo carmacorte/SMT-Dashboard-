@@ -1095,7 +1095,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   function candidateDetectorLocal(msgs) {
     return msgs
-      .filter(function(m) { return !isNoiseLocal(m.text); })
+      .filter(function(m) { return !isNoiseLocal(m.text) && !traceOpsIsHardExcludedEventLocal(m.text) && !traceOpsIsSoftExcludedEventLocal(m.text); })
       .map(function(m) {
         return {
           dateIso: m.dateIso,
@@ -1277,6 +1277,157 @@ async function analyzeWithAI(msgs, apiKey) {
       .trim();
   }
 
+  var TRACEOPS_EXCEPTION_RULES = {
+    hardExclude: [
+      /autenticacion/i,
+      /authentication/i,
+      /\bmfa\b/i,
+      /multifactor/i,
+      /\blogin\b/i,
+      /password/i,
+      /contrasena/i,
+      /\befox\b/i,
+      /agenda.*auditoria/i,
+      /apertura.*auditoria/i,
+      /\baudit\b/i,
+      /\bmeeting\b/i,
+      /\breunion\b/i,
+      /kickoff/i,
+      /mantenimiento programado/i,
+      /scheduled maintenance/i,
+      /revision de acciones/i,
+      /documentacion/i,
+      /reporte semanal/i,
+      /\bawb\b/i,
+      /\beta\b/i,
+      /material ya en iqc/i,
+      /solo informativo/i,
+      /favor confirmar asistencia/i
+    ],
+    softExclude: [
+      /agile deviation notify/i,
+      /will be expired after/i,
+      /effectiveto:/i,
+      /please take some actions if necessary/i,
+      /alert:/i,
+      /notification/i,
+      /recordatorio/i,
+      /reminder/i,
+      /calendar/i,
+      /convocatoria/i,
+      /minuta/i
+    ],
+    findingsExclude: [
+      /autenticacion/i,
+      /authentication/i,
+      /\bmfa\b/i,
+      /\blogin\b/i,
+      /password/i,
+      /\befox\b/i,
+      /agenda/i,
+      /auditoria/i,
+      /meeting/i,
+      /reunion/i,
+      /scheduled maintenance/i,
+      /mantenimiento programado/i,
+      /reporte semanal/i,
+      /\bawb\b/i,
+      /\beta\b/i,
+      /see attached file/i,
+      /agile deviation notify/i,
+      /effectiveto:/i,
+      /\bfrom:\b/i,
+      /\bsubject:\b/i,
+      /\bto:\b/i,
+      /[A-Za-z0-9+\/]{90,}={0,2}/
+    ]
+  };
+
+  function traceOpsMatchesAnyRuleLocal(text, list) {
+    var s = String(text || "");
+    return (list || []).some(function(rx) { return rx.test(s); });
+  }
+
+  function traceOpsTextForExceptionLocal(evOrText) {
+    if (typeof evOrText === "string") return evOrText;
+    var ev = evOrText || {};
+    return [
+      ev.tipo_evento || "",
+      ev.modelo || "",
+      ev.linea_estacion || "",
+      ev.evento_detectado || "",
+      ev.impacto || "",
+      ev.accion_requerida || "",
+      ev.accion_ejecutada || "",
+      ev.engineer_findings || "",
+      ev.notas || ""
+    ].join(" | ");
+  }
+
+  function traceOpsIsHardExcludedEventLocal(evOrText) {
+    return traceOpsMatchesAnyRuleLocal(traceOpsTextForExceptionLocal(evOrText), TRACEOPS_EXCEPTION_RULES.hardExclude);
+  }
+
+  function traceOpsIsSoftExcludedEventLocal(evOrText) {
+    return traceOpsMatchesAnyRuleLocal(traceOpsTextForExceptionLocal(evOrText), TRACEOPS_EXCEPTION_RULES.softExclude);
+  }
+
+  function traceOpsIsFindingsExceptionLocal(text) {
+    return traceOpsMatchesAnyRuleLocal(String(text || ""), TRACEOPS_EXCEPTION_RULES.findingsExclude);
+  }
+
+  function pruneOperationalExceptionsLocal(parsed) {
+    if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
+
+    var kept = [];
+    var removed = [];
+
+    (parsed.eventos || []).forEach(function(ev) {
+      var blob = traceOpsTextForExceptionLocal(ev);
+      var hard = traceOpsIsHardExcludedEventLocal(blob);
+      var soft = traceOpsIsSoftExcludedEventLocal(blob);
+      var tech = technicalHitCountLocal(blob);
+      var parts = extractPartsLocal(blob).length;
+      var keep = true;
+
+      if (hard) keep = false;
+      if (!hard && soft && tech < 3 && parts === 0) keep = false;
+
+      if (keep) {
+        kept.push(ev);
+      } else {
+        removed.push({
+          id: ev.id || "",
+          tipo: hard ? "hard" : "soft",
+          titulo: String(ev.evento_detectado || "").slice(0, 120)
+        });
+      }
+    });
+
+    parsed.eventos = kept;
+
+    if (parsed.resumen) {
+      parsed.resumen.total_eventos = kept.length;
+      if (Array.isArray(parsed.resumen.alertas_criticas)) {
+        parsed.resumen.alertas_criticas = parsed.resumen.alertas_criticas.filter(function(item) {
+          return kept.some(function(ev) { return item.indexOf(ev.id + " - ") === 0; });
+        });
+      }
+      if (Array.isArray(parsed.resumen.acciones_pendientes)) {
+        parsed.resumen.acciones_pendientes = parsed.resumen.acciones_pendientes.filter(function(item) {
+          return kept.some(function(ev) { return item.indexOf(ev.id + " - ") === 0; });
+        });
+      }
+    }
+
+    parsed.__traceops_exceptions = {
+      removed_count: removed.length,
+      removed_samples: removed.slice(0, 8)
+    };
+
+    return parsed;
+  }
+
   function extractPartsLocal(text) {
     return uniqLocal((String(text || "").toUpperCase().match(/\b(?:U|R|C|L|Q|D|TP)\d{1,4}\b/g) || []));
   }
@@ -1376,6 +1527,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   function cleanFindingTextLocal(text) {
     if (!text) return "";
+    if (traceOpsIsFindingsExceptionLocal(text)) return "";
     var s = cleanEmailTextLocal(String(text || ""));
     s = s.replace(/\[[^\]]{0,120}\]\s*/g, function(m) {
       return /subject|fw|fwd|re:/i.test(m) ? " " : m;
@@ -1490,7 +1642,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
       picked.sort(function(a, b) { return a.ms - b.ms; });
       var followText = picked.map(function(h) { return formatFindingLocal(h.msg, h.cleanText); }).filter(Boolean).join(" || ");
-      var existing = cleanFindingTextLocal(String(ev.engineer_findings || "").trim());
+      var existing = traceOpsIsFindingsExceptionLocal(ev.engineer_findings || "") ? "" : cleanFindingTextLocal(String(ev.engineer_findings || "").trim());
 
       if (!existing) {
         ev.engineer_findings = followText || "";
@@ -1621,7 +1773,7 @@ async function analyzeWithAI(msgs, apiKey) {
     cluster_mode: useClusterMode ? 1 : 0
   };
 
-  return enrichEngineerFindingsLocal(parsed);
+  return pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed));
 }
 
 async function buildXlsx(result) {
