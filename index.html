@@ -1343,6 +1343,16 @@ async function analyzeWithAI(msgs, apiKey) {
     ]
   };
 
+  function traceOpsGetExceptionRulesLocal() {
+    if (typeof TRACEOPS_EXCEPTION_RULES !== "undefined" && TRACEOPS_EXCEPTION_RULES) return TRACEOPS_EXCEPTION_RULES;
+    if (typeof window !== "undefined" && window.TRACEOPS_EXCEPTION_RULES) return window.TRACEOPS_EXCEPTION_RULES;
+    return { hardExclude: [], softExclude: [], findingsExclude: [] };
+  }
+
+  if (typeof window !== "undefined") {
+    window.TRACEOPS_EXCEPTION_RULES = TRACEOPS_EXCEPTION_RULES;
+  }
+
   function traceOpsMatchesAnyRuleLocal(text, list) {
     var s = String(text || "");
     return (list || []).some(function(rx) { return rx.test(s); });
@@ -1365,15 +1375,18 @@ async function analyzeWithAI(msgs, apiKey) {
   }
 
   function traceOpsIsHardExcludedEventLocal(evOrText) {
-    return traceOpsMatchesAnyRuleLocal(traceOpsTextForExceptionLocal(evOrText), TRACEOPS_EXCEPTION_RULES.hardExclude);
+    var rules = traceOpsGetExceptionRulesLocal();
+    return traceOpsMatchesAnyRuleLocal(traceOpsTextForExceptionLocal(evOrText), rules.hardExclude);
   }
 
   function traceOpsIsSoftExcludedEventLocal(evOrText) {
-    return traceOpsMatchesAnyRuleLocal(traceOpsTextForExceptionLocal(evOrText), TRACEOPS_EXCEPTION_RULES.softExclude);
+    var rules = traceOpsGetExceptionRulesLocal();
+    return traceOpsMatchesAnyRuleLocal(traceOpsTextForExceptionLocal(evOrText), rules.softExclude);
   }
 
   function traceOpsIsFindingsExceptionLocal(text) {
-    return traceOpsMatchesAnyRuleLocal(String(text || ""), TRACEOPS_EXCEPTION_RULES.findingsExclude);
+    var rules = traceOpsGetExceptionRulesLocal();
+    return traceOpsMatchesAnyRuleLocal(String(text || ""), rules.findingsExclude);
   }
 
   function pruneOperationalExceptionsLocal(parsed) {
