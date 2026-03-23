@@ -3326,6 +3326,24 @@ function App() {
   function formatLocalMs(ms){var d=new Date(ms);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
   var visibleRangeLabel=eventTimes.length>0?(formatLocalMs(eventTimes[0])+" - "+formatLocalMs(eventTimes[eventTimes.length-1])):"Sin eventos en el rango";
 
+  var criticalEventCount=ev.filter(function(e){return e.prioridad==="Critica";}).length;
+  var openEventCount=ev.filter(function(e){return e.estatus!=="Cerrado";}).length;
+  var findingsEventCount=ev.filter(function(e){return String(e.engineer_findings||"").trim().length>0;}).length;
+  var topStations=(function(){
+    var map={};
+    ev.forEach(function(e){
+      var key=(e.linea_estacion||"N/D").trim()||"N/D";
+      map[key]=(map[key]||0)+1;
+    });
+    return Object.keys(map).map(function(k){return{name:k,count:map[k]};}).sort(function(a,b){return b.count-a.count;}).slice(0,4);
+  })();
+  var topAlerts=ev.slice().sort(function(a,b){
+    var pa=({Critica:4,Alta:3,Media:2,Baja:1})[a.prioridad]||0;
+    var pb=({Critica:4,Alta:3,Media:2,Baja:1})[b.prioridad]||0;
+    if(pb!==pa) return pb-pa;
+    return String(a.id||"").localeCompare(String(b.id||""));
+  }).slice(0,4);
+
   function clearViewFilters(){
     setViewDateFrom("");setViewDateTo("");setViewHourFrom("");setViewHourTo("");
   }
@@ -4222,6 +4240,20 @@ function App() {
 
       {state==="idle"&&(
         <div>
+          <div className="traceops-context">
+            <div className="traceops-context-main">
+              <span className="traceops-context-kicker">Operational workspace</span>
+              <div className="traceops-context-title">Resuelve incidentes de manufactura con mejor contexto</div>
+              <div className="traceops-context-subtitle">Mantiene el flujo actual y agrega un shell más SaaS: resumen ejecutivo, indicadores rápidos y navegación más clara, sin cambiar parsing, RCCA, evidencias ni exportables.</div>
+              <div className="traceops-context-chips">
+                {["WhatsApp ZIP","EML / MBOX","RCCA sync","Bitácora","Evidencia en rango"].map(function(t){return <span key={t}>{t}</span>;})}
+              </div>
+            </div>
+            <div className="traceops-context-actions">
+              <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Cargar evidencia</button>
+              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Historial</button>
+            </div>
+          </div>
           <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
             <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}} onChange={function(e){handle(e.target.files[0]);}}/>
             <div style={{padding:"48px 32px",textAlign:"center"}}>
@@ -4234,7 +4266,7 @@ function App() {
             </div>
           </div>
 
-          <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+          <div id="evidence-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
             <div style={{display:"flex",borderBottom:"1px solid #EEECEA"}}>
               {[["quick","Rapido"],["week","Por semana"],["range","Rango"]].map(function(tab){var active=filterMode===tab[0];return<button key={tab[0]} style={{flex:1,padding:"10px 6px",border:"none",borderBottom:active?"2px solid #1E5C48":"2px solid transparent",background:"transparent",fontSize:12,fontWeight:active?700:500,color:active?"#1E5C48":"#8A8580",cursor:"pointer"}} onClick={function(){setFilterMode(tab[0]);}}>{tab[1]}</button>;})}
             </div>
@@ -4327,7 +4359,99 @@ function App() {
 
       {state==="done"&&result&&(
         <div id="results-section">
-          <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
+          <div className="traceops-context">
+            <div className="traceops-context-main">
+              <span className="traceops-context-kicker">Operational summary</span>
+              <div className="traceops-context-title">Control center del análisis actual</div>
+              <div className="traceops-context-subtitle">Se integró la UI propuesta como capa visual: contexto ejecutivo, KPIs rápidos y paneles de foco, manteniendo intacto el pipeline actual, las evidencias, el Excel y el RCCA.</div>
+              <div className="traceops-context-chips">
+                <span>{analysisRangeLabel||"Rango activo"}</span>
+                <span>{visibleEventCount} eventos visibles</span>
+                <span>{(msgStats&&msgStats.clean)||0} msgs limpios</span>
+                <span>{imgNames.length} evidencias en rango</span>
+                {apiUsage&&apiUsage.local_mode&&<span>Modo local</span>}
+                {apiUsage&&apiUsage.provider==="openai-backend"&&<span>OpenAI backend</span>}
+              </div>
+            </div>
+            <div className="traceops-context-actions">
+              <button className="ops-hero-btn" onClick={download}>Descargar XLSX</button>
+              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("dashboard-filter"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Ir al dashboard</button>
+            </div>
+          </div>
+
+          <div className="traceops-kpi-strip">
+            <div className="traceops-kpi-card">
+              <div className="traceops-kpi-label">Eventos visibles</div>
+              <div className="traceops-kpi-value">{visibleEventCount}</div>
+              <div className="traceops-kpi-meta"><span>Total cargados</span><strong>{totalEventCount}</strong></div>
+            </div>
+            <div className="traceops-kpi-card">
+              <div className="traceops-kpi-label">Críticos</div>
+              <div className={"traceops-kpi-value "+(criticalEventCount>0?"fail":"pass")}>{criticalEventCount}</div>
+              <div className="traceops-kpi-meta"><span>Abiertos / seguimiento</span><strong>{openEventCount}</strong></div>
+            </div>
+            <div className="traceops-kpi-card">
+              <div className="traceops-kpi-label">Engineer findings</div>
+              <div className={"traceops-kpi-value "+(findingsEventCount>0?"info":"warn")}>{findingsEventCount}</div>
+              <div className="traceops-kpi-meta"><span>Eventos con finding útil</span><strong>{visibleEventCount?Math.round((findingsEventCount/visibleEventCount)*100):0}%</strong></div>
+            </div>
+            <div className="traceops-kpi-card">
+              <div className="traceops-kpi-label">Evidencia</div>
+              <div className="traceops-kpi-value info">{imgNames.length}</div>
+              <div className="traceops-kpi-meta"><span>Adjuntas auto</span><strong>{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)}</strong></div>
+            </div>
+            <div className="traceops-kpi-card">
+              <div className="traceops-kpi-label">Ventana</div>
+              <div className="traceops-kpi-value warn">{analysisWindowDays}</div>
+              <div className="traceops-kpi-meta"><span>Rango visible</span><strong>{visibleRangeLabel}</strong></div>
+            </div>
+          </div>
+
+          <div className="traceops-analytics-grid">
+            <div className="traceops-panel">
+              <div className="traceops-panel-head">
+                <div><h3>Alertas con prioridad</h3><span>Eventos visibles que conviene revisar primero</span></div>
+                <span>{topAlerts.length} foco inmediato</span>
+              </div>
+              <div className="traceops-panel-body">
+                <div className="traceops-alert-list">
+                  {topAlerts.length?topAlerts.map(function(item){
+                    var sev=item.prioridad==="Critica"?"crit":(item.prioridad==="Alta"?"high":"med");
+                    return <div key={item.id} className="traceops-alert-item">
+                      <div className="traceops-alert-left">
+                        <span className={"traceops-alert-badge "+sev}>{item.prioridad||"Media"}</span>
+                        <div className="traceops-alert-copy">
+                          <div>{item.id} · {item.evento_detectado||"Sin descripcion"}</div>
+                          <span>{item.linea_estacion||"N/D"} · {item.tipo_evento||"Proceso"} · {item.estatus||"Abierto"}</span>
+                        </div>
+                      </div>
+                    </div>;
+                  }):<div style={{fontSize:12,color:"#5B657A"}}>No hay alertas visibles en el filtro activo.</div>}
+                </div>
+              </div>
+            </div>
+
+            <div className="traceops-engineering-grid">
+              <div className="traceops-engineering-card">
+                <h4>Top estaciones visibles</h4>
+                <p>Resumen rápido de las estaciones/líneas con mayor concentración de eventos en el filtro actual.</p>
+                <div className="traceops-bullets">
+                  {topStations.length?topStations.map(function(row){return <div key={row.name} className="traceops-bullet"><strong>{row.name}</strong> · {row.count} evento(s)</div>;}):<div className="traceops-bullet">Sin datos suficientes en el rango actual.</div>}
+                </div>
+              </div>
+              <div className="traceops-engineering-card">
+                <h4>Modo de ejecución</h4>
+                <p>La propuesta visual se embebe sin alterar la experiencia funcional. Se mantiene uploader, filtros, Excel, PDF, autoadjuntos y shell SaaS actual.</p>
+                <div className="traceops-bullets">
+                  <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
+                  <div className="traceops-bullet"><strong>Rango:</strong> {analysisRangeLabel||"N/D"}</div>
+                  <div className="traceops-bullet"><strong>Mensajes limpios:</strong> {((msgStats&&msgStats.clean)||0).toLocaleString()} · <strong>Evidencias:</strong> {imgNames.length}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}},borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
             <div>
               <h3 style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>Excel listo para junta</h3>
               <p style={{fontSize:11,color:"rgba(242,236,200,.6)"}}>{(res.periodo||"")+" - "+ev.length+" eventos - "+((msgStats&&msgStats.clean)||0)+" msgs"}</p>
@@ -4382,7 +4506,7 @@ function App() {
             </div>
           )}
 
-          <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+          <div id="dashboard-filter" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
             <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
               <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Filtro de analisis</h3><span style={{fontSize:10,color:"#8A8580"}}>Acota el dashboard por fecha y hora sobre el archivo ya cargado</span></div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
