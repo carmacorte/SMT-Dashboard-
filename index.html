@@ -3702,6 +3702,46 @@ function App() {
     return parts.join("-");
   }
 
+
+  function traceOpsCarouselStatusLabel(v){
+    return ({
+      "NUEVO":"NEW",
+      "EN ANALISIS":"IN ANALYSIS",
+      "CONTENIDO":"CONTAINED",
+      "VALIDANDO":"VALIDATING",
+      "CERRADO":"CLOSED"
+    })[String(v||"").toUpperCase()] || v || "-";
+  }
+
+  function traceOpsCarouselFieldLabel(v){
+    return ({
+      "Titulo":"Title",
+      "Problema":"Problem",
+      "Tipo de caso":"Case type",
+      "Estatus":"Status",
+      "Modelo":"Model",
+      "Linea":"Line",
+      "Fecha":"Date",
+      "Owner":"Owner",
+      "Eventos vinculados":"Linked events",
+      "Estacion dominante":"Dominant station",
+      "Defecto dominante":"Dominant defect",
+      "Primera deteccion":"First detection",
+      "Ultima deteccion":"Last detection",
+      "Leccion aprendida":"Lesson learned",
+      "Hipotesis":"Hypothesis",
+      "Causa raiz":"Root cause",
+      "Validacion":"Validation",
+      "Patron detectado":"Detected pattern",
+      "Evidencia resumen":"Evidence summary",
+      "Material afectado":"Affected material",
+      "Alcance / exposicion":"Scope / exposure",
+      "Eventos fuente":"Source events",
+      "Problema base":"Base issue",
+      "Casos relacionados":"Related cases"
+    })[v] || v;
+  }
+
   function InvestigationCarousel(props){
     var cards=props.cards;var allRcca=props.allRcca||[];
     var idxArr=_useState(0);var idx=idxArr[0];var setIdx=idxArr[1];
