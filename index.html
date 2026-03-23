@@ -1795,6 +1795,17 @@ async function analyzeWithAI(msgs, apiKey) {
     return n;
   }
 
+
+  function traceOpsNormSenderSafeLocal(s) {
+    return String(s || "")
+      .toLowerCase()
+      .replace(/^~/, "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
   function findingAdminNoiseScoreLocal(text) {
     var t = normalizeLooseLocal(text);
     var pats = [
@@ -1945,8 +1956,8 @@ async function analyzeWithAI(msgs, apiKey) {
 
         if (anchorTextNorm && normalizeLooseLocal(cleanText).indexOf(anchorTextNorm.slice(0, 24)) >= 0) score += 2;
 
-        var msgSenderNorm = normSenderLocal(m.sender || "");
-        var evReportaNorm = normSenderLocal(ev.reporta || "");
+        var msgSenderNorm = traceOpsNormSenderSafeLocal(m.sender || "");
+        var evReportaNorm = traceOpsNormSenderSafeLocal(ev.reporta || "");
         if (msgSenderNorm && evReportaNorm && msgSenderNorm === evReportaNorm) {
           score -= 6;
         }
@@ -3746,7 +3757,7 @@ function App() {
     return{list:contextual.slice(0,120),modeLabel:modeLabel,refText:formatEventRef(evRow)};
   }
 
-  function normSenderLocal(s){
+  function traceOpsNormSenderSafeLocal(s){
     return String(s||"").toLowerCase().replace(/^~/,"").replace(/[^a-z0-9]+/g," ").trim();
   }
 
@@ -3849,9 +3860,9 @@ function App() {
         else if (diffMin <= 480) score += 1;
         else score += 0;
 
-        var imgSender = normSenderLocal(meta.sender || "");
-        var evSender = normSenderLocal(ev.reporta || "");
-        var respSender = normSenderLocal(ev.responsable_sugerido || "");
+        var imgSender = traceOpsNormSenderSafeLocal(meta.sender || "");
+        var evSender = traceOpsNormSenderSafeLocal(ev.reporta || "");
+        var respSender = traceOpsNormSenderSafeLocal(ev.responsable_sugerido || "");
         if (imgSender && evSender && imgSender === evSender) score += 5;
         else if (imgSender && respSender && imgSender === respSender) score += 4;
 
