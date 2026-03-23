@@ -1539,7 +1539,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   var candidates = candidateDetectorLocal(msgs);
   var clusters = clusterIncidentsLocal(candidates);
-  var localFallbackResult = traceOpsDedupeEngineerFindingsLocal(traceOpsDropWeakEventsLocal((typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters))))));
+  var localFallbackResult = traceOpsNormalizeLifecycleLocal(traceOpsDedupeEngineerFindingsLocal(traceOpsDropWeakEventsLocal((typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters)))))));
 
   if (!apiKey || !apiKey.trim()) {
     return localFallbackResult;
@@ -2393,7 +2393,7 @@ async function analyzeWithAI(msgs, apiKey) {
     cluster_mode: useClusterMode ? 1 : 0
   };
 
-  return traceOpsDedupeEngineerFindingsLocal(traceOpsDropWeakEventsLocal((typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed)))));
+  return traceOpsNormalizeLifecycleLocal(traceOpsDedupeEngineerFindingsLocal(traceOpsDropWeakEventsLocal((typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed))))));
 }
 
 async function buildXlsx(result) {
@@ -4537,8 +4537,8 @@ function App() {
           <div className="traceops-context">
             <div className="traceops-context-main">
               <span className="traceops-context-kicker">Operational summary</span>
-              <div className="traceops-context-title">Control center del análisis actual</div>
-              <div className="traceops-context-subtitle">Se integró la UI propuesta como capa visual: contexto ejecutivo, KPIs rápidos y paneles de foco, manteniendo intacto el pipeline actual, las evidencias, el Excel y el RCCA.</div>
+              <div className="traceops-context-title">Resumen ejecutivo del análisis actual</div>
+              <div className="traceops-context-subtitle">Vista ejecutiva del rango analizado con KPIs, alertas prioritarias, evidencia útil y trazabilidad operativa.</div>
               <div className="traceops-context-chips">
                 <span>{analysisRangeLabel||"Rango activo"}</span>
                 <span>{visibleEventCount} eventos visibles</span>
@@ -4615,8 +4615,8 @@ function App() {
                 </div>
               </div>
               <div className="traceops-engineering-card">
-                <h4>Modo de ejecución</h4>
-                <p>La propuesta visual se embebe sin alterar la experiencia funcional. Se mantiene uploader, filtros, Excel, PDF, autoadjuntos y shell SaaS actual.</p>
+                <h4>Resumen operativo</h4>
+                <p>Estado del motor de análisis, rango activo y volumen de evidencia del periodo seleccionado.</p>
                 <div className="traceops-bullets">
                   <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
                   <div className="traceops-bullet"><strong>Rango:</strong> {analysisRangeLabel||"N/D"}</div>
