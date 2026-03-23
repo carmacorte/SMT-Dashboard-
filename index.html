@@ -1798,45 +1798,8 @@ async function analyzeWithAI(msgs, apiKey) {
     return parsed;
   }
 
-  var resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true"
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: TRACEOPS_MAX_OUTPUT_TOKENS,
-      system: system,
-      messages: [
-        { role: "user", content: userContent },
-        { role: "assistant", content: "{" }
-      ]
-    })
-  });
-
-  if (!resp.ok) {
-    var err = await resp.json().catch(function() { return {}; });
-
-    if (resp.status === 401) {
-      throw new Error("API Key invalida. Verifica tu configuracion.");
-    }
-    if (resp.status === 429) {
-      throw new Error("Limite de uso alcanzado. Espera e intenta de nuevo.");
-    }
-
-    throw new Error((err.error && err.error.message) || ("Error API " + resp.status));
-  }
-
-  var data = await resp.json();
-
-  if (!data.content || !data.content.length) {
-    throw new Error("Respuesta vacia. Intenta de nuevo.");
-  }
-
-  function extractBalancedJsonObject(text) {
+  throw new Error("Anthropic fue removido. Usa OpenAI backend o modo local.");
+    function extractBalancedJsonObject(text) {
     var start = text.indexOf("{");
     if (start === -1) return "";
     var depth = 0, inString = false, esc = false;
@@ -1894,7 +1857,7 @@ async function analyzeWithAI(msgs, apiKey) {
   parsed.__traceops_api = {
     api_calls: 1,
     cache_hit: false,
-    model: "claude-sonnet-4-20250514",
+    model: "",
     max_tokens: TRACEOPS_MAX_OUTPUT_TOKENS,
     input_tokens: usage.input_tokens || estimateTokensLocal(system + "\n" + userContent),
     output_tokens: usage.output_tokens || estimateTokensLocal(raw),
