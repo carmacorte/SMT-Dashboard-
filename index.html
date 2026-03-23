@@ -3545,6 +3545,31 @@ function App() {
     ].join(" ");
   }
 
+  function traceOpsExtractModelTokensSafeLocal(text){
+    try {
+      if (typeof extractModelTokensLocal === "function") return extractModelTokensLocal(text);
+    } catch (_) {}
+    var s = String(text||"");
+    var out = [];
+    var m = s.match(/\b(?:N\/P|P\/N|MODEL|MODELO|PART)\s*[:# ]?\s*([A-Z0-9][A-Z0-9-]{4,})/ig) || [];
+    m.forEach(function(hit){
+      var m2 = hit.match(/([A-Z0-9][A-Z0-9-]{4,})/i);
+      if (m2) out.push(String(m2[1]).toUpperCase());
+    });
+    var m3 = s.match(/\b([A-Z]{2,}[0-9]{3,}[A-Z0-9-]*)\b/g) || [];
+    m3.forEach(function(v){ out.push(String(v).toUpperCase()); });
+    return Array.from(new Set(out)).slice(0,12);
+  }
+
+  function traceOpsExtractPartsSafeLocal(text){
+    try {
+      if (typeof extractPartsLocal === "function") return extractPartsLocal(text);
+    } catch (_) {}
+    var s = String(text||"");
+    var found = s.match(/\b(?:U|R|C|Q|L|D|TP|IC|CN|FB)\d{1,4}\b/ig) || [];
+    return Array.from(new Set(found.map(function(v){ return String(v).toUpperCase(); }))).slice(0,20);
+  }
+
   function traceOpsMiniNormLocal(text){
     return String(text||"")
       .toLowerCase()
@@ -3616,8 +3641,8 @@ function App() {
         var overlap = traceOpsTokenOverlapScoreLocal(contextText, eventBlob);
         score += Math.min(8, overlap * 2);
 
-        var ctxModels = extractModelTokensLocal(contextText);
-        var ctxParts = extractPartsLocal(contextText);
+        var ctxModels = traceOpsExtractModelTokensSafeLocal(contextText);
+        var ctxParts = traceOpsExtractPartsSafeLocal(contextText);
         if (ctxModels.length && overlap > 0) score += 2;
         if (ctxParts.length && overlap > 0) score += 3;
         if (/\b(?:aoi|ict|smt|pth|socket|dimm|mix|mezcla|material|label|etiqueta|board|pcb|u\d+|r\d+|c\d+)\b/i.test(contextText)) score += 1;
