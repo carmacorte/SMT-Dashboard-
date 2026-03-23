@@ -1474,7 +1474,7 @@ async function analyzeWithAI(msgs, apiKey) {
     return "Detectado";
   }
 
-  function (typeof traceOpsNormalizeLifecycleLocal==="function"?traceOpsNormalizeLifecycleLocal:function(x){return x;})(parsed) {
+  function traceOpsNormalizeLifecycleLocal(parsed) {
     if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
     parsed.eventos = parsed.eventos.map(function(ev) {
       ev.estado_historia = traceOpsInferEstadoHistoriaLocal(ev);
