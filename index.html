@@ -1391,7 +1391,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   var candidates = candidateDetectorLocal(msgs);
   var clusters = clusterIncidentsLocal(candidates);
-  var localFallbackResult = traceOpsDedupeEngineerFindingsLocal((typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters)))));
+  var localFallbackResult = (typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters))));
 
   if (!apiKey || !apiKey.trim()) {
     return localFallbackResult;
@@ -1795,17 +1795,6 @@ async function analyzeWithAI(msgs, apiKey) {
     return n;
   }
 
-
-  function traceOpsNormSenderSafeLocal(s) {
-    return String(s || "")
-      .toLowerCase()
-      .replace(/^~/, "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim();
-  }
-
   function findingAdminNoiseScoreLocal(text) {
     var t = normalizeLooseLocal(text);
     var pats = [
@@ -1867,17 +1856,9 @@ async function analyzeWithAI(msgs, apiKey) {
     var techHits = technicalHitCountLocal(s);
     var parts = extractPartsLocal(s).length;
     var models = extractModelTokensLocal(s).length;
-    var hasRefdes = /\b(?:u|r|c|q|l|d|tp|ic|cn|fb)\d{1,4}\b/i.test(s);
-    var hasTechWords = /\b(?:causa|cause|hipotesis|hypothesis|validacion|validation|mitigacion|mitigation|inspeccion|inspection|analisis|analysis|flux|pogo|ict|aoi|bga|short|open|owner|escalad|conten(?:cion|tion)|componente|component)\b/i.test(s);
-
-    var signals = 0;
-    if (techHits >= 3) signals++;
-    if (parts > 0) signals++;
-    if (models > 0) signals++;
-    if (hasRefdes) signals++;
-    if (hasTechWords && techHits >= 1) signals++;
-
-    return signals >= 2;
+    var hasRefdes = /(?:u|r|c|q|l|d|tp|ic|cn|fb)\d{1,4}/i.test(s);
+    var hasTechWords = /(?:causa|cause|hipotesis|hypothesis|validacion|validation|mitigacion|mitigation|inspeccion|inspection|analisis|analysis|flux|pogo|ict|aoi|bga|short|open|owner|escalad|conten(?:cion|tion)|componente|component)/i.test(s);
+    return techHits >= 3 || parts > 0 || models > 0 || hasRefdes || hasTechWords;
   }
 
   function findingLooksAdministrativeUpdateLocal(text) {
@@ -1927,89 +1908,9 @@ async function analyzeWithAI(msgs, apiKey) {
     return "[" + (msg.dateDisp || msg.dateIso || "") + " " + (msg.timeStr || "") + " " + (msg.sender || "") + "] " + body;
   }
 
-
-  function traceOpsFindingEventOverlapLocal(findingText, ev) {
-    var txt = String(findingText || "");
-    if (!txt || !ev) return 0;
-    var blob = [
-      ev.modelo || "",
-      ev.linea_estacion || "",
-      ev.tipo_evento || "",
-      ev.defecto_smt || "",
-      ev.evento_detectado || "",
-      ev.impacto || "",
-      ev.accion_requerida || "",
-      ev.accion_ejecutada || ""
-    ].join(" ");
-    var a = String(txt || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-    var b = String(blob || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-    var score = 0;
-    Array.from(new Set(a.split(" ").filter(function(w){ return w && w.length > 3; }))).forEach(function(tok){
-      if ((" " + b + " ").indexOf(" " + tok + " ") >= 0) score += 1;
-    });
-    var partHits = (txt.match(/\b(?:U|R|C|Q|L|D|TP|IC|CN|FB)\d{1,4}\b/ig) || []);
-    partHits.forEach(function(p){
-      var pn = String(p || "").toLowerCase();
-      if ((" " + b + " ").indexOf(" " + pn + " ") >= 0) score += 3;
-    });
-    if (ev.defecto_smt && a.indexOf(String(ev.defecto_smt || "").toLowerCase()) >= 0) score += 2;
-    return score;
-  }
-
-  function traceOpsEventNeedsHighFindingOverlapLocal(ev) {
-    var t = String((ev && ev.evento_detectado) || "").toLowerCase();
-    var x = String((ev && ev.tipo_evento) || "").toLowerCase();
-    return /router|red|network|efox|junta|retrabajo|reparaciones|pass vanguard|mesa|area|soporte|support|alarmad|chamber|esperando tecnico/.test(t + " " + x);
-  }
-
-  function traceOpsFindingFingerprintLocal(text) {
-    return String(text || "")
-      .replace(/\[[^\]]+\]\s*/g, " ")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9\s]/g, " ")
-      .replace(/\b(?:aldair|superintendente|ildefonso|valenzuela|luis|tecalco|prod|produccion|quality|team|miriam)\b/g, " ")
-      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .split(" ")
-      .filter(function(w){ return w && w.length > 3; })
-      .slice(0, 18)
-      .join(" ");
-  }
-
-  function traceOpsDedupeEngineerFindingsLocal(parsed) {
-    if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
-    var groups = {};
-    parsed.eventos.forEach(function(ev, idx){
-      var fp = traceOpsFindingFingerprintLocal(ev.engineer_findings || "");
-      if (!fp || fp.length < 20) return;
-      if (!groups[fp]) groups[fp] = [];
-      groups[fp].push({
-        idx: idx,
-        overlap: traceOpsFindingEventOverlapLocal(ev.engineer_findings || "", ev),
-        strong: findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")
-      });
-    });
-    Object.keys(groups).forEach(function(fp){
-      var arr = groups[fp];
-      if (arr.length <= 1) return;
-      arr.sort(function(a,b){
-        if ((b.overlap || 0) !== (a.overlap || 0)) return (b.overlap || 0) - (a.overlap || 0);
-        if ((b.strong ? 1 : 0) !== (a.strong ? 1 : 0)) return (b.strong ? 1 : 0) - (a.strong ? 1 : 0);
-        return a.idx - b.idx;
-      });
-      for (var i = 1; i < arr.length; i++) {
-        parsed.eventos[arr[i].idx].engineer_findings = "";
-      }
-    });
-    return parsed;
-  }
-
   function enrichEngineerFindingsLocal(parsed) {
     if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
-    var followWindowMs = 36 * 60 * 60000;
+    var followWindowMs = 5 * 24 * 60 * 60000;
 
     parsed.eventos = (parsed.eventos || []).map(function(ev) {
       var evTimeMs = parseEventDateTimeMsLocal(ev);
@@ -2036,20 +1937,11 @@ async function analyzeWithAI(msgs, apiKey) {
 
         if (anchorTextNorm && normalizeLooseLocal(cleanText).indexOf(anchorTextNorm.slice(0, 24)) >= 0) score += 2;
 
-        var msgSenderNorm = traceOpsNormSenderSafeLocal(m.sender || "");
-        var evReportaNorm = traceOpsNormSenderSafeLocal(ev.reporta || "");
-        if (msgSenderNorm && evReportaNorm && msgSenderNorm === evReportaNorm) {
-          score -= 6;
-        }
-
-        var distHours = (msgTimeMs - evTimeMs) / 3600000;
-        if (distHours > 24) score -= Math.floor((distHours - 24) / 6) * 2;
-
         var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(cleanText) === anchor.station);
         if (findingLooksAdministrativeUpdateLocal(cleanText) && !findingHasStrongTechnicalSignalLocal(cleanText)) return;
         if (!hasAnchor && techHits < 3) return;
         if (!findingHasStrongTechnicalSignalLocal(cleanText)) return;
-        if (score < 16) return;
+        if (score < 10) return;
 
         hits.push({ msg: m, ms: msgTimeMs, score: score, cleanText: cleanText });
       });
@@ -2059,32 +1951,32 @@ async function analyzeWithAI(msgs, apiKey) {
         return a.ms - b.ms;
       });
 
+      var picked = [];
+      var seen = {};
+      var totalLen = 0;
       hits.forEach(function(h) {
-        h.evOverlap = traceOpsFindingEventOverlapLocal(h.cleanText || h.msg.text, ev);
+        if (picked.length >= 2 || totalLen >= 700) return;
+        var k = normalizeLooseLocal(h.cleanText || h.msg.text).slice(0, 120);
+        if (!k || seen[k]) return;
+        seen[k] = true;
+        picked.push(h);
+        totalLen += String(h.cleanText || "").length;
       });
 
-      hits = hits.filter(function(h){
-        var needHigh = traceOpsEventNeedsHighFindingOverlapLocal(ev);
-        if (needHigh) return (h.evOverlap || 0) >= 6;
-        return (h.evOverlap || 0) >= 4;
-      });
-
-      hits.sort(function(a, b) {
-        if ((b.evOverlap || 0) !== (a.evOverlap || 0)) return (b.evOverlap || 0) - (a.evOverlap || 0);
-        if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
-        return (a.ms || 0) - (b.ms || 0);
-      });
-
-      var best = hits.length ? hits[0] : null;
-      var followText = best ? formatFindingLocal(best.msg, best.cleanText) : "";
+      picked.sort(function(a, b) { return a.ms - b.ms; });
+      var followText = picked.map(function(h) { return formatFindingLocal(h.msg, h.cleanText); }).filter(Boolean).join(" || ");
       var existing = traceOpsIsFindingsExceptionLocal(ev.engineer_findings || "") ? "" : cleanFindingTextLocal(String(ev.engineer_findings || "").trim());
 
       if (!existing) {
         ev.engineer_findings = followText || "";
       } else if (followText) {
-        var existingOverlap = traceOpsFindingEventOverlapLocal(existing, ev);
-        var followOverlap = traceOpsFindingEventOverlapLocal(followText, ev);
-        ev.engineer_findings = followOverlap >= existingOverlap ? followText : existing;
+        var normExisting = normalizeLooseLocal(existing);
+        var normFollow = normalizeLooseLocal(followText);
+        if (normExisting.indexOf(normFollow.slice(0, 80)) === -1 && normFollow.indexOf(normExisting.slice(0, 80)) === -1) {
+          ev.engineer_findings = existing + " || " + followText;
+        } else {
+          ev.engineer_findings = existing.length >= normFollow.length ? existing : followText;
+        }
       } else {
         ev.engineer_findings = existing || "";
       }
@@ -2101,11 +1993,6 @@ async function analyzeWithAI(msgs, apiKey) {
 
       if (findingLooksAdministrativeUpdateLocal(ev.engineer_findings || "") && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
       if (findingAdminNoiseScoreLocal(ev.engineer_findings || "") >= 4 && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
-      if (ev.engineer_findings) {
-        var finalOverlap = traceOpsFindingEventOverlapLocal(ev.engineer_findings, ev);
-        if (traceOpsEventNeedsHighFindingOverlapLocal(ev) && finalOverlap < 6) ev.engineer_findings = "";
-        else if (finalOverlap < 4) ev.engineer_findings = "";
-      }
       return ev;
     });
 
@@ -2218,7 +2105,7 @@ async function analyzeWithAI(msgs, apiKey) {
     cluster_mode: useClusterMode ? 1 : 0
   };
 
-  return traceOpsDedupeEngineerFindingsLocal((typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed))));
+  return (typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed)));
 }
 
 async function buildXlsx(result) {
@@ -3326,24 +3213,6 @@ function App() {
   function formatLocalMs(ms){var d=new Date(ms);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
   var visibleRangeLabel=eventTimes.length>0?(formatLocalMs(eventTimes[0])+" - "+formatLocalMs(eventTimes[eventTimes.length-1])):"Sin eventos en el rango";
 
-  var criticalEventCount=ev.filter(function(e){return e.prioridad==="Critica";}).length;
-  var openEventCount=ev.filter(function(e){return e.estatus!=="Cerrado";}).length;
-  var findingsEventCount=ev.filter(function(e){return String(e.engineer_findings||"").trim().length>0;}).length;
-  var topStations=(function(){
-    var map={};
-    ev.forEach(function(e){
-      var key=(e.linea_estacion||"N/D").trim()||"N/D";
-      map[key]=(map[key]||0)+1;
-    });
-    return Object.keys(map).map(function(k){return{name:k,count:map[k]};}).sort(function(a,b){return b.count-a.count;}).slice(0,4);
-  })();
-  var topAlerts=ev.slice().sort(function(a,b){
-    var pa=({Critica:4,Alta:3,Media:2,Baja:1})[a.prioridad]||0;
-    var pb=({Critica:4,Alta:3,Media:2,Baja:1})[b.prioridad]||0;
-    if(pb!==pa) return pb-pa;
-    return String(a.id||"").localeCompare(String(b.id||""));
-  }).slice(0,4);
-
   function clearViewFilters(){
     setViewDateFrom("");setViewDateTo("");setViewHourFrom("");setViewHourTo("");
   }
@@ -3860,7 +3729,7 @@ function App() {
     return{list:contextual.slice(0,120),modeLabel:modeLabel,refText:formatEventRef(evRow)};
   }
 
-  function traceOpsNormSenderSafeLocal(s){
+  function normSenderLocal(s){
     return String(s||"").toLowerCase().replace(/^~/,"").replace(/[^a-z0-9]+/g," ").trim();
   }
 
@@ -3963,9 +3832,9 @@ function App() {
         else if (diffMin <= 480) score += 1;
         else score += 0;
 
-        var imgSender = traceOpsNormSenderSafeLocal(meta.sender || "");
-        var evSender = traceOpsNormSenderSafeLocal(ev.reporta || "");
-        var respSender = traceOpsNormSenderSafeLocal(ev.responsable_sugerido || "");
+        var imgSender = normSenderLocal(meta.sender || "");
+        var evSender = normSenderLocal(ev.reporta || "");
+        var respSender = normSenderLocal(ev.responsable_sugerido || "");
         if (imgSender && evSender && imgSender === evSender) score += 5;
         else if (imgSender && respSender && imgSender === respSender) score += 4;
 
@@ -4240,20 +4109,6 @@ function App() {
 
       {state==="idle"&&(
         <div>
-          <div className="traceops-context">
-            <div className="traceops-context-main">
-              <span className="traceops-context-kicker">Operational workspace</span>
-              <div className="traceops-context-title">Resuelve incidentes de manufactura con mejor contexto</div>
-              <div className="traceops-context-subtitle">Mantiene el flujo actual y agrega un shell más SaaS: resumen ejecutivo, indicadores rápidos y navegación más clara, sin cambiar parsing, RCCA, evidencias ni exportables.</div>
-              <div className="traceops-context-chips">
-                {["WhatsApp ZIP","EML / MBOX","RCCA sync","Bitácora","Evidencia en rango"].map(function(t){return <span key={t}>{t}</span>;})}
-              </div>
-            </div>
-            <div className="traceops-context-actions">
-              <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Cargar evidencia</button>
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Historial</button>
-            </div>
-          </div>
           <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
             <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}} onChange={function(e){handle(e.target.files[0]);}}/>
             <div style={{padding:"48px 32px",textAlign:"center"}}>
@@ -4266,7 +4121,7 @@ function App() {
             </div>
           </div>
 
-          <div id="evidence-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+          <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
             <div style={{display:"flex",borderBottom:"1px solid #EEECEA"}}>
               {[["quick","Rapido"],["week","Por semana"],["range","Rango"]].map(function(tab){var active=filterMode===tab[0];return<button key={tab[0]} style={{flex:1,padding:"10px 6px",border:"none",borderBottom:active?"2px solid #1E5C48":"2px solid transparent",background:"transparent",fontSize:12,fontWeight:active?700:500,color:active?"#1E5C48":"#8A8580",cursor:"pointer"}} onClick={function(){setFilterMode(tab[0]);}}>{tab[1]}</button>;})}
             </div>
@@ -4359,99 +4214,7 @@ function App() {
 
       {state==="done"&&result&&(
         <div id="results-section">
-          <div className="traceops-context">
-            <div className="traceops-context-main">
-              <span className="traceops-context-kicker">Operational summary</span>
-              <div className="traceops-context-title">Control center del análisis actual</div>
-              <div className="traceops-context-subtitle">Se integró la UI propuesta como capa visual: contexto ejecutivo, KPIs rápidos y paneles de foco, manteniendo intacto el pipeline actual, las evidencias, el Excel y el RCCA.</div>
-              <div className="traceops-context-chips">
-                <span>{analysisRangeLabel||"Rango activo"}</span>
-                <span>{visibleEventCount} eventos visibles</span>
-                <span>{(msgStats&&msgStats.clean)||0} msgs limpios</span>
-                <span>{imgNames.length} evidencias en rango</span>
-                {apiUsage&&apiUsage.local_mode&&<span>Modo local</span>}
-                {apiUsage&&apiUsage.provider==="openai-backend"&&<span>OpenAI backend</span>}
-              </div>
-            </div>
-            <div className="traceops-context-actions">
-              <button className="ops-hero-btn" onClick={download}>Descargar XLSX</button>
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("dashboard-filter"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Ir al dashboard</button>
-            </div>
-          </div>
-
-          <div className="traceops-kpi-strip">
-            <div className="traceops-kpi-card">
-              <div className="traceops-kpi-label">Eventos visibles</div>
-              <div className="traceops-kpi-value">{visibleEventCount}</div>
-              <div className="traceops-kpi-meta"><span>Total cargados</span><strong>{totalEventCount}</strong></div>
-            </div>
-            <div className="traceops-kpi-card">
-              <div className="traceops-kpi-label">Críticos</div>
-              <div className={"traceops-kpi-value "+(criticalEventCount>0?"fail":"pass")}>{criticalEventCount}</div>
-              <div className="traceops-kpi-meta"><span>Abiertos / seguimiento</span><strong>{openEventCount}</strong></div>
-            </div>
-            <div className="traceops-kpi-card">
-              <div className="traceops-kpi-label">Engineer findings</div>
-              <div className={"traceops-kpi-value "+(findingsEventCount>0?"info":"warn")}>{findingsEventCount}</div>
-              <div className="traceops-kpi-meta"><span>Eventos con finding útil</span><strong>{visibleEventCount?Math.round((findingsEventCount/visibleEventCount)*100):0}%</strong></div>
-            </div>
-            <div className="traceops-kpi-card">
-              <div className="traceops-kpi-label">Evidencia</div>
-              <div className="traceops-kpi-value info">{imgNames.length}</div>
-              <div className="traceops-kpi-meta"><span>Adjuntas auto</span><strong>{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)}</strong></div>
-            </div>
-            <div className="traceops-kpi-card">
-              <div className="traceops-kpi-label">Ventana</div>
-              <div className="traceops-kpi-value warn">{analysisWindowDays}</div>
-              <div className="traceops-kpi-meta"><span>Rango visible</span><strong>{visibleRangeLabel}</strong></div>
-            </div>
-          </div>
-
-          <div className="traceops-analytics-grid">
-            <div className="traceops-panel">
-              <div className="traceops-panel-head">
-                <div><h3>Alertas con prioridad</h3><span>Eventos visibles que conviene revisar primero</span></div>
-                <span>{topAlerts.length} foco inmediato</span>
-              </div>
-              <div className="traceops-panel-body">
-                <div className="traceops-alert-list">
-                  {topAlerts.length?topAlerts.map(function(item){
-                    var sev=item.prioridad==="Critica"?"crit":(item.prioridad==="Alta"?"high":"med");
-                    return <div key={item.id} className="traceops-alert-item">
-                      <div className="traceops-alert-left">
-                        <span className={"traceops-alert-badge "+sev}>{item.prioridad||"Media"}</span>
-                        <div className="traceops-alert-copy">
-                          <div>{item.id} · {item.evento_detectado||"Sin descripcion"}</div>
-                          <span>{item.linea_estacion||"N/D"} · {item.tipo_evento||"Proceso"} · {item.estatus||"Abierto"}</span>
-                        </div>
-                      </div>
-                    </div>;
-                  }):<div style={{fontSize:12,color:"#5B657A"}}>No hay alertas visibles en el filtro activo.</div>}
-                </div>
-              </div>
-            </div>
-
-            <div className="traceops-engineering-grid">
-              <div className="traceops-engineering-card">
-                <h4>Top estaciones visibles</h4>
-                <p>Resumen rápido de las estaciones/líneas con mayor concentración de eventos en el filtro actual.</p>
-                <div className="traceops-bullets">
-                  {topStations.length?topStations.map(function(row){return <div key={row.name} className="traceops-bullet"><strong>{row.name}</strong> · {row.count} evento(s)</div>;}):<div className="traceops-bullet">Sin datos suficientes en el rango actual.</div>}
-                </div>
-              </div>
-              <div className="traceops-engineering-card">
-                <h4>Modo de ejecución</h4>
-                <p>La propuesta visual se embebe sin alterar la experiencia funcional. Se mantiene uploader, filtros, Excel, PDF, autoadjuntos y shell SaaS actual.</p>
-                <div className="traceops-bullets">
-                  <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
-                  <div className="traceops-bullet"><strong>Rango:</strong> {analysisRangeLabel||"N/D"}</div>
-                  <div className="traceops-bullet"><strong>Mensajes limpios:</strong> {((msgStats&&msgStats.clean)||0).toLocaleString()} · <strong>Evidencias:</strong> {imgNames.length}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}},borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
+          <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
             <div>
               <h3 style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>Excel listo para junta</h3>
               <p style={{fontSize:11,color:"rgba(242,236,200,.6)"}}>{(res.periodo||"")+" - "+ev.length+" eventos - "+((msgStats&&msgStats.clean)||0)+" msgs"}</p>
@@ -4506,7 +4269,7 @@ function App() {
             </div>
           )}
 
-          <div id="dashboard-filter" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+          <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
             <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
               <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Filtro de analisis</h3><span style={{fontSize:10,color:"#8A8580"}}>Acota el dashboard por fecha y hora sobre el archivo ya cargado</span></div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
