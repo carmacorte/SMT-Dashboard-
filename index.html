@@ -1381,7 +1381,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   var candidates = candidateDetectorLocal(msgs);
   var clusters = clusterIncidentsLocal(candidates);
-  var localFallbackResult = pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters)));
+  var localFallbackResult = traceOpsRefineEngineerFindingsAcrossEventsLocal(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters))));
 
   if (!apiKey || !apiKey.trim()) {
     return localFallbackResult;
@@ -1510,6 +1510,15 @@ async function analyzeWithAI(msgs, apiKey) {
       /falla de red/i,
       /it support/i,
       /infraestructura/i,
+      /router\s*\d+\s*sigue\s*alarmad/i,
+      /router\s*alarmad/i,
+      /mesa\s+de\s+retraba/i,
+      /retrabajo\s+area/i,
+      /junta\s+de\s+produccion/i,
+      /igual\s+lo\s+revisamos\s+en\s+la\s+junta/i,
+      /pass\s+vanguard/i,
+      /esperando\s+tecnico/i,
+      /area\s+para\s+reparaciones/i,
       /revision de acciones/i,
       /documentacion/i,
       /reporte semanal/i,
@@ -1534,6 +1543,12 @@ async function analyzeWithAI(msgs, apiKey) {
       /it support/i,
       /power outage/i,
       /network/i,
+      /router\s*\d+\s*sigue\s*alarmad/i,
+      /router\s*alarmad/i,
+      /mesa\s+de\s+retraba/i,
+      /junta\s+de\s+produccion/i,
+      /pass\s+vanguard/i,
+      /esperando\s+tecnico/i,
       /calendar/i,
       /convocatoria/i,
       /minuta/i
@@ -1559,6 +1574,14 @@ async function analyzeWithAI(msgs, apiKey) {
       /no hay red/i,
       /network down/i,
       /it support/i,
+      /router\s*\d+\s*sigue\s*alarmad/i,
+      /router\s*alarmad/i,
+      /mesa\s+de\s+retraba/i,
+      /junta\s+de\s+produccion/i,
+      /igual\s+lo\s+revisamos\s+en\s+la\s+junta/i,
+      /pass\s+vanguard/i,
+      /esperando\s+tecnico/i,
+      /area\s+para\s+reparaciones/i,
       /reporte semanal/i,
       /\bawb\b/i,
       /\beta\b/i,
@@ -2072,7 +2095,7 @@ async function analyzeWithAI(msgs, apiKey) {
     cluster_mode: useClusterMode ? 1 : 0
   };
 
-  return pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed));
+  return traceOpsRefineEngineerFindingsAcrossEventsLocal(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed)));
 }
 
 async function buildXlsx(result) {
@@ -4204,7 +4227,7 @@ function App() {
                   <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Evidencias del chat</h3>
                   <span style={{fontSize:10,color:"#8A8580"}}>{imgNames.length} imagenes en rango</span>
                   {filteredMediaCount>0&&<span style={{fontSize:10,color:"#B26B3B",marginLeft:8}}>{filteredMediaCount} stickers filtrados</span>}
-                  {mediaOutOfRangeCount>0&&<span style={{fontSize:10,color:"#7E7A76",marginLeft:8}}>{mediaOutOfRangeCount} fuera de rango</span>}
+                  {mediaOutOfRangeCount>0&&<span style={{fontSize:9,color:"rgba(126,122,118,.62)",marginLeft:8}}>{mediaOutOfRangeCount} fuera de rango</span>}
                 </div>
                 <span style={{fontSize:10,fontWeight:600,color:"#2A7A60"}}>{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas auto</span>
               </div>
@@ -4430,7 +4453,7 @@ function App() {
                 <button className="table-reset-btn" onClick={function(){setBitacoraSortKey("fecha");setBitacoraSortDir("desc");}}>Restablecer</button>
                 {imgNames.length>0&&<span style={{fontSize:10.5,color:"#2A7A60",fontWeight:600}}>{imgNames.length} imagen{imgNames.length!==1?"es":""}<span className="ev-count">{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas auto</span></span>}
                 {filteredMediaCount>0&&<span style={{fontSize:10.5,color:"#B26B3B",fontWeight:600}}>{filteredMediaCount} sticker{filteredMediaCount!==1?"s":""} filtrado{filteredMediaCount!==1?"s":""}</span>}
-                {mediaOutOfRangeCount>0&&<span style={{fontSize:10.5,color:"#7E7A76",fontWeight:600}}>{mediaOutOfRangeCount} fuera de rango</span>}
+                {mediaOutOfRangeCount>0&&<span style={{fontSize:9.5,color:"rgba(126,122,118,.62)",fontWeight:500}}>{mediaOutOfRangeCount} fuera de rango</span>}
               </div>
             </div>
             <div className="tscroll">
