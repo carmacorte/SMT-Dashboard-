@@ -381,6 +381,41 @@ tr:hover td{background:var(--g50)}
 .ops-hero-btn.primary:hover{background:#174A3B;transform:translateY(-1px)}
 .ops-hero-btn.ghost{background:rgba(255,255,255,.08);color:#F4F6F7;border:1px solid rgba(255,255,255,.14)}
 .ops-hero-btn.ghost:hover{background:rgba(255,255,255,.12)}
+.traceops-context{background:linear-gradient(135deg,#FFFFFF,#F8FAFC);border:1px solid #E6EAF0;border-radius:24px;padding:18px 20px;margin:0 0 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;box-shadow:0 10px 24px rgba(20,32,51,.05)}
+.traceops-context-main{display:flex;flex-direction:column;gap:8px;min-width:0}
+.traceops-context-kicker{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#5B657A}
+.traceops-context-title{font-size:28px;line-height:1.02;font-weight:800;color:#162033;letter-spacing:-.03em}
+.traceops-context-subtitle{font-size:13px;line-height:1.5;color:#5B657A;maxWidth:760px}
+.traceops-context-chips{display:flex;gap:8px;flex-wrap:wrap}
+.traceops-context-chips span{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 12px;background:#F8FAFC;border:1px solid #E6EAF0;font-size:10.5px;font-weight:700;color:#243B63}
+.traceops-context-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.traceops-kpi-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.traceops-kpi-card{background:#fff;border:1px solid #E6EAF0;border-radius:20px;padding:16px 18px;box-shadow:0 2px 12px rgba(20,32,51,.04)}
+.traceops-kpi-label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5B657A;margin-bottom:10px}
+.traceops-kpi-value{font-size:30px;line-height:1;font-weight:800;color:#162033;letter-spacing:-.03em}
+.traceops-kpi-value.fail{color:#D64545}.traceops-kpi-value.pass{color:#2E8B57}.traceops-kpi-value.info{color:#3B82F6}.traceops-kpi-value.warn{color:#D9A441}
+.traceops-kpi-meta{margin-top:8px;font-size:11px;color:#5B657A;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.traceops-analytics-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:16px;margin-bottom:16px}
+.traceops-panel{background:#fff;border:1px solid #E6EAF0;border-radius:22px;overflow:hidden;box-shadow:0 2px 12px rgba(20,32,51,.04)}
+.traceops-panel-head{padding:16px 18px;border-bottom:1px solid #EEF2F6;background:#F8FAFC;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.traceops-panel-head h3{font-size:16px;font-weight:800;color:#162033;letter-spacing:-.02em}
+.traceops-panel-head span{font-size:11px;color:#5B657A}
+.traceops-panel-body{padding:16px 18px}
+.traceops-alert-list{display:flex;flex-direction:column;gap:10px}
+.traceops-alert-item{border:1px solid #E6EAF0;border-radius:14px;padding:12px 14px;background:#fff;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.traceops-alert-left{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.traceops-alert-badge{padding:4px 8px;border-radius:999px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.traceops-alert-badge.crit{background:#FDEEEE;color:#D64545}.traceops-alert-badge.high{background:#FFF3D8;color:#D9A441}.traceops-alert-badge.med{background:#EDF4FF;color:#3B82F6}
+.traceops-alert-copy{min-width:0}.traceops-alert-copy div{font-size:11.5px;font-weight:700;color:#162033;line-height:1.35}.traceops-alert-copy span{display:block;font-size:10px;color:#5B657A;margin-top:3px}
+.traceops-engineering-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px}
+.traceops-engineering-card{background:#fff;border:1px solid #E6EAF0;border-radius:20px;padding:16px 18px;box-shadow:0 2px 12px rgba(20,32,51,.04)}
+.traceops-engineering-card h4{font-size:15px;font-weight:800;color:#162033;margin-bottom:4px}
+.traceops-engineering-card p{font-size:11px;color:#5B657A;line-height:1.5}
+.traceops-bullets{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.traceops-bullet{padding:10px 12px;border:1px solid #E6EAF0;border-radius:12px;background:#F8FAFC;font-size:11px;color:#162033;line-height:1.4}
+@media(max-width:1180px){.traceops-kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.traceops-analytics-grid,.traceops-engineering-grid{grid-template-columns:1fr}.traceops-context{flex-direction:column;align-items:flex-start}.traceops-context-actions{justify-content:flex-start}}
+@media(max-width:560px){.traceops-kpi-strip{grid-template-columns:1fr}.traceops-context{padding:16px}.traceops-context-title{font-size:20px}}
+
 .ops-hero-chips{display:flex;gap:8px;flex-wrap:wrap}
 .ops-hero-chips span{font-size:10.5px;font-weight:600;color:#E6F0EB;background:rgba(255,255,255,.06);border:1px solid rgba(200,216,184,.25);border-radius:999px;padding:5px 12px}
 @media (max-width:768px){
@@ -1391,7 +1426,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   var candidates = candidateDetectorLocal(msgs);
   var clusters = clusterIncidentsLocal(candidates);
-  var localFallbackResult = (typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters))));
+  var localFallbackResult = traceOpsDedupeEngineerFindingsLocal((typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters)))));
 
   if (!apiKey || !apiKey.trim()) {
     return localFallbackResult;
@@ -1795,6 +1830,17 @@ async function analyzeWithAI(msgs, apiKey) {
     return n;
   }
 
+
+  function traceOpsNormSenderSafeLocal(s) {
+    return String(s || "")
+      .toLowerCase()
+      .replace(/^~/, "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
   function findingAdminNoiseScoreLocal(text) {
     var t = normalizeLooseLocal(text);
     var pats = [
@@ -1856,9 +1902,17 @@ async function analyzeWithAI(msgs, apiKey) {
     var techHits = technicalHitCountLocal(s);
     var parts = extractPartsLocal(s).length;
     var models = extractModelTokensLocal(s).length;
-    var hasRefdes = /(?:u|r|c|q|l|d|tp|ic|cn|fb)\d{1,4}/i.test(s);
-    var hasTechWords = /(?:causa|cause|hipotesis|hypothesis|validacion|validation|mitigacion|mitigation|inspeccion|inspection|analisis|analysis|flux|pogo|ict|aoi|bga|short|open|owner|escalad|conten(?:cion|tion)|componente|component)/i.test(s);
-    return techHits >= 3 || parts > 0 || models > 0 || hasRefdes || hasTechWords;
+    var hasRefdes = /\b(?:u|r|c|q|l|d|tp|ic|cn|fb)\d{1,4}\b/i.test(s);
+    var hasTechWords = /\b(?:causa|cause|hipotesis|hypothesis|validacion|validation|mitigacion|mitigation|inspeccion|inspection|analisis|analysis|flux|pogo|ict|aoi|bga|short|open|owner|escalad|conten(?:cion|tion)|componente|component)\b/i.test(s);
+
+    var signals = 0;
+    if (techHits >= 3) signals++;
+    if (parts > 0) signals++;
+    if (models > 0) signals++;
+    if (hasRefdes) signals++;
+    if (hasTechWords && techHits >= 1) signals++;
+
+    return signals >= 2;
   }
 
   function findingLooksAdministrativeUpdateLocal(text) {
@@ -1908,9 +1962,89 @@ async function analyzeWithAI(msgs, apiKey) {
     return "[" + (msg.dateDisp || msg.dateIso || "") + " " + (msg.timeStr || "") + " " + (msg.sender || "") + "] " + body;
   }
 
+
+  function traceOpsFindingEventOverlapLocal(findingText, ev) {
+    var txt = String(findingText || "");
+    if (!txt || !ev) return 0;
+    var blob = [
+      ev.modelo || "",
+      ev.linea_estacion || "",
+      ev.tipo_evento || "",
+      ev.defecto_smt || "",
+      ev.evento_detectado || "",
+      ev.impacto || "",
+      ev.accion_requerida || "",
+      ev.accion_ejecutada || ""
+    ].join(" ");
+    var a = String(txt || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    var b = String(blob || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    var score = 0;
+    Array.from(new Set(a.split(" ").filter(function(w){ return w && w.length > 3; }))).forEach(function(tok){
+      if ((" " + b + " ").indexOf(" " + tok + " ") >= 0) score += 1;
+    });
+    var partHits = (txt.match(/\b(?:U|R|C|Q|L|D|TP|IC|CN|FB)\d{1,4}\b/ig) || []);
+    partHits.forEach(function(p){
+      var pn = String(p || "").toLowerCase();
+      if ((" " + b + " ").indexOf(" " + pn + " ") >= 0) score += 3;
+    });
+    if (ev.defecto_smt && a.indexOf(String(ev.defecto_smt || "").toLowerCase()) >= 0) score += 2;
+    return score;
+  }
+
+  function traceOpsEventNeedsHighFindingOverlapLocal(ev) {
+    var t = String((ev && ev.evento_detectado) || "").toLowerCase();
+    var x = String((ev && ev.tipo_evento) || "").toLowerCase();
+    return /router|red|network|efox|junta|retrabajo|reparaciones|pass vanguard|mesa|area|soporte|support|alarmad|chamber|esperando tecnico/.test(t + " " + x);
+  }
+
+  function traceOpsFindingFingerprintLocal(text) {
+    return String(text || "")
+      .replace(/\[[^\]]+\]\s*/g, " ")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\b(?:aldair|superintendente|ildefonso|valenzuela|luis|tecalco|prod|produccion|quality|team|miriam)\b/g, " ")
+      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter(function(w){ return w && w.length > 3; })
+      .slice(0, 18)
+      .join(" ");
+  }
+
+  function traceOpsDedupeEngineerFindingsLocal(parsed) {
+    if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
+    var groups = {};
+    parsed.eventos.forEach(function(ev, idx){
+      var fp = traceOpsFindingFingerprintLocal(ev.engineer_findings || "");
+      if (!fp || fp.length < 20) return;
+      if (!groups[fp]) groups[fp] = [];
+      groups[fp].push({
+        idx: idx,
+        overlap: traceOpsFindingEventOverlapLocal(ev.engineer_findings || "", ev),
+        strong: findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")
+      });
+    });
+    Object.keys(groups).forEach(function(fp){
+      var arr = groups[fp];
+      if (arr.length <= 1) return;
+      arr.sort(function(a,b){
+        if ((b.overlap || 0) !== (a.overlap || 0)) return (b.overlap || 0) - (a.overlap || 0);
+        if ((b.strong ? 1 : 0) !== (a.strong ? 1 : 0)) return (b.strong ? 1 : 0) - (a.strong ? 1 : 0);
+        return a.idx - b.idx;
+      });
+      for (var i = 1; i < arr.length; i++) {
+        parsed.eventos[arr[i].idx].engineer_findings = "";
+      }
+    });
+    return parsed;
+  }
+
   function enrichEngineerFindingsLocal(parsed) {
     if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
-    var followWindowMs = 5 * 24 * 60 * 60000;
+    var followWindowMs = 36 * 60 * 60000;
 
     parsed.eventos = (parsed.eventos || []).map(function(ev) {
       var evTimeMs = parseEventDateTimeMsLocal(ev);
@@ -1937,11 +2071,20 @@ async function analyzeWithAI(msgs, apiKey) {
 
         if (anchorTextNorm && normalizeLooseLocal(cleanText).indexOf(anchorTextNorm.slice(0, 24)) >= 0) score += 2;
 
+        var msgSenderNorm = traceOpsNormSenderSafeLocal(m.sender || "");
+        var evReportaNorm = traceOpsNormSenderSafeLocal(ev.reporta || "");
+        if (msgSenderNorm && evReportaNorm && msgSenderNorm === evReportaNorm) {
+          score -= 6;
+        }
+
+        var distHours = (msgTimeMs - evTimeMs) / 3600000;
+        if (distHours > 24) score -= Math.floor((distHours - 24) / 6) * 2;
+
         var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(cleanText) === anchor.station);
         if (findingLooksAdministrativeUpdateLocal(cleanText) && !findingHasStrongTechnicalSignalLocal(cleanText)) return;
         if (!hasAnchor && techHits < 3) return;
         if (!findingHasStrongTechnicalSignalLocal(cleanText)) return;
-        if (score < 10) return;
+        if (score < 16) return;
 
         hits.push({ msg: m, ms: msgTimeMs, score: score, cleanText: cleanText });
       });
@@ -1951,32 +2094,32 @@ async function analyzeWithAI(msgs, apiKey) {
         return a.ms - b.ms;
       });
 
-      var picked = [];
-      var seen = {};
-      var totalLen = 0;
       hits.forEach(function(h) {
-        if (picked.length >= 2 || totalLen >= 700) return;
-        var k = normalizeLooseLocal(h.cleanText || h.msg.text).slice(0, 120);
-        if (!k || seen[k]) return;
-        seen[k] = true;
-        picked.push(h);
-        totalLen += String(h.cleanText || "").length;
+        h.evOverlap = traceOpsFindingEventOverlapLocal(h.cleanText || h.msg.text, ev);
       });
 
-      picked.sort(function(a, b) { return a.ms - b.ms; });
-      var followText = picked.map(function(h) { return formatFindingLocal(h.msg, h.cleanText); }).filter(Boolean).join(" || ");
+      hits = hits.filter(function(h){
+        var needHigh = traceOpsEventNeedsHighFindingOverlapLocal(ev);
+        if (needHigh) return (h.evOverlap || 0) >= 6;
+        return (h.evOverlap || 0) >= 4;
+      });
+
+      hits.sort(function(a, b) {
+        if ((b.evOverlap || 0) !== (a.evOverlap || 0)) return (b.evOverlap || 0) - (a.evOverlap || 0);
+        if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+        return (a.ms || 0) - (b.ms || 0);
+      });
+
+      var best = hits.length ? hits[0] : null;
+      var followText = best ? formatFindingLocal(best.msg, best.cleanText) : "";
       var existing = traceOpsIsFindingsExceptionLocal(ev.engineer_findings || "") ? "" : cleanFindingTextLocal(String(ev.engineer_findings || "").trim());
 
       if (!existing) {
         ev.engineer_findings = followText || "";
       } else if (followText) {
-        var normExisting = normalizeLooseLocal(existing);
-        var normFollow = normalizeLooseLocal(followText);
-        if (normExisting.indexOf(normFollow.slice(0, 80)) === -1 && normFollow.indexOf(normExisting.slice(0, 80)) === -1) {
-          ev.engineer_findings = existing + " || " + followText;
-        } else {
-          ev.engineer_findings = existing.length >= normFollow.length ? existing : followText;
-        }
+        var existingOverlap = traceOpsFindingEventOverlapLocal(existing, ev);
+        var followOverlap = traceOpsFindingEventOverlapLocal(followText, ev);
+        ev.engineer_findings = followOverlap >= existingOverlap ? followText : existing;
       } else {
         ev.engineer_findings = existing || "";
       }
@@ -1993,6 +2136,11 @@ async function analyzeWithAI(msgs, apiKey) {
 
       if (findingLooksAdministrativeUpdateLocal(ev.engineer_findings || "") && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
       if (findingAdminNoiseScoreLocal(ev.engineer_findings || "") >= 4 && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
+      if (ev.engineer_findings) {
+        var finalOverlap = traceOpsFindingEventOverlapLocal(ev.engineer_findings, ev);
+        if (traceOpsEventNeedsHighFindingOverlapLocal(ev) && finalOverlap < 6) ev.engineer_findings = "";
+        else if (finalOverlap < 4) ev.engineer_findings = "";
+      }
       return ev;
     });
 
@@ -2105,7 +2253,7 @@ async function analyzeWithAI(msgs, apiKey) {
     cluster_mode: useClusterMode ? 1 : 0
   };
 
-  return (typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed)));
+  return traceOpsDedupeEngineerFindingsLocal((typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed))));
 }
 
 async function buildXlsx(result) {
@@ -3212,6 +3360,23 @@ function App() {
   var eventTimes=ev.map(parseEventDateTimeMs).filter(function(ms){return ms!=null;}).sort(function(a,b){return a-b;});
   function formatLocalMs(ms){var d=new Date(ms);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
   var visibleRangeLabel=eventTimes.length>0?(formatLocalMs(eventTimes[0])+" - "+formatLocalMs(eventTimes[eventTimes.length-1])):"Sin eventos en el rango";
+  var criticalEventCount=ev.filter(function(e){return e.prioridad==="Critica";}).length;
+  var openEventCount=ev.filter(function(e){return e.estatus!=="Cerrado";}).length;
+  var findingsEventCount=ev.filter(function(e){return String(e.engineer_findings||"").trim().length>0;}).length;
+  var topStations=(function(){
+    var map={};
+    ev.forEach(function(e){
+      var key=((e.linea_estacion||"N/D")+"").trim()||"N/D";
+      map[key]=(map[key]||0)+1;
+    });
+    return Object.keys(map).map(function(k){return{name:k,count:map[k]};}).sort(function(a,b){return b.count-a.count;}).slice(0,4);
+  })();
+  var topAlerts=ev.slice().sort(function(a,b){
+    var pa=({Critica:4,Alta:3,Media:2,Baja:1})[a.prioridad]||0;
+    var pb=({Critica:4,Alta:3,Media:2,Baja:1})[b.prioridad]||0;
+    if(pb!==pa) return pb-pa;
+    return String(a.id||"").localeCompare(String(b.id||""));
+  }).slice(0,4);
 
   function clearViewFilters(){
     setViewDateFrom("");setViewDateTo("");setViewHourFrom("");setViewHourTo("");
@@ -3729,7 +3894,7 @@ function App() {
     return{list:contextual.slice(0,120),modeLabel:modeLabel,refText:formatEventRef(evRow)};
   }
 
-  function normSenderLocal(s){
+  function traceOpsNormSenderSafeLocal(s){
     return String(s||"").toLowerCase().replace(/^~/,"").replace(/[^a-z0-9]+/g," ").trim();
   }
 
@@ -3832,9 +3997,9 @@ function App() {
         else if (diffMin <= 480) score += 1;
         else score += 0;
 
-        var imgSender = normSenderLocal(meta.sender || "");
-        var evSender = normSenderLocal(ev.reporta || "");
-        var respSender = normSenderLocal(ev.responsable_sugerido || "");
+        var imgSender = traceOpsNormSenderSafeLocal(meta.sender || "");
+        var evSender = traceOpsNormSenderSafeLocal(ev.reporta || "");
+        var respSender = traceOpsNormSenderSafeLocal(ev.responsable_sugerido || "");
         if (imgSender && evSender && imgSender === evSender) score += 5;
         else if (imgSender && respSender && imgSender === respSender) score += 4;
 
@@ -4109,6 +4274,19 @@ function App() {
 
       {state==="idle"&&(
         <div>
+          <div className="traceops-context">
+            <div className="traceops-context-main">
+              <span className="traceops-context-kicker">Operational workspace</span>
+              <div className="traceops-context-title">Control center para evidencia operativa</div>
+              <div className="traceops-context-subtitle">Se embebe una capa visual más SaaS sin tocar el pipeline actual: parsing, RCCA Trace, Yokoten, evidencias, Excel y sincronización se mantienen.</div>
+              <div className="traceops-context-chips">
+                {["WhatsApp ZIP","EML / MBOX","RCCA Trace","Yokoten","Evidencia en rango"].map(function(t){return <span key={t}>{t}</span>;})}
+              </div>
+            </div>
+            <div className="traceops-context-actions">
+              <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Cargar evidencia</button>
+            </div>
+          </div>
           <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
             <input ref={fileRef} type="file" accept=".zip" style={{display:"none"}} onChange={function(e){handle(e.target.files[0]);}}/>
             <div style={{padding:"48px 32px",textAlign:"center"}}>
@@ -4214,6 +4392,96 @@ function App() {
 
       {state==="done"&&result&&(
         <div id="results-section">
+          <div className="traceops-context">
+            <div className="traceops-context-main">
+              <span className="traceops-context-kicker">Operational summary</span>
+              <div className="traceops-context-title">Resumen ejecutivo del análisis activo</div>
+              <div className="traceops-context-subtitle">La propuesta visual se integra solo como shell premium. Se conserva el flujo existente, la experiencia del usuario y los módulos funcionales ya afinados.</div>
+              <div className="traceops-context-chips">
+                <span>{analysisRangeLabel||"Rango activo"}</span>
+                <span>{visibleEventCount} eventos visibles</span>
+                <span>{(msgStats&&msgStats.clean)||0} msgs limpios</span>
+                <span>{imgNames.length} evidencias en rango</span>
+                {apiUsage&&apiUsage.local_mode&&<span>Modo local</span>}
+                {apiUsage&&apiUsage.provider==="openai-backend"&&<span>OpenAI backend</span>}
+              </div>
+            </div>
+            <div className="traceops-context-actions">
+              <button className="ops-hero-btn" onClick={download}>Descargar XLSX</button>
+            </div>
+          </div>
+
+          <div className="traceops-kpi-strip">
+            <div className="traceops-kpi-card">
+              <div className="traceops-kpi-label">Eventos visibles</div>
+              <div className="traceops-kpi-value">{visibleEventCount}</div>
+              <div className="traceops-kpi-meta"><span>Total</span><strong>{totalEventCount}</strong></div>
+            </div>
+            <div className="traceops-kpi-card">
+              <div className="traceops-kpi-label">Críticos</div>
+              <div className={"traceops-kpi-value "+(criticalEventCount>0?"fail":"pass")}>{criticalEventCount}</div>
+              <div className="traceops-kpi-meta"><span>Abiertos</span><strong>{openEventCount}</strong></div>
+            </div>
+            <div className="traceops-kpi-card">
+              <div className="traceops-kpi-label">Engineer findings</div>
+              <div className={"traceops-kpi-value "+(findingsEventCount>0?"info":"warn")}>{findingsEventCount}</div>
+              <div className="traceops-kpi-meta"><span>Con finding</span><strong>{visibleEventCount?Math.round((findingsEventCount/visibleEventCount)*100):0}%</strong></div>
+            </div>
+            <div className="traceops-kpi-card">
+              <div className="traceops-kpi-label">Evidencia</div>
+              <div className="traceops-kpi-value info">{imgNames.length}</div>
+              <div className="traceops-kpi-meta"><span>Adjuntas auto</span><strong>{Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)}</strong></div>
+            </div>
+            <div className="traceops-kpi-card">
+              <div className="traceops-kpi-label">Rango visible</div>
+              <div className="traceops-kpi-value warn">{analysisWindowDays}</div>
+              <div className="traceops-kpi-meta"><span>Ventana</span><strong>{visibleRangeLabel}</strong></div>
+            </div>
+          </div>
+
+          <div className="traceops-analytics-grid">
+            <div className="traceops-panel">
+              <div className="traceops-panel-head">
+                <div><h3>Alertas prioritarias</h3><span>Eventos visibles que conviene revisar primero</span></div>
+                <span>{topAlerts.length} foco inmediato</span>
+              </div>
+              <div className="traceops-panel-body">
+                <div className="traceops-alert-list">
+                  {topAlerts.length?topAlerts.map(function(item){
+                    var sev=item.prioridad==="Critica"?"crit":(item.prioridad==="Alta"?"high":"med");
+                    return <div key={item.id} className="traceops-alert-item">
+                      <div className="traceops-alert-left">
+                        <span className={"traceops-alert-badge "+sev}>{item.prioridad||"Media"}</span>
+                        <div className="traceops-alert-copy">
+                          <div>{item.id} · {item.evento_detectado||"Sin descripcion"}</div>
+                          <span>{item.linea_estacion||"N/D"} · {item.tipo_evento||"Proceso"} · {item.estatus||"Abierto"}</span>
+                        </div>
+                      </div>
+                    </div>;
+                  }):<div style={{fontSize:12,color:"#5B657A"}}>No hay alertas visibles en el filtro activo.</div>}
+                </div>
+              </div>
+            </div>
+            <div className="traceops-engineering-grid">
+              <div className="traceops-engineering-card">
+                <h4>Top estaciones</h4>
+                <p>Distribución rápida de eventos visibles por línea/estación en el rango activo.</p>
+                <div className="traceops-bullets">
+                  {topStations.length?topStations.map(function(row){return <div key={row.name} className="traceops-bullet"><strong>{row.name}</strong> · {row.count} evento(s)</div>;}):<div className="traceops-bullet">Sin datos suficientes en el rango actual.</div>}
+                </div>
+              </div>
+              <div className="traceops-engineering-card">
+                <h4>Shell premium embebido</h4>
+                <p>La UI se reviste con contexto ejecutivo y KPIs rápidos, manteniendo intactos RCCA Trace, Yokoten, uploader, filtros, evidencias y exportables.</p>
+                <div className="traceops-bullets">
+                  <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
+                  <div className="traceops-bullet"><strong>Mensajes limpios:</strong> {((msgStats&&msgStats.clean)||0).toLocaleString()}</div>
+                  <div className="traceops-bullet"><strong>Evidencia:</strong> {imgNames.length} en rango · {Object.values(evImgs).reduce(function(a,b){return a+b.length;},0)} adjuntas auto</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
             <div>
               <h3 style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>Excel listo para junta</h3>
