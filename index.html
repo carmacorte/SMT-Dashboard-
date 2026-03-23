@@ -1391,7 +1391,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   var candidates = candidateDetectorLocal(msgs);
   var clusters = clusterIncidentsLocal(candidates);
-  var localFallbackResult = (typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters))));
+  var localFallbackResult = traceOpsDedupeEngineerFindingsLocal((typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters)))));
 
   if (!apiKey || !apiKey.trim()) {
     return localFallbackResult;
@@ -1927,6 +1927,86 @@ async function analyzeWithAI(msgs, apiKey) {
     return "[" + (msg.dateDisp || msg.dateIso || "") + " " + (msg.timeStr || "") + " " + (msg.sender || "") + "] " + body;
   }
 
+
+  function traceOpsFindingEventOverlapLocal(findingText, ev) {
+    var txt = String(findingText || "");
+    if (!txt || !ev) return 0;
+    var blob = [
+      ev.modelo || "",
+      ev.linea_estacion || "",
+      ev.tipo_evento || "",
+      ev.defecto_smt || "",
+      ev.evento_detectado || "",
+      ev.impacto || "",
+      ev.accion_requerida || "",
+      ev.accion_ejecutada || ""
+    ].join(" ");
+    var a = String(txt || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    var b = String(blob || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    var score = 0;
+    Array.from(new Set(a.split(" ").filter(function(w){ return w && w.length > 3; }))).forEach(function(tok){
+      if ((" " + b + " ").indexOf(" " + tok + " ") >= 0) score += 1;
+    });
+    var partHits = (txt.match(/\b(?:U|R|C|Q|L|D|TP|IC|CN|FB)\d{1,4}\b/ig) || []);
+    partHits.forEach(function(p){
+      var pn = String(p || "").toLowerCase();
+      if ((" " + b + " ").indexOf(" " + pn + " ") >= 0) score += 3;
+    });
+    if (ev.defecto_smt && a.indexOf(String(ev.defecto_smt || "").toLowerCase()) >= 0) score += 2;
+    return score;
+  }
+
+  function traceOpsEventNeedsHighFindingOverlapLocal(ev) {
+    var t = String((ev && ev.evento_detectado) || "").toLowerCase();
+    var x = String((ev && ev.tipo_evento) || "").toLowerCase();
+    return /router|red|network|efox|junta|retrabajo|reparaciones|pass vanguard|mesa|area|soporte|support|alarmad|chamber|esperando tecnico/.test(t + " " + x);
+  }
+
+  function traceOpsFindingFingerprintLocal(text) {
+    return String(text || "")
+      .replace(/\[[^\]]+\]\s*/g, " ")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\b(?:aldair|superintendente|ildefonso|valenzuela|luis|tecalco|prod|produccion|quality|team|miriam)\b/g, " ")
+      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter(function(w){ return w && w.length > 3; })
+      .slice(0, 18)
+      .join(" ");
+  }
+
+  function traceOpsDedupeEngineerFindingsLocal(parsed) {
+    if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
+    var groups = {};
+    parsed.eventos.forEach(function(ev, idx){
+      var fp = traceOpsFindingFingerprintLocal(ev.engineer_findings || "");
+      if (!fp || fp.length < 20) return;
+      if (!groups[fp]) groups[fp] = [];
+      groups[fp].push({
+        idx: idx,
+        overlap: traceOpsFindingEventOverlapLocal(ev.engineer_findings || "", ev),
+        strong: findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")
+      });
+    });
+    Object.keys(groups).forEach(function(fp){
+      var arr = groups[fp];
+      if (arr.length <= 1) return;
+      arr.sort(function(a,b){
+        if ((b.overlap || 0) !== (a.overlap || 0)) return (b.overlap || 0) - (a.overlap || 0);
+        if ((b.strong ? 1 : 0) !== (a.strong ? 1 : 0)) return (b.strong ? 1 : 0) - (a.strong ? 1 : 0);
+        return a.idx - b.idx;
+      });
+      for (var i = 1; i < arr.length; i++) {
+        parsed.eventos[arr[i].idx].engineer_findings = "";
+      }
+    });
+    return parsed;
+  }
+
   function enrichEngineerFindingsLocal(parsed) {
     if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
     var followWindowMs = 36 * 60 * 60000;
@@ -1979,32 +2059,32 @@ async function analyzeWithAI(msgs, apiKey) {
         return a.ms - b.ms;
       });
 
-      var picked = [];
-      var seen = {};
-      var totalLen = 0;
       hits.forEach(function(h) {
-        if (picked.length >= 2 || totalLen >= 700) return;
-        var k = normalizeLooseLocal(h.cleanText || h.msg.text).slice(0, 120);
-        if (!k || seen[k]) return;
-        seen[k] = true;
-        picked.push(h);
-        totalLen += String(h.cleanText || "").length;
+        h.evOverlap = traceOpsFindingEventOverlapLocal(h.cleanText || h.msg.text, ev);
       });
 
-      picked.sort(function(a, b) { return a.ms - b.ms; });
-      var followText = picked.map(function(h) { return formatFindingLocal(h.msg, h.cleanText); }).filter(Boolean).join(" || ");
+      hits = hits.filter(function(h){
+        var needHigh = traceOpsEventNeedsHighFindingOverlapLocal(ev);
+        if (needHigh) return (h.evOverlap || 0) >= 6;
+        return (h.evOverlap || 0) >= 4;
+      });
+
+      hits.sort(function(a, b) {
+        if ((b.evOverlap || 0) !== (a.evOverlap || 0)) return (b.evOverlap || 0) - (a.evOverlap || 0);
+        if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+        return (a.ms || 0) - (b.ms || 0);
+      });
+
+      var best = hits.length ? hits[0] : null;
+      var followText = best ? formatFindingLocal(best.msg, best.cleanText) : "";
       var existing = traceOpsIsFindingsExceptionLocal(ev.engineer_findings || "") ? "" : cleanFindingTextLocal(String(ev.engineer_findings || "").trim());
 
       if (!existing) {
         ev.engineer_findings = followText || "";
       } else if (followText) {
-        var normExisting = normalizeLooseLocal(existing);
-        var normFollow = normalizeLooseLocal(followText);
-        if (normExisting.indexOf(normFollow.slice(0, 80)) === -1 && normFollow.indexOf(normExisting.slice(0, 80)) === -1) {
-          ev.engineer_findings = existing + " || " + followText;
-        } else {
-          ev.engineer_findings = existing.length >= normFollow.length ? existing : followText;
-        }
+        var existingOverlap = traceOpsFindingEventOverlapLocal(existing, ev);
+        var followOverlap = traceOpsFindingEventOverlapLocal(followText, ev);
+        ev.engineer_findings = followOverlap >= existingOverlap ? followText : existing;
       } else {
         ev.engineer_findings = existing || "";
       }
@@ -2021,6 +2101,11 @@ async function analyzeWithAI(msgs, apiKey) {
 
       if (findingLooksAdministrativeUpdateLocal(ev.engineer_findings || "") && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
       if (findingAdminNoiseScoreLocal(ev.engineer_findings || "") >= 4 && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
+      if (ev.engineer_findings) {
+        var finalOverlap = traceOpsFindingEventOverlapLocal(ev.engineer_findings, ev);
+        if (traceOpsEventNeedsHighFindingOverlapLocal(ev) && finalOverlap < 6) ev.engineer_findings = "";
+        else if (finalOverlap < 4) ev.engineer_findings = "";
+      }
       return ev;
     });
 
@@ -2133,7 +2218,7 @@ async function analyzeWithAI(msgs, apiKey) {
     cluster_mode: useClusterMode ? 1 : 0
   };
 
-  return (typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed)));
+  return traceOpsDedupeEngineerFindingsLocal((typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed))));
 }
 
 async function buildXlsx(result) {
