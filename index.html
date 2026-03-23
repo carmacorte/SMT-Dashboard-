@@ -1491,6 +1491,9 @@ async function analyzeWithAI(msgs, apiKey) {
       /password/i,
       /contrasena/i,
       /\befox\b/i,
+      /no hay e[- ]?fox/i,
+      /e[- ]?fox down/i,
+      /sin e[- ]?fox/i,
       /agenda.*auditoria/i,
       /apertura.*auditoria/i,
       /\baudit\b/i,
@@ -1499,6 +1502,14 @@ async function analyzeWithAI(msgs, apiKey) {
       /kickoff/i,
       /mantenimiento programado/i,
       /scheduled maintenance/i,
+      /power outage/i,
+      /corte de energia/i,
+      /sin red/i,
+      /no hay red/i,
+      /network down/i,
+      /falla de red/i,
+      /it support/i,
+      /infraestructura/i,
       /revision de acciones/i,
       /documentacion/i,
       /reporte semanal/i,
@@ -1517,6 +1528,12 @@ async function analyzeWithAI(msgs, apiKey) {
       /notification/i,
       /recordatorio/i,
       /reminder/i,
+      /no hay e[- ]?fox/i,
+      /no hay red/i,
+      /sin red/i,
+      /it support/i,
+      /power outage/i,
+      /network/i,
       /calendar/i,
       /convocatoria/i,
       /minuta/i
@@ -1528,12 +1545,20 @@ async function analyzeWithAI(msgs, apiKey) {
       /\blogin\b/i,
       /password/i,
       /\befox\b/i,
+      /no hay e[- ]?fox/i,
+      /sin e[- ]?fox/i,
       /agenda/i,
       /auditoria/i,
       /meeting/i,
       /reunion/i,
       /scheduled maintenance/i,
       /mantenimiento programado/i,
+      /power outage/i,
+      /corte de energia/i,
+      /sin red/i,
+      /no hay red/i,
+      /network down/i,
+      /it support/i,
       /reporte semanal/i,
       /\bawb\b/i,
       /\beta\b/i,
@@ -1933,6 +1958,8 @@ async function analyzeWithAI(msgs, apiKey) {
         ev.engineer_findings = "";
       }
 
+      if (findingLooksAdministrativeUpdateLocal(ev.engineer_findings || "") && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
+      if (findingAdminNoiseScoreLocal(ev.engineer_findings || "") >= 4 && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
       return ev;
     });
 
