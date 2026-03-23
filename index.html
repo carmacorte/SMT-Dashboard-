@@ -1292,6 +1292,16 @@ async function analyzeWithAI(msgs, apiKey) {
     };
   }
 
+
+  function (typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(parsed) {
+    try {
+      if (typeof traceOpsRefineEngineerFindingsAcrossEventsLocal === "function") {
+        return traceOpsRefineEngineerFindingsAcrossEventsLocal(parsed);
+      }
+    } catch (_) {}
+    return parsed;
+  }
+
   function candidateDetectorLocal(msgs) {
     return msgs
       .filter(function(m) { return !isNoiseLocal(m.text) && !traceOpsIsHardExcludedEventLocal(m.text) && !traceOpsIsSoftExcludedEventLocal(m.text); })
@@ -1381,7 +1391,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   var candidates = candidateDetectorLocal(msgs);
   var clusters = clusterIncidentsLocal(candidates);
-  var localFallbackResult = traceOpsApplyFindingsRefineSafeLocal(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters))));
+  var localFallbackResult = (typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters))));
 
   if (!apiKey || !apiKey.trim()) {
     return localFallbackResult;
@@ -2095,7 +2105,7 @@ async function analyzeWithAI(msgs, apiKey) {
     cluster_mode: useClusterMode ? 1 : 0
   };
 
-  return traceOpsApplyFindingsRefineSafeLocal(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed)));
+  return (typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed)));
 }
 
 async function buildXlsx(result) {
