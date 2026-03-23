@@ -1293,7 +1293,7 @@ async function analyzeWithAI(msgs, apiKey) {
   }
 
 
-  function (typeof traceOpsApplyFindingsRefineSafeLocal==="function"?traceOpsApplyFindingsRefineSafeLocal:function(x){return x;})(parsed) {
+  function traceOpsApplyFindingsRefineSafeLocal(parsed) {
     try {
       if (typeof traceOpsRefineEngineerFindingsAcrossEventsLocal === "function") {
         return traceOpsRefineEngineerFindingsAcrossEventsLocal(parsed);
