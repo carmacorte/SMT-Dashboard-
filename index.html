@@ -3778,7 +3778,7 @@ function App() {
     var topDefect=cur.defecto_dominante||getTopValue(linkedEvents,function(item){return item.defecto_smt;})||"-";
     var firstSeen=linkedEvents.slice().sort(function(a,b){return getDateValue(a.fecha)-getDateValue(b.fecha);})[0];
     var lastSeen=linkedEvents.slice().sort(function(a,b){return getDateValue(b.fecha)-getDateValue(a.fecha);})[0];
-    var actions=[{l:"Contencion",v:cur.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Accion Correctiva",v:cur.accion_correctiva,color:"#2952A3",bg:"#EBF0FC"},{l:"Accion Preventiva",v:cur.accion_preventiva,color:"#1A7A3C",bg:"#EBF8EE"}];
+    var actions=[{l:"Containment",v:cur.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Corrective Action",v:cur.accion_correctiva,color:"#2952A3",bg:"#EBF0FC"},{l:"Preventive Action",v:cur.accion_preventiva,color:"#1A7A3C",bg:"#EBF8EE"}];
     return(
       <div className="ic-wrap">
         <div style={{padding:"0 14px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
