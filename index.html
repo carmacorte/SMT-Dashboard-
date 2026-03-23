@@ -3577,6 +3577,8 @@ function App() {
 
       var bestEv = null;
       var bestScore = -9999;
+      var nearestEv = null;
+      var nearestDiff = 999999;
       var sameDayEvents = evs.filter(function(ev){
         var evMs0 = parseEventDateTimeMs(ev);
         return evMs0 != null && sameCalendarDay(imgMs, evMs0);
@@ -3588,6 +3590,11 @@ function App() {
         if(!sameCalendarDay(imgMs, evMs)) return;
 
         var diffMin = Math.abs(imgMs - evMs) / 60000;
+        if (diffMin < nearestDiff) {
+          nearestDiff = diffMin;
+          nearestEv = ev;
+        }
+
         var score = 0;
 
         if (diffMin <= 5) score += 14;
@@ -3595,7 +3602,8 @@ function App() {
         else if (diffMin <= 30) score += 9;
         else if (diffMin <= 60) score += 6;
         else if (diffMin <= 180) score += 3;
-        else score += 1;
+        else if (diffMin <= 480) score += 1;
+        else score += 0;
 
         var imgSender = normSenderLocal(meta.sender || "");
         var evSender = normSenderLocal(ev.reporta || "");
@@ -3608,9 +3616,11 @@ function App() {
         var overlap = traceOpsTokenOverlapScoreLocal(contextText, eventBlob);
         score += Math.min(8, overlap * 2);
 
-        if (extractModelTokensLocal(contextText).length && overlap > 0) score += 2;
-        if (extractPartsLocal(contextText).length && overlap > 0) score += 3;
-        if (/\b(?:aoi|ict|smt|pth|socket|dimm|mix|mezcla|material|label|etiqueta|board|pcb)\b/i.test(contextText)) score += 1;
+        var ctxModels = extractModelTokensLocal(contextText);
+        var ctxParts = extractPartsLocal(contextText);
+        if (ctxModels.length && overlap > 0) score += 2;
+        if (ctxParts.length && overlap > 0) score += 3;
+        if (/\b(?:aoi|ict|smt|pth|socket|dimm|mix|mezcla|material|label|etiqueta|board|pcb|u\d+|r\d+|c\d+)\b/i.test(contextText)) score += 1;
 
         if (score > bestScore) {
           bestScore = score;
@@ -3623,7 +3633,12 @@ function App() {
         bestScore = 3;
       }
 
-      if(bestEv && bestScore >= 3){
+      if((!bestEv || bestScore < 3) && sameDayEvents.length <= 2 && nearestEv && nearestDiff <= 720){
+        bestEv = nearestEv;
+        bestScore = 2;
+      }
+
+      if(bestEv && (bestScore >= 3 || (sameDayEvents.length <= 2 && nearestDiff <= 720))){
         if(!map[bestEv.id]) map[bestEv.id] = [];
         map[bestEv.id].push(fname);
       }
