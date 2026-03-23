@@ -1856,9 +1856,17 @@ async function analyzeWithAI(msgs, apiKey) {
     var techHits = technicalHitCountLocal(s);
     var parts = extractPartsLocal(s).length;
     var models = extractModelTokensLocal(s).length;
-    var hasRefdes = /(?:u|r|c|q|l|d|tp|ic|cn|fb)\d{1,4}/i.test(s);
-    var hasTechWords = /(?:causa|cause|hipotesis|hypothesis|validacion|validation|mitigacion|mitigation|inspeccion|inspection|analisis|analysis|flux|pogo|ict|aoi|bga|short|open|owner|escalad|conten(?:cion|tion)|componente|component)/i.test(s);
-    return techHits >= 3 || parts > 0 || models > 0 || hasRefdes || hasTechWords;
+    var hasRefdes = /\b(?:u|r|c|q|l|d|tp|ic|cn|fb)\d{1,4}\b/i.test(s);
+    var hasTechWords = /\b(?:causa|cause|hipotesis|hypothesis|validacion|validation|mitigacion|mitigation|inspeccion|inspection|analisis|analysis|flux|pogo|ict|aoi|bga|short|open|owner|escalad|conten(?:cion|tion)|componente|component)\b/i.test(s);
+
+    var signals = 0;
+    if (techHits >= 3) signals++;
+    if (parts > 0) signals++;
+    if (models > 0) signals++;
+    if (hasRefdes) signals++;
+    if (hasTechWords && techHits >= 1) signals++;
+
+    return signals >= 2;
   }
 
   function findingLooksAdministrativeUpdateLocal(text) {
@@ -1910,7 +1918,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   function enrichEngineerFindingsLocal(parsed) {
     if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
-    var followWindowMs = 5 * 24 * 60 * 60000;
+    var followWindowMs = 36 * 60 * 60000;
 
     parsed.eventos = (parsed.eventos || []).map(function(ev) {
       var evTimeMs = parseEventDateTimeMsLocal(ev);
@@ -1937,11 +1945,20 @@ async function analyzeWithAI(msgs, apiKey) {
 
         if (anchorTextNorm && normalizeLooseLocal(cleanText).indexOf(anchorTextNorm.slice(0, 24)) >= 0) score += 2;
 
+        var msgSenderNorm = normSenderLocal(m.sender || "");
+        var evReportaNorm = normSenderLocal(ev.reporta || "");
+        if (msgSenderNorm && evReportaNorm && msgSenderNorm === evReportaNorm) {
+          score -= 6;
+        }
+
+        var distHours = (msgTimeMs - evTimeMs) / 3600000;
+        if (distHours > 24) score -= Math.floor((distHours - 24) / 6) * 2;
+
         var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(cleanText) === anchor.station);
         if (findingLooksAdministrativeUpdateLocal(cleanText) && !findingHasStrongTechnicalSignalLocal(cleanText)) return;
         if (!hasAnchor && techHits < 3) return;
         if (!findingHasStrongTechnicalSignalLocal(cleanText)) return;
-        if (score < 10) return;
+        if (score < 16) return;
 
         hits.push({ msg: m, ms: msgTimeMs, score: score, cleanText: cleanText });
       });
