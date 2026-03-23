@@ -1156,6 +1156,142 @@ async function analyzeWithAI(msgs, apiKey) {
     return new Date(dp[0], dp[1] - 1, dp[2], tp[0] || 0, tp[1] || 0).getTime() / 60000;
   }
 
+  function buildLocalResult(msgs, candidates, clusters) {
+    function padId(n){ return "EVT-" + String(n).padStart(3, "0"); }
+    function detectDefecto(text){
+      var t = normalizeLocal(text);
+      if (/missing material|faltante|falta material/.test(t)) return "Missing material";
+      if (/wrong part|material mix|mezcla de material|wrong component/.test(t)) return "Wrong component";
+      if (/short|bridge|corto|puente/.test(t)) return "Short / bridge";
+      if (/open|abierto/.test(t)) return "Open";
+      if (/misalign|desalinead/.test(t)) return "Misaligned component";
+      if (/socket|dimm|bga|u\d+|r\d+|c\d+/.test(t)) return "Hallazgo tecnico";
+      return "N/A";
+    }
+    function detectPrioridad(text, tipo){
+      var t = normalizeLocal(text);
+      if (/critical|critico|paro|line down|deten/.test(t)) return "Critica";
+      if (tipo === "Calidad" || /scrap|rechazo|rma|defecto/.test(t)) return "Alta";
+      if (tipo === "Material" || tipo === "Proceso") return "Media";
+      return "Baja";
+    }
+    function detectEstatus(text){
+      var t = normalizeLocal(text);
+      if (/cerrado|closed|resuelto|resolved/.test(t)) return "Cerrado";
+      if (/en proceso|working|follow up|seguimiento/.test(t)) return "En proceso";
+      return "Abierto";
+    }
+    function detectModelo(text){
+      var raw = String(text || "");
+      var m = raw.match(/\b(?:N\/P|P\/N|MODEL|MODELO|PART)\s*[:# ]?\s*([A-Z0-9][A-Z0-9-]{4,})/i);
+      if (m) return String(m[1]).toUpperCase();
+      var m2 = raw.match(/\b([A-Z]{2,}[0-9]{3,}[A-Z0-9-]*)\b/);
+      if (m2) return String(m2[1]).toUpperCase();
+      return "N/D";
+    }
+    function impactFor(tipo, prioridad){
+      if (prioridad === "Critica") return "Paro o riesgo alto para la operacion";
+      if (tipo === "Calidad") return "Riesgo de defecto o retrabajo";
+      if (tipo === "Material") return "Riesgo de paro por material";
+      if (tipo === "Proceso") return "Afectacion al flujo de manufactura";
+      return "Afectacion operativa";
+    }
+    function actionFor(tipo, defecto){
+      if (defecto !== "N/A") return "Revisar " + defecto + " y ejecutar contencion en piso";
+      if (tipo === "Material") return "Verificar disponibilidad y segregacion de material";
+      if (tipo === "Proceso") return "Revisar parametros y condicion de equipo";
+      if (tipo === "Calidad") return "Containment y validacion de calidad";
+      return "Asignar responsable y seguimiento";
+    }
+
+    var eventos = (clusters || []).map(function(cluster, i){
+      var arr = cluster.messages || [];
+      var first = arr[0] || {};
+      var allText = arr.map(function(m){ return m.text || ""; }).join(" ");
+      var longest = arr.slice().sort(function(a,b){ return String(b.text||"").length - String(a.text||"").length; })[0] || first || {};
+      var tipo = cluster.type || detectTypeLocal(allText) || "Proceso";
+      var prioridad = detectPrioridad(allText, tipo);
+      var estatus = detectEstatus(allText);
+      var linea = cluster.line && cluster.line !== "N/D" ? cluster.line : extractLineLocal(allText);
+      var estacion = cluster.station && cluster.station !== "N/D" ? cluster.station : extractStationLocal(allText);
+      var lineaEstacion = linea !== "N/D" ? (estacion !== "N/D" ? (linea + " / " + estacion) : linea) : estacion;
+      if (!lineaEstacion || lineaEstacion === "N/D") lineaEstacion = "N/D";
+      var fechaIso = first.dateIso || "";
+      var dp = fechaIso.split("-");
+      var fechaDisp = dp.length === 3 ? (dp[2] + "/" + dp[1] + "/" + dp[0]) : (first.dateDisp || "");
+      var accionEjecutada = arr.length > 1 ? String(arr[arr.length - 1].text || "").slice(0, 180) : "";
+      return {
+        id: padId(i + 1),
+        fecha: fechaDisp || first.dateDisp || "",
+        hora: String(first.timeStr || "").slice(0,5),
+        turno: first.turno || "N/D",
+        modelo: detectModelo(allText),
+        linea_estacion: lineaEstacion,
+        reporta: first.sender || "N/D",
+        area_involucrada: tipo,
+        tipo_evento: tipo,
+        defecto_smt: detectDefecto(allText),
+        evento_detectado: String(longest.text || "").slice(0, 220),
+        impacto: impactFor(tipo, prioridad),
+        accion_requerida: actionFor(tipo, detectDefecto(allText)),
+        accion_ejecutada: accionEjecutada,
+        engineer_findings: "",
+        responsable_sugerido: first.sender || "N/D",
+        actores: [first.sender || "Produccion"],
+        estado_historia: estatus === "Cerrado" ? "Cerrado" : "Detectado",
+        estatus: estatus,
+        prioridad: prioridad,
+        fuente_chat: (fechaDisp || first.dateIso || "") + " " + (first.timeStr || "") + " " + (first.sender || ""),
+        notas: ""
+      };
+    });
+
+    var kpis = [];
+    var senderMap = {};
+    (msgs || []).forEach(function(m){
+      if (m && m.sender) {
+        if (!senderMap[m.sender]) senderMap[m.sender] = { nombre: m.sender, mensajes: 0, eventos: 0, departamento: "", rol: "", area_owner: "" };
+        senderMap[m.sender].mensajes += 1;
+      }
+    });
+    eventos.forEach(function(ev){
+      if (ev.reporta && senderMap[ev.reporta]) senderMap[ev.reporta].eventos += 1;
+    });
+    var allDates = (msgs || []).map(function(m){ return m.dateIso; }).filter(Boolean).sort();
+    function isoToDisp(iso){
+      var p = String(iso || "").split("-");
+      return p.length === 3 ? (p[2] + "/" + p[1] + "/" + p[0]) : iso;
+    }
+    var resumen = {
+      periodo: allDates.length ? (isoToDisp(allDates[0]) + " a " + isoToDisp(allDates[allDates.length - 1])) : "",
+      grupo: "Planta",
+      total_eventos: eventos.length,
+      alertas_criticas: eventos.filter(function(e){ return e.prioridad === "Critica"; }).slice(0,5).map(function(e){ return e.id + " - " + e.linea_estacion + " - " + String(e.evento_detectado || "").slice(0,60); }),
+      acciones_pendientes: eventos.filter(function(e){ return e.estatus !== "Cerrado"; }).slice(0,5).map(function(e){ return e.id + " - " + String(e.accion_requerida || "").slice(0,60); }),
+      estatus_lineas: []
+    };
+
+    return {
+      eventos: eventos,
+      kpis: kpis,
+      resumen: resumen,
+      directorio: Object.keys(senderMap).map(function(k){ return senderMap[k]; }).sort(function(a,b){ return b.mensajes - a.mensajes; }).slice(0, 20),
+      __traceops_api: {
+        api_calls: 0,
+        cache_hit: false,
+        local_mode: true,
+        provider: "local-only",
+        model: "local-engine-v1",
+        max_tokens: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        server_stop_reason: "local",
+        requested_msgs: msgs.length,
+        cluster_mode: candidates.length >= 3 && clusters.length >= 2 ? 1 : 0
+      }
+    };
+  }
+
   function candidateDetectorLocal(msgs) {
     return msgs
       .filter(function(m) { return !isNoiseLocal(m.text) && !traceOpsIsHardExcludedEventLocal(m.text) && !traceOpsIsSoftExcludedEventLocal(m.text); })
@@ -1245,6 +1381,11 @@ async function analyzeWithAI(msgs, apiKey) {
 
   var candidates = candidateDetectorLocal(msgs);
   var clusters = clusterIncidentsLocal(candidates);
+  var localFallbackResult = pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters)));
+
+  if (!apiKey || !apiKey.trim()) {
+    return localFallbackResult;
+  }
 
   var useClusterMode = candidates.length >= 3 && clusters.length >= 2;
   var userContent;
@@ -1798,8 +1939,47 @@ async function analyzeWithAI(msgs, apiKey) {
     return parsed;
   }
 
-  throw new Error("Anthropic fue removido. Usa OpenAI backend o modo local.");
-    function extractBalancedJsonObject(text) {
+  var resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: TRACEOPS_MAX_OUTPUT_TOKENS,
+      system: system,
+      messages: [
+        { role: "user", content: userContent },
+        { role: "assistant", content: "{" }
+      ]
+    })
+  });
+
+  if (!resp.ok) {
+    var err = await resp.json().catch(function() { return {}; });
+    var msgErr = (err.error && err.error.message) || ("Error API " + resp.status);
+    try {
+      localFallbackResult.__traceops_api.fallback_reason = msgErr;
+      localFallbackResult.__traceops_api.fallback_from = "anthropic";
+    } catch (_) {}
+    console.warn("[TraceOps] IA no disponible, usando modo local:", msgErr);
+    return localFallbackResult;
+  }
+
+  var data = await resp.json();
+
+  if (!data.content || !data.content.length) {
+    try {
+      localFallbackResult.__traceops_api.fallback_reason = "Respuesta vacia de IA";
+      localFallbackResult.__traceops_api.fallback_from = "anthropic";
+    } catch (_) {}
+    return localFallbackResult;
+  }
+
+  function extractBalancedJsonObject(text) {
     var start = text.indexOf("{");
     if (start === -1) return "";
     var depth = 0, inString = false, esc = false;
@@ -1827,7 +2007,8 @@ async function analyzeWithAI(msgs, apiKey) {
 
   var jsonStr = extractBalancedJsonObject(clean);
   if (!jsonStr) {
-    throw new Error("JSON invalido. Reduce el rango o intenta de nuevo.");
+    try { localFallbackResult.__traceops_api.fallback_reason = "JSON invalido de IA"; localFallbackResult.__traceops_api.fallback_from = "anthropic"; } catch (_) {}
+    return localFallbackResult;
   }
 
   var parsed = null;
@@ -1847,17 +2028,15 @@ async function analyzeWithAI(msgs, apiKey) {
   }
 
   if (!parsed) {
-    if ((data.stop_reason || "") === "max_tokens") {
-      throw new Error("La respuesta de IA se truncó por limite de tokens. Usa 1 a 3 dias o reduce el rango.");
-    }
-    throw new Error("Error procesando respuesta de IA. Intenta de nuevo o usa 1 a 3 dias.");
+    try { localFallbackResult.__traceops_api.fallback_reason = ((data.stop_reason || "") === "max_tokens") ? "Respuesta truncada de IA" : "Error procesando respuesta de IA"; localFallbackResult.__traceops_api.fallback_from = "anthropic"; } catch (_) {}
+    return localFallbackResult;
   }
 
   var usage = data.usage || {};
   parsed.__traceops_api = {
     api_calls: 1,
     cache_hit: false,
-    model: "",
+    model: "claude-sonnet-4-20250514",
     max_tokens: TRACEOPS_MAX_OUTPUT_TOKENS,
     input_tokens: usage.input_tokens || estimateTokensLocal(system + "\n" + userContent),
     output_tokens: usage.output_tokens || estimateTokensLocal(raw),
@@ -2802,7 +2981,7 @@ function App() {
 
   async function handle(file){
     if(!file||!file.name.endsWith(".zip")){setErrMsg("Sube un .zip exportado de WhatsApp");setState("error");return;}
-    if(!apiKey.trim()){setErrMsg("Ingresa tu API Key");setState("error");return;}
+    // API Key opcional: sin key, TraceOps usa modo local automatico
     var requestedDays = traceOpsGetWindowDays(filterMode, days, dateFrom, dateTo, weekNum, weekYear);
     if(requestedDays>7 && !adminOverride && !window.confirm("Este rango cubre " + requestedDays + " dias y puede incrementar consumo de tokens y ruido. Se recomienda 3 a 5 dias. ¿Continuar de todos modos?")){return;}
     fileNameRef.current=file.name;
@@ -3691,7 +3870,7 @@ function App() {
         <div className="sidebar-section">
           <div className="sidebar-section-title">API Key</div>
           <input className="sidebar-api-input" type="password" placeholder="Pega tu API key aqui" value={apiKey} onChange={function(e){saveKey(e.target.value);}}/>
-          <div className="sidebar-api-note">Guardada en navegador.</div>
+          <div className="sidebar-api-note">Opcional. Sin key se usa modo local; con key se intenta IA. Si IA falla, vuelve a local.</div>
         </div>
 
         <div className="sidebar-section">
