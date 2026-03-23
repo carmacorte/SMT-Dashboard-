@@ -2647,7 +2647,7 @@ async function buildXlsx(result) {
   wsDash.columns = [28,10,10,10,10,10,12,10].map(function(w){ return {width:w}; });
 
   var wsDir = wb.addWorksheet("Directorio_Equipo");
-  var dH = ["Nombre","Departamento","Rol","Mensajes","Eventos","Area_owner"];
+  var dH = ["Nombre","Departamento","Rol","Mensajes","Events","Area_owner"];
   wsDir.addRow(dH); styleHdr(wsDir, dH.length);
   var dirRows = directorio.length > 0
     ? directorio.map(function(d){ return [d.nombre, d.departamento, d.rol, d.mensajes, d.eventos, d.area_owner]; })
@@ -3706,7 +3706,7 @@ function App() {
   function traceOpsCarouselStatusLabel(v){
     return ({
       "NUEVO":"NEW",
-      "EN ANALISIS":"IN ANALYSIS",
+      "IN ANALYSIS":"IN ANALYSIS",
       "CONTENIDO":"CONTAINED",
       "VALIDANDO":"VALIDATING",
       "CERRADO":"CLOSED"
@@ -3716,7 +3716,7 @@ function App() {
   function traceOpsCarouselFieldLabel(v){
     return ({
       "Titulo":"Title",
-      "Problema":"Problem",
+      "Problem":"Problem",
       "Tipo de caso":"Case type",
       "Estatus":"Status",
       "Modelo":"Model",
@@ -3729,9 +3729,9 @@ function App() {
       "Primera deteccion":"First detection",
       "Ultima deteccion":"Last detection",
       "Leccion aprendida":"Lesson learned",
-      "Hipotesis":"Hypothesis",
+      "Hypothesis":"Hypothesis",
       "Causa raiz":"Root cause",
-      "Validacion":"Validation",
+      "Validation":"Validation",
       "Patron detectado":"Detected pattern",
       "Evidencia resumen":"Evidence summary",
       "Material afectado":"Affected material",
@@ -3764,7 +3764,7 @@ function App() {
     function inferRecurrence(){if(cur.recurrencia)return String(cur.recurrencia);var n=(cur.event_ids||[]).length;if(n>=5)return"5";if(n===4)return"4";if(n===3)return"3";if(n===2)return"2";return"1";}
     function inferMaturity(){if(cur.madurez_analisis)return String(cur.madurez_analisis);if(cur.leccion_aprendida&&cur.accion_preventiva)return"5";if(cur.validacion)return"4";if(cur.hipotesis||cur.causa_raiz)return"3";if(cur.contencion)return"2";return"1";}
     function severityStars(v){var n=parseInt(v||"0",10)||0;return "★★★★★".slice(0,n)+"☆☆☆☆☆".slice(0,5-n);}
-    function statusStyle(v){var palette={"NUEVO":["#F8F7F5","#8A8580","#DDDBD7"],"EN ANALISIS":["#EBF0FC","#2952A3","#C8D7F8"],"CONTENIDO":["#FEF9E8","#B87820","#F5E4A0"],"VALIDANDO":["#F5F0FE","#6B2DA8","#DBCDF8"],"CERRADO":["#EAF5F0","#1E5C48","#B8DECE"]};var p=palette[v]||["#F8F7F5","#6A6560","#DDDBD7"];return{background:p[0],color:p[1],border:"1px solid "+p[2]};}
+    function statusStyle(v){var palette={"NUEVO":["#F8F7F5","#8A8580","#DDDBD7"],"IN ANALYSIS":["#EBF0FC","#2952A3","#C8D7F8"],"CONTENIDO":["#FEF9E8","#B87820","#F5E4A0"],"VALIDANDO":["#F5F0FE","#6B2DA8","#DBCDF8"],"CERRADO":["#EAF5F0","#1E5C48","#B8DECE"]};var p=palette[v]||["#F8F7F5","#6A6560","#DDDBD7"];return{background:p[0],color:p[1],border:"1px solid "+p[2]};}
     var linkedEvents=(cur.event_ids||[]).map(function(id){return ev.find(function(e){return e.id===id;});}).filter(Boolean);
     var evIds=cur.event_ids&&cur.event_ids.length>0?cur.event_ids.join(", "):null;
     var related=allRcca.filter(function(r){if(!r||r.rcca_id===cur.rcca_id)return false;return(r.modelo&&cur.modelo&&r.modelo.toLowerCase()===cur.modelo.toLowerCase())||(r.linea&&cur.linea&&r.linea.toLowerCase()===cur.linea.toLowerCase())||(r.tipo_caso&&cur.tipo_caso&&r.tipo_caso===cur.tipo_caso);}).slice(0,3);
@@ -3821,10 +3821,10 @@ function App() {
                     </div>
                     <div className="ic-tabs">{activeTabs.map(function(tlabel,ti){return<button key={ti} className={"ic-tab"+(tab===ti?" on":"")} onClick={function(){setTab(ti);}}>{tlabel}</button>;})}</div>
                     <div className="ic-body">
-                      {face==="summary"&&tab===0&&<div><Field label="Titulo" value={title}/><Field label="Problema" value={cur.problema}/><div className="ic-grid-2"><Field label="Tipo de caso" value={typeLabel}/><Field label="Estatus" value={statusLabel}/><Field label="Modelo" value={cur.modelo}/><Field label="Linea" value={cur.linea}/><Field label="Fecha" value={cur.fecha}/><Field label="Owner" value={cur.owner_email}/></div></div>}
+                      {face==="summary"&&tab===0&&<div><Field label="Titulo" value={title}/><Field label="Problem" value={cur.problema}/><div className="ic-grid-2"><Field label="Tipo de caso" value={typeLabel}/><Field label="Estatus" value={statusLabel}/><Field label="Modelo" value={cur.modelo}/><Field label="Linea" value={cur.linea}/><Field label="Fecha" value={cur.fecha}/><Field label="Owner" value={cur.owner_email}/></div></div>}
                       {face==="summary"&&tab===1&&<div><Field label="Eventos vinculados" value={evIds}/><div className="ic-grid-2"><Field label="Estacion dominante" value={topStation}/><Field label="Defecto dominante" value={topDefect}/><Field label="Primera deteccion" value={firstSeen?firstSeen.fecha:"-"}/><Field label="Ultima deteccion" value={lastSeen?lastSeen.fecha:"-"}/></div>{cur.event_ids&&cur.event_ids.length>0&&(<div style={{marginTop:6}}><div className="ic-field-label">Linked</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>{cur.event_ids.map(function(id){return<span key={id} className="ic-badge" style={{background:"#EAF5F0",color:"#2A7A60"}}>{id}</span>;})}</div></div>)}</div>}
                       {face==="summary"&&tab===2&&<div style={{display:"flex",flexDirection:"column",gap:8}}>{actions.map(function(a){return(<div key={a.l} style={{background:a.bg,border:"1px solid "+a.color+"40",borderRadius:7,padding:"9px 12px"}}><div className="ic-field-label" style={{color:a.color}}>{a.l}</div><div className="ic-field-val">{a.v||"-"}</div></div>);})}<div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:7,padding:"9px 12px"}}><div className="ic-field-label">Leccion aprendida</div><div className="ic-field-val">{cur.leccion_aprendida||"-"}</div></div></div>}
-                      {face==="analysis"&&tab===0&&<div><Field label="Hipotesis" value={cur.hipotesis}/><Field label="Causa raiz" value={cur.causa_raiz}/><Field label="Validacion" value={cur.validacion}/><Field label="Patron detectado" value={cur.patron_detectado}/><Field label="Leccion aprendida" value={cur.leccion_aprendida}/></div>}
+                      {face==="analysis"&&tab===0&&<div><Field label="Hypothesis" value={cur.hipotesis}/><Field label="Causa raiz" value={cur.causa_raiz}/><Field label="Validation" value={cur.validacion}/><Field label="Patron detectado" value={cur.patron_detectado}/><Field label="Leccion aprendida" value={cur.leccion_aprendida}/></div>}
                       {face==="analysis"&&tab===1&&<div><Field label="Evidencia resumen" value={cur.evidencia_resumen}/><div className="ic-grid-2"><Field label="Material afectado" value={cur.material_afectado}/><Field label="Alcance / exposicion" value={cur.alcance_exposicion}/><Field label="Eventos fuente" value={evIds}/><Field label="Problema base" value={cur.problema}/></div></div>}
                       {face==="analysis"&&tab===2&&<div><div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}><MetricTile label="Severity" value={severityStars(severity)} color="#C0392B" border="#F1C8C2" bg="#FEF0EE"/><MetricTile label="Recurrence" value={"R"+recurrence} color="#B87820" border="#F5E4A0" bg="#FEF9E8"/><MetricTile label="Maturity" value={"M"+maturity} color="#6B2DA8" border="#DBCDF8" bg="#F5F0FE"/><MetricTile label="Days open" value={daysOpen(cur.fecha)} color="#2952A3" border="#C8D7F8" bg="#EBF0FC"/><MetricTile label="Top station" value={topStation} color="#1E5C48" border="#B8DECE" bg="#EAF5F0"/><MetricTile label="Top defect" value={topDefect} color="#6A6560" border="#DDDBD7" bg="#F8F7F5"/><MetricTile label="Related" value={String(related.length)} color="#B87820" border="#F5E4A0" bg="#FEF9E8"/><MetricTile label="Events" value={String((cur.event_ids||[]).length)} color="#1E5C48" border="#B8DECE" bg="#EAF5F0"/></div></div>}
                       {related.length>0&&(face==="analysis"&&tab===2||face==="summary"&&tab===1)&&(<div className="ic-related" style={{marginTop:10}}><div style={{fontSize:8.5,fontWeight:800,color:"#B87820",marginBottom:6,textTransform:"uppercase"}}>Related cases</div>{related.map(function(r){var ri=cards.findIndex(function(c){return c.rcca_id===r.rcca_id;});return(<div key={r.rcca_id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,cursor:ri>=0?"pointer":"default"}} onClick={function(){if(ri>=0){setIdx(ri);setFace("summary");setTab(0);}}}><span style={{fontSize:8.5,fontFamily:"monospace",color:"#B87820",fontWeight:700}}>{r.rcca_id}</span><span style={{fontSize:8.5,color:"#6A6560",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.titulo_corto||r.problema}</span>{ri>=0&&<span style={{fontSize:8,color:"#2A7A60",fontWeight:700}}>Go</span>}</div>);})}</div>)}
@@ -3851,8 +3851,8 @@ function App() {
     if (canUseDraft) init = Object.assign({}, init, incomingDraft.form, { __restored_draft: true });
     var isEdit=!!init.rcca_id;
     var restoredDraft=!!init.__restored_draft;
-    var basicFields=[{key:"problema",label:"Problema",rows:2,required:true},{key:"causa_raiz",label:"Causa Raiz",rows:3,required:true},{key:"contencion",label:"Contencion",rows:2},{key:"accion_correctiva",label:"Accion Correctiva",rows:2},{key:"accion_preventiva",label:"Accion Preventiva",rows:2},{key:"patron_detectado",label:"Patron Detectado",rows:1},{key:"leccion_aprendida",label:"Leccion Aprendida",rows:2}];
-    var insightFields=[{key:"hipotesis",label:"Hipotesis",rows:2},{key:"evidencia_resumen",label:"Evidencia Resumen",rows:3},{key:"validacion",label:"Validacion",rows:2},{key:"alcance_exposicion",label:"Alcance / Exposicion",rows:2},{key:"material_afectado",label:"Material Afectado",rows:2}];
+    var basicFields=[{key:"problema",label:"Problem",rows:2,required:true},{key:"causa_raiz",label:"Root Cause",rows:3,required:true},{key:"contencion",label:"Containment",rows:2},{key:"accion_correctiva",label:"Corrective Action",rows:2},{key:"accion_preventiva",label:"Preventive Action",rows:2},{key:"patron_detectado",label:"Patron Detectado",rows:1},{key:"leccion_aprendida",label:"Leccion Aprendida",rows:2}];
+    var insightFields=[{key:"hipotesis",label:"Hypothesis",rows:2},{key:"evidencia_resumen",label:"Evidencia Resumen",rows:3},{key:"validacion",label:"Validation",rows:2},{key:"alcance_exposicion",label:"Scope / Exposure",rows:2},{key:"material_afectado",label:"Affected Material",rows:2}];
     var initIds=(init.event_ids||[]).slice();
     var formArr=_useState(function(){
       var ids=initIds;
@@ -3983,7 +3983,7 @@ function App() {
                 <div><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>Titulo corto</div><input value={form.titulo_corto} onChange={function(e){upd("titulo_corto",e.target.value);}} placeholder="Resumen corto para la carta" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
                   {SelectField({k:"tipo_caso",l:"Tipo de caso",opts:[{v:"GENERAL",l:"GENERAL"},{v:"SMT",l:"SMT"},{v:"AOI",l:"AOI"},{v:"ICT",l:"ICT"},{v:"BGA",l:"BGA"},{v:"PTH",l:"PTH"},{v:"MATERIAL",l:"MATERIAL"},{v:"PROCESO",l:"PROCESO"},{v:"SISTEMA",l:"SISTEMA"},{v:"TEST",l:"TEST"}]})}
-                  {SelectField({k:"estatus_rcca",l:"Estatus",opts:[{v:"NUEVO",l:"NUEVO"},{v:"EN ANALISIS",l:"EN ANALISIS"},{v:"CONTENIDO",l:"CONTENIDO"},{v:"VALIDANDO",l:"VALIDANDO"},{v:"CERRADO",l:"CERRADO"}]})}
+                  {SelectField({k:"estatus_rcca",l:"Estatus",opts:[{v:"NUEVO",l:"NUEVO"},{v:"IN ANALYSIS",l:"IN ANALYSIS"},{v:"CONTENIDO",l:"CONTENIDO"},{v:"VALIDANDO",l:"VALIDANDO"},{v:"CERRADO",l:"CERRADO"}]})}
                   {SelectField({k:"severidad",l:"Severidad",opts:[{v:"1",l:"1"},{v:"2",l:"2"},{v:"3",l:"3"},{v:"4",l:"4"},{v:"5",l:"5"}]})}
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
@@ -4021,8 +4021,8 @@ function App() {
     return(
       <div style={{background:"#fff",border:"1.5px solid "+(score>=70?"#B8DECE":score>=50?"#F5E4A0":"#DDDBD7"),borderRadius:12,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:8}}>
-          <div style={{minWidth:0,flex:1}}><div><span style={{fontSize:9,fontWeight:700,fontFamily:"monospace",color:"#2A7A60"}}>{r.rcca_id}</span>{score>0&&<span style={{marginLeft:6,fontSize:9,fontWeight:700,color:score>=70?"#1A7A3C":score>=50?"#B87820":"#8A8580",background:score>=70?"#EBF8EE":score>=50?"#FEF9E8":"#F8F7F5",borderRadius:99,padding:"1px 7px"}}>{score}%</span>}</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:4}}><span style={{fontSize:8.5,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:999,padding:"2px 7px",color:"#6A6560",fontWeight:700}}>{type}</span><span style={{fontSize:8.5,background:status==="CERRADO"?"#EAF5F0":status==="VALIDANDO"?"#F5F0FE":status==="CONTENIDO"?"#FEF9E8":status==="EN ANALISIS"?"#EBF0FC":"#F8F7F5",border:"1px solid "+(status==="CERRADO"?"#B8DECE":status==="VALIDANDO"?"#DBCDF8":status==="CONTENIDO"?"#F5E4A0":status==="EN ANALISIS"?"#C8D7F8":"#DDDBD7"),borderRadius:999,padding:"2px 7px",color:status==="CERRADO"?"#1E5C48":status==="VALIDANDO"?"#6B2DA8":status==="CONTENIDO"?"#B87820":status==="EN ANALISIS"?"#2952A3":"#6A6560",fontWeight:700}}>{status}</span></div></div>
-          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button onClick={function(){setRccaDetail(r);}} style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E5C48",cursor:"pointer"}}>Ver</button><button onClick={function(){setRccaForm(Object.assign({},r,{event_ids:(r.event_ids||[]).slice()}));}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#2952A3",cursor:"pointer"}}>Editar</button><button onClick={function(){deleteRcca(r.rcca_id);}} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>x</button></div>
+          <div style={{minWidth:0,flex:1}}><div><span style={{fontSize:9,fontWeight:700,fontFamily:"monospace",color:"#2A7A60"}}>{r.rcca_id}</span>{score>0&&<span style={{marginLeft:6,fontSize:9,fontWeight:700,color:score>=70?"#1A7A3C":score>=50?"#B87820":"#8A8580",background:score>=70?"#EBF8EE":score>=50?"#FEF9E8":"#F8F7F5",borderRadius:99,padding:"1px 7px"}}>{score}%</span>}</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:4}}><span style={{fontSize:8.5,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:999,padding:"2px 7px",color:"#6A6560",fontWeight:700}}>{type}</span><span style={{fontSize:8.5,background:status==="CERRADO"?"#EAF5F0":status==="VALIDANDO"?"#F5F0FE":status==="CONTENIDO"?"#FEF9E8":status==="IN ANALYSIS"?"#EBF0FC":"#F8F7F5",border:"1px solid "+(status==="CERRADO"?"#B8DECE":status==="VALIDANDO"?"#DBCDF8":status==="CONTENIDO"?"#F5E4A0":status==="IN ANALYSIS"?"#C8D7F8":"#DDDBD7"),borderRadius:999,padding:"2px 7px",color:status==="CERRADO"?"#1E5C48":status==="VALIDANDO"?"#6B2DA8":status==="CONTENIDO"?"#B87820":status==="IN ANALYSIS"?"#2952A3":"#6A6560",fontWeight:700}}>{status}</span></div></div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button onClick={function(){setRccaDetail(r);}} style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E5C48",cursor:"pointer"}}>Ver</button><button onClick={function(){setRccaForm(Object.assign({},r,{event_ids:(r.event_ids||[]).slice()}));}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#2952A3",cursor:"pointer"}}>Edit</button><button onClick={function(){deleteRcca(r.rcca_id);}} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>x</button></div>
         </div>
         <div style={{fontSize:12,fontWeight:700,color:"#1A1714",marginBottom:5,lineHeight:1.3}}>{title}</div>
         <div style={{fontSize:10.5,color:"#6A6560",marginBottom:6,lineHeight:1.4}}>{r.problema?r.problema.slice(0,92)+(r.problema.length>92?"...":""):""}</div>
@@ -4284,7 +4284,7 @@ function App() {
             <div className="picker-box" onClick={function(ev){ev.stopPropagation();}}>
               <div className="picker-head">
                 <div><div className="picker-title">Seleccionar evidencia</div><div className="picker-sub">{attached.length} adjuntas • {pickerImgs.length} sugeridas{pickerData&&pickerData.refText?" • "+pickerData.refText:""}{pickerData?" • "+pickerData.modeLabel:""}</div></div>
-                <button className="picker-close" onClick={function(){setShowPick(false);}}>Cerrar</button>
+                <button className="picker-close" onClick={function(){setShowPick(false);}}>Close</button>
               </div>
               <div className="picker-grid">
                 {pickerImgs.map(function(fname){var sel=attached.indexOf(fname)>=0;var meta2=imgMeta[fname]||{};return(
@@ -4433,14 +4433,14 @@ function App() {
           <div style={{background:"#fff",borderRadius:16,maxWidth:720,width:"100%",maxHeight:"85vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
             <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
               <div><div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>RCCA Detail</div><div style={{fontSize:10,color:"#2A7A60",fontFamily:"monospace"}}>{rccaDetail.rcca_id}</div></div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button onClick={function(){setRccaForm(Object.assign({},rccaDetail,{event_ids:(rccaDetail.event_ids||[]).slice()}));setRccaDetail(null);}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#2952A3",fontWeight:600}}>Editar</button><button onClick={function(){setRccaDetail(null);}} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cerrar</button></div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button onClick={function(){setRccaForm(Object.assign({},rccaDetail,{event_ids:(rccaDetail.event_ids||[]).slice()}));setRccaDetail(null);}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#2952A3",fontWeight:600}}>Edit</button><button onClick={function(){setRccaDetail(null);}} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Close</button></div>
             </div>
             <div style={{padding:"18px 20px",display:"flex",flexDirection:"column",gap:12}}>
               <div>
                 <div style={{fontSize:18,fontWeight:800,color:"#1A1714",lineHeight:1.2}}>{rccaDetail.titulo_corto||rccaDetail.problema||"-"}</div>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
                   <span style={{fontSize:10,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:999,padding:"3px 9px",fontWeight:700,color:"#6A6560"}}>{rccaDetail.tipo_caso||"GENERAL"}</span>
-                  <span style={{fontSize:10,background:rccaDetail.estatus_rcca==="CERRADO"?"#EAF5F0":rccaDetail.estatus_rcca==="VALIDANDO"?"#F5F0FE":rccaDetail.estatus_rcca==="CONTENIDO"?"#FEF9E8":rccaDetail.estatus_rcca==="EN ANALISIS"?"#EBF0FC":"#F8F7F5",border:"1px solid "+(rccaDetail.estatus_rcca==="CERRADO"?"#B8DECE":rccaDetail.estatus_rcca==="VALIDANDO"?"#DBCDF8":rccaDetail.estatus_rcca==="CONTENIDO"?"#F5E4A0":rccaDetail.estatus_rcca==="EN ANALISIS"?"#C8D7F8":"#DDDBD7"),borderRadius:999,padding:"3px 9px",fontWeight:700,color:rccaDetail.estatus_rcca==="CERRADO"?"#1E5C48":rccaDetail.estatus_rcca==="VALIDANDO"?"#6B2DA8":rccaDetail.estatus_rcca==="CONTENIDO"?"#B87820":rccaDetail.estatus_rcca==="EN ANALISIS"?"#2952A3":"#6A6560"}}>{rccaDetail.estatus_rcca||"NUEVO"}</span>
+                  <span style={{fontSize:10,background:rccaDetail.estatus_rcca==="CERRADO"?"#EAF5F0":rccaDetail.estatus_rcca==="VALIDANDO"?"#F5F0FE":rccaDetail.estatus_rcca==="CONTENIDO"?"#FEF9E8":rccaDetail.estatus_rcca==="IN ANALYSIS"?"#EBF0FC":"#F8F7F5",border:"1px solid "+(rccaDetail.estatus_rcca==="CERRADO"?"#B8DECE":rccaDetail.estatus_rcca==="VALIDANDO"?"#DBCDF8":rccaDetail.estatus_rcca==="CONTENIDO"?"#F5E4A0":rccaDetail.estatus_rcca==="IN ANALYSIS"?"#C8D7F8":"#DDDBD7"),borderRadius:999,padding:"3px 9px",fontWeight:700,color:rccaDetail.estatus_rcca==="CERRADO"?"#1E5C48":rccaDetail.estatus_rcca==="VALIDANDO"?"#6B2DA8":rccaDetail.estatus_rcca==="CONTENIDO"?"#B87820":rccaDetail.estatus_rcca==="IN ANALYSIS"?"#2952A3":"#6A6560"}}>{rccaDetail.estatus_rcca||"NUEVO"}</span>
                   {rccaDetail.modelo&&<span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 9px",fontWeight:600}}>{rccaDetail.modelo}</span>}
                   {rccaDetail.linea&&<span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 9px",fontWeight:600}}>{rccaDetail.linea}</span>}
                   <span style={{fontSize:10,color:"#8A8580"}}>{rccaDetail.fecha}</span>
@@ -4452,7 +4452,7 @@ function App() {
                 <div style={{background:"#F5F0FE",border:"1px solid #DBCDF8",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontSize:9,fontWeight:700,color:"#6B2DA8",textTransform:"uppercase"}}>Mad</div><div style={{fontSize:13,fontWeight:700,color:"#6B2DA8"}}>{rccaDetail.madurez_analisis?"M"+rccaDetail.madurez_analisis:"-"}</div></div>
                 <div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:10,padding:"10px 8px",textAlign:"center"}}><div style={{fontSize:9,fontWeight:700,color:"#1E5C48",textTransform:"uppercase"}}>Eventos</div><div style={{fontSize:13,fontWeight:700,color:"#1E5C48"}}>{rccaDetail.event_ids&&rccaDetail.event_ids.length?rccaDetail.event_ids.length:"0"}</div></div>
               </div>
-              {[{l:"Problema",v:rccaDetail.problema,color:"#C0392B",bg:"#FEF0EE"},{l:"Hipotesis",v:rccaDetail.hipotesis,color:"#6B2DA8",bg:"#F5F0FE"},{l:"Causa Raiz",v:rccaDetail.causa_raiz,color:"#2952A3",bg:"#EBF0FC"},{l:"Evidencia Resumen",v:rccaDetail.evidencia_resumen,color:"#1E5C48",bg:"#EAF5F0"},{l:"Validacion",v:rccaDetail.validacion,color:"#2952A3",bg:"#EBF0FC"},{l:"Alcance / Exposicion",v:rccaDetail.alcance_exposicion,color:"#B87820",bg:"#FEF9E8"},{l:"Material Afectado",v:rccaDetail.material_afectado,color:"#6A6560",bg:"#F8F7F5"},{l:"Contencion",v:rccaDetail.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Accion Correctiva",v:rccaDetail.accion_correctiva,color:"#1A7A3C",bg:"#EBF8EE"},{l:"Accion Preventiva",v:rccaDetail.accion_preventiva,color:"#2A7A60",bg:"#EAF5F0"},{l:"Patron",v:rccaDetail.patron_detectado,color:"#6B2DA8",bg:"#F5F0FE"},{l:"Leccion",v:rccaDetail.leccion_aprendida,color:"#1A1714",bg:"#F8F7F5"}].filter(function(f){return f.v;}).map(function(f){return(
+              {[{l:"Problem",v:rccaDetail.problema,color:"#C0392B",bg:"#FEF0EE"},{l:"Hypothesis",v:rccaDetail.hipotesis,color:"#6B2DA8",bg:"#F5F0FE"},{l:"Root Cause",v:rccaDetail.causa_raiz,color:"#2952A3",bg:"#EBF0FC"},{l:"Evidencia Resumen",v:rccaDetail.evidencia_resumen,color:"#1E5C48",bg:"#EAF5F0"},{l:"Validation",v:rccaDetail.validacion,color:"#2952A3",bg:"#EBF0FC"},{l:"Scope / Exposure",v:rccaDetail.alcance_exposicion,color:"#B87820",bg:"#FEF9E8"},{l:"Affected Material",v:rccaDetail.material_afectado,color:"#6A6560",bg:"#F8F7F5"},{l:"Containment",v:rccaDetail.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Corrective Action",v:rccaDetail.accion_correctiva,color:"#1A7A3C",bg:"#EBF8EE"},{l:"Preventive Action",v:rccaDetail.accion_preventiva,color:"#2A7A60",bg:"#EAF5F0"},{l:"Pattern",v:rccaDetail.patron_detectado,color:"#6B2DA8",bg:"#F5F0FE"},{l:"Lesson Learned",v:rccaDetail.leccion_aprendida,color:"#1A1714",bg:"#F8F7F5"}].filter(function(f){return f.v;}).map(function(f){return(
                 <div key={f.l} style={{background:f.bg,border:"1px solid "+f.color+"30",borderRadius:8,padding:"10px 14px"}}>
                   <div style={{fontSize:9.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:f.color,marginBottom:5}}>{f.l}</div>
                   <div style={{fontSize:12,color:"#1A1714",lineHeight:1.5}}>{f.v}</div>
