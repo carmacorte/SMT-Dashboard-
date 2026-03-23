@@ -9,7 +9,7 @@ window.TRACEOPS_SUPABASE = {
   anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV"
 };
 </script>
-<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only -->
+<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 finding-redundancy-fix -->
 <script>
 window.onerror = function(msg, src, line, col, err) {
   var box = document.createElement('div');
@@ -2114,6 +2114,17 @@ async function analyzeWithAI(msgs, apiKey) {
     return parsed;
   }
 
+
+  function findingIsRedundantLocal(findingText, ev) {
+    var f = traceOpsMiniNormLocal(findingText || "").split(" ").filter(function(w){ return w.length > 4; });
+    var e = traceOpsMiniNormLocal((ev && ev.evento_detectado) || "").split(" ").filter(function(w){ return w.length > 4; });
+    if (!f.length || !e.length) return false;
+    var setE = {};
+    e.forEach(function(w){ setE[w] = true; });
+    var overlap = f.filter(function(w){ return setE[w]; }).length;
+    return overlap / Math.max(f.length, 1) >= 0.65;
+  }
+
   function enrichEngineerFindingsLocal(parsed) {
     if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
     var followWindowMs = 36 * 60 * 60000;
@@ -2186,6 +2197,9 @@ async function analyzeWithAI(msgs, apiKey) {
       var followText = best ? formatFindingLocal(best.msg, best.cleanText) : "";
       var existing = traceOpsIsFindingsExceptionLocal(ev.engineer_findings || "") ? "" : cleanFindingTextLocal(String(ev.engineer_findings || "").trim());
 
+      if (followText && findingIsRedundantLocal(followText, ev)) {
+        followText = "";
+      }
       if (!existing) {
         ev.engineer_findings = followText || "";
       } else if (followText) {
@@ -2212,6 +2226,9 @@ async function analyzeWithAI(msgs, apiKey) {
         var finalOverlap = traceOpsFindingEventOverlapLocal(ev.engineer_findings, ev);
         if (traceOpsEventNeedsHighFindingOverlapLocal(ev) && finalOverlap < 6) ev.engineer_findings = "";
         else if (finalOverlap < 4) ev.engineer_findings = "";
+      }
+      if (ev.engineer_findings && findingIsRedundantLocal(ev.engineer_findings, ev)) {
+        ev.engineer_findings = "";
       }
       return ev;
     });
