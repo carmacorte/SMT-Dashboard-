@@ -4417,16 +4417,16 @@ function App() {
         <div>
           <div className="traceops-context">
             <div className="traceops-context-main">
-              <span className="traceops-context-kicker">Operational workspace</span>
-              <div className="traceops-context-title">Resuelve incidentes de manufactura con mejor contexto</div>
-              <div className="traceops-context-subtitle">Mantiene el flujo actual y agrega un shell más SaaS: resumen ejecutivo, indicadores rápidos y navegación más clara, sin cambiar parsing, RCCA, evidencias ni exportables.</div>
+              <span className="traceops-context-kicker">Centro operativo</span>
+              <div className="traceops-context-title">Convierte evidencia operativa en incidentes accionables</div>
+              <div className="traceops-context-subtitle">Carga ZIP de WhatsApp o correo, detecta incidentes, consolida evidencia, genera bitácora y prepara trazabilidad RCCA para seguimiento operativo.</div>
               <div className="traceops-context-chips">
-                {["WhatsApp ZIP","EML / MBOX","RCCA sync","Bitácora","Evidencia en rango"].map(function(t){return <span key={t}>{t}</span>;})}
+                {["WhatsApp ZIP","EML / MBOX","Bitácora","RCCA","Evidencia en rango"].map(function(t){return <span key={t}>{t}</span>;})}
               </div>
             </div>
             <div className="traceops-context-actions">
-              <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Cargar evidencia</button>
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Historial</button>
+              <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Cargar ZIP</button>
+              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Análisis recientes</button>
             </div>
           </div>
           <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
@@ -4536,9 +4536,9 @@ function App() {
         <div id="results-section">
           <div className="traceops-context">
             <div className="traceops-context-main">
-              <span className="traceops-context-kicker">Operational summary</span>
-              <div className="traceops-context-title">Resumen ejecutivo del análisis actual</div>
-              <div className="traceops-context-subtitle">Vista ejecutiva del rango analizado con KPIs, alertas prioritarias, evidencia útil y trazabilidad operativa.</div>
+              <span className="traceops-context-kicker">Estado operativo</span>
+              <div className="traceops-context-title">Resumen del análisis actual</div>
+              <div className="traceops-context-subtitle">KPIs del rango analizado, alertas prioritarias, evidencia útil y trazabilidad para seguimiento en piso.</div>
               <div className="traceops-context-chips">
                 <span>{analysisRangeLabel||"Rango activo"}</span>
                 <span>{visibleEventCount} eventos visibles</span>
@@ -4615,8 +4615,8 @@ function App() {
                 </div>
               </div>
               <div className="traceops-engineering-card">
-                <h4>Resumen operativo</h4>
-                <p>Estado del motor de análisis, rango activo y volumen de evidencia del periodo seleccionado.</p>
+                <h4>Estado operativo</h4>
+                <p>Rango activo, volumen de mensajes y evidencia disponible para el periodo seleccionado.</p>
                 <div className="traceops-bullets">
                   <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
                   <div className="traceops-bullet"><strong>Rango:</strong> {analysisRangeLabel||"N/D"}</div>
