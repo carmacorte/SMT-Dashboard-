@@ -1381,7 +1381,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   var candidates = candidateDetectorLocal(msgs);
   var clusters = clusterIncidentsLocal(candidates);
-  var localFallbackResult = traceOpsRefineEngineerFindingsAcrossEventsLocal(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters))));
+  var localFallbackResult = traceOpsApplyFindingsRefineSafeLocal(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(buildLocalResult(msgs, candidates, clusters))));
 
   if (!apiKey || !apiKey.trim()) {
     return localFallbackResult;
@@ -2095,7 +2095,7 @@ async function analyzeWithAI(msgs, apiKey) {
     cluster_mode: useClusterMode ? 1 : 0
   };
 
-  return traceOpsRefineEngineerFindingsAcrossEventsLocal(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed)));
+  return traceOpsApplyFindingsRefineSafeLocal(pruneOperationalExceptionsLocal(enrichEngineerFindingsLocal(parsed)));
 }
 
 async function buildXlsx(result) {
