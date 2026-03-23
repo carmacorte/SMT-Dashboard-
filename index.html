@@ -3545,9 +3545,18 @@ function App() {
     ].join(" ");
   }
 
+  function traceOpsMiniNormLocal(text){
+    return String(text||"")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/[^a-z0-9]+/g," ")
+      .trim();
+  }
+
   function traceOpsTokenOverlapScoreLocal(a, b){
-    var tokens = Array.from(new Set(normalizeLooseLocal(a).split(" ").filter(function(w){ return w && w.length > 3; })));
-    var blob = " " + normalizeLooseLocal(b) + " ";
+    var tokens = Array.from(new Set(traceOpsMiniNormLocal(a).split(" ").filter(function(w){ return w && w.length > 3; })));
+    var blob = " " + traceOpsMiniNormLocal(b) + " ";
     var score = 0;
     tokens.forEach(function(t){
       if (blob.indexOf(" " + t + " ") >= 0) score += 1;
