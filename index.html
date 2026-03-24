@@ -3776,8 +3776,8 @@ function App() {
     var maturity=inferMaturity();
     var topStation=cur.estacion_dominante||getTopValue(linkedEvents,function(item){return item.linea_estacion;})||cur.linea||"-";
     var topDefect=cur.defecto_dominante||getTopValue(linkedEvents,function(item){return item.defecto_smt;})||"-";
-    var firstSeen=linkedEvents.slice().sort(function(a,b){return getDateValue(a.fecha)-getDateValue(b.fecha);})[0];
-    var lastSeen=linkedEvents.slice().sort(function(a,b){return getDateValue(b.fecha)-getDateValue(a.fecha);})[0];
+    var firstSeen=cur.primera_deteccion?{fecha:cur.primera_deteccion}:linkedEvents.slice().sort(function(a,b){return getDateValue(a.fecha)-getDateValue(b.fecha);})[0];
+    var lastSeen=cur.ultima_deteccion?{fecha:cur.ultima_deteccion}:linkedEvents.slice().sort(function(a,b){return getDateValue(b.fecha)-getDateValue(a.fecha);})[0];
     var actions=[{l:"Containment",v:cur.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Corrective Action",v:cur.accion_correctiva,color:"#2952A3",bg:"#EBF0FC"},{l:"Preventive Action",v:cur.accion_preventiva,color:"#1A7A3C",bg:"#EBF8EE"}];
     return(
       <div className="ic-wrap">
@@ -3871,6 +3871,8 @@ function App() {
         madurez_analisis:init.madurez_analisis||"",
         estacion_dominante:init.estacion_dominante||"",
         defecto_dominante:init.defecto_dominante||"",
+        primera_deteccion:init.primera_deteccion||"",
+        ultima_deteccion:init.ultima_deteccion||"",
         problema:init.problema||"",
         causa_raiz:init.causa_raiz||"",
         contencion:init.contencion||"",
@@ -3937,6 +3939,13 @@ function App() {
         if(!form.problema&&firstEv.evento_detectado)n.problema=firstEv.evento_detectado;
         if(!form.titulo_corto&&firstEv.evento_detectado)n.titulo_corto=firstEv.evento_detectado.slice(0,52);
       }
+      if(newIds.length>0){
+        var linked=newIds.map(function(id){return ev.find(function(e){return e.id===id;});}).filter(Boolean);
+        var sortedAsc=linked.slice().sort(function(a,b){return getDateValue(a.fecha)-getDateValue(b.fecha);});
+        var sortedDesc=linked.slice().sort(function(a,b){return getDateValue(b.fecha)-getDateValue(a.fecha);});
+        if(!form.primera_deteccion&&sortedAsc.length>0)n.primera_deteccion=sortedAsc[0].fecha||"";
+        if(!form.ultima_deteccion&&sortedDesc.length>0)n.ultima_deteccion=sortedDesc[0].fecha||"";
+      }
       setForm(n);
     }
     function SelectField(p){return(<div key={p.k}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{p.l}</div><select value={form[p.k]} onChange={function(e){upd(p.k,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}><option value="">-</option>{p.opts.map(function(opt){return<option key={opt.v} value={opt.v}>{opt.l}</option>;})}</select></div>);}
@@ -3945,16 +3954,16 @@ function App() {
         <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:820,maxHeight:"90vh",overflow:"auto",paddingBottom:32}} onClick={function(e){e.stopPropagation();}}>
           <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",zIndex:1}}>
             <div>
-              <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>{isEdit?"Editar RCCA":"Nueva RCCA"}</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>{isEdit?"Edit RCCA":"New RCCA"}</div>
               <div style={{fontSize:10,fontFamily:"monospace",color:"#2A7A60",fontWeight:600,marginTop:2}}>{form.rcca_id}</div>
             </div>
-            <button onClick={onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cancelar</button>
+            <button onClick={onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cancel</button>
           </div>
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
-            {restoredDraft&&<div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"8px 12px",fontSize:10.5,color:"#1E5C48"}}>Se recupero un borrador local del formulario para que continues sin perder texto.</div>}{isEdit&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:8,padding:"8px 12px",fontSize:10.5,color:"#8B6A1E"}}>Modo edicion activo. Puedes corregir texto y eventos vinculados sin perder el mismo RCCA ID.</div>}
+            {restoredDraft&&<div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"8px 12px",fontSize:10.5,color:"#1E5C48"}}>A local draft was restored so you can continue without losing text.</div>}{isEdit&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:8,padding:"8px 12px",fontSize:10.5,color:"#8B6A1E"}}>Edit mode active. You can update text and linked events without changing the RCCA ID.</div>}
             <div>
-              <div style={{fontSize:10,fontWeight:700,color:"#2A7A60",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Vincular a eventos ({form.event_ids.length} seleccionados)</div>
-              {ev.length===0?<div style={{fontSize:11,color:"#8A8580",fontStyle:"italic"}}>No hay eventos cargados</div>:(
+              <div style={{fontSize:10,fontWeight:700,color:"#2A7A60",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Link to events ({form.event_ids.length} selected)</div>
+              {ev.length===0?<div style={{fontSize:11,color:"#8A8580",fontStyle:"italic"}}>No events loaded</div>:(
                 <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:200,overflowY:"auto",border:"1px solid #EEECEA",borderRadius:8,padding:8}}>
                   {ev.map(function(e){var selected=form.event_ids.indexOf(e.id)>=0;return(
                     <div key={e.id} onClick={function(){toggleEvent(e.id);}} style={{display:"flex",alignItems:"center",gap:10,background:selected?"#EAF5F0":"#F8F7F5",border:"1.5px solid "+(selected?"#2A7A60":"#DDDBD7"),borderRadius:7,padding:"8px 11px",cursor:"pointer"}}>
@@ -3973,12 +3982,20 @@ function App() {
               <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:"#1E5C48"}}>{form.rcca_id}</span>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-              {[{k:"modelo",l:"Modelo/N-P"},{k:"linea",l:"Linea"},{k:"fecha",l:"Fecha"}].map(function(f){return(
+              {[{k:"modelo",l:"Modelo/N-P"},{k:"linea",l:"Line"},{k:"fecha",l:"Date"}].map(function(f){return(
                 <div key={f.k}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.l}</div><input value={form[f.k]} onChange={function(e){upd(f.k,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
               );})}
             </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[{k:"primera_deteccion",l:"1st Detection",ph:"DD/MM/YYYY or YYYY-MM-DD"},{k:"ultima_deteccion",l:"Last Detection",ph:"DD/MM/YYYY or YYYY-MM-DD"}].map(function(f){return(
+                <div key={f.k}>
+                  <div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.l}</div>
+                  <input value={form[f.k]} placeholder={f.ph} onChange={function(e){upd(f.k,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/>
+                </div>
+              );})}
+            </div>
             <div style={{border:"1px solid #DDDBD7",borderRadius:10,overflow:"hidden"}}>
-              <button onClick={function(){setFrontOpen(!frontOpen);}} style={{width:"100%",textAlign:"left",padding:"11px 12px",background:frontOpen?"#F5F0FE":"#F8F7F5",border:"none",borderBottom:frontOpen?"1px solid #E6DDF9":"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,fontWeight:700,color:"#6B2DA8",textTransform:"uppercase",letterSpacing:".06em"}}>Frente de tarjeta</span><span style={{fontSize:11,color:"#6B2DA8",fontWeight:700}}>{frontOpen?"Ocultar":"Mostrar"}</span></button>
+              <button onClick={function(){setFrontOpen(!frontOpen);}} style={{width:"100%",textAlign:"left",padding:"11px 12px",background:frontOpen?"#F5F0FE":"#F8F7F5",border:"none",borderBottom:frontOpen?"1px solid #E6DDF9":"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,fontWeight:700,color:"#6B2DA8",textTransform:"uppercase",letterSpacing:".06em"}}>Card front</span><span style={{fontSize:11,color:"#6B2DA8",fontWeight:700}}>{frontOpen?"Hide":"Show"}</span></button>
               {frontOpen&&<div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
                 <div><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>Titulo corto</div><input value={form.titulo_corto} onChange={function(e){upd("titulo_corto",e.target.value);}} placeholder="Resumen corto para la carta" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
@@ -4444,6 +4461,16 @@ function App() {
                   {rccaDetail.modelo&&<span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 9px",fontWeight:600}}>{rccaDetail.modelo}</span>}
                   {rccaDetail.linea&&<span style={{fontSize:10,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 9px",fontWeight:600}}>{rccaDetail.linea}</span>}
                   <span style={{fontSize:10,color:"#8A8580"}}>{rccaDetail.fecha}</span>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontSize:9,fontWeight:700,color:"#8A8580",textTransform:"uppercase"}}>1st Detection</div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#1A1714",marginTop:3}}>{rccaDetail.primera_deteccion||"-"}</div>
+                </div>
+                <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontSize:9,fontWeight:700,color:"#8A8580",textTransform:"uppercase"}}>Last Detection</div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#1A1714",marginTop:3}}>{rccaDetail.ultima_deteccion||"-"}</div>
                 </div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8}}>
