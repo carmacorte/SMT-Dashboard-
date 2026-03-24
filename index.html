@@ -1638,7 +1638,7 @@ async function analyzeWithAI(msgs, apiKey) {
     "actor_area: Produccion|Calidad|Proceso|Mantenimiento|Materiales|Ingenieria|PTH|SMT|AOI|ICT. " +
     "estado_historia: Detectado|Contenido|Corregido|Validado|Cerrado. " +
     "Para cada evento extrae: quien detecto, que accion se tomo, que actores participaron, cual es el estado real del ciclo de vida. " +
-    "ENGINEER FINDINGS: Si en los mensajes del cluster hay una respuesta POSTERIOR al reporte inicial donde el engineer, tecnico de calidad, SMT o responsable tecnico responde con analisis, findings de componentes (ej: U108, U519), causa probable, resultados de inspeccion, hipotesis tecnica o plan de accion especifico, captura esa respuesta completa en el campo engineer_findings. Este campo es CRITICO para el seguimiento de causa raiz. " +
+    "ENGINEER FINDINGS: Si en los mensajes del cluster hay una respuesta POSTERIOR al reporte inicial donde el engineer, tecnico de calidad, SMT o responsable tecnico responde con analisis, findings de componentes (ej: U108, U519), causa probable, resultados de inspeccion, hipotesis tecnica o plan de accion especifico, captura esa respuesta completa en el campo engineer_findings. Este campo es CRITICO para el seguimiento de Root Cause. " +
     "Maximo 15 eventos. Solo JSON sin texto extra:" +
     '{"eventos":[{"id":"EVT-001","fecha":"DD/MM/YYYY","hora":"HH:MM","turno":"1T|2T|3T",' +
     '"modelo":"N/P o N/D","linea_estacion":"L1 o N/D","reporta":"nombre",' +
@@ -3730,7 +3730,7 @@ function App() {
       "Ultima deteccion":"Last detection",
       "Leccion aprendida":"Lesson learned",
       "Hypothesis":"Hypothesis",
-      "Causa raiz":"Root cause",
+      "Root Cause":"Root cause",
       "Validation":"Validation",
       "Patron detectado":"Detected pattern",
       "Evidence Summary":"Evidence summary",
@@ -3824,7 +3824,7 @@ function App() {
                       {face==="summary"&&tab===0&&<div><Field label="Titulo" value={title}/><Field label="Problem" value={cur.problema}/><div className="ic-grid-2"><Field label="Tipo de caso" value={typeLabel}/><Field label="Estatus" value={statusLabel}/><Field label="Modelo" value={cur.modelo}/><Field label="Linea" value={cur.linea}/><Field label="Fecha" value={cur.fecha}/><Field label="Owner" value={cur.owner_email}/></div></div>}
                       {face==="summary"&&tab===1&&<div><Field label="Eventos vinculados" value={evIds}/><div className="ic-grid-2"><Field label="Estacion dominante" value={topStation}/><Field label="Defecto dominante" value={topDefect}/><Field label="Primera deteccion" value={firstSeen?firstSeen.fecha:"-"}/><Field label="Ultima deteccion" value={lastSeen?lastSeen.fecha:"-"}/></div>{cur.event_ids&&cur.event_ids.length>0&&(<div style={{marginTop:6}}><div className="ic-field-label">Linked</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>{cur.event_ids.map(function(id){return<span key={id} className="ic-badge" style={{background:"#EAF5F0",color:"#2A7A60"}}>{id}</span>;})}</div></div>)}</div>}
                       {face==="summary"&&tab===2&&<div style={{display:"flex",flexDirection:"column",gap:8}}>{actions.map(function(a){return(<div key={a.l} style={{background:a.bg,border:"1px solid "+a.color+"40",borderRadius:7,padding:"9px 12px"}}><div className="ic-field-label" style={{color:a.color}}>{a.l}</div><div className="ic-field-val">{a.v||"-"}</div></div>);})}<div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:7,padding:"9px 12px"}}><div className="ic-field-label">Leccion aprendida</div><div className="ic-field-val">{cur.leccion_aprendida||"-"}</div></div></div>}
-                      {face==="analysis"&&tab===0&&<div><Field label="Hypothesis" value={cur.hipotesis}/><Field label="Causa raiz" value={cur.causa_raiz}/><Field label="Validation" value={cur.validacion}/><Field label="Patron detectado" value={cur.patron_detectado}/><Field label="Leccion aprendida" value={cur.leccion_aprendida}/></div>}
+                      {face==="analysis"&&tab===0&&<div><Field label="Hypothesis" value={cur.hipotesis}/><Field label="Root Cause" value={cur.causa_raiz}/><Field label="Validation" value={cur.validacion}/><Field label="Patron detectado" value={cur.patron_detectado}/><Field label="Leccion aprendida" value={cur.leccion_aprendida}/></div>}
                       {face==="analysis"&&tab===1&&<div><Field label="Evidence Summary" value={cur.evidencia_resumen}/><div className="ic-grid-2"><Field label="Material afectado" value={cur.material_afectado}/><Field label="Alcance / exposicion" value={cur.alcance_exposicion}/><Field label="Eventos fuente" value={evIds}/><Field label="Problema base" value={cur.problema}/></div></div>}
                       {face==="analysis"&&tab===2&&<div><div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}><MetricTile label="Severity" value={severityStars(severity)} color="#C0392B" border="#F1C8C2" bg="#FEF0EE"/><MetricTile label="Recurrence" value={"R"+recurrence} color="#B87820" border="#F5E4A0" bg="#FEF9E8"/><MetricTile label="Maturity" value={"M"+maturity} color="#6B2DA8" border="#DBCDF8" bg="#F5F0FE"/><MetricTile label="Days open" value={daysOpen(cur.fecha)} color="#2952A3" border="#C8D7F8" bg="#EBF0FC"/><MetricTile label="Top station" value={topStation} color="#1E5C48" border="#B8DECE" bg="#EAF5F0"/><MetricTile label="Top defect" value={topDefect} color="#6A6560" border="#DDDBD7" bg="#F8F7F5"/><MetricTile label="Related" value={String(related.length)} color="#B87820" border="#F5E4A0" bg="#FEF9E8"/><MetricTile label="Events" value={String((cur.event_ids||[]).length)} color="#1E5C48" border="#B8DECE" bg="#EAF5F0"/></div></div>}
                       {related.length>0&&(face==="analysis"&&tab===2||face==="summary"&&tab===1)&&(<div className="ic-related" style={{marginTop:10}}><div style={{fontSize:8.5,fontWeight:800,color:"#B87820",marginBottom:6,textTransform:"uppercase"}}>Related cases</div>{related.map(function(r){var ri=cards.findIndex(function(c){return c.rcca_id===r.rcca_id;});return(<div key={r.rcca_id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,cursor:ri>=0?"pointer":"default"}} onClick={function(){if(ri>=0){setIdx(ri);setFace("summary");setTab(0);}}}><span style={{fontSize:8.5,fontFamily:"monospace",color:"#B87820",fontWeight:700}}>{r.rcca_id}</span><span style={{fontSize:8.5,color:"#6A6560",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.titulo_corto||r.problema}</span>{ri>=0&&<span style={{fontSize:8,color:"#2A7A60",fontWeight:700}}>Go</span>}</div>);})}</div>)}
@@ -4021,7 +4021,7 @@ function App() {
               <button onClick={function(){setInsightsOpen(!insightsOpen);}} style={{width:"100%",textAlign:"left",padding:"11px 12px",background:insightsOpen?"#EBF0FC":"#F8F7F5",border:"none",borderBottom:insightsOpen?"1px solid #D8E1F7":"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,fontWeight:700,color:"#2952A3",textTransform:"uppercase",letterSpacing:".06em"}}>Insights opcionales</span><span style={{fontSize:11,color:"#2952A3",fontWeight:700}}>{insightsOpen?"Ocultar":"Mostrar"}</span></button>
               {insightsOpen&&<div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>{insightFields.map(function(f){return(<div key={f.key}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.label}</div><textarea value={form[f.key]} rows={f.rows} onChange={function(e){upd(f.key,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/></div>);})}</div>}
             </div>
-            <button onClick={async function(){if(!form.problema||!form.causa_raiz){alert("Completa Problema y Causa Raiz");return;}var ok = await onSave(form);if(ok!==false) onClose();}} style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>{isEdit?"Actualizar RCCA":"Guardar RCCA"}</button>
+            <button onClick={async function(){if(!form.problema||!form.causa_raiz){alert("Completa Problema y Root Cause");return;}var ok = await onSave(form);if(ok!==false) onClose();}} style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>{isEdit?"Actualizar RCCA":"Guardar RCCA"}</button>
           </div>
         </div>
       </div>
@@ -4935,7 +4935,7 @@ function App() {
 
           <div id="rcca-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
             <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-              <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>RCCA Memory</h3><span style={{fontSize:10,color:"#8A8580"}}>Antecedentes de causa raiz</span></div>
+              <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>RCCA Memory</h3><span style={{fontSize:10,color:"#8A8580"}}>Antecedentes de Root Cause</span></div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <span style={{fontSize:9.5,color:"#6B2DA8",fontWeight:600,background:"#F5F0FE",borderRadius:4,padding:"3px 8px"}}>{rccaList.length} RCCA guardadas</span>
                 {rccaList.length>0&&<button onClick={exportRcca} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:7,padding:"4px 11px",fontSize:10,color:"#6A6560",cursor:"pointer"}}>Exportar JSON</button>}
@@ -5146,7 +5146,7 @@ function App() {
                               </div>
                             </div>
                             <div style={{fontSize:11,color:"rgba(255,255,255,.75)",lineHeight:1.45,marginBottom:6}}>{r.leccion_aprendida.slice(0,120)}{r.leccion_aprendida.length>120?"...":""}</div>
-                            {r.causa_raiz && <div style={{fontSize:9.5,color:"rgba(255,255,255,.35)",borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:5}}>Causa raiz: {r.causa_raiz.slice(0,80)}{r.causa_raiz.length>80?"...":""}</div>}
+                            {r.causa_raiz && <div style={{fontSize:9.5,color:"rgba(255,255,255,.35)",borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:5}}>Root Cause: {r.causa_raiz.slice(0,80)}{r.causa_raiz.length>80?"...":""}</div>}
                           </div>
                         );
                       })}
