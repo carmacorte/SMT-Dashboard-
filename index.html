@@ -964,7 +964,7 @@ function parseEmlToMsg(rawText) {
   var body = extractEmlBodyText(lines, info.bodyStart, h['content-type'] || '', h['content-transfer-encoding'] || '');
   var text = ((subject ? '[' + subject + '] ' : '') + body).replace(/\s+/g, ' ').trim();
   if (!text || text.trim().length < 12) return null;
-  if (text.length > 1200) text = text.slice(0, 1200) + '...';
+  if (text.length > 8000) text = text.slice(0, 8000) + '...';
 
   return {
     dateIso: dateIso,
@@ -1198,6 +1198,31 @@ async function analyzeWithAI(msgs, apiKey) {
   }
 
 
+
+  function traceOpsEnsureLongTextFieldsLocal(parsed) {
+    if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
+    parsed.eventos = parsed.eventos.map(function(ev) {
+      var eventoFull = String(ev.evento_detectado_full || ev.evento_detectado || "").trim();
+      var accionFull = String(ev.accion_ejecutada_full || ev.accion_ejecutada || "").trim();
+      var findingFull = String(ev.engineer_findings_full || ev.engineer_findings || "").trim();
+
+      ev.evento_detectado_full = eventoFull;
+      ev.evento_detectado_preview = ev.evento_detectado_preview || (eventoFull.length > 220 ? eventoFull.slice(0, 220) + "..." : eventoFull);
+      ev.evento_detectado = ev.evento_detectado_preview || eventoFull;
+
+      ev.accion_ejecutada_full = accionFull;
+      ev.accion_ejecutada_preview = ev.accion_ejecutada_preview || (accionFull.length > 180 ? accionFull.slice(0, 180) + "..." : accionFull);
+      ev.accion_ejecutada = ev.accion_ejecutada_preview || accionFull;
+
+      ev.engineer_findings_full = findingFull;
+      ev.engineer_findings_preview = ev.engineer_findings_preview || (findingFull.length > 240 ? findingFull.slice(0, 240) + "..." : findingFull);
+      ev.engineer_findings = ev.engineer_findings_preview || findingFull;
+
+      return ev;
+    });
+    return parsed;
+  }
+
   function traceOpsDropWeakEventsLocal(parsed) {
     if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
 
@@ -1317,7 +1342,9 @@ async function analyzeWithAI(msgs, apiKey) {
       var fechaIso = first.dateIso || "";
       var dp = fechaIso.split("-");
       var fechaDisp = dp.length === 3 ? (dp[2] + "/" + dp[1] + "/" + dp[0]) : (first.dateDisp || "");
-      var accionEjecutada = arr.length > 1 ? String(arr[arr.length - 1].text || "").slice(0, 180) : "";
+      var eventoDetectadoFull = String(longest.text || "").trim();
+      var accionEjecutadaFull = arr.length > 1 ? String(arr[arr.length - 1].text || "").trim() : "";
+      var engineerFindingsFull = "";
       return {
         id: padId(i + 1),
         fecha: fechaDisp || first.dateDisp || "",
@@ -1329,11 +1356,17 @@ async function analyzeWithAI(msgs, apiKey) {
         area_involucrada: tipo,
         tipo_evento: tipo,
         defecto_smt: detectDefecto(allText),
-        evento_detectado: String(longest.text || "").slice(0, 220),
+        evento_detectado: eventoDetectadoFull.length > 220 ? (eventoDetectadoFull.slice(0, 220) + "...") : eventoDetectadoFull,
+        evento_detectado_preview: eventoDetectadoFull.length > 220 ? (eventoDetectadoFull.slice(0, 220) + "...") : eventoDetectadoFull,
+        evento_detectado_full: eventoDetectadoFull,
         impacto: impactFor(tipo, prioridad),
         accion_requerida: actionFor(tipo, detectDefecto(allText)),
-        accion_ejecutada: accionEjecutada,
+        accion_ejecutada: accionEjecutadaFull.length > 180 ? (accionEjecutadaFull.slice(0, 180) + "...") : accionEjecutadaFull,
+        accion_ejecutada_preview: accionEjecutadaFull.length > 180 ? (accionEjecutadaFull.slice(0, 180) + "...") : accionEjecutadaFull,
+        accion_ejecutada_full: accionEjecutadaFull,
         engineer_findings: "",
+        engineer_findings_preview: "",
+        engineer_findings_full: engineerFindingsFull,
         responsable_sugerido: first.sender || "N/D",
         actores: [first.sender || "Produccion"],
         estado_historia: estatus === "Cerrado" ? "Cerrado" : "Detectado",
@@ -2319,6 +2352,11 @@ async function analyzeWithAI(msgs, apiKey) {
       if (ev.engineer_findings && findingIsRedundantLocal(ev.engineer_findings, ev)) {
         ev.engineer_findings = "";
       }
+      var fullFinding = String(ev.engineer_findings_full || ev.engineer_findings || "").trim();
+      if (!fullFinding && ev.engineer_findings) fullFinding = String(ev.engineer_findings).trim();
+      ev.engineer_findings_full = fullFinding;
+      ev.engineer_findings_preview = fullFinding ? (fullFinding.length > 240 ? fullFinding.slice(0, 240) + "..." : fullFinding) : "";
+      ev.engineer_findings = ev.engineer_findings_preview || "";
       return ev;
     });
 
@@ -2479,9 +2517,9 @@ async function buildXlsx(result) {
       var actoresStr = Array.isArray(e.actores) ? e.actores.join(", ") : (e.actores || "");
       var row = ws.addRow([
         e.id, e.fecha, e.hora, e.turno, e.modelo, e.linea_estacion, e.reporta,
-        e.area_involucrada, e.tipo_evento, e.defecto_smt || "N/A", e.evento_detectado,
-        e.impacto, e.accion_requerida, e.accion_ejecutada || "",
-        e.engineer_findings || "",
+        e.area_involucrada, e.tipo_evento, e.defecto_smt || "N/A", (e.evento_detectado_full || e.evento_detectado),
+        e.impacto, e.accion_requerida, (e.accion_ejecutada_full || e.accion_ejecutada || ""),
+        (e.engineer_findings_full || e.engineer_findings || ""),
         actoresStr, e.responsable_sugerido,
         e.estado_historia || "Detectado",
         e.estatus, e.prioridad,
