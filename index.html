@@ -712,21 +712,53 @@ function getWeekRange(weekN, year) {
 
 function filterMsgs(msgs, mode, days, dateFrom, dateTo, weekNum, weekYear) {
   if (!msgs.length) return msgs;
-  var sorted = msgs.slice().sort(function(a,b){ return a.dateIso.localeCompare(b.dateIso); });
+
+  var sorted = msgs.slice().sort(function(a,b){
+    var ad = String(a.dateIso || "");
+    var bd = String(b.dateIso || "");
+    if (ad === bd) return String(a.timeStr || "").localeCompare(String(b.timeStr || ""));
+    return ad.localeCompare(bd);
+  });
+
   if (mode === "range" && dateFrom && dateTo) {
     var f = dateFrom <= dateTo ? dateFrom : dateTo;
     var t = dateFrom <= dateTo ? dateTo : dateFrom;
     return sorted.filter(function(m){ return m.dateIso >= f && m.dateIso <= t; });
   }
+
   if (mode === "week" && weekNum && weekYear) {
-    var wr = getWeekRange(parseInt(weekNum), parseInt(weekYear));
+    var wr = getWeekRange(parseInt(weekNum, 10), parseInt(weekYear, 10));
     return sorted.filter(function(m){ return m.dateIso >= wr.from && m.dateIso <= wr.to; });
   }
-  var last = new Date(sorted[sorted.length-1].dateIso);
-  var cutoff = new Date(last);
-  cutoff.setDate(cutoff.getDate() - days + 1);
-  var cutStr = cutoff.toISOString().slice(0,10);
-  return sorted.filter(function(m){ return m.dateIso >= cutStr; });
+
+  var lastMsg = sorted[sorted.length - 1] || null;
+  var refMs = 0;
+  if (lastMsg && typeof timeToMinsLocal === "function") {
+    refMs = timeToMinsLocal(lastMsg.dateIso, lastMsg.timeStr || "00:00");
+  }
+  if (!refMs && lastMsg && lastMsg.dateIso) {
+    var fallbackRef = new Date(lastMsg.dateIso + "T23:59:59");
+    refMs = isNaN(fallbackRef.getTime()) ? 0 : fallbackRef.getTime();
+  }
+
+  var refDate = refMs ? new Date(refMs) : new Date();
+  var cutoff = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+  cutoff.setDate(cutoff.getDate() - Math.max(1, parseInt(days, 10) || 1) + 1);
+
+  var cutoffStart = new Date(cutoff.getFullYear(), cutoff.getMonth(), cutoff.getDate(), 0, 0, 0, 0).getTime();
+  var refEnd = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate(), 23, 59, 59, 999).getTime();
+
+  return sorted.filter(function(m){
+    var ms = 0;
+    if (typeof timeToMinsLocal === "function") {
+      ms = timeToMinsLocal(m.dateIso, m.timeStr || "00:00");
+    }
+    if (!ms && m.dateIso) {
+      var d = new Date(m.dateIso + "T00:00:00");
+      ms = isNaN(d.getTime()) ? 0 : d.getTime();
+    }
+    return ms >= cutoffStart && ms <= refEnd;
+  });
 }
 
 function traceOpsFilterMediaNamesBySelectedRange(mediaNames, imgMeta, filteredMsgs) {
@@ -1407,6 +1439,10 @@ async function analyzeWithAI(msgs, apiKey) {
       kpis: kpis,
       resumen: resumen,
       directorio: Object.keys(senderMap).map(function(k){ return senderMap[k]; }).sort(function(a,b){ return b.mensajes - a.mensajes; }).slice(0, 20),
+      __traceops_window: {
+        from: allDates.length ? allDates[0] : "",
+        to: allDates.length ? allDates[allDates.length - 1] : ""
+      },
       __traceops_api: {
         api_calls: 0,
         cache_hit: false,
