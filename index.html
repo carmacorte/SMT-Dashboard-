@@ -1447,7 +1447,7 @@ async function analyzeWithAI(msgs, apiKey) {
   function traceOpsLooksAdministrativeEventLocal(text) {
     var t = traceOpsNormEventTextLocal(text);
     if (!t) return true;
-    return /router\s*\d+\s*sigue\s*alarmad|router\s*alarmad|no hay red|sin red|network down|falla de red|e fox|efox|it support|infraestructura|junta de produccion|igual lo revisamos en la junta|mesa de retrab|area para reparaciones|pass vanguard|esperando tecnico|chamber\s+\d+\s+trabajando|solo informativo|scheduled maintenance|mantenimiento programado|agenda auditoria|apertura auditoria|meeting|kickoff|recordatorio|weekly report|awb|eta/.test(t);
+    return /router\s*\d+\s*sigue\s*alarmad|router\s*alarmad|no hay red|sin red|network down|falla de red|e fox|efox|it support|infraestructura|junta de produccion|igual lo revisamos en la junta|solo informativo|scheduled maintenance|mantenimiento programado|agenda auditoria|apertura auditoria|meeting|kickoff|recordatorio|weekly report|awb|eta/.test(t);
   }
 
   function traceOpsOperationalSignalCountLocal(text) {
@@ -1455,11 +1455,11 @@ async function analyzeWithAI(msgs, apiKey) {
     var t = traceOpsNormEventTextLocal(raw);
     var signals = 0;
 
-    if (/(short|bridge|corto|puente|open|missing material|falta material|wrong part|wrong component|mezcla de material|misalign|desalinead|aoi|ict|spi|x ray|rayos x|socket|dimm|flux|bga|scrap|rework|hold|paro|line down|detenido|stopped|componente|component|material|primera pieza|first piece|label|etiqueta|polaridad|failure|falla|reject|rechazo|contencion|validation|validacion)/.test(t)) signals++;
+    if (/(short|bridge|corto|puente|open|missing material|falta material|wrong part|wrong component|mezcla de material|misalign|desalinead|aoi|ict|spi|x ray|rayos x|socket|dimm|flux|bga|scrap|rework|hold|paro|line down|detenido|detenida|stopped|componente|component|material|primera pieza|first piece|label|etiqueta|polaridad|failure|falla|fallas|reject|rechazo|contencion|validation|validacion|programa de pruebas|reprobando|debug|debugueo|pict|suben las fallas|cambio revision|prueba|pruebas|material no entregado|material pendiente)/.test(t)) signals++;
     if (/\b(?:u|r|c|q|l|d|tp|ic|cn|fb)\d{1,4}\b/i.test(raw)) signals++;
     if (/\b(?:N\/P|P\/N|MODEL|MODELO|PART)\s*[:# ]?\s*([A-Z0-9][A-Z0-9-]{4,})/i.test(raw) || /\b([A-Z]{2,}[0-9]{3,}[A-Z0-9-]*)\b/.test(raw)) signals++;
-    if (/\b(?:l\s*\d+|bb\s*\d+|linea\s*\d+|line\s*\d+|aoi|ict|smt|pth)\b/i.test(raw)) signals++;
-    if (typeof technicalHitCountLocal === "function" && technicalHitCountLocal(raw) >= 2) signals++;
+    if (/\b(?:l\s*\d+|bb\s*\d+|linea\s*\d+|line\s*\d+|aoi|ict|smt|pth|pict)\b/i.test(raw)) signals++;
+    if (typeof technicalHitCountLocal === "function" && technicalHitCountLocal(raw) >= 1) signals++;
 
     return signals;
   }
@@ -1467,15 +1467,16 @@ async function analyzeWithAI(msgs, apiKey) {
   function traceOpsLooksOperationalEventLocal(text) {
     var raw = String(text || "");
     var t = traceOpsNormEventTextLocal(raw);
-    if (!t || t.length < 12) return false;
+    if (!t || t.length < 10) return false;
     if (traceOpsLooksAdministrativeEventLocal(raw)) return false;
 
     var signals = traceOpsOperationalSignalCountLocal(raw);
+    var hasOpsPhrase = /(ict|pict|aoi|spi|material|falla|fallas|corto|short|open|rework|primera pieza|debug|programa de pruebas|detenida|detenido|paro|reprobando|cambio revision|modelo|prueba|pruebas|feeder|laser mark|mix|mezcla)/.test(t);
 
-    // Eventos muy genéricos requieren más evidencia
-    if (/revisar|verificar|pendiente|favor|apoyar|trabajando|working|ok|pass|liberar|liberado|habilitar|definir/.test(t) && signals < 3) return false;
+    // Eventos genéricos siguen requiriendo algo de evidencia, pero ya no tanto
+    if (/revisar|verificar|pendiente|favor|apoyar|trabajando|working|ok|pass|liberar|liberado|habilitar|definir/.test(t) && signals < 2 && !hasOpsPhrase) return false;
 
-    return signals >= 2;
+    return signals >= 1 || hasOpsPhrase;
   }
 
 
@@ -1531,7 +1532,8 @@ async function analyzeWithAI(msgs, apiKey) {
           sender: m.sender,
           text: m.text,
           turno: m.turno,
-          type: detectTypeLocal(m.text)
+          type: detectTypeLocal(m.text),
+          __traceops_signal_count: traceOpsOperationalSignalCountLocal(m.text)
         };
       })
       .filter(function(m) { return Boolean(m.type); });
