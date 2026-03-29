@@ -2222,6 +2222,53 @@ async function analyzeWithAI(msgs, apiKey) {
     return /router|red|network|efox|junta|retrabajo|reparaciones|pass vanguard|mesa|area|soporte|support|alarmad|chamber|esperando tecnico/.test(t + " " + x);
   }
 
+
+  function traceOpsFindingAcceptedLocal(findingText, ev, msg) {
+    var txt = String(findingText || "");
+    if (!txt || !ev) return false;
+
+    var techHits = technicalHitCountLocal(txt);
+    var parts = extractPartsLocal(txt);
+    var models = extractModelTokensLocal(txt);
+    var hasRefdes = /\b(?:u|r|c|q|l|d|tp|ic|cn|fb)\d{1,4}\b/i.test(txt);
+    var hasTechWords = /\b(?:causa|cause|hipotesis|hypothesis|validacion|validation|mitigacion|mitigation|inspeccion|inspection|analisis|analysis|flux|pogo|ict|aoi|bga|short|open|owner|escalad|conten(?:cion|tion)|componente|component|rework|debug|falla|failure|defecto|defect)\b/i.test(txt);
+
+    var partOverlap = overlapCountLocal(parts, extractPartsLocal([
+      ev.modelo || "",
+      ev.linea_estacion || "",
+      ev.evento_detectado_full || ev.evento_detectado || "",
+      ev.impacto || "",
+      ev.accion_requerida || "",
+      ev.accion_ejecutada_full || ev.accion_ejecutada || ""
+    ].join(" ")));
+
+    var modelOverlap = overlapCountLocal(models, extractModelTokensLocal([
+      ev.modelo || "",
+      ev.evento_detectado_full || ev.evento_detectado || ""
+    ].join(" ")));
+
+    var stationMatch = false;
+    if (ev.linea_estacion && ev.linea_estacion !== "N/D") {
+      var st = extractStationLocal(txt);
+      var ln = extractLineLocal(txt);
+      stationMatch = (st && ev.linea_estacion.indexOf(st) >= 0) || (ln && ev.linea_estacion.indexOf(ln) >= 0);
+    }
+
+    var overlap = traceOpsFindingEventOverlapLocal(txt, ev);
+    var senderTech = msg ? (senderLooksTechnicalLocal(msg) >= 1) : false;
+
+    if (hasRefdes && techHits >= 1) return true;
+    if (partOverlap > 0) return true;
+    if (modelOverlap > 0 && techHits >= 1) return true;
+    if (stationMatch && techHits >= 1) return true;
+    if (senderTech && hasTechWords && techHits >= 2) return true;
+    if (senderTech && overlap >= 2 && techHits >= 1) return true;
+    if (hasTechWords && techHits >= 3) return true;
+    if (overlap >= 4) return true;
+
+    return false;
+  }
+
   function traceOpsFindingFingerprintLocal(text) {
     return String(text || "")
       .replace(/\[[^\]]+\]\s*/g, " ")
@@ -2326,13 +2373,14 @@ async function analyzeWithAI(msgs, apiKey) {
         if (distHours > 24) score -= Math.floor((distHours - 24) / 6) * 2;
 
         var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(cleanText) === anchor.station);
-        if (findingLooksAdministrativeUpdateLocal(cleanText) && !findingHasStrongTechnicalSignalLocal(cleanText)) return;
+        if (findingLooksAdministrativeUpdateLocal(cleanText) && !findingHasStrongTechnicalSignalLocal(cleanText) && !traceOpsFindingAcceptedLocal(cleanText, ev, m)) return;
         var senderTech = senderLooksTechnicalLocal(m) >= 1;
-        if (!hasAnchor && techHits < 2 && !senderTech) return;
-        if (!findingHasStrongTechnicalSignalLocal(cleanText) && techHits < 3) return;
-        if (score < 11) return;
+        var acceptedByRule = traceOpsFindingAcceptedLocal(cleanText, ev, m);
+        if (!hasAnchor && techHits < 2 && !senderTech && !acceptedByRule) return;
+        if (!findingHasStrongTechnicalSignalLocal(cleanText) && techHits < 2 && !acceptedByRule) return;
+        if (score < 9 && !acceptedByRule) return;
 
-        hits.push({ msg: m, ms: msgTimeMs, score: score, cleanText: cleanText });
+        hits.push({ msg: m, ms: msgTimeMs, score: score, cleanText: cleanText, acceptedByRule: acceptedByRule });
       });
 
       hits.sort(function(a, b) {
@@ -2346,8 +2394,8 @@ async function analyzeWithAI(msgs, apiKey) {
 
       hits = hits.filter(function(h){
         var needHigh = traceOpsEventNeedsHighFindingOverlapLocal(ev);
-        if (needHigh) return (h.evOverlap || 0) >= 5;
-        return (h.evOverlap || 0) >= 3;
+        if (needHigh) return (h.evOverlap || 0) >= 4 || h.acceptedByRule;
+        return (h.evOverlap || 0) >= 2 || h.acceptedByRule;
       });
 
       hits.sort(function(a, b) {
@@ -2358,43 +2406,46 @@ async function analyzeWithAI(msgs, apiKey) {
 
       var best = hits.length ? hits[0] : null;
       var followText = best ? formatFindingLocal(best.msg, best.cleanText) : "";
-      var existing = traceOpsIsFindingsExceptionLocal(ev.engineer_findings || "") ? "" : cleanFindingTextLocal(String(ev.engineer_findings || "").trim());
+      var existing = traceOpsIsFindingsExceptionLocal(ev.engineer_findings || "") ? "" : cleanFindingTextLocal(String(ev.engineer_findings_full || ev.engineer_findings || "").trim());
+      var selectedFindingFull = "";
 
       if (followText && findingIsRedundantLocal(followText, ev)) {
         followText = "";
       }
 
       if (!existing) {
-        ev.engineer_findings = followText || "";
+        selectedFindingFull = followText || "";
+        ev.engineer_findings = selectedFindingFull;
       } else if (followText) {
         var existingOverlap = traceOpsFindingEventOverlapLocal(existing, ev);
         var followOverlap = traceOpsFindingEventOverlapLocal(followText, ev);
-        ev.engineer_findings = followOverlap >= existingOverlap ? followText : existing;
+        selectedFindingFull = followOverlap >= existingOverlap ? followText : existing;
+        ev.engineer_findings = selectedFindingFull;
       } else {
-        ev.engineer_findings = existing || "";
+        selectedFindingFull = existing || "";
+        ev.engineer_findings = selectedFindingFull;
       }
 
-      if (findingAdminNoiseScoreLocal(ev.engineer_findings || "") >= 4 && technicalHitCountLocal(ev.engineer_findings || "") < 3) {
+      var acceptedFinal = traceOpsFindingAcceptedLocal(ev.engineer_findings || "", ev, best ? best.msg : null);
+      if (findingAdminNoiseScoreLocal(ev.engineer_findings || "") >= 5 && technicalHitCountLocal(ev.engineer_findings || "") < 2 && !acceptedFinal) {
         ev.engineer_findings = "";
       }
-      if (findingLooksAdministrativeUpdateLocal(ev.engineer_findings || "") && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) {
+      if (findingLooksAdministrativeUpdateLocal(ev.engineer_findings || "") && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "") && !acceptedFinal) {
         ev.engineer_findings = "";
       }
-      if (ev.engineer_findings && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings)) {
+      if (ev.engineer_findings && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings) && !acceptedFinal && technicalHitCountLocal(ev.engineer_findings || "") < 2) {
         ev.engineer_findings = "";
       }
 
-      if (findingLooksAdministrativeUpdateLocal(ev.engineer_findings || "") && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
-      if (findingAdminNoiseScoreLocal(ev.engineer_findings || "") >= 4 && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
       if (ev.engineer_findings) {
         var finalOverlap = traceOpsFindingEventOverlapLocal(ev.engineer_findings, ev);
-        if (traceOpsEventNeedsHighFindingOverlapLocal(ev) && finalOverlap < 5) ev.engineer_findings = "";
-        else if (finalOverlap < 3) ev.engineer_findings = "";
+        if (traceOpsEventNeedsHighFindingOverlapLocal(ev) && finalOverlap < 4 && !acceptedFinal) ev.engineer_findings = "";
+        else if (finalOverlap < 2 && !acceptedFinal) ev.engineer_findings = "";
       }
-      if (ev.engineer_findings && findingIsRedundantLocal(ev.engineer_findings, ev)) {
+      if (ev.engineer_findings && findingIsRedundantLocal(ev.engineer_findings, ev) && !acceptedFinal) {
         ev.engineer_findings = "";
       }
-      var fullFinding = String(ev.engineer_findings_full || ev.engineer_findings || "").trim();
+      var fullFinding = String(selectedFindingFull || ev.engineer_findings_full || ev.engineer_findings || "").trim();
       if (!fullFinding && ev.engineer_findings) fullFinding = String(ev.engineer_findings).trim();
       ev.engineer_findings_full = fullFinding;
       ev.engineer_findings_preview = fullFinding ? (fullFinding.length > 320 ? fullFinding.slice(0, 320) + "..." : fullFinding) : "";
