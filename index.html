@@ -2110,11 +2110,11 @@ async function analyzeWithAI(msgs, apiKey) {
     });
 
     if (!kept.length) return "";
-    var out = kept.slice(0, 3).join(" ");
+    var out = kept.slice(0, 4).join(" ");
     out = out.replace(/\s{2,}/g, " ").trim();
-    if (out.length > 420) out = out.slice(0, 417) + "...";
+    if (out.length > 900) out = out.slice(0, 897) + "...";
     if (findingLooksAdministrativeUpdateLocal(out) && !findingHasStrongTechnicalSignalLocal(out)) return "";
-    if (!findingHasStrongTechnicalSignalLocal(out) && out.length < 110) return "";
+    if (!findingHasStrongTechnicalSignalLocal(out) && out.length < 85) return "";
     return out;
   }
 
@@ -2134,7 +2134,10 @@ async function analyzeWithAI(msgs, apiKey) {
     if (hasRefdes) signals++;
     if (hasTechWords && techHits >= 1) signals++;
 
-    return signals >= 2;
+    if (signals >= 2) return true;
+    if (techHits >= 4) return true;
+    if ((parts > 0 || hasRefdes) && techHits >= 1) return true;
+    return false;
   }
 
   function findingLooksAdministrativeUpdateLocal(text) {
@@ -2286,7 +2289,7 @@ async function analyzeWithAI(msgs, apiKey) {
 
   function enrichEngineerFindingsLocal(parsed) {
     if (!parsed || !parsed.eventos || !parsed.eventos.length) return parsed;
-    var followWindowMs = 36 * 60 * 60000;
+    var followWindowMs = 48 * 60 * 60000;
 
     parsed.eventos = (parsed.eventos || []).map(function(ev) {
       var evTimeMs = parseEventDateTimeMsLocal(ev);
@@ -2324,9 +2327,10 @@ async function analyzeWithAI(msgs, apiKey) {
 
         var hasAnchor = partOverlap > 0 || modelOverlap > 0 || (anchor.station !== "N/D" && extractStationLocal(cleanText) === anchor.station);
         if (findingLooksAdministrativeUpdateLocal(cleanText) && !findingHasStrongTechnicalSignalLocal(cleanText)) return;
-        if (!hasAnchor && techHits < 3) return;
-        if (!findingHasStrongTechnicalSignalLocal(cleanText)) return;
-        if (score < 16) return;
+        var senderTech = senderLooksTechnicalLocal(m) >= 1;
+        if (!hasAnchor && techHits < 2 && !senderTech) return;
+        if (!findingHasStrongTechnicalSignalLocal(cleanText) && techHits < 3) return;
+        if (score < 11) return;
 
         hits.push({ msg: m, ms: msgTimeMs, score: score, cleanText: cleanText });
       });
@@ -2342,8 +2346,8 @@ async function analyzeWithAI(msgs, apiKey) {
 
       hits = hits.filter(function(h){
         var needHigh = traceOpsEventNeedsHighFindingOverlapLocal(ev);
-        if (needHigh) return (h.evOverlap || 0) >= 6;
-        return (h.evOverlap || 0) >= 4;
+        if (needHigh) return (h.evOverlap || 0) >= 5;
+        return (h.evOverlap || 0) >= 3;
       });
 
       hits.sort(function(a, b) {
@@ -2384,8 +2388,8 @@ async function analyzeWithAI(msgs, apiKey) {
       if (findingAdminNoiseScoreLocal(ev.engineer_findings || "") >= 4 && !findingHasStrongTechnicalSignalLocal(ev.engineer_findings || "")) ev.engineer_findings = "";
       if (ev.engineer_findings) {
         var finalOverlap = traceOpsFindingEventOverlapLocal(ev.engineer_findings, ev);
-        if (traceOpsEventNeedsHighFindingOverlapLocal(ev) && finalOverlap < 6) ev.engineer_findings = "";
-        else if (finalOverlap < 4) ev.engineer_findings = "";
+        if (traceOpsEventNeedsHighFindingOverlapLocal(ev) && finalOverlap < 5) ev.engineer_findings = "";
+        else if (finalOverlap < 3) ev.engineer_findings = "";
       }
       if (ev.engineer_findings && findingIsRedundantLocal(ev.engineer_findings, ev)) {
         ev.engineer_findings = "";
@@ -2393,7 +2397,7 @@ async function analyzeWithAI(msgs, apiKey) {
       var fullFinding = String(ev.engineer_findings_full || ev.engineer_findings || "").trim();
       if (!fullFinding && ev.engineer_findings) fullFinding = String(ev.engineer_findings).trim();
       ev.engineer_findings_full = fullFinding;
-      ev.engineer_findings_preview = fullFinding ? (fullFinding.length > 240 ? fullFinding.slice(0, 240) + "..." : fullFinding) : "";
+      ev.engineer_findings_preview = fullFinding ? (fullFinding.length > 320 ? fullFinding.slice(0, 320) + "..." : fullFinding) : "";
       ev.engineer_findings = ev.engineer_findings_preview || "";
       return ev;
     });
