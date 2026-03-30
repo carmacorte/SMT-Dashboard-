@@ -429,7 +429,36 @@ tr:hover td{background:var(--g50)}
 .traceops-engineering-card h4{font-size:15px;font-weight:800;color:#162033;margin:0 0 4px}
 .traceops-engineering-card p{font-size:11px;color:#5B657A;line-height:1.5;margin:0}
 .traceops-bullets{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+
 .traceops-bullet{padding:10px 12px;border:1px solid #E6EAF0;border-radius:12px;background:#F8FAFC;font-size:11px;color:#162033;line-height:1.4}
+.traceops-calendar{background:#fff;border:1px solid #E6EAF0;border-radius:22px;overflow:hidden;box-shadow:0 2px 12px rgba(20,32,51,.04);margin-bottom:16px}
+.traceops-calendar-head{padding:16px 18px;border-bottom:1px solid #EEF2F6;background:#F8FAFC;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.traceops-calendar-head h3{font-size:16px;font-weight:800;color:#162033;letter-spacing:-.02em;margin:0}
+.traceops-calendar-head span{font-size:11px;color:#5B657A}
+.traceops-calendar-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.traceops-calendar-btn{border:1px solid #D9E2EC;background:#fff;color:#243B63;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:700;cursor:pointer}
+.traceops-calendar-btn.active{background:#243B63;color:#fff;border-color:#243B63}
+.traceops-calendar-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.traceops-calendar-month{border:1px solid #E6EAF0;border-radius:18px;overflow:hidden;background:#fff}
+.traceops-calendar-month-head{padding:12px 14px;background:#FBFCFE;border-bottom:1px solid #EEF2F6;font-size:12px;font-weight:800;color:#162033;letter-spacing:.04em;text-transform:uppercase}
+.traceops-calendar-weekdays,.traceops-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.traceops-calendar-weekdays div{padding:8px 6px;font-size:10px;font-weight:800;color:#7A869A;text-align:center;background:#fff}
+.traceops-calendar-day{position:relative;min-height:78px;border-top:1px solid #F1F4F8;border-right:1px solid #F1F4F8;background:#fff;padding:8px;display:flex;flex-direction:column;gap:4px;cursor:pointer;transition:all .15s ease}
+.traceops-calendar-day:nth-child(7n){border-right:none}
+.traceops-calendar-day.empty{background:#FAFBFC;cursor:default}
+.traceops-calendar-day:hover{background:#F8FBFF}
+.traceops-calendar-day.selected{background:#EEF6FF;box-shadow:inset 0 0 0 2px #3B82F6}
+.traceops-calendar-day.has-events{background:linear-gradient(180deg,#FFFFFF,#FAFDFB)}
+.traceops-calendar-date{font-size:11px;font-weight:800;color:#162033}
+.traceops-calendar-count{font-size:22px;line-height:1;font-weight:800;color:#1E5C48}
+.traceops-calendar-meta{display:flex;gap:4px;flex-wrap:wrap}
+.traceops-calendar-pill{font-size:9px;font-weight:800;border-radius:999px;padding:2px 6px;background:#EDF4FF;color:#2952A3}
+.traceops-calendar-pill.crit{background:#FDEEEE;color:#D64545}
+.traceops-calendar-pill.find{background:#EBF8EE;color:#2E8B57}
+.traceops-calendar-empty-msg{padding:16px 18px;font-size:12px;color:#5B657A}
+@media(max-width:900px){.traceops-calendar-day{min-height:72px;padding:6px}.traceops-calendar-count{font-size:18px}}
+@media(max-width:560px){.traceops-calendar-body{padding:12px}.traceops-calendar-day{min-height:64px}.traceops-calendar-meta{display:none}.traceops-calendar-date{font-size:10px}.traceops-calendar-count{font-size:16px}}
+
 @media(max-width:1180px){.traceops-kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.traceops-analytics-grid,.traceops-engineering-grid{grid-template-columns:1fr}.traceops-context{flex-direction:column;align-items:flex-start}.traceops-context-actions{justify-content:flex-start}}
 @media(max-width:560px){.traceops-kpi-strip{grid-template-columns:1fr}.traceops-context{padding:16px}.traceops-context-title{font-size:20px}}
 
@@ -3604,6 +3633,79 @@ function App() {
     return parts[2]+"-"+String(parts[1]).padStart(2,"0")+"-"+String(parts[0]).padStart(2,"0");
   }
 
+
+  function formatIsoCalendarLabel(iso){
+    if(!iso) return "";
+    var p=String(iso).split("-");
+    return p.length===3?(p[2]+"/"+p[1]+"/"+p[0]):iso;
+  }
+
+  function buildCalendarMonths(eventRows){
+    var rows=(eventRows||[]).slice().filter(function(e){ return !!eventDateToIso(e&&e.fecha); });
+    var dayMap={};
+    rows.forEach(function(e){
+      var iso=eventDateToIso(e&&e.fecha);
+      if(!iso) return;
+      if(!dayMap[iso]) dayMap[iso]={iso:iso,eventCount:0,critical:0,findings:0};
+      dayMap[iso].eventCount+=1;
+      if(e&&e.prioridad==="Critica") dayMap[iso].critical+=1;
+      if(String((e&&e.engineer_findings)||"").trim()) dayMap[iso].findings+=1;
+    });
+    var dayKeys=Object.keys(dayMap).sort();
+    var monthMap={};
+    dayKeys.forEach(function(iso){
+      var parts=iso.split("-");
+      var ym=parts[0]+"-"+parts[1];
+      if(!monthMap[ym]) monthMap[ym]=[];
+      monthMap[ym].push(dayMap[iso]);
+    });
+    var monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    return Object.keys(monthMap).sort().map(function(ym){
+      var yp=ym.split("-");
+      var year=parseInt(yp[0],10);
+      var month=parseInt(yp[1],10)-1;
+      var first=new Date(year,month,1);
+      var offset=(first.getDay()+6)%7;
+      var totalDays=new Date(year,month+1,0).getDate();
+      var cells=[];
+      for(var i=0;i<offset;i++) cells.push({empty:true,key:ym+"-e"+i});
+      for(var d=1; d<=totalDays; d++){
+        var iso=year+"-"+String(month+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+        var payload=dayMap[iso]||null;
+        cells.push({
+          empty:false,
+          key:iso,
+          iso:iso,
+          day:d,
+          eventCount:payload?payload.eventCount:0,
+          critical:payload?payload.critical:0,
+          findings:payload?payload.findings:0
+        });
+      }
+      while(cells.length%7!==0) cells.push({empty:true,key:ym+"-tail"+cells.length});
+      return {
+        ym:ym,
+        label:monthNames[month]+" "+year,
+        cells:cells,
+        totalEvents:monthMap[ym].reduce(function(a,b){ return a+(b.eventCount||0); },0),
+        activeDays:monthMap[ym].length
+      };
+    });
+  }
+
+  function selectCalendarDay(iso){
+    if(!iso) return;
+    if(viewDateFrom===iso && viewDateTo===iso){
+      setViewDateFrom("");
+      setViewDateTo("");
+      return;
+    }
+    setViewDateFrom(iso);
+    setViewDateTo(iso);
+    setViewHourFrom("");
+    setViewHourTo("");
+  }
+
   function parseChatDateTimeMs(value){
     if(!value) return null;
     var raw=String(value).trim();
@@ -3669,6 +3771,9 @@ function App() {
   var eventTimes=ev.map(parseEventDateTimeMs).filter(function(ms){return ms!=null;}).sort(function(a,b){return a-b;});
   function formatLocalMs(ms){var d=new Date(ms);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
   var visibleRangeLabel=eventTimes.length>0?(formatLocalMs(eventTimes[0])+" - "+formatLocalMs(eventTimes[eventTimes.length-1])):"Sin eventos en el rango";
+
+  var calendarMonths=buildCalendarMonths(evAll);
+  var selectedDayLabel=(viewDateFrom&&viewDateTo&&viewDateFrom===viewDateTo)?formatIsoCalendarLabel(viewDateFrom):"";
 
   var criticalEventCount=ev.filter(function(e){return e.prioridad==="Critica";}).length;
   var openEventCount=ev.filter(function(e){return e.estatus!=="Cerrado";}).length;
@@ -4831,6 +4936,46 @@ function App() {
               <div className="traceops-kpi-value warn">{analysisWindowDays}</div>
               <div className="traceops-kpi-meta"><span>Rango visible</span><strong>{visibleRangeLabel}</strong></div>
             </div>
+          </div>
+
+          <div className="traceops-calendar">
+            <div className="traceops-calendar-head">
+              <div>
+                <h3>Calendario operativo</h3>
+                <span>Explora eventos por día para evitar una sola lista larga. Click en un día para filtrar todo el dashboard.</span>
+              </div>
+              <div className="traceops-calendar-tools">
+                {selectedDayLabel&&<span style={{fontSize:11,color:"#243B63",fontWeight:700,background:"#EEF6FF",border:"1px solid #CFE0FF",borderRadius:999,padding:"8px 12px"}}>Día seleccionado: {selectedDayLabel}</span>}
+                <button className={"traceops-calendar-btn"+(!selectedDayLabel?" active":"")} onClick={function(){clearViewFilters();}}>Todo el rango</button>
+              </div>
+            </div>
+            {calendarMonths.length?(
+              <div className="traceops-calendar-body">
+                {calendarMonths.map(function(month){
+                  return <div key={month.ym} className="traceops-calendar-month">
+                    <div className="traceops-calendar-month-head">{month.label} · {month.totalEvents} eventos · {month.activeDays} días con actividad</div>
+                    <div className="traceops-calendar-weekdays">
+                      {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(function(d){ return <div key={d}>{d}</div>; })}
+                    </div>
+                    <div className="traceops-calendar-grid">
+                      {month.cells.map(function(cell){
+                        if(cell.empty) return <div key={cell.key} className="traceops-calendar-day empty"></div>;
+                        var selected = !!(selectedDayLabel && viewDateFrom===cell.iso && viewDateTo===cell.iso);
+                        var cls = "traceops-calendar-day" + (cell.eventCount>0?" has-events":"") + (selected?" selected":"");
+                        return <div key={cell.key} className={cls} onClick={function(){ if(cell.eventCount>0){ selectCalendarDay(cell.iso); } }}>
+                          <div className="traceops-calendar-date">{cell.day}</div>
+                          <div className="traceops-calendar-count">{cell.eventCount>0?cell.eventCount:"-"}</div>
+                          <div className="traceops-calendar-meta">
+                            {cell.critical>0&&<span className="traceops-calendar-pill crit">{cell.critical} crit</span>}
+                            {cell.findings>0&&<span className="traceops-calendar-pill find">{cell.findings} find</span>}
+                          </div>
+                        </div>;
+                      })}
+                    </div>
+                  </div>;
+                })}
+              </div>
+            ):<div className="traceops-calendar-empty-msg">No hay eventos suficientes para construir el calendario en el rango cargado.</div>}
           </div>
 
           <div className="traceops-analytics-grid">
