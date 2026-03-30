@@ -460,6 +460,13 @@ tr:hover td{background:var(--g50)}
 .traceops-calendar-strip-tag{font-size:9px;font-weight:800;border-radius:999px;padding:3px 7px;background:#EDF4FF;color:#2952A3}
 .traceops-calendar-strip-tag.crit{background:#FDEEEE;color:#D64545}
 .traceops-calendar-strip-tag.find{background:#EBF8EE;color:#2E8B57}
+.traceops-window-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.traceops-window-pill{font-size:11px;color:#243B63;font-weight:700;background:#EEF6FF;border:1px solid #CFE0FF;border-radius:999px;padding:8px 12px}
+.traceops-window-pill.actual{background:#EDF7F2;border-color:#CFE7DB;color:#1E5C48}
+.traceops-window-lines{display:flex;flex-direction:column;gap:4px}
+.traceops-window-line{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.traceops-window-line span{font-size:10.5px;color:#5B657A}
+.traceops-window-line strong{font-size:11px;color:#162033}
 @media(max-width:900px){.traceops-calendar-strip.days-7{grid-template-columns:repeat(4,minmax(0,1fr))}.traceops-calendar-strip-day{min-height:98px;padding:10px}}
 @media(max-width:560px){.traceops-calendar-strip.days-3,.traceops-calendar-strip.days-7{grid-template-columns:repeat(2,minmax(0,1fr))}.traceops-calendar-strip-day{min-height:88px;padding:10px}.traceops-calendar-strip-daynum{font-size:22px}.traceops-calendar-chip{padding:7px 10px;font-size:10px}.traceops-calendar-tools{width:100%}.traceops-calendar-strip-head{align-items:flex-start}}
 .traceops-calendar-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
@@ -3900,6 +3907,9 @@ function App() {
   var calendarMonths=buildCalendarMonths(evAll);
   var calendarStrip=buildCalendarStrip(evAll, calendarAnchorIso||viewDateFrom||viewDateTo, calendarView);
   var selectedDayLabel=(viewDateFrom&&viewDateTo&&viewDateFrom===viewDateTo)?formatIsoCalendarLabel(viewDateFrom):(viewDateFrom&&viewDateTo?(formatIsoCalendarLabel(viewDateFrom)+" - "+formatIsoCalendarLabel(viewDateTo)):"");
+  var requestedWindowLabel=selectedDayLabel||"";
+  var actualWindowLabel=visibleRangeLabel||"";
+  var requestedWindowDiffers=!!(requestedWindowLabel && actualWindowLabel && requestedWindowLabel!==actualWindowLabel);
 
   var criticalEventCount=ev.filter(function(e){return e.prioridad==="Critica";}).length;
   var openEventCount=ev.filter(function(e){return e.estatus!=="Cerrado";}).length;
@@ -5060,7 +5070,16 @@ function App() {
             <div className="traceops-kpi-card">
               <div className="traceops-kpi-label">Ventana</div>
               <div className="traceops-kpi-value warn">{analysisWindowDays}</div>
-              <div className="traceops-kpi-meta"><span>Rango visible</span><strong>{visibleRangeLabel}</strong></div>
+              <div className="traceops-kpi-meta" style={{display:"block"}}>
+                {requestedWindowDiffers?(
+                  <div className="traceops-window-lines">
+                    <div className="traceops-window-line"><span>Solicitada</span><strong>{requestedWindowLabel}</strong></div>
+                    <div className="traceops-window-line"><span>Con datos</span><strong>{actualWindowLabel}</strong></div>
+                  </div>
+                ):(
+                  <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}><span>Rango visible</span><strong>{actualWindowLabel}</strong></div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -5120,7 +5139,12 @@ function App() {
                     }}>{opt.l}</button>;
                   })}
                 </div>
-                {selectedDayLabel&&<span style={{fontSize:11,color:"#243B63",fontWeight:700,background:"#EEF6FF",border:"1px solid #CFE0FF",borderRadius:999,padding:"8px 12px"}}>{calendarView==="month"?"Selected day":"Selected window"}: {selectedDayLabel}</span>}
+                {selectedDayLabel&&(
+                  <div className="traceops-window-meta">
+                    <span className="traceops-window-pill">{calendarView==="month"?"Selected day":"Requested window"}: {requestedWindowLabel}</span>
+                    {requestedWindowDiffers&&<span className="traceops-window-pill actual">Data window: {actualWindowLabel}</span>}
+                  </div>
+                )}
                 <button className={"traceops-calendar-btn"+(!selectedDayLabel?" active":"")} onClick={function(){clearViewFilters();}}>All range</button>
               </div>
             </div>
@@ -5216,7 +5240,11 @@ function App() {
                 <p>Rango activo, volumen de mensajes y evidencia disponible para el periodo seleccionado.</p>
                 <div className="traceops-bullets">
                   <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
-                  <div className="traceops-bullet"><strong>Rango base:</strong> {analysisRangeLabel||"N/D"}{selectedDayLabel&&<span> · <strong>Vista:</strong> {selectedDayLabel}</span>}</div>
+                  <div className="traceops-bullet">
+                    <strong>Rango base:</strong> {analysisRangeLabel||"N/D"}
+                    {requestedWindowLabel&&<span> · <strong>Solicitada:</strong> {requestedWindowLabel}</span>}
+                    {requestedWindowDiffers&&<span> · <strong>Con datos:</strong> {actualWindowLabel}</span>}
+                  </div>
                   <div className="traceops-bullet"><strong>Mensajes limpios:</strong> {((msgStats&&msgStats.clean)||0).toLocaleString()} · <strong>Evidencias:</strong> {imgNames.length}</div>
                 </div>
               </div>
