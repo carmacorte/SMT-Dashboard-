@@ -438,6 +438,30 @@ tr:hover td{background:var(--g50)}
 .traceops-calendar-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .traceops-calendar-btn{border:1px solid #D9E2EC;background:#fff;color:#243B63;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:700;cursor:pointer}
 .traceops-calendar-btn.active{background:#243B63;color:#fff;border-color:#243B63}
+.traceops-calendar-strip-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.traceops-calendar-strip-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.traceops-calendar-iconbtn{width:36px;height:36px;border-radius:12px;border:1px solid #D9E2EC;background:#fff;color:#243B63;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.traceops-calendar-chipgroup{display:inline-flex;align-items:center;gap:6px;background:#EEF2F7;border:1px solid #D9E2EC;border-radius:999px;padding:5px}
+.traceops-calendar-chip{border:none;background:transparent;color:#5B657A;font-size:11px;font-weight:800;padding:8px 12px;border-radius:999px;cursor:pointer}
+.traceops-calendar-chip.active{background:#243B63;color:#fff}
+.traceops-calendar-strip{display:grid;gap:10px}
+.traceops-calendar-strip.days-1{grid-template-columns:1fr}
+.traceops-calendar-strip.days-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.traceops-calendar-strip.days-7{grid-template-columns:repeat(7,minmax(0,1fr))}
+.traceops-calendar-strip-day{border:1px solid #E6EAF0;border-radius:18px;background:#fff;padding:12px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:all .16s ease;min-height:112px}
+.traceops-calendar-strip-day:hover{background:#F8FBFF;transform:translateY(-1px)}
+.traceops-calendar-strip-day.selected{background:#EEF6FF;box-shadow:inset 0 0 0 2px #3B82F6}
+.traceops-calendar-strip-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.traceops-calendar-strip-weekday{font-size:11px;font-weight:800;color:#7A869A;text-transform:uppercase}
+.traceops-calendar-strip-daynum{font-size:28px;line-height:1;font-weight:800;color:#162033}
+.traceops-calendar-strip-count{font-size:12px;font-weight:800;color:#1E5C48;background:#EDF7F2;border-radius:999px;padding:4px 8px}
+.traceops-calendar-strip-sub{font-size:11px;color:#5B657A;line-height:1.45}
+.traceops-calendar-strip-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.traceops-calendar-strip-tag{font-size:9px;font-weight:800;border-radius:999px;padding:3px 7px;background:#EDF4FF;color:#2952A3}
+.traceops-calendar-strip-tag.crit{background:#FDEEEE;color:#D64545}
+.traceops-calendar-strip-tag.find{background:#EBF8EE;color:#2E8B57}
+@media(max-width:900px){.traceops-calendar-strip.days-7{grid-template-columns:repeat(4,minmax(0,1fr))}.traceops-calendar-strip-day{min-height:98px;padding:10px}}
+@media(max-width:560px){.traceops-calendar-strip.days-3,.traceops-calendar-strip.days-7{grid-template-columns:repeat(2,minmax(0,1fr))}.traceops-calendar-strip-day{min-height:88px;padding:10px}.traceops-calendar-strip-daynum{font-size:22px}.traceops-calendar-chip{padding:7px 10px;font-size:10px}.traceops-calendar-tools{width:100%}.traceops-calendar-strip-head{align-items:flex-start}}
 .traceops-calendar-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
 .traceops-calendar-month{border:1px solid #E6EAF0;border-radius:18px;overflow:hidden;background:#fff}
 .traceops-calendar-month-head{padding:12px 14px;background:#FBFCFE;border-bottom:1px solid #EEF2F6;font-size:12px;font-weight:800;color:#162033;letter-spacing:.04em;text-transform:uppercase}
@@ -3081,6 +3105,8 @@ function App() {
   var vfDateToArr = _useState(""); var viewDateTo = vfDateToArr[0]; var setViewDateTo = vfDateToArr[1];
   var vfHourFromArr = _useState(""); var viewHourFrom = vfHourFromArr[0]; var setViewHourFrom = vfHourFromArr[1];
   var vfHourToArr = _useState(""); var viewHourTo = vfHourToArr[0]; var setViewHourTo = vfHourToArr[1];
+  var calViewArr = _useState("7d"); var calendarView = calViewArr[0]; var setCalendarView = calViewArr[1];
+  var calAnchorArr = _useState(""); var calendarAnchorIso = calAnchorArr[0]; var setCalendarAnchorIso = calAnchorArr[1];
 
   React.useEffect(function(){
     function onResize(){ if (window.innerWidth > 900) setSidebarOpen(true); }
@@ -3617,6 +3643,7 @@ function App() {
     setFilterMode("quick");setDateFrom("");setDateTo("");setWeekNum("");setWeekYear(new Date().getFullYear());
     setBitacoraSortKey("fecha");setBitacoraSortDir("desc");
     setViewDateFrom("");setViewDateTo("");setViewHourFrom("");setViewHourTo("");
+    setCalendarView("7d");setCalendarAnchorIso("");
     setRccaForm(null);setRccaDetail(null);
   }
 
@@ -3640,7 +3667,39 @@ function App() {
     return p.length===3?(p[2]+"/"+p[1]+"/"+p[0]):iso;
   }
 
-  function buildCalendarMonths(eventRows){
+  function isoParts(iso){
+    var p=String(iso||"").split("-");
+    if(p.length!==3) return null;
+    return {y:parseInt(p[0],10),m:parseInt(p[1],10)-1,d:parseInt(p[2],10)};
+  }
+
+  function isoToDate(iso){
+    var parts=isoParts(iso);
+    if(!parts) return null;
+    return new Date(parts.y, parts.m, parts.d);
+  }
+
+  function dateToIsoLocal(d){
+    if(!d) return "";
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+
+  function addDaysIso(iso, days){
+    var d=isoToDate(iso);
+    if(!d) return "";
+    d.setDate(d.getDate()+days);
+    return dateToIsoLocal(d);
+  }
+
+  function getWeekStartIso(iso){
+    var d=isoToDate(iso);
+    if(!d) return "";
+    var offset=(d.getDay()+6)%7;
+    d.setDate(d.getDate()-offset);
+    return dateToIsoLocal(d);
+  }
+
+  function buildCalendarDayMap(eventRows){
     var rows=(eventRows||[]).slice().filter(function(e){ return !!eventDateToIso(e&&e.fecha); });
     var dayMap={};
     rows.forEach(function(e){
@@ -3651,6 +3710,11 @@ function App() {
       if(e&&e.prioridad==="Critica") dayMap[iso].critical+=1;
       if(String((e&&e.engineer_findings)||"").trim()) dayMap[iso].findings+=1;
     });
+    return dayMap;
+  }
+
+  function buildCalendarMonths(eventRows){
+    var dayMap=buildCalendarDayMap(eventRows);
     var dayKeys=Object.keys(dayMap).sort();
     var monthMap={};
     dayKeys.forEach(function(iso){
@@ -3693,17 +3757,78 @@ function App() {
     });
   }
 
+  function calendarSpanDays(viewKey){
+    return viewKey==="1d"?1:(viewKey==="3d"?3:(viewKey==="7d"?7:1));
+  }
+
+  function applyCalendarWindow(startIso, viewKey){
+    if(!startIso) return;
+    var span=calendarSpanDays(viewKey||calendarView);
+    setCalendarAnchorIso(startIso);
+    setViewDateFrom(startIso);
+    setViewDateTo(addDaysIso(startIso, span-1));
+    setViewHourFrom("");
+    setViewHourTo("");
+  }
+
   function selectCalendarDay(iso){
     if(!iso) return;
-    if(viewDateFrom===iso && viewDateTo===iso){
+    if(calendarView==="month"){
+      if(viewDateFrom===iso && viewDateTo===iso){
+        setCalendarAnchorIso(iso);
+        setViewDateFrom("");
+        setViewDateTo("");
+        return;
+      }
+      setCalendarAnchorIso(iso);
+      setViewDateFrom(iso);
+      setViewDateTo(iso);
+      setViewHourFrom("");
+      setViewHourTo("");
+      return;
+    }
+    var span=calendarSpanDays(calendarView);
+    if(viewDateFrom===iso && viewDateTo===addDaysIso(iso, span-1)){
+      setCalendarAnchorIso(iso);
       setViewDateFrom("");
       setViewDateTo("");
       return;
     }
-    setViewDateFrom(iso);
-    setViewDateTo(iso);
-    setViewHourFrom("");
-    setViewHourTo("");
+    applyCalendarWindow(iso, calendarView);
+  }
+
+  function buildCalendarStrip(eventRows, anchorIso, viewKey){
+    var dayMap=buildCalendarDayMap(eventRows);
+    var keys=Object.keys(dayMap).sort();
+    if(!keys.length) return {days:[], anchorIso:"", headerLabel:""};
+    var base=anchorIso&&isoToDate(anchorIso)?anchorIso:keys[keys.length-1];
+    var baseDate=isoToDate(base);
+    var span=viewKey==="1d"?1:(viewKey==="3d"?3:7);
+    var startIso=viewKey==="7d"?getWeekStartIso(base):base;
+    var days=[];
+    for(var i=0;i<span;i++){
+      var iso=addDaysIso(startIso, i);
+      var payload=dayMap[iso]||{};
+      var d=isoToDate(iso);
+      days.push({
+        iso:iso,
+        day:d?d.getDate():"",
+        weekday:d?["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()]:"",
+        eventCount:payload.eventCount||0,
+        critical:payload.critical||0,
+        findings:payload.findings||0
+      });
+    }
+    var startDate=isoToDate(startIso);
+    var weekNum=(function(dateObj){
+      var d=new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
+      d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));
+      var yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+      return Math.ceil((((d-yearStart)/86400000)+1)/7);
+    })(startDate||new Date());
+    var monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    var headerLabel=(startDate?monthNames[startDate.getMonth()]+" "+startDate.getFullYear():"") + " · Week " + weekNum;
+    return {days:days, anchorIso:startIso, headerLabel:headerLabel};
   }
 
   function parseChatDateTimeMs(value){
@@ -3773,7 +3898,8 @@ function App() {
   var visibleRangeLabel=eventTimes.length>0?(formatLocalMs(eventTimes[0])+" - "+formatLocalMs(eventTimes[eventTimes.length-1])):"Sin eventos en el rango";
 
   var calendarMonths=buildCalendarMonths(evAll);
-  var selectedDayLabel=(viewDateFrom&&viewDateTo&&viewDateFrom===viewDateTo)?formatIsoCalendarLabel(viewDateFrom):"";
+  var calendarStrip=buildCalendarStrip(evAll, calendarAnchorIso||viewDateFrom||viewDateTo, calendarView);
+  var selectedDayLabel=(viewDateFrom&&viewDateTo&&viewDateFrom===viewDateTo)?formatIsoCalendarLabel(viewDateFrom):(viewDateFrom&&viewDateTo?(formatIsoCalendarLabel(viewDateFrom)+" - "+formatIsoCalendarLabel(viewDateTo)):"");
 
   var criticalEventCount=ev.filter(function(e){return e.prioridad==="Critica";}).length;
   var openEventCount=ev.filter(function(e){return e.estatus!=="Cerrado";}).length;
@@ -4938,44 +5064,119 @@ function App() {
             </div>
           </div>
 
+
           <div className="traceops-calendar">
             <div className="traceops-calendar-head">
-              <div>
-                <h3>Calendario operativo</h3>
-                <span>Explora eventos por día para evitar una sola lista larga. Click en un día para filtrar todo el dashboard.</span>
+              <div className="traceops-calendar-strip-head">
+                <div>
+                  <h3>Operational calendar</h3>
+                  <span>Navigate 1, 3 or 7 days without leaving the operational context. Month view stays available for macro navigation.</span>
+                </div>
+                <div className="traceops-calendar-strip-nav">
+                  <button className="traceops-calendar-iconbtn" onClick={function(){
+                    var current = calendarAnchorIso || viewDateFrom || viewDateTo || (calendarStrip.days[0]&&calendarStrip.days[0].iso) || "";
+                    var step = calendarView==="month" ? -30 : -calendarSpanDays(calendarView);
+                    var nextIso = current ? addDaysIso(current, step) : "";
+                    if(nextIso){
+                      if(calendarView==="month"){ setCalendarAnchorIso(nextIso); }
+                      else applyCalendarWindow(nextIso, calendarView);
+                    }
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+                  </button>
+                  <span style={{fontSize:12,fontWeight:800,color:"#162033"}}>{calendarView==="month" ? (calendarMonths.length ? calendarMonths[calendarMonths.length-1].label : "No data") : (calendarStrip.headerLabel || "No data")}</span>
+                  <button className="traceops-calendar-iconbtn" onClick={function(){
+                    var current = calendarAnchorIso || viewDateFrom || viewDateTo || (calendarStrip.days[0]&&calendarStrip.days[0].iso) || "";
+                    var step = calendarView==="month" ? 30 : calendarSpanDays(calendarView);
+                    var nextIso = current ? addDaysIso(current, step) : "";
+                    if(nextIso){
+                      if(calendarView==="month"){ setCalendarAnchorIso(nextIso); }
+                      else applyCalendarWindow(nextIso, calendarView);
+                    }
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M9 18l6-6-6-6"/></svg>
+                  </button>
+                </div>
               </div>
               <div className="traceops-calendar-tools">
-                {selectedDayLabel&&<span style={{fontSize:11,color:"#243B63",fontWeight:700,background:"#EEF6FF",border:"1px solid #CFE0FF",borderRadius:999,padding:"8px 12px"}}>Día seleccionado: {selectedDayLabel}</span>}
-                <button className={"traceops-calendar-btn"+(!selectedDayLabel?" active":"")} onClick={function(){clearViewFilters();}}>Todo el rango</button>
+                <div className="traceops-calendar-chipgroup">
+                  {[
+                    {k:"1d",l:"1 day"},
+                    {k:"3d",l:"3 days"},
+                    {k:"7d",l:"7 days"},
+                    {k:"month",l:"Month"}
+                  ].map(function(opt){
+                    return <button key={opt.k} className={"traceops-calendar-chip"+(calendarView===opt.k?" active":"")} onClick={function(){
+                      setCalendarView(opt.k);
+                      var baseIso = calendarAnchorIso || viewDateFrom || viewDateTo || (calendarStrip.days[0]&&calendarStrip.days[0].iso) || "";
+                      if(opt.k==="month"){
+                        setCalendarAnchorIso(baseIso);
+                        if(viewDateFrom && viewDateTo && viewDateFrom!==viewDateTo){
+                          setViewDateTo(viewDateFrom);
+                        }
+                        return;
+                      }
+                      if(baseIso) applyCalendarWindow(baseIso, opt.k);
+                    }}>{opt.l}</button>;
+                  })}
+                </div>
+                {selectedDayLabel&&<span style={{fontSize:11,color:"#243B63",fontWeight:700,background:"#EEF6FF",border:"1px solid #CFE0FF",borderRadius:999,padding:"8px 12px"}}>{calendarView==="month"?"Selected day":"Selected window"}: {selectedDayLabel}</span>}
+                <button className={"traceops-calendar-btn"+(!selectedDayLabel?" active":"")} onClick={function(){clearViewFilters();}}>All range</button>
               </div>
             </div>
-            {calendarMonths.length?(
+
+            {calendarView!=="month" ? (
               <div className="traceops-calendar-body">
-                {calendarMonths.map(function(month){
-                  return <div key={month.ym} className="traceops-calendar-month">
-                    <div className="traceops-calendar-month-head">{month.label} · {month.totalEvents} eventos · {month.activeDays} días con actividad</div>
-                    <div className="traceops-calendar-weekdays">
-                      {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(function(d){ return <div key={d}>{d}</div>; })}
-                    </div>
-                    <div className="traceops-calendar-grid">
-                      {month.cells.map(function(cell){
-                        if(cell.empty) return <div key={cell.key} className="traceops-calendar-day empty"></div>;
-                        var selected = !!(selectedDayLabel && viewDateFrom===cell.iso && viewDateTo===cell.iso);
-                        var cls = "traceops-calendar-day" + (cell.eventCount>0?" has-events":"") + (selected?" selected":"");
-                        return <div key={cell.key} className={cls} onClick={function(){ if(cell.eventCount>0){ selectCalendarDay(cell.iso); } }}>
-                          <div className="traceops-calendar-date">{cell.day}</div>
-                          <div className="traceops-calendar-count">{cell.eventCount>0?cell.eventCount:"-"}</div>
-                          <div className="traceops-calendar-meta">
-                            {cell.critical>0&&<span className="traceops-calendar-pill crit">{cell.critical} crit</span>}
-                            {cell.findings>0&&<span className="traceops-calendar-pill find">{cell.findings} find</span>}
-                          </div>
-                        </div>;
-                      })}
-                    </div>
-                  </div>;
-                })}
+                <div className={"traceops-calendar-strip days-"+calendarSpanDays(calendarView)}>
+                  {calendarStrip.days.map(function(day){
+                    var selected = !!(viewDateFrom && viewDateTo && viewDateFrom===day.iso);
+                    return <div key={day.iso} className={"traceops-calendar-strip-day"+(selected?" selected":"")} onClick={function(){ selectCalendarDay(day.iso); }}>
+                      <div className="traceops-calendar-strip-top">
+                        <div>
+                          <div className="traceops-calendar-strip-weekday">{day.weekday}</div>
+                          <div className="traceops-calendar-strip-daynum">{day.day}</div>
+                        </div>
+                        <div className="traceops-calendar-strip-count">{day.eventCount}</div>
+                      </div>
+                      <div className="traceops-calendar-strip-sub">{formatIsoCalendarLabel(day.iso)}</div>
+                      <div className="traceops-calendar-strip-tags">
+                        {day.critical>0&&<span className="traceops-calendar-strip-tag crit">{day.critical} crit</span>}
+                        {day.findings>0&&<span className="traceops-calendar-strip-tag find">{day.findings} find</span>}
+                        {day.eventCount===0&&<span className="traceops-calendar-strip-tag">No EVT</span>}
+                      </div>
+                    </div>;
+                  })}
+                </div>
               </div>
-            ):<div className="traceops-calendar-empty-msg">No hay eventos suficientes para construir el calendario en el rango cargado.</div>}
+            ) : (
+              calendarMonths.length?(
+                <div className="traceops-calendar-body">
+                  {calendarMonths.map(function(month){
+                    return <div key={month.ym} className="traceops-calendar-month">
+                      <div className="traceops-calendar-month-head">{month.label} · {month.totalEvents} events · {month.activeDays} active days</div>
+                      <div className="traceops-calendar-weekdays">
+                        {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(function(d){ return <div key={d}>{d}</div>; })}
+                      </div>
+                      <div className="traceops-calendar-grid">
+                        {month.cells.map(function(cell){
+                          if(cell.empty) return <div key={cell.key} className="traceops-calendar-day empty"></div>;
+                          var selected = !!(viewDateFrom && viewDateTo && viewDateFrom===cell.iso && viewDateTo===cell.iso);
+                          var cls = "traceops-calendar-day" + (cell.eventCount>0?" has-events":"") + (selected?" selected":"");
+                          return <div key={cell.key} className={cls} onClick={function(){ if(cell.eventCount>0){ selectCalendarDay(cell.iso); } }}>
+                            <div className="traceops-calendar-date">{cell.day}</div>
+                            <div className="traceops-calendar-count">{cell.eventCount>0?cell.eventCount:"-"}</div>
+                            <div className="traceops-calendar-meta">
+                              {cell.critical>0&&<span className="traceops-calendar-pill crit">{cell.critical} crit</span>}
+                              {cell.findings>0&&<span className="traceops-calendar-pill find">{cell.findings} find</span>}
+                            </div>
+                          </div>;
+                        })}
+                      </div>
+                    </div>;
+                  })}
+                </div>
+              ):<div className="traceops-calendar-empty-msg">No hay eventos suficientes para construir el calendario en el rango cargado.</div>
+            )}
           </div>
 
           <div className="traceops-analytics-grid">
@@ -5015,7 +5216,7 @@ function App() {
                 <p>Rango activo, volumen de mensajes y evidencia disponible para el periodo seleccionado.</p>
                 <div className="traceops-bullets">
                   <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
-                  <div className="traceops-bullet"><strong>Rango:</strong> {analysisRangeLabel||"N/D"}</div>
+                  <div className="traceops-bullet"><strong>Rango base:</strong> {analysisRangeLabel||"N/D"}{selectedDayLabel&&<span> · <strong>Vista:</strong> {selectedDayLabel}</span>}</div>
                   <div className="traceops-bullet"><strong>Mensajes limpios:</strong> {((msgStats&&msgStats.clean)||0).toLocaleString()} · <strong>Evidencias:</strong> {imgNames.length}</div>
                 </div>
               </div>
