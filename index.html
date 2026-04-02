@@ -4,7 +4,7 @@
 <head>
 <script>
 window.TRACEOPS_SUPABASE = {
-  enabled: true,
+  enabled: false,
   url: "https://irjaljqlijpfwkljusbu.supabase.co",
   anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV"
 };
@@ -27,6 +27,17 @@ window.addEventListener('unhandledrejection', function(ev) {
     document.body.appendChild(box);
   } catch(_) {}
 });
+window.addEventListener('error', function(ev) {
+  try {
+    var t = ev && ev.target;
+    if (t && t.tagName === 'SCRIPT' && t.src) {
+      var box = document.createElement('div');
+      box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#922;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all';
+      box.innerHTML = '<strong>SCRIPT LOAD FAIL</strong><br>' + t.src;
+      document.body.appendChild(box);
+    }
+  } catch(_) {}
+}, true);
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>TraceOps by SMTintel</title>
@@ -503,7 +514,6 @@ tr:hover td{background:var(--g50)}
 
 </style>
 
-<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 window.TRACEOPS_SUPABASE = window.TRACEOPS_SUPABASE || {
   url: "",
