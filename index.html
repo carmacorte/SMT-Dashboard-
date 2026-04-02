@@ -3536,12 +3536,25 @@ function App() {
       setSyncBusy(false);
     }
   }
-  function exportRcca() {
-    var blob = new Blob([JSON.stringify(rccaList,null,2)],{type:"application/json"});
+  function traceOpsDownloadJson(filename, payload) {
+    var blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "TraceOps_RCCA_"+new Date().toISOString().slice(0,10)+".json";
-    a.click(); URL.revokeObjectURL(a.href);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  function exportRcca() {
+    traceOpsDownloadJson("TraceOps_RCCA_"+new Date().toISOString().slice(0,10)+".json", rccaList);
+  }
+  function exportCurrentRccaItem(item) {
+    if (!item) return;
+    var cleanId = String(item.rcca_id||"RCCA").replace(/[^A-Za-z0-9_-]+/g,"_");
+    traceOpsDownloadJson("TraceOps_"+cleanId+"_"+new Date().toISOString().slice(0,10)+".json", item);
+  }
+  function exportRccaDeckItems(items) {
+    var list = Array.isArray(items) ? items : [];
+    traceOpsDownloadJson("TraceOps_RCCA_Deck_"+new Date().toISOString().slice(0,10)+".json", list);
   }
   function rccaSimilarity(evItem, rcca) {
     var score = 0;
@@ -4233,7 +4246,11 @@ function App() {
       <div className="ic-wrap">
         <div style={{padding:"0 14px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
           <div><div style={{fontSize:12,fontWeight:800,color:"#1A1714"}}>RCCA Deck</div><div style={{fontSize:9.5,color:"#8A8580"}}>Front summary, detailed analysis on reverse</div></div>
-          <div style={{fontSize:8.5,color:"#2A7A60",fontWeight:800,background:"#EAF5F0",borderRadius:99,padding:"3px 9px",border:"1px solid #B8DECE"}}>{cards.length} RCCA</div>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            <button onClick={function(){exportCurrentRccaItem(cur);}} style={{background:"#fff",color:"#1E5C48",border:"1px solid #B8DECE",borderRadius:999,padding:"5px 10px",fontSize:9,fontWeight:800,cursor:"pointer"}}>Export current JSON</button>
+            <button onClick={function(){exportRccaDeckItems(cards);}} style={{background:"#fff",color:"#2952A3",border:"1px solid #C8D7F8",borderRadius:999,padding:"5px 10px",fontSize:9,fontWeight:800,cursor:"pointer"}}>Export deck JSON</button>
+            <div style={{fontSize:8.5,color:"#2A7A60",fontWeight:800,background:"#EAF5F0",borderRadius:99,padding:"3px 9px",border:"1px solid #B8DECE"}}>{cards.length} RCCA</div>
+          </div>
         </div>
         <div className="ic-stage" style={{perspective:"1200px"}}>
           {cards.map(function(card,i){
@@ -4245,7 +4262,10 @@ function App() {
                 <div className="ic-card-head">
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
-                      <div style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#2A7A60"}}>{card.rcca_id}</div>
+                      <div style={{display:"flex",flexDirection:"column",gap:4,minWidth:0}}>
+                        <div style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#2A7A60"}}>{card.rcca_id}</div>
+                        {i===safeIdx&&<button onClick={function(e){e.stopPropagation();exportCurrentRccaItem(card);}} style={{alignSelf:"flex-start",background:"#fff",color:"#1E5C48",border:"1px solid #B8DECE",borderRadius:999,padding:"3px 8px",fontSize:8,fontWeight:800,cursor:"pointer"}}>Export</button>}
+                      </div>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"flex-end",maxWidth:"42%"}}>
                         <span style={Object.assign({fontSize:8,borderRadius:999,padding:"2px 7px",fontWeight:800},statusStyle(card.estatus_rcca||"NUEVO"))}>{traceOpsCarouselStatusLabel(card.estatus_rcca||"NUEVO")}</span>
                         <span style={{fontSize:8,background:"#F8F7F5",color:"#6A6560",borderRadius:999,padding:"2px 7px",fontWeight:800,border:"1px solid #DDDBD7"}}>{card.tipo_caso||inferTypeFor(card)}</span>
