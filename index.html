@@ -18,18 +18,9 @@ window.onerror = function(msg, src, line, col, err) {
   document.body.appendChild(box);
   return false;
 };
-window.addEventListener('unhandledrejection', function(ev) {
-  try {
-    var reason = ev && ev.reason ? (ev.reason.stack || ev.reason.message || String(ev.reason)) : 'Unhandled promise rejection';
-    var box = document.createElement('div');
-    box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#7F1D1D;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all';
-    box.innerHTML = '<strong>PROMISE ERROR</strong><br>' + reason;
-    document.body.appendChild(box);
-  } catch(_) {}
-});
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TraceOps by SMTintel</title>
+<title>TraceOps | Operational Intelligence for Manufacturing</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231A3D1E'/%3E%3Crect x='8' y='8' width='48' height='48' rx='8' fill='%230D2B10'/%3E%3Crect x='18' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='28' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='38' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='18' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='28' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='38' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='18' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='28' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='38' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='18' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='28' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='38' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Cpolyline points='12,32 18,32 21,22 25,32' fill='none' stroke='%236A9E6E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M25,32 C27,32 29,24 33,21 C37,18 41,20 41,26 C41,32 37,33 33,34 C29,35 27,38 30,42 C33,46 39,45 42,42' fill='none' stroke='%2348A882' stroke-width='2.5' stroke-linecap='round'/%3E%3Cpolyline points='42,32 46,22 49,38 52,32' fill='none' stroke='%236A9E6E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='21' cy='22' r='2' fill='%236A9E6E'/%3E%3Ccircle cx='46' cy='22' r='2' fill='%236A9E6E'/%3E%3C/svg%3E"/>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%231A3D1E'/%3E%3Crect x='22' y='22' width='136' height='136' rx='22' fill='%230D2B10'/%3E%3Crect x='50' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='78' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='106' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='50' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='78' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='106' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='50' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='78' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='106' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='50' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='78' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='106' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Cpolyline points='34,90 50,90 58,62 70,90' fill='none' stroke='%236A9E6E' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70,90 C76,90 82,68 92,60 C102,52 116,56 116,72 C116,88 104,92 92,95 C80,98 76,108 84,118 C92,128 110,126 118,118' fill='none' stroke='%2348A882' stroke-width='7' stroke-linecap='round'/%3E%3Cpolyline points='118,90 130,62 140,108 148,90' fill='none' stroke='%236A9E6E' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='58' cy='62' r='5' fill='%236A9E6E'/%3E%3Ccircle cx='130' cy='62' r='5' fill='%236A9E6E'/%3E%3C/svg%3E"/>
 <meta name="theme-color" content="#1A3D1E"/>
@@ -1760,29 +1751,29 @@ async function analyzeWithAI(msgs, apiKey) {
 
     userContent =
       "Analiza " + msgs.length +
-      " mensajes de manufactura SMT/PTH/AOI/ICT. " +
+      " mensajes de manufactura, proceso, materiales, calidad, mantenimiento y sistemas. " +
       "Extrae incidentes operativos accionables. Solo JSON:\n\n" +
       sample;
   }
 
   var system =
-    "Eres experto en manufactura SMT/PCB/PTH. " +
+    "Eres experto en operaciones de manufactura, trazabilidad, proceso, materiales, calidad y mantenimiento. " +
     "Analiza mensajes o clusters de WhatsApp de manufactura y extrae SOLO eventos operativos accionables. " +
     "Si recibes CLUSTERS, cada cluster es un incidente. Extrae un evento por cluster. " +
-    "INCLUIR: paros linea, defectos calidad, falta material, FAI, LCR vencido, RMA, AOI/ICT, dano fisico. " +
+    "INCLUIR: paros de linea, problemas de proceso, falta de material, liberaciones, hallazgos de calidad, fallas de sistema, soporte tecnico, mantenimiento, cambios de modelo y dano fisico. " +
     "EXCLUIR: saludos, ok, gracias, emojis solos. " +
     "Catalogo defecto_smt: Solder bridge|Missing component|Wrong component|Wrong orientation|Polarity inverted|" +
     "Misaligned component|BGA short|BGA open|Lifted pad|Feeder misload|Machine stop|Wrong reel|Missing material|" +
     "ICT open|ICT short|Functional test fail|N/A. " +
     "tipo_evento: Calidad|Proceso|Material|Sistema|Seguridad|Produccion. " +
-    "actor_area: Produccion|Calidad|Proceso|Mantenimiento|Materiales|Ingenieria|PTH|SMT|AOI|ICT. " +
+    "actor_area: Produccion|Calidad|Proceso|Mantenimiento|Materiales|Ingenieria|Logistica|Planeacion|SMT|AOI|ICT. " +
     "estado_historia: Detectado|Contenido|Corregido|Validado|Cerrado. " +
     "Para cada evento extrae: quien detecto, que accion se tomo, que actores participaron, cual es el estado real del ciclo de vida. " +
-    "ENGINEER FINDINGS: Si en los mensajes del cluster hay una respuesta POSTERIOR al reporte inicial donde el engineer, tecnico de calidad, SMT o responsable tecnico responde con analisis, findings de componentes (ej: U108, U519), causa probable, resultados de inspeccion, hipotesis tecnica o plan de accion especifico, captura esa respuesta completa en el campo engineer_findings. Este campo es CRITICO para el seguimiento de causa raiz. " +
+    "ENGINEER FINDINGS: Si en los mensajes del cluster hay una respuesta POSTERIOR al reporte inicial donde un engineer, supervisor, tecnico, responsable de proceso, calidad, materiales o mantenimiento responde con analisis, findings tecnicos, causa probable, resultados de inspeccion, hipotesis operativa o plan de accion especifico, captura esa respuesta completa en el campo engineer_findings. Este campo es CRITICO para seguimiento y aprendizaje operativo. " +
     "Maximo 15 eventos. Solo JSON sin texto extra:" +
     '{"eventos":[{"id":"EVT-001","fecha":"DD/MM/YYYY","hora":"HH:MM","turno":"1T|2T|3T",' +
     '"modelo":"N/P o N/D","linea_estacion":"L1 o N/D","reporta":"nombre",' +
-    '"area_involucrada":"SMT|PTH|ICT|AOI|Calidad|Mantenimiento|Materiales|Produccion",' +
+    '"area_involucrada":"Operacion|Proceso|Calidad|Mantenimiento|Materiales|Produccion|Ingenieria|SMT|AOI|ICT",' +
     '"tipo_evento":"Calidad|Proceso|Material|Sistema|Seguridad|Produccion",' +
     '"defecto_smt":"del catalogo o N/A","evento_detectado":"descripcion","impacto":"impacto",' +
     '"accion_requerida":"accion","accion_ejecutada":"accion tomada o vacia si no hay","engineer_findings":"respuesta tecnica del engineer si existe en mensajes posteriores al incidente, o vacia",' +
@@ -2641,7 +2632,7 @@ async function buildXlsx(result) {
   var directorio = result.directorio || [];
 
   var wb = new ExcelJS.Workbook();
-  wb.creator = "TraceOps by SMTintel - ALDA";
+  wb.creator = "TraceOps | Operational Intelligence for Manufacturing - ALDA";
   wb.created = new Date();
 
   var C = {
@@ -2713,7 +2704,7 @@ async function buildXlsx(result) {
   var wsIS = wb.addWorksheet("Incident_Stories");
   wsIS.mergeCells("A1:H1");
   var isT = wsIS.getCell("A1");
-  isT.value = "Incident Story Model - TraceOps by SMTintel";
+  isT.value = "Incident Story Model - TraceOps | Operational Intelligence for Manufacturing";
   isT.fill = hFill(C.hBg); isT.font = hFont(12);
   wsIS.getRow(1).height = 22;
 
@@ -2810,7 +2801,7 @@ async function buildXlsx(result) {
   var wsDash = wb.addWorksheet("Dashboard_Base");
   wsDash.mergeCells("A1:E1");
   var dt = wsDash.getCell("A1");
-  dt.value = "Dashboard TraceOps - SMTintel by ALDA";
+  dt.value = "Dashboard TraceOps - Operational Intelligence for Manufacturing";
   dt.fill = hFill(C.hBg); dt.font = hFont(13);
   wsDash.getRow(1).height = 22; wsDash.addRow([]);
   [["Total",ev.length],["Abiertos",ev.filter(function(e){return e.estatus==="Abierto";}).length],
@@ -2819,7 +2810,7 @@ async function buildXlsx(result) {
     var r = wsDash.addRow([kv[0], kv[1]]); r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
   });
   wsDash.addRow([]);
-  var rDef = wsDash.addRow(["Pareto Defectos SMT"]); rDef.getCell(1).fill=hFill(C.hBg); rDef.getCell(1).font=hFont();
+  var rDef = wsDash.addRow(["Pareto de hallazgos"]); rDef.getCell(1).fill=hFill(C.hBg); rDef.getCell(1).font=hFont();
   Object.keys(defCounts).sort(function(a,b){return defCounts[b]-defCounts[a];}).forEach(function(k){
     var r = wsDash.addRow([k, defCounts[k]]); r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
   });
@@ -2865,7 +2856,7 @@ async function buildXlsx(result) {
   var wsCat = wb.addWorksheet("Catalogos_Reglas");
   wsCat.mergeCells("A1:D1");
   var ct = wsCat.getCell("A1");
-  ct.value = "Catalogos y reglas - SMTintel"; ct.fill=hFill(C.hBg); ct.font=hFont(12);
+  ct.value = "Catalogos y reglas - TraceOps"; ct.fill=hFill(C.hBg); ct.font=hFont(12);
   wsCat.getRow(1).height = 20; wsCat.addRow([]);
   var lins = Array.from(new Set(ev.map(function(e){return e.linea_estacion;}).filter(Boolean)));
   var reglas = ["Incluir: paros, defectos, falta material, FAI.",
@@ -2966,8 +2957,8 @@ function LogoSVG() {
       <text x="312" y="158" fontFamily="'Arial Black','Helvetica Neue',Arial,sans-serif" fontSize="88" fontWeight="900" fill="#1B4D20" letterSpacing="-2">Ops</text>
       <text x="430" y="158" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="88" fontWeight="300" fill="#2E6B32" letterSpacing="-1">Trace</text>
       <line x1="312" y1="176" x2="870" y2="176" stroke="url(#underline)" strokeWidth="2.5"/>
-      <text x="314" y="202" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="18" fontWeight="400" fill="#5A8060" letterSpacing="0.5">Operational Intelligence for Manufacturing Teams</text>
-      <text x="314" y="224" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">by SMTintel &#183; ALDA</text>
+      <text x="314" y="202" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="18" fontWeight="400" fill="#5A8060" letterSpacing="0.5">Operational Intelligence for Manufacturing</text>
+      <text x="314" y="224" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">Operational Intelligence &#183; ALDA</text>
     </svg>
   );
 }
@@ -3113,80 +3104,7 @@ function App() {
   var errArr = _useState(""); var errMsg = errArr[0]; var setErrMsg = errArr[1];
   var dragArr = _useState(false); var drag = dragArr[0]; var setDrag = dragArr[1];
   var sbArr = _useState(window.innerWidth > 900); var sidebarOpen = sbArr[0]; var setSidebarOpen = sbArr[1];
-  var langArr = _useState(localStorage.getItem("traceops_lang") || "en"); var lang = langArr[0]; var setLang = langArr[1];
   var isMobile = function(){ return window.innerWidth <= 900; };
-  var translations = {
-    en: {
-      brandSubtitle: "Operational Intelligence for Manufacturing Teams",
-      startExport: "Start with your WhatsApp export",
-      recentAnalyses: "See recent analyses",
-      newAnalysis: "New",
-      downloadXlsx: "Download XLSX log",
-      cloudRcca: "RCCA Cloud",
-      localRcca: "Local RCCA",
-      heroEyebrow: "Operational Intelligence for Manufacturing Teams",
-      heroSubtitle: "Turn scattered floor conversations into structured incidents, clear priorities, traceable follow-up, and reusable operational memory.",
-      contextKicker: "Built from inside the operation",
-      contextTitle: "Your operation already has the information. It just does not stay together.",
-      contextSubtitle: "Upload a WhatsApp export, email thread, or operational message history. TraceOps turns floor conversations into structured incidents, visible priorities, traceable follow-up, and reusable operational memory.",
-      loadZip: "Load ZIP now",
-      uploadTitle: "Start with your WhatsApp export",
-      uploadSubtitle: "Drop the ZIP here or click to select it",
-      selectFile: "Select file",
-      chipsHero: ["Incident detection","Engineer findings","RCCA memory","Yokoten","Operational log"],
-      chipsContext: ["WhatsApp export","EML / MBOX","Operational Log","Root Cause Archive","Evidence in context"],
-      footerTagline: "Operational Intelligence for Manufacturing Teams",
-      langLabel: "Language"
-    },
-    es: {
-      brandSubtitle: "Inteligencia operativa para equipos de manufactura",
-      startExport: "Comenzar con export de WhatsApp",
-      recentAnalyses: "Ver análisis recientes",
-      newAnalysis: "Nuevo",
-      downloadXlsx: "Descargar bitácora XLSX",
-      cloudRcca: "RCCA en nube",
-      localRcca: "RCCA local",
-      heroEyebrow: "Inteligencia operativa para equipos de manufactura",
-      heroSubtitle: "Convierte conversaciones dispersas del piso en incidentes estructurados, prioridades claras, seguimiento trazable y memoria operativa reutilizable.",
-      contextKicker: "Construido desde adentro de la operación",
-      contextTitle: "Tu operación ya tiene la información. Lo que falta es mantenerla unida.",
-      contextSubtitle: "Carga una exportación de WhatsApp, un hilo de correo o un historial de mensajes operativos. TraceOps convierte conversaciones de piso en incidentes estructurados, prioridades visibles, seguimiento trazable y memoria operativa reutilizable.",
-      loadZip: "Cargar ZIP ahora",
-      uploadTitle: "Comenzar con export de WhatsApp",
-      uploadSubtitle: "Suelta aquí el ZIP o haz clic para seleccionarlo",
-      selectFile: "Seleccionar archivo",
-      chipsHero: ["Detección de incidentes","Hallazgos técnicos","Memoria RCCA","Yokoten","Bitácora operativa"],
-      chipsContext: ["Export de WhatsApp","EML / MBOX","Bitácora operativa","Archivo de causa raíz","Evidencia en contexto"],
-      footerTagline: "Inteligencia operativa para equipos de manufactura",
-      langLabel: "Idioma"
-    },
-    zh: {
-      brandSubtitle: "面向制造团队的运营智能",
-      startExport: "从 WhatsApp 导出开始",
-      recentAnalyses: "查看最近分析",
-      newAnalysis: "新建",
-      downloadXlsx: "下载 XLSX 日志",
-      cloudRcca: "云端 RCCA",
-      localRcca: "本地 RCCA",
-      heroEyebrow: "面向制造团队的运营智能",
-      heroSubtitle: "将分散的现场对话转化为结构化事件、清晰优先级、可追踪跟进和可复用的运营记忆。",
-      contextKicker: "源自一线运营内部",
-      contextTitle: "你的运营已经拥有信息，缺少的是把它们留在一起。",
-      contextSubtitle: "上传 WhatsApp 导出、邮件线程或运营消息记录。TraceOps 将现场对话转化为结构化事件、可见优先级、可追踪跟进和可复用的运营记忆。",
-      loadZip: "立即加载 ZIP",
-      uploadTitle: "从 WhatsApp 导出开始",
-      uploadSubtitle: "将 ZIP 拖到这里，或点击进行选择",
-      selectFile: "选择文件",
-      chipsHero: ["事件检测","工程发现","RCCA 记忆","横展","运营日志"],
-      chipsContext: ["WhatsApp 导出","EML / MBOX","运营日志","根因档案","证据关联"],
-      footerTagline: "面向制造团队的运营智能",
-      langLabel: "语言"
-    }
-  };
-  function t(key){
-    var bucket = translations[lang] || translations.en;
-    return bucket[key] != null ? bucket[key] : translations.en[key];
-  }
   var statsArr = _useState(null); var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
   var bitSortKeyArr = _useState("fecha"); var bitacoraSortKey = bitSortKeyArr[0]; var setBitacoraSortKey = bitSortKeyArr[1];
   var bitSortDirArr = _useState("desc"); var bitacoraSortDir = bitSortDirArr[0]; var setBitacoraSortDir = bitSortDirArr[1];
@@ -3202,11 +3120,6 @@ function App() {
     window.addEventListener("resize", onResize);
     return function(){ window.removeEventListener("resize", onResize); };
   }, []);
-
-  React.useEffect(function(){
-    try { localStorage.setItem("traceops_lang", lang); } catch(_) {}
-    try { document.documentElement.lang = lang === "zh" ? "zh" : lang; } catch(_) {}
-  }, [lang]);
 
   React.useEffect(function(){
     try {
@@ -3545,201 +3458,12 @@ function App() {
       setSyncBusy(false);
     }
   }
-  function traceOpsDownloadJson(filename, payload) {
-    var blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  function exportRcca() {
+    var blob = new Blob([JSON.stringify(rccaList,null,2)],{type:"application/json"});
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    setTimeout(function(){ try { URL.revokeObjectURL(a.href); } catch(_){} }, 1000);
-  }
-  function traceOpsEsc(v){
-    return String(v==null?"":v)
-      .replace(/&/g,"&amp;")
-      .replace(/</g,"&lt;")
-      .replace(/>/g,"&gt;")
-      .replace(/"/g,"&quot;")
-      .replace(/'/g,"&#39;");
-  }
-  function traceOpsSafeArray(v){
-    return Array.isArray(v) ? v : (v ? [v] : []);
-  }
-  function traceOpsSeverityValue(item){
-    var sev = Number(item && item.severidad != null ? item.severidad : 0);
-    if (!isFinite(sev) || sev < 0) sev = 0;
-    if (sev > 5) sev = 5;
-    return sev;
-  }
-  function traceOpsStars(n){
-    var safe = Math.max(0, Math.min(5, Number(n)||0));
-    return "★★★★★".slice(0, safe) + "☆☆☆☆☆".slice(0, 5-safe);
-  }
-  function traceOpsBadge(status){
-    var s = String(status||"NUEVO").toUpperCase();
-    var style = {bg:"#F2F1EF", color:"#5D5751", border:"#DFDDD9"};
-    if (s.indexOf("ANAL")>=0) style = {bg:"#EEF5FF", color:"#2952A3", border:"#CFE0FF"};
-    else if (s.indexOf("VALID")>=0) style = {bg:"#EAF7EF", color:"#1E7A4A", border:"#BFE7CC"};
-    else if (s.indexOf("CERR")>=0 || s.indexOf("CLOSE")>=0) style = {bg:"#F2F3F5", color:"#596274", border:"#D7DDE6"};
-    else if (s.indexOf("NUEVO")>=0 || s.indexOf("NEW")>=0) style = {bg:"#FFF8E8", color:"#A26A00", border:"#F1DF9E"};
-    return style;
-  }
-  function traceOpsField(label, value){
-    if (value==null || value==="") return "";
-    return '<div class="to-field"><div class="to-label">'+traceOpsEsc(label)+'</div><div class="to-value">'+traceOpsEsc(value)+'</div></div>';
-  }
-  function traceOpsMetric(label, value, tone){
-    var tones = {
-      red: ["#FEF0EE","#F1C8C2","#C0392B"],
-      amber: ["#FEF9E8","#F5E4A0","#B87820"],
-      purple: ["#F5F0FE","#DBCDF8","#6B2DA8"],
-      green: ["#EAF5F0","#B8DECE","#1E5C48"]
-    };
-    var t = tones[tone] || tones.green;
-    return '<div class="to-metric" style="background:'+t[0]+';border-color:'+t[1]+'"><div class="to-metric-label" style="color:'+t[2]+'">'+traceOpsEsc(label)+'</div><div class="to-metric-value">'+traceOpsEsc(value)+'</div></div>';
-  }
-  function traceOpsCardHtml(item, idx){
-    var status = String(item.estatus_rcca||"NUEVO");
-    var badge = traceOpsBadge(status);
-    var sev = traceOpsSeverityValue(item);
-    var rec = item.recurrencia != null && item.recurrencia !== "" ? "R"+item.recurrencia : "R0";
-    var mad = item.madurez_analisis != null && item.madurez_analisis !== "" ? "M"+item.madurez_analisis : "M0";
-    var evCount = traceOpsSafeArray(item.event_ids).length;
-    var title = item.titulo_corto || item.problema || "Untitled RCCA";
-    var eventsHtml = traceOpsSafeArray(item.event_ids).map(function(ev){
-      return '<span class="to-chip">'+traceOpsEsc(ev)+'</span>';
-    }).join("");
-    if (!eventsHtml) eventsHtml = '<span class="to-chip to-chip-muted">No linked EVT</span>';
-    var sections = ''
-      + traceOpsField('Problem', item.problema)
-      + traceOpsField('Hypothesis', item.hipotesis)
-      + traceOpsField('Root Cause', item.causa_raiz)
-      + traceOpsField('Containment', item.contencion || item.accion_contencion)
-      + traceOpsField('Validation', item.validacion)
-      + traceOpsField('Detected Pattern', item.patron_detectado)
-      + traceOpsField('Reusable Lesson', item.leccion_aprendida)
-      + traceOpsField('Yokoten / Reapplication', item.yokoten || item.solucion_replicable || item.reaplicacion)
-      + traceOpsField('Owner', item.owner_email)
-      + traceOpsField('Source', item.source)
-      + traceOpsField('Original RCCA', item.original_rcca_id)
-      + traceOpsField('Created at', item.created_at)
-      + traceOpsField('Updated at', item.updated_at);
-    return ''
-      + '<article class="to-card">'
-      +   '<div class="to-card-top">'
-      +     '<div class="to-id">'+traceOpsEsc(item.rcca_id || ('RCCA-'+(idx+1)))+'</div>'
-      +     '<div class="to-badges">'
-      +       '<span class="to-badge" style="background:'+badge.bg+';color:'+badge.color+';border-color:'+badge.border+'">'+traceOpsEsc(status)+'</span>'
-      +       '<span class="to-badge to-badge-soft">'+traceOpsEsc(item.tipo_caso || 'GENERAL')+'</span>'
-      +     '</div>'
-      +   '</div>'
-      +   '<h2 class="to-title">'+traceOpsEsc(title)+'</h2>'
-      +   '<div class="to-sub">'+traceOpsEsc(item.modelo || 'N/D')+' • '+traceOpsEsc(item.linea || 'N/D')+' • '+traceOpsEsc(item.fecha || '-')+'</div>'
-      +   '<div class="to-metrics">'
-      +     traceOpsMetric('Sev', traceOpsStars(sev), 'red')
-      +     traceOpsMetric('Rec', rec, 'amber')
-      +     traceOpsMetric('Mad', mad, 'purple')
-      +     traceOpsMetric('EV', String(evCount).padStart(2,'0'), 'green')
-      +   '</div>'
-      +   '<div class="to-grid">'
-      +     sections
-      +   '</div>'
-      +   '<div class="to-events-wrap"><div class="to-label">Linked events</div><div class="to-events">'+eventsHtml+'</div></div>'
-      + '</article>';
-  }
-  function traceOpsOpenVisualExport(items, opts){
-    var list = Array.isArray(items) ? items.filter(Boolean) : (items ? [items] : []);
-    if (!list.length) return;
-    var options = opts || {};
-    var title = options.title || 'TraceOps RCCA Export';
-    var subtitle = options.subtitle || 'Visual card export';
-    var filename = options.filename || ('TraceOps_RCCA_Visual_'+new Date().toISOString().slice(0,10)+'.html');
-    var payload = JSON.stringify(list, null, 2);
-    var safePayload = JSON.stringify(list).replace(/</g,'\\u003c');
-    var cards = list.map(function(item, idx){ return traceOpsCardHtml(item, idx); }).join("");
-    var doc = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>'
-      + traceOpsEsc(title)
-      + '</title><style>'
-      + ':root{--bg:#F4F1EC;--ink:#1A1714;--muted:#726C66;--line:#DEDAD3;--card:#FFFFFF;--brand:#12342B;--brand2:#1E5C48;--soft:#F8F7F5}'
-      + 'html,body{margin:0;padding:0;background:linear-gradient(180deg,#F4F1EC 0%,#EEE9E1 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}'
-      + '.to-wrap{max-width:1180px;margin:0 auto;padding:24px 16px 48px}'
-      + '.to-hero{background:linear-gradient(160deg,#071A19 0%,#0C2222 55%,#12342B 100%);color:#fff;border-radius:28px;padding:22px 20px;box-shadow:0 18px 44px rgba(7,26,25,.24)}'
-      + '.to-over{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#A6CBC2;font-weight:800;margin-bottom:10px}'
-      + '.to-head{font-size:34px;line-height:1.02;margin:0 0 8px;font-weight:900}'
-      + '.to-subhead{font-size:14px;line-height:1.45;color:#DCEBE6;max-width:780px}'
-      + '.to-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}'
-      + '.to-btn{appearance:none;border:0;border-radius:999px;padding:12px 16px;font-weight:800;font-size:13px;cursor:pointer}'
-      + '.to-btn-main{background:#1E5C48;color:#fff}'
-      + '.to-btn-soft{background:#fff;color:#12342B;border:1px solid #D0DAD7}'
-      + '.to-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}'
-      + '.to-pill{padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);font-size:11px;color:#DCEBE6;font-weight:700}'
-      + '.to-grid-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:18px}'
-      + '.to-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:16px 16px 14px;box-shadow:0 10px 28px rgba(19,28,24,.08)}'
-      + '.to-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}'
-      + '.to-id{font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#2A7A60}'
-      + '.to-badges{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}'
-      + '.to-badge{font-size:10px;border:1px solid;padding:4px 9px;border-radius:999px;font-weight:800}'
-      + '.to-badge-soft{background:#F8F7F5;color:#6A6560;border-color:#DDDBD7}'
-      + '.to-title{font-size:20px;line-height:1.15;margin:12px 0 6px;font-weight:900}'
-      + '.to-sub{font-size:12px;color:var(--muted);line-height:1.4}'
-      + '.to-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0 14px}'
-      + '.to-metric{border:1px solid;border-radius:16px;padding:10px 8px;min-height:56px}'
-      + '.to-metric-label{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}'
-      + '.to-metric-value{font-size:14px;font-weight:900;color:#1A1714;margin-top:3px}'
-      + '.to-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
-      + '.to-field{background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:11px 12px;min-height:74px}'
-      + '.to-label{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#7E776F;margin-bottom:6px}'
-      + '.to-value{font-size:13px;line-height:1.42;color:#1A1714;white-space:pre-wrap;word-break:break-word}'
-      + '.to-events-wrap{margin-top:12px;background:#FBFAF8;border:1px dashed #DAD4CC;border-radius:16px;padding:12px}'
-      + '.to-events{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}'
-      + '.to-chip{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:#EAF5F0;color:#1E5C48;border:1px solid #B8DECE;font-size:11px;font-weight:800}'
-      + '.to-chip-muted{background:#F2F1EF;color:#67615B;border-color:#DDD9D3}'
-      + '@media print{.to-actions{display:none}.to-wrap{padding:0}.to-hero{box-shadow:none}.to-card{break-inside:avoid;box-shadow:none}}'
-      + '@media (max-width:680px){.to-head{font-size:28px}.to-grid{grid-template-columns:1fr}.to-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-      + '</style></head><body><div class="to-wrap"><section class="to-hero"><div class="to-over">TraceOps • RCCA Visual Export</div><h1 class="to-head">'
-      + traceOpsEsc(title)
-      + '</h1><div class="to-subhead">'
-      + traceOpsEsc(subtitle)
-      + '</div><div class="to-actions"><button class="to-btn to-btn-main" onclick="window.print()">Print / Save PDF</button><button class="to-btn to-btn-soft" onclick="downloadJson()">Download JSON backup</button></div><div class="to-meta"><span class="to-pill">'
-      + list.length + ' RCCA card(s)'
-      + '</span><span class="to-pill">'
-      + traceOpsEsc(new Date().toLocaleString())
-      + '</span><span class="to-pill">Card system export</span></div></section><section class="to-grid-cards">'
-      + cards
-      + '</section></div><script>window.__TRACEOPS_EXPORT__='+safePayload+';function downloadJson(){var blob=new Blob([JSON.stringify(window.__TRACEOPS_EXPORT__,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download='+JSON.stringify(filename.replace('.html','.json'))+';a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1000)}function downloadHtml(){var html=document.documentElement.outerHTML;var blob=new Blob([html],{type:"text/html"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download='+JSON.stringify(filename)+';a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1000)}<\/script></body></html>';
-    var blob = new Blob([doc], {type:"text/html"});
-    var url = URL.createObjectURL(blob);
-    var w = window.open(url, "_blank");
-    if (!w) {
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-    }
-    setTimeout(function(){ try { URL.revokeObjectURL(url); } catch(_){} }, 60000);
-  }
-  function exportRcca() {
-    traceOpsOpenVisualExport(rccaList, {
-      title: "TraceOps RCCA Archive",
-      subtitle: "Visual card export for saved RCCA records.",
-      filename: "TraceOps_RCCA_Archive_"+new Date().toISOString().slice(0,10)+".html"
-    });
-  }
-  function exportCurrentRccaItem(item) {
-    if (!item) return;
-    var cleanId = String(item.rcca_id||"RCCA").replace(/[^A-Za-z0-9_-]+/g,"_");
-    traceOpsOpenVisualExport([item], {
-      title: item.rcca_id || "TraceOps RCCA Card",
-      subtitle: "Visual export for the currently active RCCA card.",
-      filename: "TraceOps_"+cleanId+"_"+new Date().toISOString().slice(0,10)+".html"
-    });
-  }
-  function exportRccaDeckItems(items) {
-    var list = Array.isArray(items) ? items : [];
-    traceOpsOpenVisualExport(list, {
-      title: "TraceOps RCCA Deck",
-      subtitle: "Visual export rendered as card system for the active RCCA deck.",
-      filename: "TraceOps_RCCA_Deck_"+new Date().toISOString().slice(0,10)+".html"
-    });
+    a.download = "TraceOps_RCCA_"+new Date().toISOString().slice(0,10)+".json";
+    a.click(); URL.revokeObjectURL(a.href);
   }
   function rccaSimilarity(evItem, rcca) {
     var score = 0;
@@ -4220,7 +3944,7 @@ function App() {
   }
 
   function bitacoraSortLabel(key){
-    return ({id:"ID",fecha:"Fecha",turno:"Turno",linea_estacion:"Linea",tipo_evento:"Tipo",defecto_smt:"Defecto SMT",evento_detectado:"Evento",prioridad:"Prioridad",estatus:"Estatus"})[key]||"Fecha";
+    return ({id:"ID",fecha:"Fecha",turno:"Turno",linea_estacion:"Linea",tipo_evento:"Tipo",defecto_smt:"Hallazgo",evento_detectado:"Evento",prioridad:"Prioridad",estatus:"Estatus"})[key]||"Fecha";
   }
 
   function toggleBitacoraSort(key){
@@ -4262,6 +3986,14 @@ function App() {
   var pend=ev.filter(function(e){return e.estatus!=="Cerrado";});
   var crit=ev.filter(function(e){return e.prioridad==="Critica"&&e.estatus!=="Cerrado";});
   var cerr=ev.filter(function(e){return e.estatus==="Cerrado";});
+  var attachedEventCount=ev.filter(function(e){return ((evImgs[e.id]||[]).length)>0;}).length;
+  var closureReadyCount=ev.filter(function(e){return ["Corregido","Validado","Cerrado"].indexOf((e.estado_historia||"Detectado"))>=0;}).length;
+  var modelCoverageCount=ev.filter(function(e){return e.modelo&&e.modelo!=="N/D"&&e.modelo!=="N/A";}).length;
+  var lineCoverageCount=ev.filter(function(e){return e.linea_estacion&&e.linea_estacion!=="N/D"&&e.linea_estacion!=="N/A";}).length;
+  var ownerCoverageCount=ev.filter(function(e){return e.reporta&&e.reporta!=="N/D"&&e.reporta!=="N/A";}).length;
+  var coverageScore=visibleEventCount?Math.round((((modelCoverageCount/visibleEventCount)+(lineCoverageCount/visibleEventCount)+(ownerCoverageCount/visibleEventCount))/3)*100):0;
+  var evidenceCoverage=visibleEventCount?Math.round((attachedEventCount/visibleEventCount)*100):0;
+  var closureProgress=visibleEventCount?Math.round((closureReadyCount/visibleEventCount)*100):0;
 
   var autoSuggestions=ev.filter(function(e){
     var linked=rccaList.some(function(r){return r.event_ids&&r.event_ids.indexOf(e.id)>=0;});
@@ -4431,11 +4163,7 @@ function App() {
       <div className="ic-wrap">
         <div style={{padding:"0 14px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
           <div><div style={{fontSize:12,fontWeight:800,color:"#1A1714"}}>RCCA Deck</div><div style={{fontSize:9.5,color:"#8A8580"}}>Front summary, detailed analysis on reverse</div></div>
-          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
-            <button onClick={function(){exportCurrentRccaItem(cur);}} style={{background:"#fff",color:"#1E5C48",border:"1px solid #B8DECE",borderRadius:999,padding:"5px 10px",fontSize:9,fontWeight:800,cursor:"pointer"}}>Export current Card</button>
-            <button onClick={function(){exportRccaDeckItems(cards);}} style={{background:"#fff",color:"#2952A3",border:"1px solid #C8D7F8",borderRadius:999,padding:"5px 10px",fontSize:9,fontWeight:800,cursor:"pointer"}}>Export deck Cards</button>
-            <div style={{fontSize:8.5,color:"#2A7A60",fontWeight:800,background:"#EAF5F0",borderRadius:99,padding:"3px 9px",border:"1px solid #B8DECE"}}>{cards.length} RCCA</div>
-          </div>
+          <div style={{fontSize:8.5,color:"#2A7A60",fontWeight:800,background:"#EAF5F0",borderRadius:99,padding:"3px 9px",border:"1px solid #B8DECE"}}>{cards.length} RCCA</div>
         </div>
         <div className="ic-stage" style={{perspective:"1200px"}}>
           {cards.map(function(card,i){
@@ -4977,20 +4705,20 @@ function App() {
         <div className="sidebar-header">
           <div className="sidebar-brand">
             <svg width="36" height="36" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#1A3D1E"/><rect x="8" y="8" width="48" height="48" rx="8" fill="#0D2B10"/><rect x="18" y="2" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="28" y="2" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="38" y="2" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="18" y="54" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="28" y="54" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="38" y="54" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="2" y="18" width="8" height="5" rx="2" fill="#4A7A4E"/><rect x="2" y="28" width="8" height="5" rx="2" fill="#4A7A4E"/><rect x="2" y="38" width="8" height="5" rx="2" fill="#4A7A4E"/><rect x="54" y="18" width="8" height="5" rx="2" fill="#4A7A4E"/><rect x="54" y="28" width="8" height="5" rx="2" fill="#4A7A4E"/><rect x="54" y="38" width="8" height="5" rx="2" fill="#4A7A4E"/></svg>
-            <h2>TraceOps<span>by SMTintel</span></h2>
+            <h2>TraceOps<span>for manufacturing teams</span></h2>
           </div>
         </div>
         <div className="sidebar-section">
-          <div className="sidebar-section-title">API Key</div>
-          <input className="sidebar-api-input" type="password" placeholder="Pega tu API key aqui" value={apiKey} onChange={function(e){saveKey(e.target.value);}}/>
-          <div className="sidebar-api-note">Opcional. Sin key se usa modo local; con key se intenta IA. Si IA falla, vuelve a local.</div>
+          <div className="sidebar-section-title">Motor avanzado</div>
+          <input className="sidebar-api-input" type="password" placeholder="Pega tu API key opcional" value={apiKey} onChange={function(e){saveKey(e.target.value);}}/>
+          <div className="sidebar-api-note">Opcional. TraceOps funciona con analisis local por defecto; con API key habilita analisis asistido. Si falla, mantiene continuidad local.</div>
         </div>
 
         <div className="sidebar-section">
           <div className="sidebar-section-title">Cuenta y sincronizacion RCCA</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             <div style={{fontSize:10,lineHeight:1.5,color:"rgba(255,255,255,.62)"}}>
-              {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Modo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
+              {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Trabajo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
             </div>
             <div style={{fontSize:10,lineHeight:1.4,color:syncBusy?"#CDE7C5":"rgba(255,255,255,.5)",padding:"8px 10px",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,background:"rgba(255,255,255,.03)"}}>
               {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(cloudStatus+(authReady?"":" · cargando"))}
@@ -5054,7 +4782,7 @@ function App() {
         </div>
 
         <div className="sidebar-footer">
-          <p>TraceOps by SMTintel - ALDA<br/>{t("footerTagline")}</p>
+          <p>TraceOps - ALDA<br/>Operational Intelligence for Manufacturing</p>
         </div>
       </div>
 
@@ -5068,23 +4796,17 @@ function App() {
           </button>
           <div className="saas-topbar-brand">
             <div className="saas-topbar-title">TraceOps</div>
-            <div className="saas-topbar-subtitle">{t("brandSubtitle")}</div>
+            <div className="saas-topbar-subtitle">Operational Intelligence for Manufacturing</div>
           </div>
         </div>
         <div className="saas-topbar-actions">
-          <div className="saas-header-pill" title={t("langLabel")} style={{gap:6,padding:"6px 8px"}}>
-            <span className="hide-mobile" style={{fontSize:10,fontWeight:700,color:"#6A6560",marginRight:2}}>{t("langLabel")}</span>
-            <button type="button" onClick={function(){setLang("en");}} style={{border:"none",background:lang==="en"?"#1E5C48":"transparent",color:lang==="en"?"#fff":"#6A6560",borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:700,cursor:"pointer"}}>EN</button>
-            <button type="button" onClick={function(){setLang("es");}} style={{border:"none",background:lang==="es"?"#1E5C48":"transparent",color:lang==="es"?"#fff":"#6A6560",borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:700,cursor:"pointer"}}>ES</button>
-            <button type="button" onClick={function(){setLang("zh");}} style={{border:"none",background:lang==="zh"?"#1E5C48":"transparent",color:lang==="zh"?"#fff":"#6A6560",borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:700,cursor:"pointer"}}>中文</button>
-          </div>
           <div className="saas-header-pill" title={cloudStatus}>
             <span style={{display:"inline-block",width:8,height:8,borderRadius:99,background:authUser?"#2A7A60":"#B87820"}}></span>
-            <span className="hide-mobile">{authUser?t("cloudRcca"):t("localRcca")}</span>
+            <span className="hide-mobile">{authUser?"Nube RCCA":"Local RCCA"}</span>
           </div>
-          {state==="done"&&<button className="saas-header-btn" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg><span className="hide-mobile">{t("newAnalysis")}</span></button>}
-          <button className="saas-header-btn primary" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>{t("startExport")}</span></button>
-          {xlsxBytes&&<button className="saas-header-btn" onClick={function(){download();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span className="hide-mobile">{t("downloadXlsx")}</span></button>}
+          {state==="done"&&<button className="saas-header-btn" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg><span className="hide-mobile">Nuevo</span></button>}
+          <button className="saas-header-btn primary" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Cargar ZIP</span></button>
+          {xlsxBytes&&<button className="saas-header-btn" onClick={function(){download();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span className="hide-mobile">Descargar XLSX</span></button>}
         </div>
       </header>
 
@@ -5174,19 +4896,19 @@ function App() {
               <text x="170" y="20" fontSize="8" fill="rgba(244,246,247,.55)" fontFamily="Courier New,monospace" opacity="0" style={{animation:"fade-in .4s ease 1.5s both"}}>TRC_OPS</text>
             </svg>
           </div>
-          <div className="ops-hero-eyebrow">{t("heroEyebrow")}</div>
-          <h1 className="ops-hero-title">TraceOps<span>by SMTintel</span></h1>
-          <p className="ops-hero-subtitle">{t("heroSubtitle")}</p>
+          <div className="ops-hero-eyebrow">Operational Intelligence for Manufacturing</div>
+          <h1 className="ops-hero-title">TraceOps<span>for manufacturing teams</span></h1>
+          <p className="ops-hero-subtitle">Convierte conversaciones operativas dispersas en incidentes estructurados, recomendaciones accionables y memoria RCCA reutilizable.</p>
           <div className="ops-hero-actions">
-            <button className="ops-hero-btn primary" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>{t("startExport")}</button>
+            <button className="ops-hero-btn primary" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Subir WhatsApp ZIP</button>
             {history.length>0 && (
               <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>
-                {t("recentAnalyses")}
+                Ver analisis recientes
               </button>
             )}
           </div>
           <div className="ops-hero-chips">
-            {t("chipsHero").map(function(item){return <span key={item}>{item}</span>;})}
+            {["Operations","Manufacturing","Traceability","Incident Story","Operational Memory"].map(function(t){return <span key={t}>{t}</span>;})}
           </div>
         </div>
       </div>
@@ -5195,16 +4917,16 @@ function App() {
         <div>
           <div className="traceops-context">
             <div className="traceops-context-main">
-              <span className="traceops-context-kicker">{t("contextKicker")}</span>
-              <div className="traceops-context-title">{t("contextTitle")}</div>
-              <div className="traceops-context-subtitle">{t("contextSubtitle")}</div>
+              <span className="traceops-context-kicker">Centro operativo</span>
+              <div className="traceops-context-title">Convierte evidencia operativa en incidentes accionables</div>
+              <div className="traceops-context-subtitle">Carga ZIP de WhatsApp o correo, detecta incidentes, consolida evidencia, genera bitácora y prepara trazabilidad RCCA para seguimiento operativo.</div>
               <div className="traceops-context-chips">
-                {t("chipsContext").map(function(item){return <span key={item}>{item}</span>;})}
+                {["WhatsApp ZIP","EML / MBOX","Bitácora","RCCA","Evidencia en rango"].map(function(t){return <span key={t}>{t}</span>;})}
               </div>
             </div>
             <div className="traceops-context-actions">
-              <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>{t("loadZip")}</button>
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>{t("recentAnalyses")}</button>
+              <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Cargar ZIP</button>
+              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Análisis recientes</button>
             </div>
           </div>
           <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
@@ -5213,9 +4935,9 @@ function App() {
               <div style={{width:48,height:48,borderRadius:12,background:"#EEF3EA",border:"1px solid #C8D8BC",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",color:"#4A7A50"}}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
               </div>
-              <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>{t("uploadTitle")}</div>
-              <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>{t("uploadSubtitle")}</div>
-              <button style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:99,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:"0 2px 8px rgba(30,92,72,.25)"}} onClick={function(e){e.stopPropagation();fileRef.current.click();}}>{t("selectFile")}</button>
+              <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>Arrastra el .zip de WhatsApp</div>
+              <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>o haz clic para seleccionar</div>
+              <button style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:99,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:"0 2px 8px rgba(30,92,72,.25)"}} onClick={function(e){e.stopPropagation();fileRef.current.click();}}>Seleccionar archivo</button>
             </div>
           </div>
 
@@ -5242,8 +4964,8 @@ function App() {
       {state==="idle"&&history.length>0&&(
         <div style={{marginTop:8}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,paddingLeft:2}}>
-            <span style={{fontSize:12,fontWeight:700,color:"#3D3A36",letterSpacing:".04em",textTransform:"uppercase"}} >Recent analyses</span>
-            <button onClick={function(){if(window.confirm("Borrar todo el historial?")){localStorage.removeItem(HIST_KEY);setHistory([]);}}} style={{fontSize:10,color:"#8A8580",background:"none",border:"none",cursor:"pointer",padding:"2px 6px"}}>Clear all</button>
+            <span style={{fontSize:12,fontWeight:700,color:"#3D3A36",letterSpacing:".04em",textTransform:"uppercase"}}>Analisis recientes</span>
+            <button onClick={function(){if(window.confirm("Borrar todo el historial?")){localStorage.removeItem(HIST_KEY);setHistory([]);}}} style={{fontSize:10,color:"#8A8580",background:"none",border:"none",cursor:"pointer",padding:"2px 6px"}}>Limpiar todo</button>
           </div>
           {history.map(function(h){
             var date=new Date(h.savedAt);var dStr=date.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"});var tStr=date.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});var cc=h.criticos>0?"#C0392B":"#1A7A3C";
@@ -5277,7 +4999,7 @@ function App() {
       {state==="loading"&&(
         <div style={{background:"#fff",border:"1.5px solid #DDDBD7",borderRadius:16,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
           <div style={{background:"#F8F7F5",borderBottom:"1px solid #EEECEA",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>TraceOps - {t("brandSubtitle")}</span>
+            <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>TraceOps - Operational Intelligence for Manufacturing</span>
             <div style={{display:"flex",gap:6}}><div style={{width:8,height:8,borderRadius:50,background:"#C0392B",opacity:.6}}/><div style={{width:8,height:8,borderRadius:50,background:"#B87820",opacity:.6}}/><div style={{width:8,height:8,borderRadius:50,background:"#1A7A3C"}}/></div>
           </div>
           <div style={{padding:"28px 20px 16px",display:"flex",alignItems:"flex-end",justifyContent:"center",gap:0}}>
@@ -5322,7 +5044,7 @@ function App() {
                 <span>{visibleEventCount} eventos visibles</span>
                 <span>{(msgStats&&msgStats.clean)||0} msgs limpios</span>
                 <span>{imgNames.length} evidencias en rango</span>
-                {apiUsage&&apiUsage.local_mode&&<span>Modo local</span>}
+                {apiUsage&&apiUsage.local_mode&&<span>Analisis local</span>}
                 {apiUsage&&apiUsage.provider==="openai-backend"&&<span>OpenAI backend</span>}
               </div>
             </div>
@@ -5525,13 +5247,15 @@ function App() {
                 <h4>Estado operativo</h4>
                 <p>Rango activo, volumen de mensajes y evidencia disponible para el periodo seleccionado.</p>
                 <div className="traceops-bullets">
-                  <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
+                  <div className="traceops-bullet"><strong>Pipeline:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Analisis local":"Pipeline actual")}</div>
                   <div className="traceops-bullet">
                     <strong>Rango base:</strong> {analysisRangeLabel||"N/D"}
                     {requestedWindowLabel&&<span> · <strong>Solicitada:</strong> {requestedWindowLabel}</span>}
                     {requestedWindowDiffers&&<span> · <strong>Con datos:</strong> {actualWindowLabel}</span>}
                   </div>
                   <div className="traceops-bullet"><strong>Mensajes limpios:</strong> {((msgStats&&msgStats.clean)||0).toLocaleString()} · <strong>Evidencias:</strong> {imgNames.length}</div>
+                  <div className="traceops-bullet"><strong>Cobertura de contexto:</strong> {coverageScore}% · <strong>Modelo:</strong> {modelCoverageCount}/{visibleEventCount||0} · <strong>Linea:</strong> {lineCoverageCount}/{visibleEventCount||0} · <strong>Owner:</strong> {ownerCoverageCount}/{visibleEventCount||0}</div>
+                  <div className="traceops-bullet"><strong>Seguimiento:</strong> {closureProgress}% con avance a corregido/validado/cerrado · <strong>Evidencia vinculada:</strong> {evidenceCoverage}% · <strong>Findings utiles:</strong> {visibleEventCount?Math.round((findingsEventCount/visibleEventCount)*100):0}%</div>
                 </div>
               </div>
             </div>
@@ -5616,8 +5340,33 @@ function App() {
 
           {visibleEventCount===0&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:14,padding:"14px 16px",marginBottom:14,fontSize:12,color:"#8B6A1E"}}>No hay eventos dentro del rango seleccionado. Ajusta las fechas u horas para volver a poblar KPIs, timeline y bitacora.</div>}
 
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
-            {[{v:ev.length,l:"Total eventos",c:"#1E5C48"},{v:crit.length,l:"Criticos",c:"#C0392B"},{v:pend.length,l:"Pendientes",c:"#2952A3"},{v:cerr.length,l:"Cerrados",c:"#1A7A3C"}].map(function(k,i){return<div key={i} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}><div style={{fontSize:28,fontWeight:800,color:k.c,lineHeight:1,marginBottom:4}}>{k.v}</div><div style={{fontSize:10.5,color:"#8A8580",fontWeight:500}}>{k.l}</div></div>;})}</div>
+          <div style={{display:"grid",gridTemplateColumns:isMobile()?"repeat(2,minmax(0,1fr))":"repeat(6,minmax(0,1fr))",gap:10,marginBottom:14}}>
+            {[
+              {v:ev.length,l:"Total eventos",c:"#1E5C48"},
+              {v:crit.length,l:"Criticos",c:"#C0392B"},
+              {v:pend.length,l:"Pendientes",c:"#2952A3"},
+              {v:cerr.length,l:"Cerrados",c:"#1A7A3C"},
+              {v:closureProgress+"%",l:"Progreso de cierre",c:"#B87820"},
+              {v:coverageScore+"%",l:"Cobertura de contexto",c:"#6B2DA8"}
+            ].map(function(k,i){return<div key={i} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}><div style={{fontSize:28,fontWeight:800,color:k.c,lineHeight:1,marginBottom:4}}>{k.v}</div><div style={{fontSize:10.5,color:"#8A8580",fontWeight:500}}>{k.l}</div></div>;})}</div>
+
+          <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:10,marginBottom:14}}>
+            <div style={{background:"#FFF9EE",border:"1px solid #F0D9A8",borderRadius:14,padding:"14px 16px"}}>
+              <div style={{fontSize:10,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",color:"#8B6A1E",marginBottom:6}}>Closure</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#3D3A36",marginBottom:4}}>Del incidente al cierre</div>
+              <div style={{fontSize:11,color:"#6A6560",lineHeight:1.5}}>Progreso: <strong>{closureProgress}%</strong> con avance a corregido, validado o cerrado. Hoy hay <strong>{cerr.length}</strong> cerrados y <strong>{pend.length}</strong> pendientes visibles.</div>
+            </div>
+            <div style={{background:"#F4F0FB",border:"1px solid #D8C6F3",borderRadius:14,padding:"14px 16px"}}>
+              <div style={{fontSize:10,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",color:"#6B2DA8",marginBottom:6}}>Context</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#3D3A36",marginBottom:4}}>Cobertura de datos utiles</div>
+              <div style={{fontSize:11,color:"#6A6560",lineHeight:1.5}}>Cobertura actual: <strong>{coverageScore}%</strong>. Modelo {modelCoverageCount}/{visibleEventCount||0}, linea {lineCoverageCount}/{visibleEventCount||0}, owner {ownerCoverageCount}/{visibleEventCount||0}.</div>
+            </div>
+            <div style={{background:"#EEF7F3",border:"1px solid #C8E3D7",borderRadius:14,padding:"14px 16px"}}>
+              <div style={{fontSize:10,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",color:"#1E5C48",marginBottom:6}}>Evidence</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#3D3A36",marginBottom:4}}>Trazabilidad verificable</div>
+              <div style={{fontSize:11,color:"#6A6560",lineHeight:1.5}}>Eventos con finding util: <strong>{visibleEventCount?Math.round((findingsEventCount/visibleEventCount)*100):0}%</strong>. Eventos con evidencia vinculada: <strong>{evidenceCoverage}%</strong> ({attachedEventCount}/{visibleEventCount||0}).</div>
+            </div>
+          </div>
 
           {kpis.length>0&&<div className="tcard"><div className="tcard-hdr"><h3>KPIs en chat</h3></div><div style={{padding:"10px 14px"}}>{kpis.map(function(k,i){return<div key={i} className="krow"><div className="kval">{k.valor}<span style={{fontSize:9}}>{k.unidad}</span></div><div className="kin"><div className="nm">{k.indicador}</div><div className="ts">{k.fechahora} - {k.fuente}</div></div><div className="kbar"><div className="kbf" style={{width:Math.min(100,k.valor<2?k.valor*100:k.valor)+"%"}}/></div></div>;})} </div></div>}
 
@@ -5674,7 +5423,7 @@ function App() {
           </div>
 
           {(byDef.length>0||byTipo.length>0)&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {byDef.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Pareto defectos SMT</h4>{byDef.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B2DA8",width:(x.n/mxD*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
+            {byDef.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Pareto de hallazgos</h4>{byDef.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B2DA8",width:(x.n/mxD*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
             {byTipo.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Por tipo</h4>{byTipo.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B8C3A",width:(x.n/mxT*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
           </div>}
 
@@ -5797,7 +5546,7 @@ function App() {
                   <th className={"sortable-th"+(bitacoraSortKey==="turno"?" active":"")} onClick={function(){toggleBitacoraSort("turno");}}><span className="sort-wrap">T <span className="sort-arrow">{getBitacoraSortIndicator("turno")}</span></span></th>
                   <th className={"sortable-th"+(bitacoraSortKey==="linea_estacion"?" active":"")} onClick={function(){toggleBitacoraSort("linea_estacion");}}><span className="sort-wrap">Linea <span className="sort-arrow">{getBitacoraSortIndicator("linea_estacion")}</span></span></th>
                   <th className={"sortable-th"+(bitacoraSortKey==="tipo_evento"?" active":"")} onClick={function(){toggleBitacoraSort("tipo_evento");}}><span className="sort-wrap">Tipo <span className="sort-arrow">{getBitacoraSortIndicator("tipo_evento")}</span></span></th>
-                  <th className={"sortable-th"+(bitacoraSortKey==="defecto_smt"?" active":"")} onClick={function(){toggleBitacoraSort("defecto_smt");}}><span className="sort-wrap">Defecto SMT <span className="sort-arrow">{getBitacoraSortIndicator("defecto_smt")}</span></span></th>
+                  <th className={"sortable-th"+(bitacoraSortKey==="defecto_smt"?" active":"")} onClick={function(){toggleBitacoraSort("defecto_smt");}}><span className="sort-wrap">Hallazgo <span className="sort-arrow">{getBitacoraSortIndicator("defecto_smt")}</span></span></th>
                   <th className={"sortable-th"+(bitacoraSortKey==="evento_detectado"?" active":"")} onClick={function(){toggleBitacoraSort("evento_detectado");}}><span className="sort-wrap">Evento <span className="sort-arrow">{getBitacoraSortIndicator("evento_detectado")}</span></span></th>
                   <th>Engineer findings</th>
                   <th className={"sortable-th"+(bitacoraSortKey==="prioridad"?" active":"")} onClick={function(){toggleBitacoraSort("prioridad");}}><span className="sort-wrap">Prioridad <span className="sort-arrow">{getBitacoraSortIndicator("prioridad")}</span></span></th>
@@ -5849,7 +5598,7 @@ function App() {
                     <div style={{paddingTop:18,display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
                       <div>
                         <div style={{fontSize:9,fontWeight:800,letterSpacing:".16em",textTransform:"uppercase",color:"#9FC4B6",marginBottom:8}}>Operational memory</div>
-                        <div style={{fontSize:26,fontWeight:800,color:"#F7FAFC",letterSpacing:"-.03em",lineHeight:1.04}}>Operational Memory</div>
+                        <div style={{fontSize:26,fontWeight:800,color:"#F7FAFC",letterSpacing:"-.03em",lineHeight:1.04}}>Hipocampo Digital</div>
                         <div style={{fontSize:12,color:"rgba(240,246,250,.72)",marginTop:6,maxWidth:620}}>Convierte incidentes, lecciones y soluciones replicables en memoria operativa reusable sin romper el lenguaje visual de TraceOps.</div>
                       </div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",paddingTop:4}}>
@@ -6037,7 +5786,7 @@ function App() {
           )}
 
           <div className="foot">
-            <p><strong>TraceOps</strong> by SMTintel - ALDA - {new Date().toLocaleDateString("es-MX")}</p>
+            <p><strong>TraceOps</strong> - ALDA - {new Date().toLocaleDateString("es-MX")}</p>
             <button className="dlbtn" style={{padding:"8px 16px",fontSize:12}} onClick={download}>Descargar Excel</button>
           </div>
         </div>
