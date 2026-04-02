@@ -3636,9 +3636,9 @@ function App() {
       +   '<div class="to-sub">'+traceOpsEsc(item.modelo || 'N/D')+' • '+traceOpsEsc(item.linea || 'N/D')+' • '+traceOpsEsc(item.fecha || '-')+'</div>'
       +   '<div class="to-metrics">'
       +     traceOpsMetric('Sev', traceOpsStars(sev), 'red')
-      +     + traceOpsMetric('Rec', rec, 'amber')
-      +     + traceOpsMetric('Mad', mad, 'purple')
-      +     + traceOpsMetric('EV', String(evCount).padStart(2,'0'), 'green')
+      +     traceOpsMetric('Rec', rec, 'amber')
+      +     traceOpsMetric('Mad', mad, 'purple')
+      +     traceOpsMetric('EV', String(evCount).padStart(2,'0'), 'green')
       +   '</div>'
       +   '<div class="to-grid">'
       +     sections
@@ -3699,7 +3699,7 @@ function App() {
       + traceOpsEsc(title)
       + '</h1><div class="to-subhead">'
       + traceOpsEsc(subtitle)
-      + '</div><div class="to-actions"><button class="to-btn to-btn-main" onclick="window.print()">Print / Save PDF</button><button class="to-btn to-btn-soft" onclick="downloadJson()">Download JSON</button><button class="to-btn to-btn-soft" onclick="downloadHtml()">Download HTML</button></div><div class="to-meta"><span class="to-pill">'
+      + '</div><div class="to-actions"><button class="to-btn to-btn-main" onclick="window.print()">Print / Save PDF</button><button class="to-btn to-btn-soft" onclick="downloadJson()">Download JSON backup</button></div><div class="to-meta"><span class="to-pill">'
       + list.length + ' RCCA card(s)'
       + '</span><span class="to-pill">'
       + traceOpsEsc(new Date().toLocaleString())
