@@ -20,7 +20,7 @@ window.onerror = function(msg, src, line, col, err) {
 };
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TraceOps by SMTintel</title>
+<title>TraceOps | Operational Intelligence for Manufacturing</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231A3D1E'/%3E%3Crect x='8' y='8' width='48' height='48' rx='8' fill='%230D2B10'/%3E%3Crect x='18' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='28' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='38' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='18' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='28' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='38' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='18' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='28' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='38' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='18' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='28' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='38' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Cpolyline points='12,32 18,32 21,22 25,32' fill='none' stroke='%236A9E6E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M25,32 C27,32 29,24 33,21 C37,18 41,20 41,26 C41,32 37,33 33,34 C29,35 27,38 30,42 C33,46 39,45 42,42' fill='none' stroke='%2348A882' stroke-width='2.5' stroke-linecap='round'/%3E%3Cpolyline points='42,32 46,22 49,38 52,32' fill='none' stroke='%236A9E6E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='21' cy='22' r='2' fill='%236A9E6E'/%3E%3Ccircle cx='46' cy='22' r='2' fill='%236A9E6E'/%3E%3C/svg%3E"/>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%231A3D1E'/%3E%3Crect x='22' y='22' width='136' height='136' rx='22' fill='%230D2B10'/%3E%3Crect x='50' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='78' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='106' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='50' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='78' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='106' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='50' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='78' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='106' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='50' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='78' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='106' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Cpolyline points='34,90 50,90 58,62 70,90' fill='none' stroke='%236A9E6E' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70,90 C76,90 82,68 92,60 C102,52 116,56 116,72 C116,88 104,92 92,95 C80,98 76,108 84,118 C92,128 110,126 118,118' fill='none' stroke='%2348A882' stroke-width='7' stroke-linecap='round'/%3E%3Cpolyline points='118,90 130,62 140,108 148,90' fill='none' stroke='%236A9E6E' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='58' cy='62' r='5' fill='%236A9E6E'/%3E%3Ccircle cx='130' cy='62' r='5' fill='%236A9E6E'/%3E%3C/svg%3E"/>
 <meta name="theme-color" content="#1A3D1E"/>
@@ -1773,7 +1773,7 @@ async function analyzeWithAI(msgs, apiKey) {
     "Maximo 15 eventos. Solo JSON sin texto extra:" +
     '{"eventos":[{"id":"EVT-001","fecha":"DD/MM/YYYY","hora":"HH:MM","turno":"1T|2T|3T",' +
     '"modelo":"N/P o N/D","linea_estacion":"L1 o N/D","reporta":"nombre",' +
-    '"area_involucrada":"SMT|PTH|ICT|AOI|Calidad|Mantenimiento|Materiales|Produccion",' +
+    '"area_involucrada":"Produccion|Calidad|Proceso|Mantenimiento|Materiales|Ingenieria|Sistemas|Logistica",' +
     '"tipo_evento":"Calidad|Proceso|Material|Sistema|Seguridad|Produccion",' +
     '"defecto_smt":"del catalogo o N/A","evento_detectado":"descripcion","impacto":"impacto",' +
     '"accion_requerida":"accion","accion_ejecutada":"accion tomada o vacia si no hay","engineer_findings":"respuesta tecnica del engineer si existe en mensajes posteriores al incidente, o vacia",' +
@@ -2632,7 +2632,7 @@ async function buildXlsx(result) {
   var directorio = result.directorio || [];
 
   var wb = new ExcelJS.Workbook();
-  wb.creator = "TraceOps by SMTintel - ALDA";
+  wb.creator = "TraceOps - ALDA";
   wb.created = new Date();
 
   var C = {
@@ -2704,7 +2704,7 @@ async function buildXlsx(result) {
   var wsIS = wb.addWorksheet("Incident_Stories");
   wsIS.mergeCells("A1:H1");
   var isT = wsIS.getCell("A1");
-  isT.value = "Incident Story Model - TraceOps by SMTintel";
+  isT.value = "Incident Story Model - TraceOps";
   isT.fill = hFill(C.hBg); isT.font = hFont(12);
   wsIS.getRow(1).height = 22;
 
@@ -2801,7 +2801,7 @@ async function buildXlsx(result) {
   var wsDash = wb.addWorksheet("Dashboard_Base");
   wsDash.mergeCells("A1:E1");
   var dt = wsDash.getCell("A1");
-  dt.value = "Dashboard TraceOps - SMTintel by ALDA";
+  dt.value = "Dashboard TraceOps - Operational Intelligence by ALDA";
   dt.fill = hFill(C.hBg); dt.font = hFont(13);
   wsDash.getRow(1).height = 22; wsDash.addRow([]);
   [["Total",ev.length],["Abiertos",ev.filter(function(e){return e.estatus==="Abierto";}).length],
@@ -2810,7 +2810,7 @@ async function buildXlsx(result) {
     var r = wsDash.addRow([kv[0], kv[1]]); r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
   });
   wsDash.addRow([]);
-  var rDef = wsDash.addRow(["Pareto Defectos SMT"]); rDef.getCell(1).fill=hFill(C.hBg); rDef.getCell(1).font=hFont();
+  var rDef = wsDash.addRow(["Pareto de hallazgos relevantes"]); rDef.getCell(1).fill=hFill(C.hBg); rDef.getCell(1).font=hFont();
   Object.keys(defCounts).sort(function(a,b){return defCounts[b]-defCounts[a];}).forEach(function(k){
     var r = wsDash.addRow([k, defCounts[k]]); r.eachCell({includeEmpty:false},function(c){c.font=dFont();});
   });
@@ -2856,7 +2856,7 @@ async function buildXlsx(result) {
   var wsCat = wb.addWorksheet("Catalogos_Reglas");
   wsCat.mergeCells("A1:D1");
   var ct = wsCat.getCell("A1");
-  ct.value = "Catalogos y reglas - SMTintel"; ct.fill=hFill(C.hBg); ct.font=hFont(12);
+  ct.value = "Catalogos y reglas - TraceOps"; ct.fill=hFill(C.hBg); ct.font=hFont(12);
   wsCat.getRow(1).height = 20; wsCat.addRow([]);
   var lins = Array.from(new Set(ev.map(function(e){return e.linea_estacion;}).filter(Boolean)));
   var reglas = ["Incluir: paros, defectos, falta material, FAI.",
@@ -2957,8 +2957,8 @@ function LogoSVG() {
       <text x="312" y="158" fontFamily="'Arial Black','Helvetica Neue',Arial,sans-serif" fontSize="88" fontWeight="900" fill="#1B4D20" letterSpacing="-2">Ops</text>
       <text x="430" y="158" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="88" fontWeight="300" fill="#2E6B32" letterSpacing="-1">Trace</text>
       <line x1="312" y1="176" x2="870" y2="176" stroke="url(#underline)" strokeWidth="2.5"/>
-      <text x="314" y="202" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="18" fontWeight="400" fill="#5A8060" letterSpacing="0.5">Operational Event Intelligence</text>
-      <text x="314" y="224" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">by SMTintel &#183; ALDA</text>
+      <text x="314" y="202" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="18" fontWeight="400" fill="#5A8060" letterSpacing="0.5">Operational Intelligence for Manufacturing</text>
+      <text x="314" y="224" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">operational intelligence &#183; ALDA</text>
     </svg>
   );
 }
@@ -4697,7 +4697,7 @@ function App() {
         <div className="sidebar-header">
           <div className="sidebar-brand">
             <svg width="36" height="36" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#1A3D1E"/><rect x="8" y="8" width="48" height="48" rx="8" fill="#0D2B10"/><rect x="18" y="2" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="28" y="2" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="38" y="2" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="18" y="54" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="28" y="54" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="38" y="54" width="5" height="8" rx="2" fill="#4A7A4E"/><rect x="2" y="18" width="8" height="5" rx="2" fill="#4A7A4E"/><rect x="2" y="28" width="8" height="5" rx="2" fill="#4A7A4E"/><rect x="2" y="38" width="8" height="5" rx="2" fill="#4A7A4E"/><rect x="54" y="18" width="8" height="5" rx="2" fill="#4A7A4E"/><rect x="54" y="28" width="8" height="5" rx="2" fill="#4A7A4E"/><rect x="54" y="38" width="8" height="5" rx="2" fill="#4A7A4E"/></svg>
-            <h2>TraceOps<span>by SMTintel</span></h2>
+            <h2>TraceOps<span>manufacturing operational intelligence</span></h2>
           </div>
         </div>
         <div className="sidebar-section">
@@ -4774,7 +4774,7 @@ function App() {
         </div>
 
         <div className="sidebar-footer">
-          <p>TraceOps by SMTintel - ALDA<br/>Operational Event Intelligence</p>
+          <p>TraceOps by SMTintel - ALDA<br/>Operational Intelligence for Manufacturing</p>
         </div>
       </div>
 
@@ -4788,7 +4788,7 @@ function App() {
           </button>
           <div className="saas-topbar-brand">
             <div className="saas-topbar-title">TraceOps</div>
-            <div className="saas-topbar-subtitle">Operational Event Intelligence</div>
+            <div className="saas-topbar-subtitle">Operational Intelligence for Manufacturing</div>
           </div>
         </div>
         <div className="saas-topbar-actions">
@@ -4888,9 +4888,9 @@ function App() {
               <text x="170" y="20" fontSize="8" fill="rgba(244,246,247,.55)" fontFamily="Courier New,monospace" opacity="0" style={{animation:"fade-in .4s ease 1.5s both"}}>TRC_OPS</text>
             </svg>
           </div>
-          <div className="ops-hero-eyebrow">Operational Event Intelligence</div>
-          <h1 className="ops-hero-title">TraceOps<span>by SMTintel</span></h1>
-          <p className="ops-hero-subtitle">Convierte conversaciones operativas dispersas en incidentes estructurados, recomendaciones accionables y memoria RCCA reutilizable.</p>
+          <div className="ops-hero-eyebrow">Operational Intelligence for Manufacturing</div>
+          <h1 className="ops-hero-title">TraceOps<span>for manufacturing teams</span></h1>
+          <p className="ops-hero-subtitle">Convierte conversaciones operativas en contexto, incidentes, acciones y memoria reutilizable para equipos de manufactura.</p>
           <div className="ops-hero-actions">
             <button className="ops-hero-btn primary" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Subir WhatsApp ZIP</button>
             {history.length>0 && (
@@ -4900,7 +4900,7 @@ function App() {
             )}
           </div>
           <div className="ops-hero-chips">
-            {["TraceOps","SMT","AOI","Incident Story","Root Cause"].map(function(t){return <span key={t}>{t}</span>;})}
+            {["Operations","Manufacturing","Traceability","Incident Story","Operational Memory"].map(function(t){return <span key={t}>{t}</span>;})}
           </div>
         </div>
       </div>
@@ -4991,7 +4991,7 @@ function App() {
       {state==="loading"&&(
         <div style={{background:"#fff",border:"1.5px solid #DDDBD7",borderRadius:16,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
           <div style={{background:"#F8F7F5",borderBottom:"1px solid #EEECEA",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>TraceOps - Operational Event Intelligence</span>
+            <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>TraceOps - Operational Intelligence for Manufacturing</span>
             <div style={{display:"flex",gap:6}}><div style={{width:8,height:8,borderRadius:50,background:"#C0392B",opacity:.6}}/><div style={{width:8,height:8,borderRadius:50,background:"#B87820",opacity:.6}}/><div style={{width:8,height:8,borderRadius:50,background:"#1A7A3C"}}/></div>
           </div>
           <div style={{padding:"28px 20px 16px",display:"flex",alignItems:"flex-end",justifyContent:"center",gap:0}}>
@@ -5388,7 +5388,7 @@ function App() {
           </div>
 
           {(byDef.length>0||byTipo.length>0)&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {byDef.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Pareto defectos SMT</h4>{byDef.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B2DA8",width:(x.n/mxD*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
+            {byDef.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Pareto de hallazgos</h4>{byDef.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B2DA8",width:(x.n/mxD*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
             {byTipo.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Por tipo</h4>{byTipo.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B8C3A",width:(x.n/mxT*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
           </div>}
 
@@ -5582,7 +5582,7 @@ function App() {
                       <div style={{width:34,height:34,borderRadius:10,background:"#EDF7F2",border:"1px solid #CFE7DB",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#1E5C48"}}>O</div>
                       <div>
                         <div style={{fontSize:13,fontWeight:800,color:"#162033"}}>TraceOps</div>
-                        <div style={{fontSize:10,color:"#5B657A"}}>Operational incidents</div>
+                        <div style={{fontSize:10,color:"#5B657A"}}>Operational signals</div>
                       </div>
                     </div>
                     <div style={{fontSize:30,fontWeight:800,color:"#162033",lineHeight:1,marginBottom:4}}>{ev.length}</div>
@@ -5623,7 +5623,7 @@ function App() {
                       <div style={{width:34,height:34,borderRadius:10,background:"#EDF4FF",border:"1px solid #D9E7FF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#2952A3"}}>Y</div>
                       <div>
                         <div style={{fontSize:13,fontWeight:800,color:"#162033"}}>Yokoten</div>
-                        <div style={{fontSize:10,color:"#5B657A"}}>Knowledge reuse</div>
+                        <div style={{fontSize:10,color:"#5B657A"}}>Reusable knowledge</div>
                       </div>
                     </div>
                     {(function(){
@@ -5751,7 +5751,7 @@ function App() {
           )}
 
           <div className="foot">
-            <p><strong>TraceOps</strong> by SMTintel - ALDA - {new Date().toLocaleDateString("es-MX")}</p>
+            <p><strong>TraceOps</strong> - ALDA - {new Date().toLocaleDateString("es-MX")}</p>
             <button className="dlbtn" style={{padding:"8px 16px",fontSize:12}} onClick={download}>Descargar Excel</button>
           </div>
         </div>
