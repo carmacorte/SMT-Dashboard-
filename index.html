@@ -3298,32 +3298,14 @@ function App() {
       var saved = sessionStorage.getItem("traceops_last_result");
       if (!saved) return;
       var payload = JSON.parse(saved);
-      var savedResultRaw = payload && payload.result ? payload.result : payload;
-      var savedResult = traceOpsNormalizeResultPayload(savedResultRaw);
-      var savedStatsRaw = payload && payload.msgStats ? payload.msgStats : null;
-      var safeTotal = savedResult && Array.isArray(savedResult.eventos) ? savedResult.eventos.length : 0;
-      var savedStats = savedStatsRaw && typeof savedStatsRaw === "object" ? {
-        total: parseInt(savedStatsRaw.total,10),
-        filtered: parseInt(savedStatsRaw.filtered,10),
-        clean: parseInt(savedStatsRaw.clean,10),
-        imgs: parseInt(savedStatsRaw.imgs,10)
-      } : null;
-      if (savedStats) {
-        if (isNaN(savedStats.total)) savedStats.total = safeTotal;
-        if (isNaN(savedStats.filtered)) savedStats.filtered = safeTotal;
-        if (isNaN(savedStats.clean)) savedStats.clean = safeTotal;
-        if (isNaN(savedStats.imgs)) savedStats.imgs = 0;
-      }
+      var savedResult = payload && payload.result ? payload.result : payload;
+      var savedStats = payload && payload.msgStats ? payload.msgStats : null;
       setResult(savedResult);
       if (savedStats) setMsgStats(savedStats);
-      else setMsgStats({total:safeTotal,filtered:safeTotal,clean:safeTotal,imgs:0});
       setApiUsage(traceOpsUsageFromResult(savedResult));
       setState("done");
-      buildXlsx(savedResult).then(function(bytes){ setXlsxBytes(bytes); }).catch(function(){ setXlsxBytes(null); });
-    } catch(e){
-      try { sessionStorage.removeItem("traceops_last_result"); } catch(_) {}
-      try { console.error("TraceOps restore session error", e); } catch(_) {}
-    }
+      buildXlsx(savedResult).then(function(bytes){ setXlsxBytes(bytes); }).catch(function(){});
+    } catch(e){}
   }, []);
 
   var pfArr = _useState(""); var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
