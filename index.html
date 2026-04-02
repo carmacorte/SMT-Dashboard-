@@ -3104,7 +3104,80 @@ function App() {
   var errArr = _useState(""); var errMsg = errArr[0]; var setErrMsg = errArr[1];
   var dragArr = _useState(false); var drag = dragArr[0]; var setDrag = dragArr[1];
   var sbArr = _useState(window.innerWidth > 900); var sidebarOpen = sbArr[0]; var setSidebarOpen = sbArr[1];
+  var langArr = _useState(localStorage.getItem("traceops_lang") || "en"); var lang = langArr[0]; var setLang = langArr[1];
   var isMobile = function(){ return window.innerWidth <= 900; };
+  var translations = {
+    en: {
+      brandSubtitle: "Operational Intelligence for Manufacturing Teams",
+      startExport: "Start with your WhatsApp export",
+      recentAnalyses: "See recent analyses",
+      newAnalysis: "New",
+      downloadXlsx: "Download XLSX log",
+      cloudRcca: "RCCA Cloud",
+      localRcca: "Local RCCA",
+      heroEyebrow: "Operational Intelligence for Manufacturing Teams",
+      heroSubtitle: "Turn scattered floor conversations into structured incidents, clear priorities, traceable follow-up, and reusable operational memory.",
+      contextKicker: "Built from inside the operation",
+      contextTitle: "Your operation already has the information. It just does not stay together.",
+      contextSubtitle: "Upload a WhatsApp export, email thread, or operational message history. TraceOps turns floor conversations into structured incidents, visible priorities, traceable follow-up, and reusable operational memory.",
+      loadZip: "Load ZIP now",
+      uploadTitle: "Start with your WhatsApp export",
+      uploadSubtitle: "Drop the ZIP here or click to select it",
+      selectFile: "Select file",
+      chipsHero: ["Incident detection","Engineer findings","RCCA memory","Yokoten","Operational log"],
+      chipsContext: ["WhatsApp export","EML / MBOX","Operational Log","Root Cause Archive","Evidence in context"],
+      footerTagline: "Operational Intelligence for Manufacturing Teams",
+      langLabel: "Language"
+    },
+    es: {
+      brandSubtitle: "Inteligencia operativa para equipos de manufactura",
+      startExport: "Comenzar con export de WhatsApp",
+      recentAnalyses: "Ver análisis recientes",
+      newAnalysis: "Nuevo",
+      downloadXlsx: "Descargar bitácora XLSX",
+      cloudRcca: "RCCA en nube",
+      localRcca: "RCCA local",
+      heroEyebrow: "Inteligencia operativa para equipos de manufactura",
+      heroSubtitle: "Convierte conversaciones dispersas del piso en incidentes estructurados, prioridades claras, seguimiento trazable y memoria operativa reutilizable.",
+      contextKicker: "Construido desde adentro de la operación",
+      contextTitle: "Tu operación ya tiene la información. Lo que falta es mantenerla unida.",
+      contextSubtitle: "Carga una exportación de WhatsApp, un hilo de correo o un historial de mensajes operativos. TraceOps convierte conversaciones de piso en incidentes estructurados, prioridades visibles, seguimiento trazable y memoria operativa reutilizable.",
+      loadZip: "Cargar ZIP ahora",
+      uploadTitle: "Comenzar con export de WhatsApp",
+      uploadSubtitle: "Suelta aquí el ZIP o haz clic para seleccionarlo",
+      selectFile: "Seleccionar archivo",
+      chipsHero: ["Detección de incidentes","Hallazgos técnicos","Memoria RCCA","Yokoten","Bitácora operativa"],
+      chipsContext: ["Export de WhatsApp","EML / MBOX","Bitácora operativa","Archivo de causa raíz","Evidencia en contexto"],
+      footerTagline: "Inteligencia operativa para equipos de manufactura",
+      langLabel: "Idioma"
+    },
+    zh: {
+      brandSubtitle: "面向制造团队的运营智能",
+      startExport: "从 WhatsApp 导出开始",
+      recentAnalyses: "查看最近分析",
+      newAnalysis: "新建",
+      downloadXlsx: "下载 XLSX 日志",
+      cloudRcca: "云端 RCCA",
+      localRcca: "本地 RCCA",
+      heroEyebrow: "面向制造团队的运营智能",
+      heroSubtitle: "将分散的现场对话转化为结构化事件、清晰优先级、可追踪跟进和可复用的运营记忆。",
+      contextKicker: "源自一线运营内部",
+      contextTitle: "你的运营已经拥有信息，缺少的是把它们留在一起。",
+      contextSubtitle: "上传 WhatsApp 导出、邮件线程或运营消息记录。TraceOps 将现场对话转化为结构化事件、可见优先级、可追踪跟进和可复用的运营记忆。",
+      loadZip: "立即加载 ZIP",
+      uploadTitle: "从 WhatsApp 导出开始",
+      uploadSubtitle: "将 ZIP 拖到这里，或点击进行选择",
+      selectFile: "选择文件",
+      chipsHero: ["事件检测","工程发现","RCCA 记忆","横展","运营日志"],
+      chipsContext: ["WhatsApp 导出","EML / MBOX","运营日志","根因档案","证据关联"],
+      footerTagline: "面向制造团队的运营智能",
+      langLabel: "语言"
+    }
+  };
+  function t(key){
+    var bucket = translations[lang] || translations.en;
+    return bucket[key] != null ? bucket[key] : translations.en[key];
+  }
   var statsArr = _useState(null); var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
   var bitSortKeyArr = _useState("fecha"); var bitacoraSortKey = bitSortKeyArr[0]; var setBitacoraSortKey = bitSortKeyArr[1];
   var bitSortDirArr = _useState("desc"); var bitacoraSortDir = bitSortDirArr[0]; var setBitacoraSortDir = bitSortDirArr[1];
@@ -3120,6 +3193,11 @@ function App() {
     window.addEventListener("resize", onResize);
     return function(){ window.removeEventListener("resize", onResize); };
   }, []);
+
+  React.useEffect(function(){
+    try { localStorage.setItem("traceops_lang", lang); } catch(_) {}
+    try { document.documentElement.lang = lang === "zh" ? "zh" : lang; } catch(_) {}
+  }, [lang]);
 
   React.useEffect(function(){
     try {
@@ -4774,7 +4852,7 @@ function App() {
         </div>
 
         <div className="sidebar-footer">
-          <p>TraceOps by SMTintel - ALDA<br/>Operational Intelligence for Manufacturing Teams</p>
+          <p>TraceOps by SMTintel - ALDA<br/>{t("footerTagline")}</p>
         </div>
       </div>
 
@@ -4788,17 +4866,23 @@ function App() {
           </button>
           <div className="saas-topbar-brand">
             <div className="saas-topbar-title">TraceOps</div>
-            <div className="saas-topbar-subtitle">Operational Intelligence for Manufacturing Teams</div>
+            <div className="saas-topbar-subtitle">{t("brandSubtitle")}</div>
           </div>
         </div>
         <div className="saas-topbar-actions">
+          <div className="saas-header-pill" title={t("langLabel")} style={{gap:6,padding:"6px 8px"}}>
+            <span className="hide-mobile" style={{fontSize:10,fontWeight:700,color:"#6A6560",marginRight:2}}>{t("langLabel")}</span>
+            <button type="button" onClick={function(){setLang("en");}} style={{border:"none",background:lang==="en"?"#1E5C48":"transparent",color:lang==="en"?"#fff":"#6A6560",borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:700,cursor:"pointer"}}>EN</button>
+            <button type="button" onClick={function(){setLang("es");}} style={{border:"none",background:lang==="es"?"#1E5C48":"transparent",color:lang==="es"?"#fff":"#6A6560",borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:700,cursor:"pointer"}}>ES</button>
+            <button type="button" onClick={function(){setLang("zh");}} style={{border:"none",background:lang==="zh"?"#1E5C48":"transparent",color:lang==="zh"?"#fff":"#6A6560",borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:700,cursor:"pointer"}}>中文</button>
+          </div>
           <div className="saas-header-pill" title={cloudStatus}>
             <span style={{display:"inline-block",width:8,height:8,borderRadius:99,background:authUser?"#2A7A60":"#B87820"}}></span>
-            <span className="hide-mobile">{authUser?"Nube RCCA":"Local RCCA"}</span>
+            <span className="hide-mobile">{authUser?t("cloudRcca"):t("localRcca")}</span>
           </div>
-          {state==="done"&&<button className="saas-header-btn" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg><span className="hide-mobile">Nuevo</span></button>}
-          <button className="saas-header-btn primary" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Start with your WhatsApp export</span></button>
-          {xlsxBytes&&<button className="saas-header-btn" onClick={function(){download();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span className="hide-mobile">Download XLSX log</span></button>}
+          {state==="done"&&<button className="saas-header-btn" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg><span className="hide-mobile">{t("newAnalysis")}</span></button>}
+          <button className="saas-header-btn primary" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>{t("startExport")}</span></button>
+          {xlsxBytes&&<button className="saas-header-btn" onClick={function(){download();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span className="hide-mobile">{t("downloadXlsx")}</span></button>}
         </div>
       </header>
 
@@ -4888,19 +4972,19 @@ function App() {
               <text x="170" y="20" fontSize="8" fill="rgba(244,246,247,.55)" fontFamily="Courier New,monospace" opacity="0" style={{animation:"fade-in .4s ease 1.5s both"}}>TRC_OPS</text>
             </svg>
           </div>
-          <div className="ops-hero-eyebrow">Operational Intelligence for Manufacturing Teams</div>
+          <div className="ops-hero-eyebrow">{t("heroEyebrow")}</div>
           <h1 className="ops-hero-title">TraceOps<span>by SMTintel</span></h1>
-          <p className="ops-hero-subtitle">Turn scattered floor conversations into structured incidents, clear priorities, traceable follow-up, and reusable operational memory.</p>
+          <p className="ops-hero-subtitle">{t("heroSubtitle")}</p>
           <div className="ops-hero-actions">
-            <button className="ops-hero-btn primary" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Start with your WhatsApp export</button>
+            <button className="ops-hero-btn primary" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>{t("startExport")}</button>
             {history.length>0 && (
               <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>
-                See recent analyses
+                {t("recentAnalyses")}
               </button>
             )}
           </div>
           <div className="ops-hero-chips">
-            {["Incident detection","Engineer findings","RCCA memory","Yokoten","Operational log"].map(function(t){return <span key={t}>{t}</span>;})}
+            {t("chipsHero").map(function(item){return <span key={item}>{item}</span>;})}
           </div>
         </div>
       </div>
@@ -4909,16 +4993,16 @@ function App() {
         <div>
           <div className="traceops-context">
             <div className="traceops-context-main">
-              <span className="traceops-context-kicker">Built from inside the operation</span>
-              <div className="traceops-context-title">Your operation already has the information. It just does not stay together.</div>
-              <div className="traceops-context-subtitle">Upload a WhatsApp export, email thread, or operational message history. TraceOps turns floor conversations into structured incidents, visible priorities, traceable follow-up, and reusable operational memory.</div>
+              <span className="traceops-context-kicker">{t("contextKicker")}</span>
+              <div className="traceops-context-title">{t("contextTitle")}</div>
+              <div className="traceops-context-subtitle">{t("contextSubtitle")}</div>
               <div className="traceops-context-chips">
-                {["WhatsApp export","EML / MBOX","Operational Log","Root Cause Archive","Evidence in context"].map(function(t){return <span key={t}>{t}</span>;})}
+                {t("chipsContext").map(function(item){return <span key={item}>{item}</span>;})}
               </div>
             </div>
             <div className="traceops-context-actions">
-              <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>Load ZIP now</button>
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>See recent analyses</button>
+              <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>{t("loadZip")}</button>
+              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>{t("recentAnalyses")}</button>
             </div>
           </div>
           <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
@@ -4927,9 +5011,9 @@ function App() {
               <div style={{width:48,height:48,borderRadius:12,background:"#EEF3EA",border:"1px solid #C8D8BC",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",color:"#4A7A50"}}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
               </div>
-              <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>Start with your WhatsApp export</div>
-              <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>Drop the ZIP here or click to select it</div>
-              <button style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:99,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:"0 2px 8px rgba(30,92,72,.25)"}} onClick={function(e){e.stopPropagation();fileRef.current.click();}}>Select file</button>
+              <div style={{fontSize:16,fontWeight:600,color:"#1A1714",marginBottom:4}}>{t("uploadTitle")}</div>
+              <div style={{fontSize:13,color:"#9A9590",marginBottom:20}}>{t("uploadSubtitle")}</div>
+              <button style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:99,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:"0 2px 8px rgba(30,92,72,.25)"}} onClick={function(e){e.stopPropagation();fileRef.current.click();}}>{t("selectFile")}</button>
             </div>
           </div>
 
@@ -4991,7 +5075,7 @@ function App() {
       {state==="loading"&&(
         <div style={{background:"#fff",border:"1.5px solid #DDDBD7",borderRadius:16,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
           <div style={{background:"#F8F7F5",borderBottom:"1px solid #EEECEA",padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>TraceOps - Operational Intelligence for Manufacturing Teams</span>
+            <span style={{fontSize:9,fontFamily:"monospace",color:"#8A8580",letterSpacing:".15em",textTransform:"uppercase"}}>TraceOps - {t("brandSubtitle")}</span>
             <div style={{display:"flex",gap:6}}><div style={{width:8,height:8,borderRadius:50,background:"#C0392B",opacity:.6}}/><div style={{width:8,height:8,borderRadius:50,background:"#B87820",opacity:.6}}/><div style={{width:8,height:8,borderRadius:50,background:"#1A7A3C"}}/></div>
           </div>
           <div style={{padding:"28px 20px 16px",display:"flex",alignItems:"flex-end",justifyContent:"center",gap:0}}>
