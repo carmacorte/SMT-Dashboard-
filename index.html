@@ -795,6 +795,33 @@ function traceOpsRangeDaysLocal(dateFrom, dateTo) {
   return Math.max(1, Math.round(Math.abs(toDate.getTime() - fromDate.getTime()) / 86400000) + 1);
 }
 
+function traceOpsScrollToIdSafe(id) {
+  try {
+    var target = document.getElementById(id);
+    if (!target) return;
+    if (typeof target.scrollIntoView === "function") {
+      try {
+        target.scrollIntoView({behavior:"smooth", block:"start"});
+        return;
+      } catch (_) {
+        try {
+          target.scrollIntoView(true);
+          return;
+        } catch (_) {}
+      }
+    }
+    var rect = target.getBoundingClientRect();
+    var top = rect.top + (window.pageYOffset || document.documentElement.scrollTop || 0) - 12;
+    if (typeof window.scrollTo === "function") {
+      try {
+        window.scrollTo({top: top, behavior:"smooth"});
+      } catch (_) {
+        window.scrollTo(0, top);
+      }
+    }
+  } catch (_) {}
+}
+
 function filterMsgs(msgs, mode, days, dateFrom, dateTo, weekNum, weekYear) {
   if (!msgs.length) return msgs;
 
@@ -3839,8 +3866,66 @@ function App() {
   }
   var HIST_KEY = "traceops_history";
   var HIST_MAX = 10;
+
+  function traceOpsNormalizeResultPayload(raw){
+    var src=(raw&&typeof raw==="object"&&!Array.isArray(raw))?raw:{};
+    function arr(v){ return Array.isArray(v)?v.filter(Boolean):[]; }
+    function obj(v){ return (v&&typeof v==="object"&&!Array.isArray(v))?v:{}; }
+    var out={};
+    try { Object.keys(src).forEach(function(k){ out[k]=src[k]; }); } catch(_){ out={}; }
+    out.resumen=obj(src.resumen);
+    out.eventos=arr(src.eventos);
+    out.kpis=arr(src.kpis);
+    out.evidencias=arr(src.evidencias);
+    out.directorio=arr(src.directorio);
+    out.pending_actions=arr(src.pending_actions);
+    out.incident_stories=arr(src.incident_stories);
+    out.rcca_memory=arr(src.rcca_memory);
+    out.operational_memory=arr(src.operational_memory);
+    out.lesson_trace=arr(src.lesson_trace);
+    out.yokoten=arr(src.yokoten);
+    return out;
+  }
+
+  function traceOpsNormalizeHistoryEntry(entry){
+    var safe=(entry&&typeof entry==="object"&&!Array.isArray(entry))?entry:{};
+    var result=traceOpsNormalizeResultPayload(safe.result);
+    var totalEventos=parseInt(safe.totalEventos,10);
+    if(isNaN(totalEventos)) totalEventos=result.eventos.length;
+    var criticos=parseInt(safe.criticos,10);
+    if(isNaN(criticos)) criticos=result.eventos.filter(function(e){ return e&&e.prioridad==="Critica"; }).length;
+    var pendientes=parseInt(safe.pendientes,10);
+    if(isNaN(pendientes)) pendientes=result.eventos.filter(function(e){ return e&&e.estatus!=="Cerrado"; }).length;
+    var msgs=parseInt(safe.msgs,10);
+    if(isNaN(msgs)) msgs=totalEventos;
+    var imgs=parseInt(safe.imgs,10);
+    if(isNaN(imgs)) imgs=0;
+    var durationSecs=parseInt(safe.durationSecs,10);
+    if(isNaN(durationSecs)) durationSecs=0;
+    return {
+      id:(safe.id!=null?safe.id:(Date.now()+Math.random())),
+      savedAt:safe.savedAt||new Date().toISOString(),
+      fileName:safe.fileName||"chat.zip",
+      periodo:safe.periodo||"",
+      grupo:safe.grupo||"",
+      totalEventos:totalEventos,
+      criticos:criticos,
+      pendientes:pendientes,
+      imgs:imgs,
+      msgs:msgs,
+      durationSecs:durationSecs,
+      apiUsage:(safe.apiUsage&&typeof safe.apiUsage==="object")?safe.apiUsage:null,
+      result:result
+    };
+  }
+
+  function traceOpsNormalizeHistoryList(raw){
+    var rows=Array.isArray(raw)?raw:[];
+    return rows.map(traceOpsNormalizeHistoryEntry);
+  }
+
   var histArr = _useState(function(){
-    try { var raw=localStorage.getItem(HIST_KEY); return raw?JSON.parse(raw):[]; } catch(_){ return []; }
+    try { var raw=localStorage.getItem(HIST_KEY); return raw?traceOpsNormalizeHistoryList(JSON.parse(raw)):[]; } catch(_){ return []; }
   });
   var history = histArr[0]; var setHistory = histArr[1];
 
@@ -3855,7 +3940,7 @@ function App() {
       durationSecs:durationSecs||0, apiUsage:traceOpsUsageFromResult(res), result:res
     };
     try {
-      var prev=[]; try{prev=JSON.parse(localStorage.getItem(HIST_KEY)||"[]");}catch(_){}
+      var prev=[]; try{prev=traceOpsNormalizeHistoryList(JSON.parse(localStorage.getItem(HIST_KEY)||"[]"));}catch(_){}
       var updated=[entry].concat(prev).slice(0,HIST_MAX);
       localStorage.setItem(HIST_KEY,JSON.stringify(updated)); setHistory(updated);
     } catch(_) {}
@@ -3867,11 +3952,25 @@ function App() {
     } catch(_){}
   }
   function loadFromHistory(entry) {
-    var restoredStats={total:entry.msgs,filtered:entry.msgs,clean:entry.msgs,imgs:entry.imgs};
-    var usage=entry.apiUsage||traceOpsUsageFromResult(entry.result)||null;
-    setResult(entry.result); setMsgStats(restoredStats); setApiUsage(usage); setEvImgs({}); setState("done");
-    buildXlsx(entry.result).then(function(bytes){setXlsxBytes(bytes);}).catch(function(){setXlsxBytes(null);});
-    try{sessionStorage.setItem("traceops_last_result",JSON.stringify({result:entry.result,msgStats:restoredStats}));}catch(e){}
+    try {
+      var safeEntry=traceOpsNormalizeHistoryEntry(entry);
+      var safeResult=safeEntry.result;
+      var totalMsgs=safeEntry.msgs || safeEntry.totalEventos || safeResult.eventos.length || 0;
+      var restoredStats={total:totalMsgs,filtered:totalMsgs,clean:totalMsgs,imgs:safeEntry.imgs||0};
+      var usage=safeEntry.apiUsage||traceOpsUsageFromResult(safeResult)||null;
+      setErrMsg("");
+      setPersonaFiltro("");
+      setViewDateFrom(""); setViewDateTo(""); setViewHourFrom(""); setViewHourTo("");
+      setCalendarView("7d"); setCalendarAnchorIso("");
+      setBitacoraSortKey("fecha"); setBitacoraSortDir("desc");
+      setResult(safeResult); setMsgStats(restoredStats); setApiUsage(usage); setEvImgs({}); setLightbox(null); setGalPage(0); setState("done");
+      buildXlsx(safeResult).then(function(bytes){setXlsxBytes(bytes);}).catch(function(){setXlsxBytes(null);});
+      try{sessionStorage.setItem("traceops_last_result",JSON.stringify({result:safeResult,msgStats:restoredStats}));}catch(e){}
+    } catch (e) {
+      console.error("TraceOps history load error", e);
+      setErrMsg("No se pudo abrir este analisis reciente. Intenta ejecutar el analisis otra vez.");
+      setState("error");
+    }
   }
   var fileRef = _useRef();
   var fileNameRef = _useRef("chat.zip");
@@ -5264,7 +5363,7 @@ function App() {
           <div className="ops-hero-actions">
             <button className="ops-hero-btn primary" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>{t("startExport")}</button>
             {history.length>0 && (
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>
+              <button className="ops-hero-btn ghost" onClick={function(){ traceOpsScrollToIdSafe("recent-analyses"); }}>
                 {t("recentAnalyses")}
               </button>
             )}
@@ -5288,7 +5387,7 @@ function App() {
             </div>
             <div className="traceops-context-actions">
               <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>{t("loadZip")}</button>
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>{t("recentAnalyses")}</button>
+              <button className="ops-hero-btn ghost" onClick={function(){ traceOpsScrollToIdSafe("recent-analyses"); }}>{t("recentAnalyses")}</button>
             </div>
           </div>
           <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
