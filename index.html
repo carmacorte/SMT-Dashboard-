@@ -795,6 +795,33 @@ function traceOpsRangeDaysLocal(dateFrom, dateTo) {
   return Math.max(1, Math.round(Math.abs(toDate.getTime() - fromDate.getTime()) / 86400000) + 1);
 }
 
+function traceOpsScrollToIdSafe(id) {
+  try {
+    var target = document.getElementById(id);
+    if (!target) return;
+    if (typeof target.scrollIntoView === "function") {
+      try {
+        target.scrollIntoView({behavior:"smooth", block:"start"});
+        return;
+      } catch (_) {
+        try {
+          target.scrollIntoView(true);
+          return;
+        } catch (_) {}
+      }
+    }
+    var rect = target.getBoundingClientRect();
+    var top = rect.top + (window.pageYOffset || document.documentElement.scrollTop || 0) - 12;
+    if (typeof window.scrollTo === "function") {
+      try {
+        window.scrollTo({top: top, behavior:"smooth"});
+      } catch (_) {
+        window.scrollTo(0, top);
+      }
+    }
+  } catch (_) {}
+}
+
 function filterMsgs(msgs, mode, days, dateFrom, dateTo, weekNum, weekYear) {
   if (!msgs.length) return msgs;
 
@@ -3110,13 +3137,36 @@ function traceOpsAdminTokenCeiling(){
   return 6000;
 }
 
+function traceOpsSafeGetLocal(key, fallback){
+  try {
+    var v = localStorage.getItem(key);
+    return v == null ? fallback : v;
+  } catch(_) {
+    return fallback;
+  }
+}
 
+function traceOpsSafeSetLocal(key, value){
+  try { localStorage.setItem(key, value); } catch(_) {}
+}
+
+function traceOpsSafeRemoveLocal(key){
+  try { localStorage.removeItem(key); } catch(_) {}
+}
+
+function traceOpsSafeWindowWidth(fallback){
+  try {
+    return typeof window !== 'undefined' && typeof window.innerWidth === 'number' ? window.innerWidth : fallback;
+  } catch(_) {
+    return fallback;
+  }
+}
 
 const TRACEOPS_NIGHT_OPS_HERO = 'hero-night-ops.jpeg';
 function App() {
   var stateArr = _useState("idle");
   var state = stateArr[0]; var setState = stateArr[1];
-  var apiKeyArr = _useState(localStorage.getItem("traceops_key") || "");
+  var apiKeyArr = _useState(traceOpsSafeGetLocal("traceops_key", ""));
   var apiKey = apiKeyArr[0]; var setApiKey = apiKeyArr[1];
   var progArr = _useState(0); var prog = progArr[0]; var setProg = progArr[1];
   var progStepArr = _useState(0); var progStep = progStepArr[0]; var setProgStep = progStepArr[1];
@@ -3131,9 +3181,9 @@ function App() {
   var apiUsageArr = _useState(null); var apiUsage = apiUsageArr[0]; var setApiUsage = apiUsageArr[1];
   var errArr = _useState(""); var errMsg = errArr[0]; var setErrMsg = errArr[1];
   var dragArr = _useState(false); var drag = dragArr[0]; var setDrag = dragArr[1];
-  var sbArr = _useState(window.innerWidth > 900); var sidebarOpen = sbArr[0]; var setSidebarOpen = sbArr[1];
-  var langArr = _useState(localStorage.getItem("traceops_lang") || "en"); var lang = langArr[0]; var setLang = langArr[1];
-  var isMobile = function(){ return window.innerWidth <= 900; };
+  var sbArr = _useState(traceOpsSafeWindowWidth(1024) > 900); var sidebarOpen = sbArr[0]; var setSidebarOpen = sbArr[1];
+  var langArr = _useState(traceOpsSafeGetLocal("traceops_lang", "en")); var lang = langArr[0]; var setLang = langArr[1];
+  var isMobile = function(){ return traceOpsSafeWindowWidth(1024) <= 900; };
   var translations = {
     en: {
       brandSubtitle: "Operational Intelligence for Manufacturing Teams",
@@ -3145,17 +3195,30 @@ function App() {
       localRcca: "Local RCCA",
       heroEyebrow: "Operational Intelligence for Manufacturing Teams",
       heroSubtitle: "Turn scattered floor conversations into structured incidents, clear priorities, traceable follow-up, and reusable operational memory.",
-      contextKicker: "Built from inside the operation",
-      contextTitle: "Your operation already has the information. It just does not stay together.",
-      contextSubtitle: "Upload a WhatsApp export, email thread, or operational message history. TraceOps turns floor conversations into structured incidents, visible priorities, traceable follow-up, and reusable operational memory.",
-      loadZip: "Load ZIP now",
+      contextKicker: "Built from real operations",
+      contextTitle: "The information already exists. TraceOps organizes it and turns it into action.",
+      contextSubtitle: "Upload a WhatsApp export, an email thread, or an operational log. TraceOps turns scattered conversations into structured incidents, clear priorities, traceable follow-up, and reusable operational memory.",
+      loadZip: "Upload export",
       uploadTitle: "Start with your WhatsApp export",
       uploadSubtitle: "Drop the ZIP here or click to select it",
       selectFile: "Select file",
       chipsHero: ["Incident detection","Engineer findings","RCCA memory","Yokoten","Operational log"],
-      chipsContext: ["WhatsApp export","EML / MBOX","Operational Log","Root Cause Archive","Evidence in context"],
+      chipsContext: ["WhatsApp","Email","Operational log","RCCA","Evidence"],
       footerTagline: "Operational Intelligence for Manufacturing Teams",
-      langLabel: "Language"
+      langLabel: "Language",
+      captureMaturityTitle: "Capture maturity",
+      captureMaturitySubtitle: "TraceOps also shows how much useful context arrives in each operational message.",
+      captureEventsEvaluated: "events reviewed",
+      captureModel: "With model",
+      captureLine: "With line",
+      captureStation: "With station",
+      captureOwner: "With owner",
+      captureEvidence: "With linked evidence",
+      captureToneStrong: "Strong",
+      captureTonePartial: "Partial",
+      captureToneWeak: "Weak",
+      captureNoteTitle: "What this means",
+      captureNote: "Unidentified fields usually come from messages with limited context. This is not only a system issue; it is also a reporting habit the operation can improve over time."
     },
     es: {
       brandSubtitle: "Inteligencia operativa para equipos de manufactura",
@@ -3167,17 +3230,30 @@ function App() {
       localRcca: "RCCA local",
       heroEyebrow: "Inteligencia operativa para equipos de manufactura",
       heroSubtitle: "Convierte conversaciones dispersas del piso en incidentes estructurados, prioridades claras, seguimiento trazable y memoria operativa reutilizable.",
-      contextKicker: "Construido desde adentro de la operación",
-      contextTitle: "Tu operación ya tiene la información. Lo que falta es mantenerla unida.",
-      contextSubtitle: "Carga una exportación de WhatsApp, un hilo de correo o un historial de mensajes operativos. TraceOps convierte conversaciones de piso en incidentes estructurados, prioridades visibles, seguimiento trazable y memoria operativa reutilizable.",
-      loadZip: "Cargar ZIP ahora",
+      contextKicker: "Hecho desde la operación real",
+      contextTitle: "La información ya existe. TraceOps la ordena y la vuelve accionable.",
+      contextSubtitle: "Carga una exportación de WhatsApp, un hilo de correo o un historial operativo. TraceOps convierte conversaciones dispersas en incidentes estructurados, prioridades claras, seguimiento trazable y memoria operativa reutilizable.",
+      loadZip: "Subir exportación",
       uploadTitle: "Comenzar con export de WhatsApp",
       uploadSubtitle: "Suelta aquí el ZIP o haz clic para seleccionarlo",
       selectFile: "Seleccionar archivo",
       chipsHero: ["Detección de incidentes","Hallazgos técnicos","Memoria RCCA","Yokoten","Bitácora operativa"],
-      chipsContext: ["Export de WhatsApp","EML / MBOX","Bitácora operativa","Archivo de causa raíz","Evidencia en contexto"],
+      chipsContext: ["WhatsApp","Correo","Bitácora","RCCA","Evidencia"],
       footerTagline: "Inteligencia operativa para equipos de manufactura",
-      langLabel: "Idioma"
+      langLabel: "Idioma",
+      captureMaturityTitle: "Madurez de captura",
+      captureMaturitySubtitle: "TraceOps también muestra cuánto contexto útil llega en cada mensaje operativo.",
+      captureEventsEvaluated: "eventos evaluados",
+      captureModel: "Con modelo",
+      captureLine: "Con línea",
+      captureStation: "Con estación",
+      captureOwner: "Con owner",
+      captureEvidence: "Con evidencia ligada",
+      captureToneStrong: "Fuerte",
+      captureTonePartial: "Parcial",
+      captureToneWeak: "Baja",
+      captureNoteTitle: "Qué significa",
+      captureNote: "Los campos no identificados suelen venir de mensajes con poco contexto. No es solo un tema del sistema; también refleja un hábito de captura que la operación puede mejorar con el tiempo."
     },
     zh: {
       brandSubtitle: "面向制造团队的运营智能",
@@ -3189,17 +3265,30 @@ function App() {
       localRcca: "本地 RCCA",
       heroEyebrow: "面向制造团队的运营智能",
       heroSubtitle: "将分散的现场对话转化为结构化事件、清晰优先级、可追踪跟进和可复用的运营记忆。",
-      contextKicker: "源自一线运营内部",
-      contextTitle: "你的运营已经拥有信息，缺少的是把它们留在一起。",
-      contextSubtitle: "上传 WhatsApp 导出、邮件线程或运营消息记录。TraceOps 将现场对话转化为结构化事件、可见优先级、可追踪跟进和可复用的运营记忆。",
-      loadZip: "立即加载 ZIP",
+      contextKicker: "来自真实运营现场",
+      contextTitle: "信息已经存在。TraceOps 帮你整理并转化为可执行行动。",
+      contextSubtitle: "上传 WhatsApp 导出、邮件线程或运营记录。TraceOps 将分散对话转化为结构化事件、清晰优先级、可追踪跟进和可复用的运营记忆。",
+      loadZip: "上传导出文件",
       uploadTitle: "从 WhatsApp 导出开始",
       uploadSubtitle: "将 ZIP 拖到这里，或点击进行选择",
       selectFile: "选择文件",
       chipsHero: ["事件检测","工程发现","RCCA 记忆","横展","运营日志"],
-      chipsContext: ["WhatsApp 导出","EML / MBOX","运营日志","根因档案","证据关联"],
+      chipsContext: ["WhatsApp","邮件","运营日志","RCCA","证据"],
       footerTagline: "面向制造团队的运营智能",
-      langLabel: "语言"
+      langLabel: "语言",
+      captureMaturityTitle: "捕获成熟度",
+      captureMaturitySubtitle: "TraceOps 也会显示每条运营消息带来了多少有用上下文。",
+      captureEventsEvaluated: "已评估事件",
+      captureModel: "带型号",
+      captureLine: "带产线",
+      captureStation: "带工站",
+      captureOwner: "带负责人",
+      captureEvidence: "带关联证据",
+      captureToneStrong: "较强",
+      captureTonePartial: "一般",
+      captureToneWeak: "偏弱",
+      captureNoteTitle: "这意味着",
+      captureNote: "未识别字段通常来自上下文不足的消息。这不只是系统问题，也反映了现场记录习惯仍可持续改进。"
     }
   };
   function t(key){
@@ -3217,7 +3306,7 @@ function App() {
   var calAnchorArr = _useState(""); var calendarAnchorIso = calAnchorArr[0]; var setCalendarAnchorIso = calAnchorArr[1];
 
   React.useEffect(function(){
-    function onResize(){ if (window.innerWidth > 900) setSidebarOpen(true); }
+    function onResize(){ if (traceOpsSafeWindowWidth(1024) > 900) setSidebarOpen(true); }
     window.addEventListener("resize", onResize);
     return function(){ window.removeEventListener("resize", onResize); };
   }, []);
@@ -3259,7 +3348,7 @@ function App() {
   function writeRccaDraft(payload){
     try {
       if (!payload) { localStorage.removeItem(RCCA_DRAFT_KEY); return true; }
-      localStorage.setItem(RCCA_DRAFT_KEY, JSON.stringify(payload));
+      traceOpsSafeSetLocal(RCCA_DRAFT_KEY, JSON.stringify(payload));
       return true;
     } catch(_) { return false; }
   }
@@ -3278,7 +3367,7 @@ function App() {
   var rccaDetailArr = _useState(null); var rccaDetail = rccaDetailArr[0]; var setRccaDetail = rccaDetailArr[1];
   var rccaFilterArr = _useState(""); var rccaFilter = rccaFilterArr[0]; var setRccaFilter = rccaFilterArr[1];
 
-  var authEmailArr = _useState(localStorage.getItem("traceops_auth_email") || "");
+  var authEmailArr = _useState(traceOpsSafeGetLocal("traceops_auth_email", ""));
   var authEmail = authEmailArr[0]; var setAuthEmail = authEmailArr[1];
   var authPassArr = _useState("");
   var authPassword = authPassArr[0]; var setAuthPassword = authPassArr[1];
@@ -3359,7 +3448,7 @@ function App() {
       lastErr = err;
     }
     try {
-      localStorage.setItem(RCCA_KEY, JSON.stringify(payload));
+      traceOpsSafeSetLocal(RCCA_KEY, JSON.stringify(payload));
       return { ok:true, mode:"localStorage" };
     } catch (err2) {
       lastErr = err2;
@@ -3371,7 +3460,7 @@ function App() {
     opts = opts || {};
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
       setAuthReady(true);
-      setCloudStatus("Modo local");
+      setCloudStatus("Análisis local");
       return [];
     }
     try {
@@ -3423,7 +3512,7 @@ function App() {
     setAuthErrMsg("");
     setSyncBusy(true);
     try {
-      localStorage.setItem("traceops_auth_email", authEmail.trim());
+      traceOpsSafeSetLocal("traceops_auth_email", authEmail.trim());
       if (authMode === "signup") {
         await window.TraceOpsCloud.signUp(authEmail.trim(), authPassword);
         setCloudStatus("Cuenta creada. Revisa tu correo si Supabase pide confirmacion.");
@@ -3450,7 +3539,7 @@ function App() {
     try {
       await window.TraceOpsCloud.signOut();
       setAuthUser(null);
-      setCloudStatus("Modo local");
+      setCloudStatus("Análisis local");
       setAuthErrMsg("");
     } catch (err) {
       setAuthErrMsg(err && err.message ? err.message : String(err));
@@ -3462,7 +3551,7 @@ function App() {
   React.useEffect(function(){
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
       setAuthReady(true);
-      setCloudStatus("Modo local · sin backend");
+      setCloudStatus("Análisis local · sin backend");
       return;
     }
     var unsub = window.TraceOpsCloud.onAuthChange(function(evt, user){
@@ -3477,7 +3566,7 @@ function App() {
     refreshCloudRcca();
 
   } else {
-    setCloudStatus("Modo local");
+    setCloudStatus("Análisis local");
   }
 
   setAuthReady(true);
@@ -3800,8 +3889,66 @@ function App() {
   }
   var HIST_KEY = "traceops_history";
   var HIST_MAX = 10;
+
+  function traceOpsNormalizeResultPayload(raw){
+    var src=(raw&&typeof raw==="object"&&!Array.isArray(raw))?raw:{};
+    function arr(v){ return Array.isArray(v)?v.filter(Boolean):[]; }
+    function obj(v){ return (v&&typeof v==="object"&&!Array.isArray(v))?v:{}; }
+    var out={};
+    try { Object.keys(src).forEach(function(k){ out[k]=src[k]; }); } catch(_){ out={}; }
+    out.resumen=obj(src.resumen);
+    out.eventos=arr(src.eventos);
+    out.kpis=arr(src.kpis);
+    out.evidencias=arr(src.evidencias);
+    out.directorio=arr(src.directorio);
+    out.pending_actions=arr(src.pending_actions);
+    out.incident_stories=arr(src.incident_stories);
+    out.rcca_memory=arr(src.rcca_memory);
+    out.operational_memory=arr(src.operational_memory);
+    out.lesson_trace=arr(src.lesson_trace);
+    out.yokoten=arr(src.yokoten);
+    return out;
+  }
+
+  function traceOpsNormalizeHistoryEntry(entry){
+    var safe=(entry&&typeof entry==="object"&&!Array.isArray(entry))?entry:{};
+    var result=traceOpsNormalizeResultPayload(safe.result);
+    var totalEventos=parseInt(safe.totalEventos,10);
+    if(isNaN(totalEventos)) totalEventos=result.eventos.length;
+    var criticos=parseInt(safe.criticos,10);
+    if(isNaN(criticos)) criticos=result.eventos.filter(function(e){ return e&&e.prioridad==="Critica"; }).length;
+    var pendientes=parseInt(safe.pendientes,10);
+    if(isNaN(pendientes)) pendientes=result.eventos.filter(function(e){ return e&&e.estatus!=="Cerrado"; }).length;
+    var msgs=parseInt(safe.msgs,10);
+    if(isNaN(msgs)) msgs=totalEventos;
+    var imgs=parseInt(safe.imgs,10);
+    if(isNaN(imgs)) imgs=0;
+    var durationSecs=parseInt(safe.durationSecs,10);
+    if(isNaN(durationSecs)) durationSecs=0;
+    return {
+      id:(safe.id!=null?safe.id:(Date.now()+Math.random())),
+      savedAt:safe.savedAt||new Date().toISOString(),
+      fileName:safe.fileName||"chat.zip",
+      periodo:safe.periodo||"",
+      grupo:safe.grupo||"",
+      totalEventos:totalEventos,
+      criticos:criticos,
+      pendientes:pendientes,
+      imgs:imgs,
+      msgs:msgs,
+      durationSecs:durationSecs,
+      apiUsage:(safe.apiUsage&&typeof safe.apiUsage==="object")?safe.apiUsage:null,
+      result:result
+    };
+  }
+
+  function traceOpsNormalizeHistoryList(raw){
+    var rows=Array.isArray(raw)?raw:[];
+    return rows.map(traceOpsNormalizeHistoryEntry);
+  }
+
   var histArr = _useState(function(){
-    try { var raw=localStorage.getItem(HIST_KEY); return raw?JSON.parse(raw):[]; } catch(_){ return []; }
+    try { var raw=localStorage.getItem(HIST_KEY); return raw?traceOpsNormalizeHistoryList(JSON.parse(raw)):[]; } catch(_){ return []; }
   });
   var history = histArr[0]; var setHistory = histArr[1];
 
@@ -3816,23 +3963,37 @@ function App() {
       durationSecs:durationSecs||0, apiUsage:traceOpsUsageFromResult(res), result:res
     };
     try {
-      var prev=[]; try{prev=JSON.parse(localStorage.getItem(HIST_KEY)||"[]");}catch(_){}
+      var prev=[]; try{prev=traceOpsNormalizeHistoryList(JSON.parse(localStorage.getItem(HIST_KEY)||"[]"));}catch(_){}
       var updated=[entry].concat(prev).slice(0,HIST_MAX);
-      localStorage.setItem(HIST_KEY,JSON.stringify(updated)); setHistory(updated);
+      traceOpsSafeSetLocal(HIST_KEY,JSON.stringify(updated)); setHistory(updated);
     } catch(_) {}
   }
   function deleteFromHistory(id) {
     try {
       var updated=history.filter(function(h){return h.id!==id;});
-      localStorage.setItem(HIST_KEY,JSON.stringify(updated)); setHistory(updated);
+      traceOpsSafeSetLocal(HIST_KEY,JSON.stringify(updated)); setHistory(updated);
     } catch(_){}
   }
   function loadFromHistory(entry) {
-    var restoredStats={total:entry.msgs,filtered:entry.msgs,clean:entry.msgs,imgs:entry.imgs};
-    var usage=entry.apiUsage||traceOpsUsageFromResult(entry.result)||null;
-    setResult(entry.result); setMsgStats(restoredStats); setApiUsage(usage); setEvImgs({}); setState("done");
-    buildXlsx(entry.result).then(function(bytes){setXlsxBytes(bytes);}).catch(function(){setXlsxBytes(null);});
-    try{sessionStorage.setItem("traceops_last_result",JSON.stringify({result:entry.result,msgStats:restoredStats}));}catch(e){}
+    try {
+      var safeEntry=traceOpsNormalizeHistoryEntry(entry);
+      var safeResult=safeEntry.result;
+      var totalMsgs=safeEntry.msgs || safeEntry.totalEventos || safeResult.eventos.length || 0;
+      var restoredStats={total:totalMsgs,filtered:totalMsgs,clean:totalMsgs,imgs:safeEntry.imgs||0};
+      var usage=safeEntry.apiUsage||traceOpsUsageFromResult(safeResult)||null;
+      setErrMsg("");
+      setPersonaFiltro("");
+      setViewDateFrom(""); setViewDateTo(""); setViewHourFrom(""); setViewHourTo("");
+      setCalendarView("7d"); setCalendarAnchorIso("");
+      setBitacoraSortKey("fecha"); setBitacoraSortDir("desc");
+      setResult(safeResult); setMsgStats(restoredStats); setApiUsage(usage); setEvImgs({}); setLightbox(null); setGalPage(0); setState("done");
+      buildXlsx(safeResult).then(function(bytes){setXlsxBytes(bytes);}).catch(function(){setXlsxBytes(null);});
+      try{sessionStorage.setItem("traceops_last_result",JSON.stringify({result:safeResult,msgStats:restoredStats}));}catch(e){}
+    } catch (e) {
+      console.error("TraceOps history load error", e);
+      setErrMsg("No se pudo abrir este analisis reciente. Intenta ejecutar el analisis otra vez.");
+      setState("error");
+    }
   }
   var fileRef = _useRef();
   var fileNameRef = _useRef("chat.zip");
@@ -3850,7 +4011,7 @@ function App() {
     return function(){clearInterval(interval);};
   },[state]);
 
-  function saveKey(k){setApiKey(k);localStorage.setItem("traceops_key",k);}
+  function saveKey(k){setApiKey(k);traceOpsSafeSetLocal("traceops_key",k);}
   var STEPS=["ZIP","Parser","Filtro","IA","Excel"];
 
   async function handle(file){
@@ -4209,6 +4370,32 @@ function App() {
   var criticalEventCount=ev.filter(function(e){return e.prioridad==="Critica";}).length;
   var openEventCount=ev.filter(function(e){return e.estatus!=="Cerrado";}).length;
   var findingsEventCount=ev.filter(function(e){return String(e.engineer_findings||"").trim().length>0;}).length;
+  function traceOpsKnownValue(v){
+    var s=String(v==null?"":v).trim();
+    return !!(s && s!=="N/D" && s!=="N/A" && s!=="-");
+  }
+  function traceOpsMetricTone(pct){
+    if(pct>=80) return {fg:"#1A7A3C",bg:"#EBF8EE",bar:"#48A882"};
+    if(pct>=50) return {fg:"#B87820",bg:"#FEF9E8",bar:"#D7A13A"};
+    return {fg:"#B03A2E",bg:"#FEF0EE",bar:"#D96B5B"};
+  }
+  var modelCapturedCount=ev.filter(function(e){return traceOpsKnownValue(e.modelo);}).length;
+  var lineCapturedCount=ev.filter(function(e){return extractLineLocal(e.linea_estacion||"")!=="N/D";}).length;
+  var stationCapturedCount=ev.filter(function(e){return extractStationLocal(e.linea_estacion||"")!=="N/D";}).length;
+  var ownerCapturedCount=ev.filter(function(e){return traceOpsKnownValue(e.reporta)||traceOpsKnownValue(e.responsable_sugerido);}).length;
+  var evidenceLinkedCount=ev.filter(function(e){return ((evImgs[e.id]||[]).length>0);}).length;
+  var captureMaturityCards=[
+    {label:t("captureModel"),count:modelCapturedCount},
+    {label:t("captureLine"),count:lineCapturedCount},
+    {label:t("captureStation"),count:stationCapturedCount},
+    {label:t("captureOwner"),count:ownerCapturedCount},
+    {label:t("captureEvidence"),count:evidenceLinkedCount}
+  ].map(function(item){
+    var pct=visibleEventCount?Math.round((item.count/visibleEventCount)*100):0;
+    item.pct=pct;
+    item.tone=traceOpsMetricTone(pct);
+    return item;
+  });
   var topStations=(function(){
     var map={};
     ev.forEach(function(e){
@@ -5009,7 +5196,7 @@ function App() {
           <div className="sidebar-section-title">Cuenta y sincronizacion RCCA</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             <div style={{fontSize:10,lineHeight:1.5,color:"rgba(255,255,255,.62)"}}>
-              {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Modo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
+              {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Análisis local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
             </div>
             <div style={{fontSize:10,lineHeight:1.4,color:syncBusy?"#CDE7C5":"rgba(255,255,255,.5)",padding:"8px 10px",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,background:"rgba(255,255,255,.03)"}}>
               {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(cloudStatus+(authReady?"":" · cargando"))}
@@ -5199,7 +5386,7 @@ function App() {
           <div className="ops-hero-actions">
             <button className="ops-hero-btn primary" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>{t("startExport")}</button>
             {history.length>0 && (
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>
+              <button className="ops-hero-btn ghost" onClick={function(){ traceOpsScrollToIdSafe("recent-analyses"); }}>
                 {t("recentAnalyses")}
               </button>
             )}
@@ -5223,7 +5410,7 @@ function App() {
             </div>
             <div className="traceops-context-actions">
               <button className="ops-hero-btn" onClick={function(){ if(fileRef.current) fileRef.current.click(); }}>{t("loadZip")}</button>
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("recent-analyses"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>{t("recentAnalyses")}</button>
+              <button className="ops-hero-btn ghost" onClick={function(){ traceOpsScrollToIdSafe("recent-analyses"); }}>{t("recentAnalyses")}</button>
             </div>
           </div>
           <div style={{border:"1.5px dashed #C8C4BE",borderRadius:16,background:drag?"#F0F5EE":"#FAFAF9",cursor:"pointer",marginBottom:20}} onDragOver={function(e){e.preventDefault();setDrag(true);}} onDragLeave={function(){setDrag(false);}} onDrop={function(e){e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0]);}} onClick={function(){fileRef.current.click();}}>
@@ -5341,7 +5528,7 @@ function App() {
                 <span>{visibleEventCount} eventos visibles</span>
                 <span>{(msgStats&&msgStats.clean)||0} msgs limpios</span>
                 <span>{imgNames.length} evidencias en rango</span>
-                {apiUsage&&apiUsage.local_mode&&<span>Modo local</span>}
+                {apiUsage&&apiUsage.local_mode&&<span>Análisis local</span>}
                 {apiUsage&&apiUsage.provider==="openai-backend"&&<span>OpenAI backend</span>}
               </div>
             </div>
@@ -5388,6 +5575,29 @@ function App() {
             </div>
           </div>
 
+          <div className="traceops-panel" style={{marginBottom:18}}>
+            <div className="traceops-panel-head">
+              <div><h3>{t("captureMaturityTitle")}</h3><span>{t("captureMaturitySubtitle")}</span></div>
+              <span>{visibleEventCount} {t("captureEventsEvaluated")}</span>
+            </div>
+            <div className="traceops-panel-body">
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
+                {captureMaturityCards.map(function(card){return(
+                  <div key={card.label} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"14px 14px 12px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:10}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#3D3A36",lineHeight:1.3}}>{card.label}</div>
+                      <div style={{fontSize:18,fontWeight:800,color:card.tone.fg,lineHeight:1}}>{card.pct}%</div>
+                    </div>
+                    <div style={{background:"#EEECEA",borderRadius:99,height:8,overflow:"hidden",marginBottom:8}}><div style={{height:8,borderRadius:99,background:card.tone.bar,width:card.pct+"%",transition:"width .35s ease"}}/></div>
+                    <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:10.5,color:"#6A6560"}}><span>{card.count}/{visibleEventCount||0}</span><span style={{color:card.tone.fg,fontWeight:700}}>{card.pct>=80?t("captureToneStrong"):(card.pct>=50?t("captureTonePartial"):t("captureToneWeak"))}</span></div>
+                  </div>
+                );})}
+              </div>
+              <div style={{marginTop:12,fontSize:11,color:"#6A6560",lineHeight:1.55,background:"#F8F7F5",border:"1px dashed #DDDBD7",borderRadius:12,padding:"10px 12px"}}>
+                <strong style={{color:"#1A1714"}}>{t("captureNoteTitle")}:</strong> {t("captureNote")}
+              </div>
+            </div>
+          </div>
 
           <div className="traceops-calendar">
             <div className="traceops-calendar-head">
@@ -5544,7 +5754,7 @@ function App() {
                 <h4>Estado operativo</h4>
                 <p>Rango activo, volumen de mensajes y evidencia disponible para el periodo seleccionado.</p>
                 <div className="traceops-bullets">
-                  <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
+                  <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Análisis local":"Pipeline actual")}</div>
                   <div className="traceops-bullet">
                     <strong>Rango base:</strong> {analysisRangeLabel||"N/D"}
                     {requestedWindowLabel&&<span> · <strong>Solicitada:</strong> {requestedWindowLabel}</span>}
@@ -5693,7 +5903,7 @@ function App() {
           </div>
 
           {(byDef.length>0||byTipo.length>0)&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {byDef.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Pareto defectos SMT</h4>{byDef.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B2DA8",width:(x.n/mxD*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
+            {byDef.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Pareto de hallazgos</h4>{byDef.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B2DA8",width:(x.n/mxD*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
             {byTipo.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Por tipo</h4>{byTipo.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B8C3A",width:(x.n/mxT*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
           </div>}
 
