@@ -18,6 +18,15 @@ window.onerror = function(msg, src, line, col, err) {
   document.body.appendChild(box);
   return false;
 };
+window.addEventListener('unhandledrejection', function(ev) {
+  try {
+    var reason = ev && ev.reason ? (ev.reason.stack || ev.reason.message || String(ev.reason)) : 'Unhandled promise rejection';
+    var box = document.createElement('div');
+    box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#7F1D1D;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all';
+    box.innerHTML = '<strong>PROMISE ERROR</strong><br>' + reason;
+    document.body.appendChild(box);
+  } catch(_) {}
+});
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>TraceOps by SMTintel</title>
@@ -4262,10 +4271,7 @@ function App() {
                 <div className="ic-card-head">
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
-                      <div style={{display:"flex",flexDirection:"column",gap:4,minWidth:0}}>
-                        <div style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#2A7A60"}}>{card.rcca_id}</div>
-                        {i===safeIdx&&<button onClick={function(e){e.stopPropagation();exportCurrentRccaItem(card);}} style={{alignSelf:"flex-start",background:"#fff",color:"#1E5C48",border:"1px solid #B8DECE",borderRadius:999,padding:"3px 8px",fontSize:8,fontWeight:800,cursor:"pointer"}}>Export</button>}
-                      </div>
+                      <div style={{fontSize:9,fontFamily:"monospace",fontWeight:700,color:"#2A7A60"}}>{card.rcca_id}</div>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"flex-end",maxWidth:"42%"}}>
                         <span style={Object.assign({fontSize:8,borderRadius:999,padding:"2px 7px",fontWeight:800},statusStyle(card.estatus_rcca||"NUEVO"))}>{traceOpsCarouselStatusLabel(card.estatus_rcca||"NUEVO")}</span>
                         <span style={{fontSize:8,background:"#F8F7F5",color:"#6A6560",borderRadius:999,padding:"2px 7px",fontWeight:800,border:"1px solid #DDDBD7"}}>{card.tipo_caso||inferTypeFor(card)}</span>
