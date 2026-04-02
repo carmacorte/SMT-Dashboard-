@@ -3551,19 +3551,195 @@ function App() {
     a.href = URL.createObjectURL(blob);
     a.download = filename;
     a.click();
-    URL.revokeObjectURL(a.href);
+    setTimeout(function(){ try { URL.revokeObjectURL(a.href); } catch(_){} }, 1000);
+  }
+  function traceOpsEsc(v){
+    return String(v==null?"":v)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#39;");
+  }
+  function traceOpsSafeArray(v){
+    return Array.isArray(v) ? v : (v ? [v] : []);
+  }
+  function traceOpsSeverityValue(item){
+    var sev = Number(item && item.severidad != null ? item.severidad : 0);
+    if (!isFinite(sev) || sev < 0) sev = 0;
+    if (sev > 5) sev = 5;
+    return sev;
+  }
+  function traceOpsStars(n){
+    var safe = Math.max(0, Math.min(5, Number(n)||0));
+    return "★★★★★".slice(0, safe) + "☆☆☆☆☆".slice(0, 5-safe);
+  }
+  function traceOpsBadge(status){
+    var s = String(status||"NUEVO").toUpperCase();
+    var style = {bg:"#F2F1EF", color:"#5D5751", border:"#DFDDD9"};
+    if (s.indexOf("ANAL")>=0) style = {bg:"#EEF5FF", color:"#2952A3", border:"#CFE0FF"};
+    else if (s.indexOf("VALID")>=0) style = {bg:"#EAF7EF", color:"#1E7A4A", border:"#BFE7CC"};
+    else if (s.indexOf("CERR")>=0 || s.indexOf("CLOSE")>=0) style = {bg:"#F2F3F5", color:"#596274", border:"#D7DDE6"};
+    else if (s.indexOf("NUEVO")>=0 || s.indexOf("NEW")>=0) style = {bg:"#FFF8E8", color:"#A26A00", border:"#F1DF9E"};
+    return style;
+  }
+  function traceOpsField(label, value){
+    if (value==null || value==="") return "";
+    return '<div class="to-field"><div class="to-label">'+traceOpsEsc(label)+'</div><div class="to-value">'+traceOpsEsc(value)+'</div></div>';
+  }
+  function traceOpsMetric(label, value, tone){
+    var tones = {
+      red: ["#FEF0EE","#F1C8C2","#C0392B"],
+      amber: ["#FEF9E8","#F5E4A0","#B87820"],
+      purple: ["#F5F0FE","#DBCDF8","#6B2DA8"],
+      green: ["#EAF5F0","#B8DECE","#1E5C48"]
+    };
+    var t = tones[tone] || tones.green;
+    return '<div class="to-metric" style="background:'+t[0]+';border-color:'+t[1]+'"><div class="to-metric-label" style="color:'+t[2]+'">'+traceOpsEsc(label)+'</div><div class="to-metric-value">'+traceOpsEsc(value)+'</div></div>';
+  }
+  function traceOpsCardHtml(item, idx){
+    var status = String(item.estatus_rcca||"NUEVO");
+    var badge = traceOpsBadge(status);
+    var sev = traceOpsSeverityValue(item);
+    var rec = item.recurrencia != null && item.recurrencia !== "" ? "R"+item.recurrencia : "R0";
+    var mad = item.madurez_analisis != null && item.madurez_analisis !== "" ? "M"+item.madurez_analisis : "M0";
+    var evCount = traceOpsSafeArray(item.event_ids).length;
+    var title = item.titulo_corto || item.problema || "Untitled RCCA";
+    var eventsHtml = traceOpsSafeArray(item.event_ids).map(function(ev){
+      return '<span class="to-chip">'+traceOpsEsc(ev)+'</span>';
+    }).join("");
+    if (!eventsHtml) eventsHtml = '<span class="to-chip to-chip-muted">No linked EVT</span>';
+    var sections = ''
+      + traceOpsField('Problem', item.problema)
+      + traceOpsField('Hypothesis', item.hipotesis)
+      + traceOpsField('Root Cause', item.causa_raiz)
+      + traceOpsField('Containment', item.contencion || item.accion_contencion)
+      + traceOpsField('Validation', item.validacion)
+      + traceOpsField('Detected Pattern', item.patron_detectado)
+      + traceOpsField('Reusable Lesson', item.leccion_aprendida)
+      + traceOpsField('Yokoten / Reapplication', item.yokoten || item.solucion_replicable || item.reaplicacion)
+      + traceOpsField('Owner', item.owner_email)
+      + traceOpsField('Source', item.source)
+      + traceOpsField('Original RCCA', item.original_rcca_id)
+      + traceOpsField('Created at', item.created_at)
+      + traceOpsField('Updated at', item.updated_at);
+    return ''
+      + '<article class="to-card">'
+      +   '<div class="to-card-top">'
+      +     '<div class="to-id">'+traceOpsEsc(item.rcca_id || ('RCCA-'+(idx+1)))+'</div>'
+      +     '<div class="to-badges">'
+      +       '<span class="to-badge" style="background:'+badge.bg+';color:'+badge.color+';border-color:'+badge.border+'">'+traceOpsEsc(status)+'</span>'
+      +       '<span class="to-badge to-badge-soft">'+traceOpsEsc(item.tipo_caso || 'GENERAL')+'</span>'
+      +     '</div>'
+      +   '</div>'
+      +   '<h2 class="to-title">'+traceOpsEsc(title)+'</h2>'
+      +   '<div class="to-sub">'+traceOpsEsc(item.modelo || 'N/D')+' • '+traceOpsEsc(item.linea || 'N/D')+' • '+traceOpsEsc(item.fecha || '-')+'</div>'
+      +   '<div class="to-metrics">'
+      +     traceOpsMetric('Sev', traceOpsStars(sev), 'red')
+      +     + traceOpsMetric('Rec', rec, 'amber')
+      +     + traceOpsMetric('Mad', mad, 'purple')
+      +     + traceOpsMetric('EV', String(evCount).padStart(2,'0'), 'green')
+      +   '</div>'
+      +   '<div class="to-grid">'
+      +     sections
+      +   '</div>'
+      +   '<div class="to-events-wrap"><div class="to-label">Linked events</div><div class="to-events">'+eventsHtml+'</div></div>'
+      + '</article>';
+  }
+  function traceOpsOpenVisualExport(items, opts){
+    var list = Array.isArray(items) ? items.filter(Boolean) : (items ? [items] : []);
+    if (!list.length) return;
+    var options = opts || {};
+    var title = options.title || 'TraceOps RCCA Export';
+    var subtitle = options.subtitle || 'Visual card export';
+    var filename = options.filename || ('TraceOps_RCCA_Visual_'+new Date().toISOString().slice(0,10)+'.html');
+    var payload = JSON.stringify(list, null, 2);
+    var safePayload = JSON.stringify(list).replace(/</g,'\\u003c');
+    var cards = list.map(function(item, idx){ return traceOpsCardHtml(item, idx); }).join("");
+    var doc = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>'
+      + traceOpsEsc(title)
+      + '</title><style>'
+      + ':root{--bg:#F4F1EC;--ink:#1A1714;--muted:#726C66;--line:#DEDAD3;--card:#FFFFFF;--brand:#12342B;--brand2:#1E5C48;--soft:#F8F7F5}'
+      + 'html,body{margin:0;padding:0;background:linear-gradient(180deg,#F4F1EC 0%,#EEE9E1 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}'
+      + '.to-wrap{max-width:1180px;margin:0 auto;padding:24px 16px 48px}'
+      + '.to-hero{background:linear-gradient(160deg,#071A19 0%,#0C2222 55%,#12342B 100%);color:#fff;border-radius:28px;padding:22px 20px;box-shadow:0 18px 44px rgba(7,26,25,.24)}'
+      + '.to-over{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#A6CBC2;font-weight:800;margin-bottom:10px}'
+      + '.to-head{font-size:34px;line-height:1.02;margin:0 0 8px;font-weight:900}'
+      + '.to-subhead{font-size:14px;line-height:1.45;color:#DCEBE6;max-width:780px}'
+      + '.to-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}'
+      + '.to-btn{appearance:none;border:0;border-radius:999px;padding:12px 16px;font-weight:800;font-size:13px;cursor:pointer}'
+      + '.to-btn-main{background:#1E5C48;color:#fff}'
+      + '.to-btn-soft{background:#fff;color:#12342B;border:1px solid #D0DAD7}'
+      + '.to-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}'
+      + '.to-pill{padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);font-size:11px;color:#DCEBE6;font-weight:700}'
+      + '.to-grid-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:18px}'
+      + '.to-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:16px 16px 14px;box-shadow:0 10px 28px rgba(19,28,24,.08)}'
+      + '.to-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}'
+      + '.to-id{font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#2A7A60}'
+      + '.to-badges{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}'
+      + '.to-badge{font-size:10px;border:1px solid;padding:4px 9px;border-radius:999px;font-weight:800}'
+      + '.to-badge-soft{background:#F8F7F5;color:#6A6560;border-color:#DDDBD7}'
+      + '.to-title{font-size:20px;line-height:1.15;margin:12px 0 6px;font-weight:900}'
+      + '.to-sub{font-size:12px;color:var(--muted);line-height:1.4}'
+      + '.to-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0 14px}'
+      + '.to-metric{border:1px solid;border-radius:16px;padding:10px 8px;min-height:56px}'
+      + '.to-metric-label{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}'
+      + '.to-metric-value{font-size:14px;font-weight:900;color:#1A1714;margin-top:3px}'
+      + '.to-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+      + '.to-field{background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:11px 12px;min-height:74px}'
+      + '.to-label{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#7E776F;margin-bottom:6px}'
+      + '.to-value{font-size:13px;line-height:1.42;color:#1A1714;white-space:pre-wrap;word-break:break-word}'
+      + '.to-events-wrap{margin-top:12px;background:#FBFAF8;border:1px dashed #DAD4CC;border-radius:16px;padding:12px}'
+      + '.to-events{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}'
+      + '.to-chip{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:#EAF5F0;color:#1E5C48;border:1px solid #B8DECE;font-size:11px;font-weight:800}'
+      + '.to-chip-muted{background:#F2F1EF;color:#67615B;border-color:#DDD9D3}'
+      + '@media print{.to-actions{display:none}.to-wrap{padding:0}.to-hero{box-shadow:none}.to-card{break-inside:avoid;box-shadow:none}}'
+      + '@media (max-width:680px){.to-head{font-size:28px}.to-grid{grid-template-columns:1fr}.to-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+      + '</style></head><body><div class="to-wrap"><section class="to-hero"><div class="to-over">TraceOps • RCCA Visual Export</div><h1 class="to-head">'
+      + traceOpsEsc(title)
+      + '</h1><div class="to-subhead">'
+      + traceOpsEsc(subtitle)
+      + '</div><div class="to-actions"><button class="to-btn to-btn-main" onclick="window.print()">Print / Save PDF</button><button class="to-btn to-btn-soft" onclick="downloadJson()">Download JSON</button><button class="to-btn to-btn-soft" onclick="downloadHtml()">Download HTML</button></div><div class="to-meta"><span class="to-pill">'
+      + list.length + ' RCCA card(s)'
+      + '</span><span class="to-pill">'
+      + traceOpsEsc(new Date().toLocaleString())
+      + '</span><span class="to-pill">Card system export</span></div></section><section class="to-grid-cards">'
+      + cards
+      + '</section></div><script>window.__TRACEOPS_EXPORT__='+safePayload+';function downloadJson(){var blob=new Blob([JSON.stringify(window.__TRACEOPS_EXPORT__,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download='+JSON.stringify(filename.replace('.html','.json'))+';a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1000)}function downloadHtml(){var html=document.documentElement.outerHTML;var blob=new Blob([html],{type:"text/html"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download='+JSON.stringify(filename)+';a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1000)}</script></body></html>';
+    var blob = new Blob([doc], {type:"text/html"});
+    var url = URL.createObjectURL(blob);
+    var w = window.open(url, "_blank");
+    if (!w) {
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+    }
+    setTimeout(function(){ try { URL.revokeObjectURL(url); } catch(_){} }, 60000);
   }
   function exportRcca() {
-    traceOpsDownloadJson("TraceOps_RCCA_"+new Date().toISOString().slice(0,10)+".json", rccaList);
+    traceOpsOpenVisualExport(rccaList, {
+      title: "TraceOps RCCA Archive",
+      subtitle: "Visual card export for saved RCCA records.",
+      filename: "TraceOps_RCCA_Archive_"+new Date().toISOString().slice(0,10)+".html"
+    });
   }
   function exportCurrentRccaItem(item) {
     if (!item) return;
     var cleanId = String(item.rcca_id||"RCCA").replace(/[^A-Za-z0-9_-]+/g,"_");
-    traceOpsDownloadJson("TraceOps_"+cleanId+"_"+new Date().toISOString().slice(0,10)+".json", item);
+    traceOpsOpenVisualExport([item], {
+      title: item.rcca_id || "TraceOps RCCA Card",
+      subtitle: "Visual export for the currently active RCCA card.",
+      filename: "TraceOps_"+cleanId+"_"+new Date().toISOString().slice(0,10)+".html"
+    });
   }
   function exportRccaDeckItems(items) {
     var list = Array.isArray(items) ? items : [];
-    traceOpsDownloadJson("TraceOps_RCCA_Deck_"+new Date().toISOString().slice(0,10)+".json", list);
+    traceOpsOpenVisualExport(list, {
+      title: "TraceOps RCCA Deck",
+      subtitle: "Visual export rendered as card system for the active RCCA deck.",
+      filename: "TraceOps_RCCA_Deck_"+new Date().toISOString().slice(0,10)+".html"
+    });
   }
   function rccaSimilarity(evItem, rcca) {
     var score = 0;
@@ -4256,8 +4432,8 @@ function App() {
         <div style={{padding:"0 14px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
           <div><div style={{fontSize:12,fontWeight:800,color:"#1A1714"}}>RCCA Deck</div><div style={{fontSize:9.5,color:"#8A8580"}}>Front summary, detailed analysis on reverse</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
-            <button onClick={function(){exportCurrentRccaItem(cur);}} style={{background:"#fff",color:"#1E5C48",border:"1px solid #B8DECE",borderRadius:999,padding:"5px 10px",fontSize:9,fontWeight:800,cursor:"pointer"}}>Export current JSON</button>
-            <button onClick={function(){exportRccaDeckItems(cards);}} style={{background:"#fff",color:"#2952A3",border:"1px solid #C8D7F8",borderRadius:999,padding:"5px 10px",fontSize:9,fontWeight:800,cursor:"pointer"}}>Export deck JSON</button>
+            <button onClick={function(){exportCurrentRccaItem(cur);}} style={{background:"#fff",color:"#1E5C48",border:"1px solid #B8DECE",borderRadius:999,padding:"5px 10px",fontSize:9,fontWeight:800,cursor:"pointer"}}>Export current Card</button>
+            <button onClick={function(){exportRccaDeckItems(cards);}} style={{background:"#fff",color:"#2952A3",border:"1px solid #C8D7F8",borderRadius:999,padding:"5px 10px",fontSize:9,fontWeight:800,cursor:"pointer"}}>Export deck Cards</button>
             <div style={{fontSize:8.5,color:"#2A7A60",fontWeight:800,background:"#EAF5F0",borderRadius:99,padding:"3px 9px",border:"1px solid #B8DECE"}}>{cards.length} RCCA</div>
           </div>
         </div>
