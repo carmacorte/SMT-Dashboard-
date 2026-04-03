@@ -1423,6 +1423,203 @@ body.traceops-premium-shell .table-reset-btn:active{
 }
 
 
+
+/* =========================================================
+   TraceOps fusion fix
+   Rebalance visual weight after premium green layer
+========================================================= */
+body.traceops-premium-shell{
+  background:linear-gradient(180deg,#0D1511 0 180px,#EEF4F0 180px 100%) !important;
+}
+
+body.traceops-premium-shell::before{
+  opacity:.28 !important;
+  height:52vh !important;
+}
+
+body.traceops-premium-shell .ops-hero,
+body.traceops-premium-shell .hdr{
+  background:
+    radial-gradient(circle at 50% 18%, rgba(114,205,165,.10), transparent 30%),
+    linear-gradient(180deg,#08100D 0%,#10211A 100%) !important;
+  border:1px solid rgba(114,205,165,.12) !important;
+  box-shadow:0 16px 34px rgba(4,16,11,.18) !important;
+}
+
+body.traceops-premium-shell .ops-hero::before{
+  opacity:.38 !important;
+  background-size:52px 52px !important;
+}
+
+body.traceops-premium-shell .ops-hero::after{
+  opacity:.08 !important;
+  width:188px !important;
+  height:188px !important;
+  bottom:8px !important;
+}
+
+body.traceops-premium-shell .ops-hero{
+  min-height:500px !important;
+  padding:64px 24px 32px !important;
+}
+
+body.traceops-premium-shell .ops-hero-content{
+  max-width:560px !important;
+  gap:14px !important;
+}
+
+body.traceops-premium-shell .ops-hero-title::before{
+  font-size:36px !important;
+  line-height:.96 !important;
+  max-width:12ch;
+  margin:0 auto;
+}
+
+body.traceops-premium-shell .ops-hero-subtitle::before{
+  color:rgba(255,255,255,.70) !important;
+}
+
+body.traceops-premium-shell .ops-hero-actions{
+  width:100%;
+  max-width:520px;
+}
+
+body.traceops-premium-shell .ops-hero-btn{
+  min-height:46px !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.primary,
+body.traceops-premium-shell .up-btn,
+body.traceops-premium-shell .saas-header-btn.primary,
+body.traceops-premium-shell .sidebar-nuevo,
+body.traceops-premium-shell .traceops-tab.active,
+body.traceops-premium-shell .traceops-calendar-btn.active,
+body.traceops-premium-shell .traceops-calendar-chip.active,
+body.traceops-premium-shell .day-btn.active,
+body.traceops-premium-shell .saas-upload-card .saas-header-btn{
+  background:linear-gradient(135deg,#1D7A55 0%,#24A06D 100%) !important;
+  border:1px solid rgba(29,122,85,.18) !important;
+  box-shadow:0 10px 22px rgba(29,122,85,.20) !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.ghost,
+body.traceops-premium-shell .saas-header-btn:not(.primary){
+  background:rgba(255,255,255,.94) !important;
+  color:#10231C !important;
+  border:1px solid rgba(16,35,28,.10) !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.ghost::before{
+  color:#10231C !important;
+}
+
+body.traceops-premium-shell .ops-hero-chips::before{
+  color:rgba(255,255,255,.42) !important;
+}
+
+body.traceops-premium-shell .traceops-context,
+body.traceops-premium-shell .traceops-panel,
+body.traceops-premium-shell .traceops-calendar,
+body.traceops-premium-shell .traceops-engineering-card,
+body.traceops-premium-shell .traceops-kpi-card,
+body.traceops-premium-shell .tcard,
+body.traceops-premium-shell .pf-card,
+body.traceops-premium-shell .cmp,
+body.traceops-premium-shell .foot,
+body.traceops-premium-shell .up,
+body.traceops-premium-shell .prog,
+body.traceops-premium-shell .api-bar{
+  border-radius:22px !important;
+}
+
+body.traceops-premium-shell .traceops-kpi-card{
+  background:#FFFFFF !important;
+}
+
+body.traceops-premium-shell .traceops-kpi-label{
+  color:#70867B !important;
+}
+
+body.traceops-premium-shell .traceops-panel-head,
+body.traceops-premium-shell .traceops-calendar-head,
+body.traceops-premium-shell .tcard-hdr,
+body.traceops-premium-shell .pf-hdr,
+body.traceops-premium-shell .filter-bar,
+body.traceops-premium-shell .traceops-calendar-month-head{
+  background:#F8FCF9 !important;
+}
+
+body.traceops-premium-shell .traceops-context-chips span,
+body.traceops-premium-shell .traceops-window-pill,
+body.traceops-premium-shell .table-sort-chip,
+body.traceops-premium-shell .chip,
+body.traceops-premium-shell .ptag,
+body.traceops-premium-shell .traceops-calendar-pill,
+body.traceops-premium-shell .traceops-calendar-strip-tag,
+body.traceops-premium-shell .traceops-alert-badge,
+body.traceops-premium-shell .ev-count{
+  background:#F7FBF8 !important;
+  color:#285B49 !important;
+  border-color:rgba(40,91,73,.10) !important;
+}
+
+body.traceops-premium-shell .traceops-alert-badge.crit,
+body.traceops-premium-shell .traceops-calendar-pill.crit,
+body.traceops-premium-shell .traceops-calendar-strip-tag.crit{
+  background:#FDEEEE !important;
+  color:#C44141 !important;
+  border-color:rgba(196,65,65,.10) !important;
+}
+
+body.traceops-premium-shell .traceops-alert-badge.high{
+  background:#FFF7E8 !important;
+  color:#9A6A16 !important;
+  border-color:rgba(154,106,22,.10) !important;
+}
+
+body.traceops-premium-shell .traceops-bullet,
+body.traceops-premium-shell .krow,
+body.traceops-premium-shell .pf-stat,
+body.traceops-premium-shell .traceops-alert-item{
+  background:#F8FBF9 !important;
+}
+
+body.traceops-premium-shell .sidebar-btn.active{
+  background:rgba(255,255,255,.08) !important;
+}
+
+@media (min-width:900px){
+  body.traceops-premium-shell .ops-hero-title::before{
+    font-size:48px !important;
+  }
+}
+
+@media (max-width:640px){
+  body.traceops-premium-shell{
+    background:linear-gradient(180deg,#0D1511 0 150px,#EEF4F0 150px 100%) !important;
+  }
+
+  body.traceops-premium-shell .ops-hero{
+    min-height:468px !important;
+    padding:56px 20px 28px !important;
+  }
+
+  body.traceops-premium-shell .ops-hero-title::before{
+    font-size:32px !important;
+    max-width:11ch;
+  }
+
+  body.traceops-premium-shell .ops-hero-subtitle::before{
+    font-size:13px !important;
+  }
+
+  body.traceops-premium-shell .ops-hero::after{
+    width:164px !important;
+    height:164px !important;
+    bottom:6px !important;
+  }
+}
+
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -6463,20 +6660,20 @@ function App() {
             </div>
           </div>
 
-          <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
-            <div>
-              <h3 style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>Excel listo para junta</h3>
-              <p style={{fontSize:11,color:"rgba(242,236,200,.6)"}}>{(res.periodo||"")+" - "+ev.length+" eventos - "+((msgStats&&msgStats.clean)||0)+" msgs"}</p>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginTop:5}}><div style={{width:6,height:6,borderRadius:50,background:"#8ABD6E"}}/><span style={{fontSize:9.5,color:"rgba(200,220,160,.8)",fontWeight:500}}>Guardado en historial{elapsed>0&&" - "+String(Math.floor(elapsed/60)).padStart(2,"0")+":"+String(elapsed%60).padStart(2,"0")}</span></div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>{["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){return<span key={s} style={{background:"rgba(200,216,150,.12)",border:"1px solid rgba(200,216,150,.2)",borderRadius:4,padding:"2px 8px",fontSize:9,color:"#F2ECC8"}}>{s}</span>;})}</div>
+          <div style={{background:"#FFFFFF",border:"1px solid rgba(16,35,28,.08)",borderRadius:22,padding:"20px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 1px 2px rgba(16,35,28,.03), 0 14px 34px rgba(18,70,51,.06)"}}>
+            <div style={{minWidth:0}}>
+              <h3 style={{fontSize:15,fontWeight:800,color:"#10231C",marginBottom:4,letterSpacing:"-.02em"}}>Excel listo para junta</h3>
+              <p style={{fontSize:11.5,color:"#6A8378",lineHeight:1.5}}>{(res.periodo||"")+" - "+ev.length+" eventos - "+((msgStats&&msgStats.clean)||0)+" msgs"}</p>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6,flexWrap:"wrap"}}><div style={{width:7,height:7,borderRadius:50,background:"#26A36F"}}/><span style={{fontSize:9.5,color:"#5F766C",fontWeight:600}}>Guardado en historial{elapsed>0&&" - "+String(Math.floor(elapsed/60)).padStart(2,"0")+":"+String(elapsed%60).padStart(2,"0")}</span></div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:10}}>{["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){return<span key={s} style={{background:"#F6FBF8",border:"1px solid rgba(26,91,69,.12)",borderRadius:999,padding:"4px 10px",fontSize:9.5,color:"#1A5B45",fontWeight:700}}>{s}</span>;})}</div>
               {apiUsage&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:10}}>
-                <span style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:99,padding:"4px 10px",fontSize:9.5,color:"#F2ECC8"}}>{apiUsage.cache_hit?"Cache hit":"1 llamada API"}</span>
-                <span style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:99,padding:"4px 10px",fontSize:9.5,color:"#F2ECC8"}}>in {(apiUsage.input_tokens||0).toLocaleString()} tok</span>
-                <span style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:99,padding:"4px 10px",fontSize:9.5,color:"#F2ECC8"}}>out {(apiUsage.output_tokens||0).toLocaleString()} tok</span>
-                <span style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:99,padding:"4px 10px",fontSize:9.5,color:"#F2ECC8"}}>max {TRACEOPS_MAX_OUTPUT_TOKENS.toLocaleString()}</span>
+                <span style={{background:"#F6FBF8",border:"1px solid rgba(26,91,69,.12)",borderRadius:999,padding:"4px 10px",fontSize:9.5,color:"#1A5B45",fontWeight:700}}>{apiUsage.cache_hit?"Cache hit":"1 llamada API"}</span>
+                <span style={{background:"#F6FBF8",border:"1px solid rgba(26,91,69,.12)",borderRadius:999,padding:"4px 10px",fontSize:9.5,color:"#1A5B45",fontWeight:700}}>in {(apiUsage.input_tokens||0).toLocaleString()} tok</span>
+                <span style={{background:"#F6FBF8",border:"1px solid rgba(26,91,69,.12)",borderRadius:999,padding:"4px 10px",fontSize:9.5,color:"#1A5B45",fontWeight:700}}>out {(apiUsage.output_tokens||0).toLocaleString()} tok</span>
+                <span style={{background:"#F6FBF8",border:"1px solid rgba(26,91,69,.12)",borderRadius:999,padding:"4px 10px",fontSize:9.5,color:"#1A5B45",fontWeight:700}}>max {TRACEOPS_MAX_OUTPUT_TOKENS.toLocaleString()}</span>
               </div>}
             </div>
-            <button onClick={download} style={{background:"#7A9448",color:"#fff",border:"none",borderRadius:10,padding:"12px 22px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,boxShadow:"0 2px 8px rgba(122,148,72,.35)"}}>Descargar .xlsx</button>
+            <button onClick={download} style={{background:"linear-gradient(135deg,#1E8A64 0%,#19A76E 100%)",color:"#FFFFFF",border:"1px solid rgba(25,167,110,.22)",borderRadius:999,padding:"13px 22px",fontSize:13.5,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,boxShadow:"0 12px 26px rgba(25,128,90,.22)"}}>Descargar .xlsx</button>
           </div>
 
           {imgNames.length>0&&(
