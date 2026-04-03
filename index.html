@@ -1265,7 +1265,7 @@ async function readZip(file) {
     txt.split(/
 ?
 /).forEach(function(rawLine) {
-      var line = rawLine.replace(/[‎‏‪- ]/g, "").trim();
+      var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g, "").trim();
       var m = line.match(reA) || line.match(reB);
       if (m) {
         var isA = !!line.match(reA);
