@@ -1086,6 +1086,259 @@ body.traceops-premium-shell .prog{
 
 </style>
 
+
+<style>
+:root{
+  --tr-bg-0:#04070a;
+  --tr-bg-1:#081019;
+  --tr-bg-2:#0d1620;
+  --tr-panel:#0b1219;
+  --tr-panel-2:#0f1822;
+  --tr-line:rgba(255,255,255,.08);
+  --tr-line-strong:rgba(255,255,255,.14);
+  --tr-text:#eef4f1;
+  --tr-muted:#93a3b1;
+  --tr-soft:#c8d2db;
+  --tr-accent:#71d09a;
+  --tr-accent-2:#4ba87a;
+  --tr-accent-deep:#173a2b;
+  --tr-chip:#111922;
+  --tr-card-shadow:0 18px 48px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.03);
+  --tr-radius-xl:28px;
+  --tr-radius-lg:22px;
+  --tr-radius-md:16px;
+  --tr-radius-sm:999px;
+}
+
+html,
+body{
+  min-height:100%;
+}
+
+body.traceops-premium{
+  position:relative;
+  font-family:Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+body.traceops-premium::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.055) 1px, transparent 1px);
+  background-size:32px 32px;
+  opacity:.08;
+}
+
+body.traceops-premium::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.02) 0%, rgba(255,255,255,0) 28%),
+    radial-gradient(circle at 50% 0%, rgba(113,208,154,.10), rgba(113,208,154,0) 34%);
+}
+
+body.traceops-premium #root{
+  position:relative;
+  z-index:1;
+}
+
+body.traceops-premium .traceops-hero,
+body.traceops-premium .traceops-section,
+body.traceops-premium .traceops-surface{
+  position:relative;
+  overflow:hidden;
+  border:1px solid var(--tr-line);
+  background:
+    linear-gradient(180deg, rgba(11,18,25,.90) 0%, rgba(8,13,18,.96) 100%);
+  box-shadow:var(--tr-card-shadow);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+
+body.traceops-premium .traceops-hero{
+  border-radius:32px;
+}
+
+body.traceops-premium .traceops-section,
+body.traceops-premium .traceops-surface{
+  border-radius:26px;
+}
+
+body.traceops-premium .traceops-hero::before,
+body.traceops-premium .traceops-section::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(135deg, rgba(113,208,154,.12) 0%, rgba(113,208,154,0) 38%),
+    linear-gradient(180deg, rgba(255,255,255,.03) 0%, rgba(255,255,255,0) 32%);
+}
+
+body.traceops-premium .traceops-hero::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size:36px 36px;
+  opacity:.09;
+  mask-image:linear-gradient(180deg, rgba(0,0,0,.85), rgba(0,0,0,.18));
+  -webkit-mask-image:linear-gradient(180deg, rgba(0,0,0,.85), rgba(0,0,0,.18));
+}
+
+body.traceops-premium .traceops-btn-primary,
+body.traceops-premium .traceops-btn-secondary{
+  border-radius:999px !important;
+  min-height:56px;
+  padding:0 24px !important;
+  font-weight:800 !important;
+  letter-spacing:-0.02em;
+  transition:transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+}
+
+body.traceops-premium .traceops-btn-primary{
+  color:#f7fffb !important;
+  background:linear-gradient(180deg, #387258 0%, #2f654f 100%) !important;
+  border:1px solid rgba(113,208,154,.28) !important;
+  box-shadow:
+    0 10px 26px rgba(24,51,40,.30),
+    inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+body.traceops-premium .traceops-btn-secondary{
+  color:#eef4f1 !important;
+  background:linear-gradient(180deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.03) 100%) !important;
+  border:1px solid rgba(255,255,255,.10) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+body.traceops-premium .traceops-btn-primary:hover,
+body.traceops-premium .traceops-btn-secondary:hover{
+  transform:translateY(-1px);
+}
+
+body.traceops-premium .traceops-chip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:42px;
+  padding:0 16px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  background:linear-gradient(180deg, rgba(255,255,255,.04) 0%, rgba(255,255,255,.025) 100%);
+  color:#e9efec;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+body.traceops-premium .traceops-eyebrow{
+  color:#8fa2b1 !important;
+  letter-spacing:.12em !important;
+  text-transform:uppercase !important;
+  font-size:12px !important;
+  font-weight:800 !important;
+}
+
+body.traceops-premium .traceops-heading{
+  color:#eef4f1 !important;
+  letter-spacing:-0.04em !important;
+  line-height:1.02 !important;
+}
+
+body.traceops-premium .traceops-copy{
+  color:#c5d1d8 !important;
+  line-height:1.6 !important;
+}
+
+body.traceops-premium .traceops-kpi{
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;
+  background:linear-gradient(180deg, rgba(15,24,34,.92) 0%, rgba(9,15,22,.98) 100%);
+  box-shadow:var(--tr-card-shadow);
+}
+
+body.traceops-premium .traceops-kpi strong,
+body.traceops-premium .traceops-kpi b{
+  color:#f4fbf7;
+}
+
+body.traceops-premium .traceops-divider{
+  height:1px;
+  background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.14), rgba(255,255,255,0));
+}
+
+body.traceops-premium .traceops-compact > *{
+  margin-top:0 !important;
+  margin-bottom:0 !important;
+}
+
+body.traceops-premium .traceops-compact > * + *{
+  margin-top:12px !important;
+}
+
+body.traceops-premium .traceops-grid-accent{
+  position:relative;
+}
+
+body.traceops-premium .traceops-grid-accent::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size:28px 28px;
+  opacity:.08;
+}
+
+body.traceops-premium .traceops-muted{
+  color:var(--tr-muted) !important;
+}
+
+body.traceops-premium .traceops-highlight{
+  color:#b7ebc9 !important;
+}
+
+@media (max-width: 768px){
+  body.traceops-premium::before{
+    background-size:24px 24px;
+  }
+
+  body.traceops-premium .traceops-btn-primary,
+  body.traceops-premium .traceops-btn-secondary{
+    min-height:52px;
+    font-size:16px !important;
+  }
+
+  body.traceops-premium .traceops-chip{
+    min-height:40px;
+    padding:0 14px;
+    font-size:14px;
+  }
+
+  body.traceops-premium .traceops-section,
+  body.traceops-premium .traceops-surface{
+    border-radius:22px;
+  }
+
+  body.traceops-premium .traceops-hero{
+    border-radius:26px;
+  }
+}
+</style>
+
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 window.TRACEOPS_SUPABASE = window.TRACEOPS_SUPABASE || {
@@ -6639,9 +6892,292 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 window.addEventListener("load", function() {
-  if (document.body) document.body.classList.add("traceops-premium-shell");
+  if (document.body) {
+    document.body.classList.add("traceops-premium-shell");
+    document.body.classList.add("traceops-premium");
+  }
   if (window.preloadExcelTools) window.preloadExcelTools();
+  if (window.applyTraceOpsPremiumUi) window.applyTraceOpsPremiumUi();
 });
 </script>
+
+<script>
+(function() {
+  function normText(t) {
+    return String(t || "").replace(/\s+/g, " ").trim();
+  }
+
+  function closestBlock(el) {
+    var cur = el;
+    var hops = 0;
+    while (cur && cur !== document.body && hops < 7) {
+      if (
+        cur.classList &&
+        (
+          cur.tagName === "SECTION" ||
+          cur.tagName === "ARTICLE" ||
+          cur.tagName === "MAIN" ||
+          cur.tagName === "DIV"
+        )
+      ) {
+        if ((cur.children && cur.children.length >= 2) || hops >= 2) {
+          return cur;
+        }
+      }
+      cur = cur.parentElement;
+      hops++;
+    }
+    return el.parentElement || el;
+  }
+
+  function replaceExactText(root) {
+    var map = {
+      "Start with your WhatsApp export": "Import WhatsApp Export",
+      "See recent analyses": "Open Recent Analyses",
+      "Engineer findings": "Findings",
+      "RCCA memory": "RCCA Memory",
+      "Operational log": "Operational Log",
+      "Operational calendar": "Operational Window",
+      "Resumen del análisis actual": "Operational Summary",
+      "Alertas con prioridad": "Priority Alerts",
+      "Eventos visibles que conviene revisar primero": "Events requiring immediate review",
+      "Antecedentes de causa raiz": "Root Cause Memory",
+      "Lecciones aprendidas reutilizables": "Reusable Lessons",
+      "Soluciones que podrían reaplicarse": "Replicable Countermeasures",
+      "Descargar XLSX": "Export XLSX",
+      "Descargar CSV": "Export CSV",
+      "Pendientes operativos": "Open Actions",
+      "Bitácora operativa": "Operational Log",
+      "Resumen ejecutivo": "Executive Summary",
+      "Calendario operacional": "Operational Window",
+      "Ver análisis recientes": "Open Recent Analyses",
+      "Iniciar con export de WhatsApp": "Import WhatsApp Export",
+      "Descargar Excel": "Export Excel"
+    };
+
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var nodes = [];
+    var node;
+
+    while ((node = walker.nextNode())) {
+      if (!node.parentNode) continue;
+      var tag = node.parentNode.tagName;
+      if (tag === "SCRIPT" || tag === "STYLE" || tag === "TEXTAREA") continue;
+
+      var txt = normText(node.nodeValue);
+      if (!txt) continue;
+      if (map[txt]) nodes.push({ node: node, value: map[txt] });
+    }
+
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].node.nodeValue = nodes[i].value;
+    }
+  }
+
+  function replacePartialText(root) {
+    var selectors = root.querySelectorAll("*");
+    var partials = [
+      { from: "Language EN ES 中文", to: "Language EN / ES" },
+      { from: "KPIs del rango analizado", to: "KPIs for the selected operational window" },
+      { from: "KPIs del rango analizado...", to: "KPIs for the selected operational window." },
+      { from: "Operational Intelligence for Manufacturing Teams", to: "Operational Intelligence for Manufacturing Teams" }
+    ];
+
+    for (var i = 0; i < selectors.length; i++) {
+      var el = selectors[i];
+      if (!el || !el.childNodes || el.childNodes.length !== 1) continue;
+      if (el.firstChild.nodeType !== 3) continue;
+
+      var txt = normText(el.textContent);
+      if (!txt) continue;
+
+      for (var j = 0; j < partials.length; j++) {
+        if (txt === partials[j].from) {
+          el.textContent = partials[j].to;
+          break;
+        }
+      }
+    }
+  }
+
+  function markButtons(root) {
+    var nodes = root.querySelectorAll("button, a, [role='button']");
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var txt = normText(el.textContent);
+
+      if (
+        txt === "Import WhatsApp Export" ||
+        txt === "Export XLSX" ||
+        txt === "Export Excel" ||
+        txt === "Analyze" ||
+        txt === "Run Analysis"
+      ) {
+        el.classList.add("traceops-btn-primary");
+      } else if (
+        txt === "Open Recent Analyses" ||
+        txt === "Export CSV" ||
+        txt === "Back" ||
+        txt === "View More"
+      ) {
+        el.classList.add("traceops-btn-secondary");
+      }
+    }
+  }
+
+  function markChips(root) {
+    var nodes = root.querySelectorAll("button, a, span, div");
+    var chipTexts = {
+      "Incident detection": true,
+      "Findings": true,
+      "RCCA Memory": true,
+      "Yokoten": true,
+      "Operational Log": true,
+      "Priority Alerts": true,
+      "Reusable Lessons": true,
+      "Replicable Countermeasures": true
+    };
+
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var txt = normText(el.textContent);
+      if (chipTexts[txt] && txt.length <= 28) {
+        el.classList.add("traceops-chip");
+      }
+    }
+  }
+
+  function markSections(root) {
+    var all = root.querySelectorAll("h1, h2, h3, h4, p, span, div");
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      var txt = normText(el.textContent);
+
+      if (!txt) continue;
+
+      if (txt === "TraceOps by SMTintel") {
+        var hero = closestBlock(el);
+        if (hero) {
+          hero.classList.add("traceops-hero", "traceops-grid-accent");
+        }
+        el.classList.add("traceops-heading");
+      }
+
+      if (
+        txt === "Operational Summary" ||
+        txt === "Priority Alerts" ||
+        txt === "Operational Window" ||
+        txt === "Root Cause Memory" ||
+        txt === "Reusable Lessons" ||
+        txt === "Replicable Countermeasures" ||
+        txt === "Operational Log" ||
+        txt === "Executive Summary" ||
+        txt === "Open Actions"
+      ) {
+        var sec = closestBlock(el);
+        if (sec) {
+          sec.classList.add("traceops-section", "traceops-compact");
+        }
+        el.classList.add("traceops-heading");
+      }
+
+      if (
+        txt === "BUILT FROM INSIDE THE OPERATION" ||
+        txt === "OPERATIONAL INTELLIGENCE FOR MANUFACTURING TEAMS"
+      ) {
+        el.classList.add("traceops-eyebrow");
+      }
+
+      if (
+        txt.indexOf("Turn scattered floor conversations") === 0 ||
+        txt.indexOf("Your operation already has the information") === 0 ||
+        txt.indexOf("KPIs for the selected operational window") === 0 ||
+        txt.indexOf("Events requiring immediate review") === 0
+      ) {
+        el.classList.add("traceops-copy");
+      }
+    }
+  }
+
+  function markMetrics(root) {
+    var cards = root.querySelectorAll("div, section, article");
+    for (var i = 0; i < cards.length; i++) {
+      var el = cards[i];
+      var txt = normText(el.textContent);
+
+      if (!txt) continue;
+
+      if (
+        txt.indexOf("Total") >= 0 ||
+        txt.indexOf("Open") >= 0 ||
+        txt.indexOf("Closed") >= 0 ||
+        txt.indexOf("Critical") >= 0 ||
+        txt.indexOf("Priority") >= 0
+      ) {
+        if (txt.length < 220) {
+          el.classList.add("traceops-kpi");
+        }
+      }
+    }
+  }
+
+  function markSurfaces(root) {
+    var nodes = root.querySelectorAll("section, article");
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].classList.add("traceops-surface");
+    }
+  }
+
+  function applyTraceOpsPremiumUi() {
+    document.body.classList.add("traceops-premium");
+
+    var root = document.getElementById("root");
+    if (!root) return;
+
+    replaceExactText(root);
+    replacePartialText(root);
+    markButtons(root);
+    markChips(root);
+    markSections(root);
+    markMetrics(root);
+    markSurfaces(root);
+  }
+
+  var scheduled = false;
+  function scheduleApply() {
+    if (scheduled) return;
+    scheduled = true;
+    setTimeout(function() {
+      scheduled = false;
+      try {
+        applyTraceOpsPremiumUi();
+      } catch (err) {
+        console.warn("[TraceOps UI Improve]", err);
+      }
+    }, 60);
+  }
+
+  window.applyTraceOpsPremiumUi = applyTraceOpsPremiumUi;
+
+  document.addEventListener("DOMContentLoaded", scheduleApply);
+  window.addEventListener("load", scheduleApply);
+
+  var observer = new MutationObserver(function() {
+    scheduleApply();
+  });
+
+  window.addEventListener("load", function() {
+    var root = document.getElementById("root");
+    if (root) {
+      observer.observe(root, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
