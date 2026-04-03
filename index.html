@@ -611,619 +611,1192 @@ tr:hover td{background:var(--g50)}
 
 
 
-/* =========================================================
-   TRACEOPS PREMIUM LAYERS - INDUSTRIAL DEPTH
-   ========================================================= */
 
-body.traceops-premium-shell {
-  --ops-bg: #05070b;
-  --ops-bg-2: #080b11;
-  --ops-surface: rgba(10, 16, 28, 0.78);
-  --ops-surface-2: rgba(13, 20, 34, 0.92);
-  --ops-surface-soft: rgba(255,255,255,0.03);
-  --ops-line: rgba(255,255,255,0.09);
-  --ops-line-soft: rgba(255,255,255,0.05);
-  --ops-text: rgba(255,255,255,0.96);
-  --ops-text-2: rgba(255,255,255,0.64);
-  --ops-text-3: rgba(255,255,255,0.38);
-  --ops-accent: #8fd3c3;
-  --ops-accent-2: #5aa7ff;
-  --ops-shadow-lg:
-    0 30px 80px rgba(0,0,0,0.50),
-    0 8px 24px rgba(0,0,0,0.38);
-  --ops-shadow-md:
-    0 18px 44px rgba(0,0,0,0.42),
-    0 6px 18px rgba(0,0,0,0.28);
-  --ops-inset:
-    inset 0 1px 0 rgba(255,255,255,0.08),
-    inset 0 -1px 0 rgba(255,255,255,0.03);
+/* ---- TraceOps premium industrial fusion override ---- */
+body.traceops-premium-shell{
+  position:relative;
+  background:#000000 !important;
+  color:#FFFFFF;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+body.traceops-premium-shell::before{
+  content:"";
+  position:fixed;
+  top:-8vh;
+  left:-10vw;
+  width:120vw;
+  height:60vh;
+  pointer-events:none;
+  z-index:0;
+  opacity:.72;
   background:
-    radial-gradient(900px 420px at 50% -5%, rgba(90,167,255,0.10), transparent 60%),
-    radial-gradient(700px 260px at 50% 18%, rgba(143,211,195,0.08), transparent 62%),
-    linear-gradient(180deg, #040507 0%, #06080d 38%, #05070b 100%);
-  color: var(--ops-text);
+    repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,.04) 0 1px,
+      transparent 1px 48px
+    ),
+    repeating-linear-gradient(
+      60deg,
+      rgba(255,255,255,.04) 0 1px,
+      transparent 1px 48px
+    ),
+    repeating-linear-gradient(
+      -60deg,
+      rgba(255,255,255,.04) 0 1px,
+      transparent 1px 48px
+    );
+  transform-origin:top center;
+  transform:perspective(1400px) rotateX(78deg) scale(1.45);
+  mask-image:linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,.82) 58%, rgba(0,0,0,0) 100%);
+  -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,.82) 58%, rgba(0,0,0,0) 100%);
 }
 
-body.traceops-premium-shell::before {
-  content: "";
-  position: fixed;
-  inset: 0 0 auto 0;
-  height: 58vh;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.38;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
-  background-size: 52px 52px, 52px 52px;
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.95), rgba(0,0,0,0.18), transparent);
-  transform: perspective(1100px) rotateX(72deg) scale(1.4);
-  transform-origin: top center;
+body.traceops-premium-shell::after{
+  content:none !important;
+  display:none !important;
 }
 
-body.traceops-premium-shell #root,
-body.traceops-premium-shell .app-shell,
-body.traceops-premium-shell .ops-shell,
-body.traceops-premium-shell .traceops-shell {
-  position: relative;
-  z-index: 1;
+body.traceops-premium-shell .sidebar,
+body.traceops-premium-shell .saas-topbar,
+body.traceops-premium-shell .main-content{
+  position:relative;
+  z-index:1;
 }
 
-body.traceops-premium-shell .saas-header,
-body.traceops-premium-shell .traceops-topbar,
-body.traceops-premium-shell .ops-topbar,
-body.traceops-premium-shell .saas-topbar {
-  background: rgba(5, 8, 14, 0.68);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+body.traceops-premium-shell .main-content{
+  background:transparent !important;
 }
 
-body.traceops-premium-shell .saas-brand,
-body.traceops-premium-shell .topbar-brand,
-body.traceops-premium-shell .traceops-logo-text,
-body.traceops-premium-shell .saas-topbar-title {
-  color: #fff;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+body.traceops-premium-shell .hdr,
+body.traceops-premium-shell .api-bar,
+body.traceops-premium-shell .saas-hero-card,
+body.traceops-premium-shell .saas-upload-card{
+  background:#0A0A0A !important;
+  color:#FFFFFF;
+  border:1px solid rgba(255,255,255,.07) !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.03),
+    0 1px 0 rgba(255,255,255,.05) inset !important;
 }
 
-body.traceops-premium-shell .saas-header-subtitle,
-body.traceops-premium-shell .topbar-subtitle,
-body.traceops-premium-shell .saas-topbar-subtitle {
-  color: rgba(255,255,255,0.42);
+/* Topbar */
+body.traceops-premium-shell .saas-topbar{
+  background:rgba(0,0,0,.72) !important;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,.06) !important;
 }
 
-@media (max-width: 1100px) {
-  body.traceops-premium-shell .saas-header-subtitle,
-  body.traceops-premium-shell .topbar-subtitle,
-  body.traceops-premium-shell .saas-topbar-subtitle {
-    display: none !important;
+body.traceops-premium-shell .saas-topbar-title,
+body.traceops-premium-shell .sidebar-brand h2,
+body.traceops-premium-shell .saas-hero-title{
+  color:#FFFFFF !important;
+  font-weight:800 !important;
+  letter-spacing:-.02em !important;
+}
+
+body.traceops-premium-shell .saas-topbar-subtitle{
+  color:rgba(255,255,255,.52) !important;
+}
+
+@media (max-width:1100px){
+  body.traceops-premium-shell .saas-topbar-subtitle{
+    display:none !important;
   }
 }
 
-body.traceops-premium-shell .ops-hero {
-  position: relative;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00)),
-    linear-gradient(180deg, rgba(11,18,30,0.76), rgba(7,10,16,0.92));
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 32px;
-  box-shadow: var(--ops-shadow-lg), var(--ops-inset);
-  isolation: isolate;
+body.traceops-premium-shell .saas-header-pill{
+  background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(255,255,255,.08) !important;
+  border-radius:999px !important;
+  color:rgba(255,255,255,.82) !important;
+  box-shadow:none !important;
 }
 
-body.traceops-premium-shell .ops-hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.08), transparent 24%),
-    radial-gradient(600px 220px at 50% 0%, rgba(90,167,255,0.11), transparent 65%);
-  z-index: 0;
+body.traceops-premium-shell .saas-header-btn{
+  height:44px;
+  border-radius:999px !important;
+  font-weight:700 !important;
+  box-shadow:none !important;
 }
 
-body.traceops-premium-shell .ops-hero::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -8%;
-  width: 320px;
-  height: 320px;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(143,211,195,0.12), rgba(90,167,255,0.08) 38%, transparent 72%);
-  filter: blur(30px);
-  z-index: 0;
+body.traceops-premium-shell .saas-header-btn.primary{
+  background:#FFFFFF !important;
+  color:#000000 !important;
+  border:none !important;
 }
 
-body.traceops-premium-shell .ops-hero > * {
-  position: relative;
-  z-index: 1;
+body.traceops-premium-shell .saas-header-btn:not(.primary),
+body.traceops-premium-shell .saas-menu-btn{
+  background:transparent !important;
+  border:1px solid rgba(255,255,255,.18) !important;
+  color:#FFFFFF !important;
 }
 
-body.traceops-premium-shell .ops-hero h1,
-body.traceops-premium-shell .ops-hero-title {
-  color: #fff;
-  letter-spacing: -0.04em;
-  text-wrap: balance;
+body.traceops-premium-shell .saas-menu-btn svg,
+body.traceops-premium-shell .saas-header-btn svg{
+  stroke:currentColor;
 }
 
-body.traceops-premium-shell .ops-hero-title span {
-  color: #9cc9bc;
+/* Hero */
+body.traceops-premium-shell .ops-hero{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:560px;
+  padding:80px 24px 48px !important;
+  overflow:hidden;
+  background:#000000 !important;
+  border:1px solid rgba(255,255,255,.07) !important;
+  border-radius:28px !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.03),
+    0 1px 0 rgba(255,255,255,.05) inset !important;
 }
 
-body.traceops-premium-shell .ops-hero p,
-body.traceops-premium-shell .ops-hero-subtitle {
-  color: rgba(255,255,255,0.62);
+body.traceops-premium-shell .ops-hero-bg{
+  display:none !important;
 }
 
-body.traceops-premium-shell .ops-hero-meta,
-body.traceops-premium-shell .ops-hero-chipsline,
-body.traceops-premium-shell .ops-hero-chips span {
-  color: rgba(255,255,255,0.70);
+body.traceops-premium-shell .ops-hero::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:0;
+  width:240px;
+  height:240px;
+  transform:translateX(-50%);
+  opacity:.12;
+  filter:blur(.5px);
+  pointer-events:none;
+  z-index:0;
+  background-repeat:no-repeat;
+  background-position:center;
+  background-size:contain;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='none'/%3E%3Crect x='22' y='22' width='136' height='136' rx='22' fill='none' stroke='white' stroke-opacity='.18' stroke-width='2'/%3E%3Crect x='50' y='6' width='14' height='18' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='78' y='6' width='14' height='18' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='106' y='6' width='14' height='18' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='50' y='156' width='14' height='18' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='78' y='156' width='14' height='18' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='106' y='156' width='14' height='18' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='6' y='50' width='18' height='14' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='6' y='78' width='18' height='14' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='6' y='106' width='18' height='14' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='156' y='50' width='18' height='14' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='156' y='78' width='18' height='14' rx='4' fill='white' fill-opacity='.16'/%3E%3Crect x='156' y='106' width='18' height='14' rx='4' fill='white' fill-opacity='.16'/%3E%3Cpolyline points='34,90 50,90 58,62 70,90' fill='none' stroke='white' stroke-opacity='.30' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70,90 C76,90 82,68 92,60 C102,52 116,56 116,72 C116,88 104,92 92,95 C80,98 76,108 84,118 C92,128 110,126 118,118' fill='none' stroke='white' stroke-opacity='.34' stroke-width='7' stroke-linecap='round'/%3E%3Cpolyline points='118,90 130,62 140,108 148,90' fill='none' stroke='white' stroke-opacity='.30' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='58' cy='62' r='5' fill='white' fill-opacity='.30'/%3E%3Ccircle cx='130' cy='62' r='5' fill='white' fill-opacity='.30'/%3E%3C/svg%3E");
 }
 
+body.traceops-premium-shell .ops-hero > *,
+body.traceops-premium-shell .ops-hero-content{
+  position:relative;
+  z-index:1;
+}
+
+body.traceops-premium-shell .ops-hero-content{
+  width:100%;
+  max-width:720px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  gap:18px;
+}
+
+body.traceops-premium-shell .ops-hero svg{
+  display:none !important;
+}
+
+body.traceops-premium-shell .ops-hero-eyebrow{
+  display:none !important;
+}
+
+body.traceops-premium-shell .ops-hero-title{
+  margin:0 !important;
+  font-size:0 !important;
+  line-height:0 !important;
+  letter-spacing:0 !important;
+  color:transparent !important;
+  text-shadow:none !important;
+}
+
+body.traceops-premium-shell .ops-hero-title span{
+  display:none !important;
+}
+
+body.traceops-premium-shell .ops-hero-title::before{
+  content:"Turn floor noise\Ainto operational clarity.";
+  display:block;
+  white-space:pre-line;
+  font-size:44px;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:-.04em;
+  color:#FFFFFF;
+}
+
+body.traceops-premium-shell .ops-hero-subtitle{
+  max-width:400px !important;
+  margin:0 auto !important;
+  font-size:0 !important;
+  line-height:0 !important;
+  color:transparent !important;
+}
+
+body.traceops-premium-shell .ops-hero-subtitle::before{
+  content:"Upload a WhatsApp export. TraceOps extracts incidents,\Apriorities, and engineer findings automatically.";
+  display:block;
+  white-space:pre-line;
+  font-size:14px;
+  line-height:1.55;
+  color:rgba(255,255,255,.54);
+}
+
+body.traceops-premium-shell .ops-hero-actions{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:4px;
+}
+
+body.traceops-premium-shell .ops-hero-btn{
+  min-height:48px;
+  padding:14px 28px !important;
+  border-radius:999px !important;
+  font-size:14px !important;
+  font-weight:600 !important;
+  letter-spacing:0 !important;
+  box-shadow:none !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.primary{
+  background:#FFFFFF !important;
+  color:#000000 !important;
+  border:none !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.primary{
+  font-size:0 !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.primary::before{
+  content:"Load ZIP";
+  font-size:14px;
+  font-weight:700;
+  color:#000000;
+}
+
+body.traceops-premium-shell .ops-hero-btn.ghost{
+  background:transparent !important;
+  color:#FFFFFF !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.ghost{
+  font-size:0 !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.ghost::before{
+  content:"See recent analyses";
+  font-size:14px;
+  font-weight:600;
+  color:#FFFFFF;
+}
+
+body.traceops-premium-shell .ops-hero-chips{
+  margin-top:2px;
+  font-size:0 !important;
+  color:transparent !important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+body.traceops-premium-shell .ops-hero-chips > *{
+  display:none !important;
+}
+
+body.traceops-premium-shell .ops-hero-chips::before{
+  content:"Incident detection · Engineer findings · RCCA memory · Yokoten · Operational log";
+  display:block;
+  font-size:11px;
+  line-height:1.5;
+  color:rgba(255,255,255,.30);
+  letter-spacing:.02em;
+}
+
+@media (min-width:900px){
+  body.traceops-premium-shell .ops-hero-title::before{
+    font-size:56px;
+  }
+}
+
+@media (max-width:640px){
+  body.traceops-premium-shell .ops-hero{
+    min-height:560px;
+    padding:72px 20px 40px !important;
+    border-radius:24px !important;
+  }
+
+  body.traceops-premium-shell .ops-hero::after{
+    width:212px;
+    height:212px;
+    bottom:-4px;
+  }
+
+  body.traceops-premium-shell .ops-hero-title::before{
+    font-size:40px;
+  }
+}
+
+/* KPI cards */
+@keyframes kpi-in{
+  from{
+    opacity:0;
+    transform:translateY(8px);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+body.traceops-premium-shell .traceops-kpi-card{
+  background:#0A0A0A !important;
+  border:1px solid rgba(255,255,255,.07) !important;
+  border-radius:20px !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.03),
+    0 1px 0 rgba(255,255,255,.05) inset !important;
+  animation:kpi-in .42s cubic-bezier(.2,.7,.2,1) both;
+}
+
+body.traceops-premium-shell .traceops-kpi-strip .traceops-kpi-card:nth-child(1){ animation-delay:0s; }
+body.traceops-premium-shell .traceops-kpi-strip .traceops-kpi-card:nth-child(2){ animation-delay:.06s; }
+body.traceops-premium-shell .traceops-kpi-strip .traceops-kpi-card:nth-child(3){ animation-delay:.12s; }
+body.traceops-premium-shell .traceops-kpi-strip .traceops-kpi-card:nth-child(4){ animation-delay:.18s; }
+body.traceops-premium-shell .traceops-kpi-strip .traceops-kpi-card:nth-child(5){ animation-delay:.24s; }
+
+body.traceops-premium-shell .traceops-kpi-value{
+  font-size:36px !important;
+  font-weight:800 !important;
+  letter-spacing:-.04em !important;
+  font-feature-settings:"tnum";
+  color:#FFFFFF !important;
+}
+
+body.traceops-premium-shell .traceops-kpi-label{
+  font-size:10px !important;
+  font-weight:700 !important;
+  letter-spacing:.12em !important;
+  text-transform:uppercase !important;
+  color:rgba(255,255,255,.36) !important;
+}
+
+body.traceops-premium-shell .traceops-kpi-meta span{
+  color:rgba(255,255,255,.42) !important;
+}
+
+body.traceops-premium-shell .traceops-kpi-meta strong{
+  color:#FFFFFF !important;
+}
+
+/* Panels and general cards */
 body.traceops-premium-shell .traceops-panel,
 body.traceops-premium-shell .tcard,
 body.traceops-premium-shell .pf-card,
 body.traceops-premium-shell .traceops-calendar,
 body.traceops-premium-shell .traceops-engineering-card,
 body.traceops-premium-shell .traceops-context,
-body.traceops-premium-shell .traceops-kpi-card,
-body.traceops-premium-shell .ops-loading-card {
-  position: relative;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.008)),
-    linear-gradient(180deg, rgba(12,18,30,0.86), rgba(9,13,22,0.95));
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 22px;
-  box-shadow: var(--ops-shadow-md), var(--ops-inset);
-}
-
-body.traceops-premium-shell .traceops-panel::before,
-body.traceops-premium-shell .tcard::before,
-body.traceops-premium-shell .pf-card::before,
-body.traceops-premium-shell .traceops-calendar::before,
-body.traceops-premium-shell .traceops-engineering-card::before,
-body.traceops-premium-shell .traceops-context::before,
-body.traceops-premium-shell .traceops-kpi-card::before,
-body.traceops-premium-shell .ops-loading-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent 24%);
-  opacity: 0.8;
+body.traceops-premium-shell .up,
+body.traceops-premium-shell .prog,
+body.traceops-premium-shell .cmp,
+body.traceops-premium-shell .foot{
+  background:#0A0A0A !important;
+  color:#FFFFFF !important;
+  border:1px solid rgba(255,255,255,.07) !important;
+  border-radius:20px !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.03),
+    0 1px 0 rgba(255,255,255,.05) inset !important;
 }
 
 body.traceops-premium-shell .traceops-panel-head,
 body.traceops-premium-shell .tcard-hdr,
-body.traceops-premium-shell .pf-card-hdr,
 body.traceops-premium-shell .pf-hdr,
 body.traceops-premium-shell .traceops-calendar-head,
-body.traceops-premium-shell .traceops-engineering-card-head {
-  background: rgba(255,255,255,0.025);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+body.traceops-premium-shell .traceops-engineering-card-head,
+body.traceops-premium-shell .filter-bar{
+  background:rgba(255,255,255,.02) !important;
+  border-bottom:1px solid rgba(255,255,255,.05) !important;
 }
 
-body.traceops-premium-shell .traceops-kpi-card {
-  min-height: 132px;
-}
-
-body.traceops-premium-shell .traceops-kpi-value {
-  color: #fff;
-  font-size: 36px;
-  font-weight: 800;
-  letter-spacing: -0.045em;
-  font-feature-settings: "tnum";
-}
-
-body.traceops-premium-shell .traceops-kpi-label {
-  color: rgba(255,255,255,0.36);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-body.traceops-premium-shell .traceops-kpi-sub,
-body.traceops-premium-shell .traceops-kpi-foot,
-body.traceops-premium-shell .traceops-kpi-meta {
-  color: rgba(255,255,255,0.52);
-}
-
-body.traceops-premium-shell .traceops-kpi-meta strong,
-body.traceops-premium-shell .traceops-context-title,
 body.traceops-premium-shell .traceops-panel-head h3,
-body.traceops-premium-shell .traceops-engineering-card h4,
-body.traceops-premium-shell .traceops-alert-copy div,
-body.traceops-premium-shell .traceops-calendar-head h3,
-body.traceops-premium-shell .traceops-calendar-date,
-body.traceops-premium-shell .traceops-calendar-strip-daynum,
-body.traceops-premium-shell .traceops-window-line strong,
-body.traceops-premium-shell .pf-name,
 body.traceops-premium-shell .tcard-hdr h3,
 body.traceops-premium-shell .pf-hdr h3,
-body.traceops-premium-shell th,
+body.traceops-premium-shell .traceops-context-title,
+body.traceops-premium-shell .traceops-calendar-head h3,
+body.traceops-premium-shell .traceops-engineering-card h4,
+body.traceops-premium-shell .pf-name,
+body.traceops-premium-shell .hdr-info h1,
+body.traceops-premium-shell .up h3,
+body.traceops-premium-shell .prog h3{
+  color:#FFFFFF !important;
+}
+
+body.traceops-premium-shell .traceops-context-subtitle,
+body.traceops-premium-shell .pf-dept,
+body.traceops-premium-shell .hdr-info h2,
+body.traceops-premium-shell .up p,
+body.traceops-premium-shell .prog p,
 body.traceops-premium-shell td,
-body.traceops-premium-shell .kval,
-body.traceops-premium-shell .kin .nm,
-body.traceops-premium-shell .plist h4,
-body.traceops-premium-shell .ic-field-val,
-body.traceops-premium-shell .ic-tab.on,
-body.traceops-premium-shell .picker-title,
-body.traceops-premium-shell .lb-hdr span,
-body.traceops-premium-shell .foot strong {
-  color: rgba(255,255,255,0.94);
+body.traceops-premium-shell .pitem p,
+body.traceops-premium-shell .kin .ts{
+  color:rgba(255,255,255,.62) !important;
 }
 
-@keyframes kpi-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+body.traceops-premium-shell th{
+  background:rgba(255,255,255,.02) !important;
+  color:rgba(255,255,255,.42) !important;
+  border-bottom:1px solid rgba(255,255,255,.07) !important;
 }
 
-body.traceops-premium-shell .traceops-kpi-card:nth-child(1) { animation: kpi-in .45s ease both; animation-delay: 0s; }
-body.traceops-premium-shell .traceops-kpi-card:nth-child(2) { animation: kpi-in .45s ease both; animation-delay: .06s; }
-body.traceops-premium-shell .traceops-kpi-card:nth-child(3) { animation: kpi-in .45s ease both; animation-delay: .12s; }
-body.traceops-premium-shell .traceops-kpi-card:nth-child(4) { animation: kpi-in .45s ease both; animation-delay: .18s; }
-body.traceops-premium-shell .traceops-kpi-card:nth-child(5) { animation: kpi-in .45s ease both; animation-delay: .24s; }
+body.traceops-premium-shell tr:hover td{
+  background:rgba(255,255,255,.02) !important;
+}
 
-body.traceops-premium-shell button,
-body.traceops-premium-shell .btn,
-body.traceops-premium-shell .up-btn,
-body.traceops-premium-shell .ops-hero-btn,
-body.traceops-premium-shell .saas-header-btn,
+/* Context section and upload zone */
+body.traceops-premium-shell .traceops-context{
+  position:relative;
+  overflow:hidden;
+}
+
+body.traceops-premium-shell .traceops-context::before{
+  content:none !important;
+}
+
+body.traceops-premium-shell .traceops-context-kicker{
+  color:rgba(255,255,255,.36) !important;
+  letter-spacing:.12em !important;
+}
+
+body.traceops-premium-shell .traceops-context-chips span,
+body.traceops-premium-shell .traceops-window-pill,
+body.traceops-premium-shell .traceops-calendar-chipgroup,
+body.traceops-premium-shell .chip,
+body.traceops-premium-shell .ptag,
+body.traceops-premium-shell .table-sort-chip{
+  background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(255,255,255,.09) !important;
+  color:rgba(255,255,255,.72) !important;
+  border-radius:999px !important;
+  box-shadow:none !important;
+}
+
+body.traceops-premium-shell .up{
+  background:transparent !important;
+  border:1px solid rgba(255,255,255,.08) !important;
+  border-radius:20px !important;
+}
+
+body.traceops-premium-shell .up:hover,
+body.traceops-premium-shell .up.drag{
+  background:rgba(255,255,255,.03) !important;
+  border-color:rgba(255,255,255,.18) !important;
+}
+
+body.traceops-premium-shell .up-icon{
+  background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(255,255,255,.10) !important;
+  color:#FFFFFF !important;
+}
+
+body.traceops-premium-shell .traceops-context + div[style*="dashed"]{
+  background:transparent !important;
+  border:1px solid rgba(255,255,255,.08) !important;
+  border-radius:20px !important;
+}
+
+body.traceops-premium-shell .traceops-context + div[style*="dashed"]:hover,
+body.traceops-premium-shell .traceops-context + div[style*="dashed"][style*="F0F5EE"]{
+  background:rgba(255,255,255,.03) !important;
+  border-color:rgba(255,255,255,.18) !important;
+}
+
+/* Global button language */
 body.traceops-premium-shell .sidebar-btn,
-body.traceops-premium-shell .sidebar-nuevo,
+body.traceops-premium-shell .day-btn,
+body.traceops-premium-shell .table-reset-btn,
+body.traceops-premium-shell .resetbtn,
+body.traceops-premium-shell .traceops-tab,
 body.traceops-premium-shell .traceops-calendar-btn,
+body.traceops-premium-shell .traceops-calendar-iconbtn,
 body.traceops-premium-shell .traceops-calendar-chip,
-body.traceops-premium-shell .traceops-calendar-iconbtn {
-  transition:
-    transform .08s ease,
-    background-color .18s ease,
-    border-color .18s ease,
-    color .18s ease,
-    box-shadow .18s ease;
-}
-
-body.traceops-premium-shell button:active,
-body.traceops-premium-shell .btn:active,
-body.traceops-premium-shell .up-btn:active,
-body.traceops-premium-shell .ops-hero-btn:active,
-body.traceops-premium-shell .saas-header-btn:active,
-body.traceops-premium-shell .sidebar-btn:active,
-body.traceops-premium-shell .sidebar-nuevo:active,
-body.traceops-premium-shell .traceops-calendar-btn:active,
-body.traceops-premium-shell .traceops-calendar-chip:active,
-body.traceops-premium-shell .traceops-calendar-iconbtn:active {
-  transform: scale(.96);
+body.traceops-premium-shell .pf-clear,
+body.traceops-premium-shell .ops-hero-btn:not(.primary),
+body.traceops-premium-shell .saas-header-btn:not(.primary),
+body.traceops-premium-shell .saas-menu-btn,
+body.traceops-premium-shell .sidebar-api-input + button{
+  background:rgba(255,255,255,.06) !important;
+  border:1px solid rgba(255,255,255,.10) !important;
+  color:rgba(255,255,255,.80) !important;
+  border-radius:999px !important;
+  box-shadow:none !important;
 }
 
 body.traceops-premium-shell .up-btn,
 body.traceops-premium-shell .ops-hero-btn.primary,
 body.traceops-premium-shell .saas-header-btn.primary,
-body.traceops-premium-shell .sidebar-nuevo {
-  background: #fff;
-  color: #000;
-  border: none;
-  border-radius: 999px;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.12),
-    0 8px 20px rgba(255,255,255,0.06);
-  font-weight: 700;
+body.traceops-premium-shell .sidebar-nuevo{
+  background:#FFFFFF !important;
+  color:#000000 !important;
+  border:none !important;
+  border-radius:999px !important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.12) !important;
 }
 
-body.traceops-premium-shell .up-btn:hover,
-body.traceops-premium-shell .ops-hero-btn.primary:hover,
-body.traceops-premium-shell .saas-header-btn.primary:hover,
-body.traceops-premium-shell .sidebar-nuevo:hover {
-  background: rgba(255,255,255,0.94);
+body.traceops-premium-shell .sidebar-nuevo{
+  font-weight:700 !important;
 }
 
-body.traceops-premium-shell .ops-hero-btn.secondary,
-body.traceops-premium-shell .ops-hero-btn.ghost,
-body.traceops-premium-shell .saas-header-btn.secondary,
+body.traceops-premium-shell button,
 body.traceops-premium-shell .sidebar-btn,
-body.traceops-premium-shell .btn-secondary,
-body.traceops-premium-shell .ghost-btn,
-body.traceops-premium-shell .traceops-calendar-btn,
-body.traceops-premium-shell .traceops-calendar-chip,
-body.traceops-premium-shell .traceops-calendar-iconbtn,
-body.traceops-premium-shell .table-reset-btn,
-body.traceops-premium-shell .pf-clear,
-body.traceops-premium-shell .picker-close,
-body.traceops-premium-shell .lb-close,
-body.traceops-premium-shell .resetbtn,
+body.traceops-premium-shell .sidebar-nuevo,
 body.traceops-premium-shell .day-btn,
-body.traceops-premium-shell .saas-menu-btn {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.10);
-  color: rgba(255,255,255,0.82);
-  border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+body.traceops-premium-shell .traceops-tab,
+body.traceops-premium-shell .traceops-calendar-btn,
+body.traceops-premium-shell .traceops-calendar-iconbtn,
+body.traceops-premium-shell .resetbtn,
+body.traceops-premium-shell .table-reset-btn{
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    color .18s ease,
+    transform .08s ease !important;
 }
 
-body.traceops-premium-shell .ops-hero-btn.secondary:hover,
-body.traceops-premium-shell .ops-hero-btn.ghost:hover,
-body.traceops-premium-shell .saas-header-btn.secondary:hover,
-body.traceops-premium-shell .sidebar-btn:hover,
-body.traceops-premium-shell .btn-secondary:hover,
-body.traceops-premium-shell .ghost-btn:hover,
-body.traceops-premium-shell .traceops-calendar-btn:hover,
-body.traceops-premium-shell .traceops-calendar-chip:hover,
-body.traceops-premium-shell .traceops-calendar-iconbtn:hover,
-body.traceops-premium-shell .table-reset-btn:hover,
-body.traceops-premium-shell .pf-clear:hover,
-body.traceops-premium-shell .picker-close:hover,
-body.traceops-premium-shell .lb-close:hover,
-body.traceops-premium-shell .resetbtn:hover,
-body.traceops-premium-shell .day-btn:hover,
-body.traceops-premium-shell .saas-menu-btn:hover {
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.16);
+body.traceops-premium-shell button:active,
+body.traceops-premium-shell .sidebar-btn:active,
+body.traceops-premium-shell .sidebar-nuevo:active,
+body.traceops-premium-shell .day-btn:active,
+body.traceops-premium-shell .traceops-tab:active,
+body.traceops-premium-shell .traceops-calendar-btn:active,
+body.traceops-premium-shell .traceops-calendar-iconbtn:active,
+body.traceops-premium-shell .resetbtn:active,
+body.traceops-premium-shell .table-reset-btn:active{
+  transform:scale(.96) !important;
 }
 
-body.traceops-premium-shell .traceops-sidebar,
-body.traceops-premium-shell .sidebar,
-body.traceops-premium-shell .ops-sidebar {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00)),
-    #050505;
-  border-right: 1px solid rgba(255,255,255,0.05);
-  box-shadow: inset -1px 0 0 rgba(255,255,255,0.02);
-}
-
-body.traceops-premium-shell .sidebar-btn.active {
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  border-radius: 999px;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.06),
-    0 0 0 1px rgba(255,255,255,0.04);
-}
-
-body.traceops-premium-shell .traceops-context {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.022), rgba(255,255,255,0.01)),
-    linear-gradient(180deg, rgba(11,17,28,0.88), rgba(9,13,21,0.95));
-}
-
-body.traceops-premium-shell .upload-dropzone,
-body.traceops-premium-shell .drop-zone,
-body.traceops-premium-shell .traceops-dropzone,
-body.traceops-premium-shell .up {
-  background: rgba(255,255,255,0.01);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
-}
-
-body.traceops-premium-shell .upload-dropzone:hover,
-body.traceops-premium-shell .drop-zone:hover,
-body.traceops-premium-shell .traceops-dropzone:hover,
-body.traceops-premium-shell .upload-dropzone.drag,
-body.traceops-premium-shell .drop-zone.drag,
-body.traceops-premium-shell .traceops-dropzone.drag,
-body.traceops-premium-shell .up:hover,
-body.traceops-premium-shell .up.drag {
-  background: rgba(255,255,255,0.035);
-  border-color: rgba(255,255,255,0.16);
-}
-
-body.traceops-premium-shell .muted,
-body.traceops-premium-shell .subtle,
-body.traceops-premium-shell .traceops-muted,
-body.traceops-premium-shell .traceops-context-kicker,
-body.traceops-premium-shell .traceops-context-subtitle,
-body.traceops-premium-shell .traceops-panel-head span,
-body.traceops-premium-shell .traceops-engineering-card p,
-body.traceops-premium-shell .traceops-alert-copy span,
-body.traceops-premium-shell .traceops-calendar-head span,
-body.traceops-premium-shell .traceops-calendar-strip-sub,
-body.traceops-premium-shell .traceops-window-line span,
-body.traceops-premium-shell .traceops-calendar-weekday,
-body.traceops-premium-shell .traceops-calendar-weekdays div,
-body.traceops-premium-shell .traceops-empty-msg,
-body.traceops-premium-shell .api-note,
-body.traceops-premium-shell .api-bar label,
-body.traceops-premium-shell .kin .ts,
-body.traceops-premium-shell .pf-dept,
-body.traceops-premium-shell .pf-stat-lbl,
-body.traceops-premium-shell .cmrow p,
-body.traceops-premium-shell .pitem p,
-body.traceops-premium-shell .foot p,
-body.traceops-premium-shell .picker-sub,
-body.traceops-premium-shell .picker-time,
-body.traceops-premium-shell .picker-sender,
-body.traceops-premium-shell .pstep,
-body.traceops-premium-shell .pstep.ok,
-body.traceops-premium-shell .pstep.on {
-  color: var(--ops-text-2);
-}
-
-body.traceops-premium-shell .traceops-table,
-body.traceops-premium-shell table {
-  color: rgba(255,255,255,0.90);
-}
-
-body.traceops-premium-shell .traceops-table thead th,
-body.traceops-premium-shell table thead th {
-  color: rgba(255,255,255,0.52);
-  border-bottom-color: rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.02);
-}
-
-body.traceops-premium-shell .traceops-table tbody tr,
-body.traceops-premium-shell table tbody tr {
-  border-bottom-color: rgba(255,255,255,0.05);
-}
-
-body.traceops-premium-shell tr:hover td {
-  background: rgba(255,255,255,0.03);
-}
-
-body.traceops-premium-shell .chip,
-body.traceops-premium-shell .badge,
-body.traceops-premium-shell .pill,
-body.traceops-premium-shell .ptag,
-body.traceops-premium-shell .traceops-window-pill,
-body.traceops-premium-shell .traceops-calendar-pill,
-body.traceops-premium-shell .traceops-calendar-strip-tag,
-body.traceops-premium-shell .traceops-alert-badge,
-body.traceops-premium-shell .table-sort-chip,
-body.traceops-premium-shell .ic-badge {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.78);
-  border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-}
-
-body.traceops-premium-shell .ops-loading-card,
-body.traceops-premium-shell .traceops-loading,
-body.traceops-premium-shell .prog {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00)),
-    #000;
-  border: 1px solid rgba(255,255,255,0.07);
-}
-
-body.traceops-premium-shell .ops-chrono,
-body.traceops-premium-shell .traceops-chrono {
-  font-size: 72px;
-  letter-spacing: -0.05em;
-}
-
-body.traceops-premium-shell .pstep,
-body.traceops-premium-shell .loading-step-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
-  background: rgba(255,255,255,0.18);
-}
-
-body.traceops-premium-shell .pstep.done,
-body.traceops-premium-shell .loading-step-dot.done {
-  background: #83d0b7;
-  box-shadow: 0 0 10px rgba(131,208,183,0.4);
-}
-
-body.traceops-premium-shell .pstep.active,
-body.traceops-premium-shell .loading-step-dot.active {
-  background: #fff;
-  box-shadow: 0 0 10px rgba(255,255,255,0.25);
+/* Sidebar */
+body.traceops-premium-shell .sidebar{
+  background:#050505 !important;
+  border-right:1px solid rgba(255,255,255,.05) !important;
+  box-shadow:20px 0 40px rgba(0,0,0,.42) !important;
 }
 
 body.traceops-premium-shell .sidebar-header,
 body.traceops-premium-shell .sidebar-section,
-body.traceops-premium-shell .sidebar-footer,
-body.traceops-premium-shell .filter-bar,
-body.traceops-premium-shell .lb-hdr,
-body.traceops-premium-shell .picker-head,
-body.traceops-premium-shell .ic-card-head,
-body.traceops-premium-shell .ic-tabs,
-body.traceops-premium-shell .ic-wrap,
-body.traceops-premium-shell .img-panel,
+body.traceops-premium-shell .sidebar-footer{
+  border-color:rgba(255,255,255,.06) !important;
+}
+
+body.traceops-premium-shell .sidebar-section-title,
+body.traceops-premium-shell .sidebar-footer p,
+body.traceops-premium-shell .sidebar-api-note{
+  color:rgba(255,255,255,.32) !important;
+}
+
+body.traceops-premium-shell .sidebar-api-input{
+  background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(255,255,255,.10) !important;
+  color:#FFFFFF !important;
+  border-radius:14px !important;
+}
+
+body.traceops-premium-shell .sidebar-api-input::placeholder{
+  color:rgba(255,255,255,.28) !important;
+}
+
+body.traceops-premium-shell .sidebar-btn{
+  color:rgba(255,255,255,.72) !important;
+}
+
+body.traceops-premium-shell .sidebar-btn.active{
+  background:rgba(255,255,255,.06) !important;
+  color:#FFFFFF !important;
+  border-radius:999px !important;
+}
+
+body.traceops-premium-shell .sidebar-nuevo{
+  background:#FFFFFF !important;
+  color:#000000 !important;
+  border-radius:999px !important;
+  font-weight:700 !important;
+}
+
+body.traceops-premium-shell .sidebar-overlay{
+  background:rgba(0,0,0,.56) !important;
+}
+
+/* Loading screen */
+body.traceops-premium-shell .prog{
+  background:#000000 !important;
+  border:1px solid rgba(255,255,255,.07) !important;
+}
+
+body.traceops-premium-shell .pbar{
+  background:rgba(255,255,255,.08) !important;
+}
+
+body.traceops-premium-shell .pfill{
+  background:#FFFFFF !important;
+}
+
+body.traceops-premium-shell .prog .traceops-loading-timer,
+body.traceops-premium-shell .prog .traceops-loading-time,
+body.traceops-premium-shell .prog .loading-timer,
+body.traceops-premium-shell .prog .timer,
+body.traceops-premium-shell .prog .chrono,
+body.traceops-premium-shell .prog [class*="timer"],
+body.traceops-premium-shell .prog [class*="chrono"]{
+  font-family:"Courier New", monospace !important;
+  font-size:72px !important;
+  line-height:1 !important;
+  color:#FFFFFF !important;
+  letter-spacing:-.03em !important;
+}
+
+body.traceops-premium-shell .psteps{
+  justify-content:center !important;
+  gap:12px !important;
+  margin-top:10px;
+}
+
+body.traceops-premium-shell .pstep{
+  width:10px !important;
+  min-width:10px !important;
+  flex:0 0 10px !important;
+  font-size:0 !important;
+  line-height:0 !important;
+  color:transparent !important;
+  text-align:center !important;
+}
+
+body.traceops-premium-shell .pstep > *{
+  font-size:0 !important;
+  line-height:0 !important;
+  margin:0 !important;
+  color:transparent !important;
+}
+
+body.traceops-premium-shell .pstep::before{
+  content:"";
+  display:block;
+  width:6px;
+  height:6px;
+  margin:2px auto;
+  border-radius:999px;
+  background:rgba(255,255,255,.20);
+}
+
+body.traceops-premium-shell .pstep.ok::before{
+  background:#48A882;
+}
+
+body.traceops-premium-shell .pstep.on::before{
+  background:#FFFFFF;
+}
+
+/* Tables, pills, misc */
+body.traceops-premium-shell .badge,
+body.traceops-premium-shell .bc,
+body.traceops-premium-shell .ba,
+body.traceops-premium-shell .bm,
+body.traceops-premium-shell .bb,
+body.traceops-premium-shell .bo,
+body.traceops-premium-shell .be,
+body.traceops-premium-shell .bce,
+body.traceops-premium-shell .bt{
+  border-radius:999px !important;
+}
+
+body.traceops-premium-shell .plist,
+body.traceops-premium-shell .pitem{
+  background:transparent !important;
+}
+
+body.traceops-premium-shell .pitem{
+  border:1px solid rgba(255,255,255,.07) !important;
+  border-left:1px solid rgba(255,255,255,.14) !important;
+  border-radius:18px !important;
+}
+
+body.traceops-premium-shell .pf-stat,
+body.traceops-premium-shell .krow{
+  background:rgba(255,255,255,.03) !important;
+  border:1px solid rgba(255,255,255,.08) !important;
+  border-radius:18px !important;
+}
+
+body.traceops-premium-shell .pf-stat-lbl,
+body.traceops-premium-shell .kin .nm,
+body.traceops-premium-shell .filter-bar label,
+body.traceops-premium-shell .api-bar label{
+  color:rgba(255,255,255,.64) !important;
+}
+
+body.traceops-premium-shell .pf-stat-val,
+body.traceops-premium-shell .kval{
+  color:#FFFFFF !important;
+}
+
+body.traceops-premium-shell .api-input,
+body.traceops-premium-shell .pf-select{
+  background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(255,255,255,.10) !important;
+  color:#FFFFFF !important;
+  border-radius:14px !important;
+}
+
+body.traceops-premium-shell .api-input::placeholder{
+  color:rgba(255,255,255,.30) !important;
+}
+
+body.traceops-premium-shell .api-note,
+body.traceops-premium-shell .table-tools,
+body.traceops-premium-shell .pf-empty{
+  color:rgba(255,255,255,.48) !important;
+}
+
+@media (max-width:900px){
+  body.traceops-premium-shell .saas-topbar{
+    background:rgba(0,0,0,.78) !important;
+  }
+
+  body.traceops-premium-shell .main-content{
+    padding-left:14px !important;
+    padding-right:14px !important;
+  }
+
+  body.traceops-premium-shell .ops-hero-actions{
+    flex-direction:column;
+    width:100%;
+  }
+
+  body.traceops-premium-shell .ops-hero-btn{
+    width:100%;
+    justify-content:center;
+  }
+}
+
+
+
+
+/* =========================================================
+   TraceOps premium rebalance
+   Mantiene shell oscuro, aclara el workspace operativo
+========================================================= */
+
+body.traceops-premium-shell{
+  background:
+    linear-gradient(180deg,#050505 0 320px,#EEF2F5 320px 100%);
+  color:#0F172A;
+}
+
+/* shell oscuro conservado */
+body.traceops-premium-shell .saas-topbar{
+  background:rgba(0,0,0,.72);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+body.traceops-premium-shell .sidebar{
+  background:linear-gradient(180deg,#050505 0%,#0B1210 100%);
+  border-right:1px solid rgba(255,255,255,.06);
+  box-shadow:24px 0 48px rgba(0,0,0,.28);
+}
+
+body.traceops-premium-shell .ops-hero,
+body.traceops-premium-shell .saas-upload-card,
+body.traceops-premium-shell .hdr{
+  background:
+    radial-gradient(circle at 50% 18%, rgba(121,215,179,.10), transparent 30%),
+    linear-gradient(180deg,#050505 0%,#0B1210 100%);
+  border:1px solid rgba(121,215,179,.18);
+  box-shadow:0 24px 54px rgba(0,0,0,.24);
+}
+
+/* solo hero conserva textura/grid */
+body.traceops-premium-shell .ops-hero::after,
+body.traceops-premium-shell .saas-upload-card::after,
+body.traceops-premium-shell .hdr::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size:42px 42px;
+}
+
+/* =========================================================
+   WORKSPACE CLARO
+========================================================= */
+
+body.traceops-premium-shell .main-content{
+  color:#0F172A;
+}
+
+/* quitar negro global de paneles */
+body.traceops-premium-shell .saas-hero-card,
+body.traceops-premium-shell .traceops-context,
+body.traceops-premium-shell .traceops-kpi-card,
+body.traceops-premium-shell .traceops-panel,
+body.traceops-premium-shell .traceops-engineering-card,
+body.traceops-premium-shell .traceops-calendar,
+body.traceops-premium-shell .tcard,
+body.traceops-premium-shell .pf-card,
+body.traceops-premium-shell .cmp,
+body.traceops-premium-shell .foot,
+body.traceops-premium-shell .up,
+body.traceops-premium-shell .prog,
+body.traceops-premium-shell .api-bar,
 body.traceops-premium-shell .picker-box,
 body.traceops-premium-shell .lb-box,
-body.traceops-premium-shell .api-bar,
-body.traceops-premium-shell .foot,
+body.traceops-premium-shell .ic-wrap,
+body.traceops-premium-shell .img-panel,
+body.traceops-premium-shell .ic-card.active,
+body.traceops-premium-shell .picker-card,
 body.traceops-premium-shell .krow,
-body.traceops-premium-shell .plist .pitem,
 body.traceops-premium-shell .pf-stat,
-body.traceops-premium-shell .cmp,
-body.traceops-premium-shell .cmpc,
-body.traceops-premium-shell .traceops-tabs,
+body.traceops-premium-shell .pitem,
 body.traceops-premium-shell .traceops-calendar-month,
 body.traceops-premium-shell .traceops-calendar-strip-day,
 body.traceops-premium-shell .traceops-alert-item,
-body.traceops-premium-shell .traceops-bullet,
-body.traceops-premium-shell .picker-card,
-body.traceops-premium-shell .img-pick-item,
-body.traceops-premium-shell .ev-add-btn {
-  background: rgba(10,16,28,0.82);
-  border-color: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.86);
+body.traceops-premium-shell .traceops-bullet{
+  background:#FFFFFF;
+  border:1px solid rgba(15,23,42,.08);
+  box-shadow:
+    0 1px 2px rgba(15,23,42,.03),
+    0 12px 30px rgba(15,23,42,.05);
 }
 
+/* quitar retícula interna en cards/panels */
+body.traceops-premium-shell .saas-hero-card::before,
+body.traceops-premium-shell .traceops-context::before,
+body.traceops-premium-shell .traceops-kpi-card::before,
+body.traceops-premium-shell .traceops-panel::before,
+body.traceops-premium-shell .traceops-engineering-card::before,
+body.traceops-premium-shell .traceops-calendar::before,
+body.traceops-premium-shell .tcard::before,
+body.traceops-premium-shell .pf-card::before,
+body.traceops-premium-shell .cmp::before,
+body.traceops-premium-shell .up::before,
+body.traceops-premium-shell .prog::before,
+body.traceops-premium-shell .api-bar::before,
+body.traceops-premium-shell .img-panel::before,
+body.traceops-premium-shell .ic-wrap::before{
+  content:none !important;
+}
+
+/* headers internos ligeros */
+body.traceops-premium-shell .traceops-panel-head,
+body.traceops-premium-shell .traceops-calendar-head,
+body.traceops-premium-shell .tcard-hdr,
+body.traceops-premium-shell .pf-hdr,
+body.traceops-premium-shell .picker-head,
+body.traceops-premium-shell .lb-hdr,
+body.traceops-premium-shell .traceops-calendar-month-head,
+body.traceops-premium-shell .filter-bar,
+body.traceops-premium-shell .ic-tabs,
+body.traceops-premium-shell .ic-card-head{
+  background:#F8FAFC;
+  border-color:rgba(15,23,42,.06);
+}
+
+/* =========================================================
+   TIPOGRAFIA DEL WORKSPACE
+========================================================= */
+
+body.traceops-premium-shell .up h3,
+body.traceops-premium-shell .prog h3,
+body.traceops-premium-shell .foot strong,
+body.traceops-premium-shell .cmrow p,
+body.traceops-premium-shell .cmplbl span,
+body.traceops-premium-shell .pitem h4,
+body.traceops-premium-shell .kval,
+body.traceops-premium-shell .kin .nm,
+body.traceops-premium-shell .traceops-calendar-head h3,
+body.traceops-premium-shell .traceops-context-actions,
+body.traceops-premium-shell .traceops-kpi-value,
+body.traceops-premium-shell .traceops-window-line strong,
+body.traceops-premium-shell .traceops-calendar-day .traceops-calendar-date,
+body.traceops-premium-shell .traceops-calendar-strip-daynum,
+body.traceops-premium-shell .traceops-calendar-strip-count,
+body.traceops-premium-shell .picker-head,
+body.traceops-premium-shell .lb-hdr span,
+body.traceops-premium-shell th,
+body.traceops-premium-shell .tcard-hdr h3,
+body.traceops-premium-shell .pf-hdr h3{
+  color:#0F172A;
+}
+
+body.traceops-premium-shell .saas-topbar-subtitle,
+body.traceops-premium-shell .saas-header-pill,
+body.traceops-premium-shell .saas-hero-desc,
+body.traceops-premium-shell .traceops-context-subtitle,
+body.traceops-premium-shell .traceops-panel-head span,
+body.traceops-premium-shell .traceops-engineering-card p,
+body.traceops-premium-shell .traceops-bullet,
+body.traceops-premium-shell .traceops-kpi-meta,
+body.traceops-premium-shell .traceops-window-line span,
+body.traceops-premium-shell .traceops-calendar-head span,
+body.traceops-premium-shell .traceops-calendar-empty-msg,
+body.traceops-premium-shell .traceops-calendar-strip-sub,
+body.traceops-premium-shell .traceops-calendar-strip-weekday,
+body.traceops-premium-shell .traceops-alert-copy span,
+body.traceops-premium-shell .picker-sub,
+body.traceops-premium-shell .pf-dept,
+body.traceops-premium-shell .pf-stat-lbl,
+body.traceops-premium-shell .api-note,
+body.traceops-premium-shell .up p,
+body.traceops-premium-shell .prog p,
+body.traceops-premium-shell .foot p,
+body.traceops-premium-shell td,
+body.traceops-premium-shell .pitem p,
+body.traceops-premium-shell .ptag,
+body.traceops-premium-shell .traceops-context-kicker,
+body.traceops-premium-shell .traceops-kpi-label,
+body.traceops-premium-shell .traceops-calendar-weekdays div,
+body.traceops-premium-shell .traceops-calendar-pill,
+body.traceops-premium-shell .traceops-calendar-strip-tag,
+body.traceops-premium-shell .traceops-alert-copy div,
+body.traceops-premium-shell .krow .ts,
+body.traceops-premium-shell .ic-field-label,
+body.traceops-premium-shell .ic-field-val,
+body.traceops-premium-shell .ic-tab,
+body.traceops-premium-shell .picker-time,
+body.traceops-premium-shell .picker-sender{
+  color:#64748B;
+}
+
+/* =========================================================
+   KPI cards
+========================================================= */
+
+body.traceops-premium-shell .traceops-kpi-card{
+  background:linear-gradient(180deg,#FFFFFF 0%,#F8FAFC 100%);
+  border:1px solid rgba(15,23,42,.08);
+}
+
+body.traceops-premium-shell .traceops-kpi-value{
+  color:#0F172A;
+  letter-spacing:-.04em;
+}
+
+body.traceops-premium-shell .traceops-kpi-label{
+  color:#64748B;
+}
+
+/* mantener colores de semántica KPI */
+body.traceops-premium-shell .traceops-kpi-value.fail{ color:#DC2626; }
+body.traceops-premium-shell .traceops-kpi-value.pass{ color:#15803D; }
+body.traceops-premium-shell .traceops-kpi-value.info{ color:#2563EB; }
+body.traceops-premium-shell .traceops-kpi-value.warn{ color:#B45309; }
+
+/* =========================================================
+   Botones
+========================================================= */
+
+body.traceops-premium-shell .saas-header-btn.primary,
+body.traceops-premium-shell .up-btn,
+body.traceops-premium-shell .ops-hero-btn.primary,
+body.traceops-premium-shell .sidebar-nuevo,
+body.traceops-premium-shell .traceops-tab.active,
+body.traceops-premium-shell .traceops-calendar-btn.active,
+body.traceops-premium-shell .traceops-calendar-chip.active,
+body.traceops-premium-shell .day-btn.active{
+  background:linear-gradient(180deg,#1E5C48 0%,#17463A 100%);
+  color:#FFFFFF;
+  border-color:#1E5C48;
+  box-shadow:0 10px 24px rgba(30,92,72,.22);
+}
+
+body.traceops-premium-shell .ops-hero-btn.ghost,
+body.traceops-premium-shell .traceops-calendar-chip,
+body.traceops-premium-shell .day-btn,
+body.traceops-premium-shell .traceops-tab,
+body.traceops-premium-shell .sidebar-btn,
 body.traceops-premium-shell .sidebar-api-input,
 body.traceops-premium-shell .api-input,
-body.traceops-premium-shell .pf-select {
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.90);
-  border: 1px solid rgba(255,255,255,0.10);
-}
-
-body.traceops-premium-shell .sidebar-api-input::placeholder,
-body.traceops-premium-shell .api-input::placeholder {
-  color: rgba(255,255,255,0.32);
-}
-
-body.traceops-premium-shell .sidebar-brand h2,
-body.traceops-premium-shell .sidebar-section-title,
-body.traceops-premium-shell .sidebar-footer p,
-body.traceops-premium-shell .sidebar-api-note,
-body.traceops-premium-shell .hdr-info h1,
-body.traceops-premium-shell .hdr-info h2,
-body.traceops-premium-shell .hdr-badge,
-body.traceops-premium-shell .up h3,
-body.traceops-premium-shell .up p,
-body.traceops-premium-shell .prog h3,
-body.traceops-premium-shell .prog p,
-body.traceops-premium-shell .cmplbl span,
-body.traceops-premium-shell .pf-section-title,
-body.traceops-premium-shell .pf-empty,
-body.traceops-premium-shell .picker-date,
-body.traceops-premium-shell .img-panel-title,
+body.traceops-premium-shell .pf-select,
+body.traceops-premium-shell .pf-clear,
+body.traceops-premium-shell .ic-face-btn,
+body.traceops-premium-shell .ic-nav-btn,
+body.traceops-premium-shell .ev-add-btn,
+body.traceops-premium-shell .table-reset-btn,
+body.traceops-premium-shell .picker-card,
+body.traceops-premium-shell .picker-box,
+body.traceops-premium-shell .lb-box,
 body.traceops-premium-shell .lb-close,
+body.traceops-premium-shell .to-badge-soft,
+body.traceops-premium-shell .resetbtn,
 body.traceops-premium-shell .picker-close,
-body.traceops-premium-shell .errc,
-body.traceops-premium-shell .pitem-id,
-body.traceops-premium-shell .traceops-tab,
-body.traceops-premium-shell .traceops-calendar-chip,
 body.traceops-premium-shell .traceops-calendar-btn,
-body.traceops-premium-shell .traceops-calendar-iconbtn,
-body.traceops-premium-shell .traceops-calendar-count,
-body.traceops-premium-shell .traceops-calendar-strip-count,
-body.traceops-premium-shell .traceops-kpi-value.info,
-body.traceops-premium-shell .traceops-kpi-value.warn,
-body.traceops-premium-shell .traceops-kpi-value.pass,
-body.traceops-premium-shell .traceops-kpi-value.fail {
-  color: rgba(255,255,255,0.90);
+body.traceops-premium-shell .traceops-calendar-iconbtn{
+  background:#FFFFFF;
+  color:#0F172A;
+  border:1px solid rgba(15,23,42,.10);
+  box-shadow:0 2px 10px rgba(15,23,42,.05);
 }
 
-body.traceops-premium-shell .sidebar-overlay.show,
-body.traceops-premium-shell .picker-overlay,
-body.traceops-premium-shell .lb-overlay {
-  background: rgba(0,0,0,0.55);
+body.traceops-premium-shell .saas-header-btn:hover,
+body.traceops-premium-shell .saas-menu-btn:hover,
+body.traceops-premium-shell .table-reset-btn:hover,
+body.traceops-premium-shell .resetbtn:hover,
+body.traceops-premium-shell .day-btn:hover,
+body.traceops-premium-shell .traceops-tab:hover,
+body.traceops-premium-shell .traceops-calendar-btn:hover,
+body.traceops-premium-shell .traceops-calendar-iconbtn:hover{
+  transform:translateY(-1px);
+  background:#F8FAFC;
 }
 
-@media (max-width: 768px) {
-  body.traceops-premium-shell .ops-hero,
-  body.traceops-premium-shell .traceops-panel,
-  body.traceops-premium-shell .tcard,
-  body.traceops-premium-shell .pf-card,
-  body.traceops-premium-shell .traceops-calendar,
-  body.traceops-premium-shell .traceops-engineering-card,
-  body.traceops-premium-shell .traceops-context,
-  body.traceops-premium-shell .traceops-kpi-card {
-    border-radius: 20px;
+/* =========================================================
+   Calendar claro
+========================================================= */
+
+body.traceops-premium-shell .traceops-calendar-month{
+  background:#FFFFFF;
+  border:1px solid rgba(15,23,42,.08);
+}
+
+body.traceops-premium-shell .traceops-calendar-month-head{
+  background:#F8FAFC;
+  color:#0F172A;
+  border-bottom:1px solid rgba(15,23,42,.06);
+}
+
+body.traceops-premium-shell .traceops-calendar-weekdays div{
+  background:#FFFFFF;
+  color:#64748B;
+}
+
+body.traceops-premium-shell .traceops-calendar-day{
+  background:#FFFFFF;
+  border-color:#EEF2F7;
+}
+
+body.traceops-premium-shell .traceops-calendar-day.empty{
+  background:#F8FAFC;
+}
+
+body.traceops-premium-shell .traceops-calendar-day:hover{
+  background:#F8FBFF;
+}
+
+body.traceops-premium-shell .traceops-calendar-day.has-events,
+body.traceops-premium-shell .traceops-calendar-strip-day{
+  background:linear-gradient(180deg,#FFFFFF,#F8FAFC);
+}
+
+body.traceops-premium-shell .traceops-calendar-date{
+  color:#0F172A;
+}
+
+body.traceops-premium-shell .traceops-calendar-count{
+  color:#1E5C48;
+}
+
+/* =========================================================
+   tablas / listas
+========================================================= */
+
+body.traceops-premium-shell table{
+  background:#FFFFFF;
+}
+
+body.traceops-premium-shell th{
+  background:#F8FAFC;
+  color:#475569;
+  border-bottom:1px solid #EAEFF5;
+}
+
+body.traceops-premium-shell td{
+  color:#334155;
+  border-bottom:1px solid #F1F5F9;
+}
+
+body.traceops-premium-shell tr:hover td{
+  background:#FAFCFF;
+}
+
+body.traceops-premium-shell .pitem{
+  background:#FFFFFF;
+  border:1px solid rgba(15,23,42,.08);
+}
+
+body.traceops-premium-shell .krow,
+body.traceops-premium-shell .pf-stat,
+body.traceops-premium-shell .traceops-alert-item,
+body.traceops-premium-shell .traceops-bullet{
+  background:#F8FAFC;
+}
+
+/* =========================================================
+   chips / badges claros
+========================================================= */
+
+body.traceops-premium-shell .traceops-context-chips span,
+body.traceops-premium-shell .ops-hero-chips span,
+body.traceops-premium-shell .traceops-window-pill,
+body.traceops-premium-shell .table-sort-chip,
+body.traceops-premium-shell .chip,
+body.traceops-premium-shell .ptag,
+body.traceops-premium-shell .badge,
+body.traceops-premium-shell .traceops-calendar-pill,
+body.traceops-premium-shell .traceops-calendar-strip-tag,
+body.traceops-premium-shell .traceops-alert-badge,
+body.traceops-premium-shell .ev-count,
+body.traceops-premium-shell .saas-header-pill{
+  background:#F8FAFC;
+  border:1px solid rgba(15,23,42,.08);
+  color:#475569;
+}
+
+/* =========================================================
+   topbar text / brand
+========================================================= */
+
+body.traceops-premium-shell .saas-topbar-title{
+  color:#FFFFFF;
+}
+
+body.traceops-premium-shell .saas-topbar-subtitle{
+  color:rgba(255,255,255,.58);
+}
+
+body.traceops-premium-shell .saas-menu-btn{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.14);
+  color:#FFFFFF;
+}
+
+/* =========================================================
+   mobile
+========================================================= */
+
+@media (max-width: 900px){
+  body.traceops-premium-shell{
+    background:
+      linear-gradient(180deg,#050505 0 260px,#EEF2F5 260px 100%);
   }
 
-  body.traceops-premium-shell .ops-hero::after {
-    width: 240px;
-    height: 240px;
-    bottom: -6%;
+  body.traceops-premium-shell .main-content{
+    padding-left:14px;
+    padding-right:14px;
+  }
+
+  body.traceops-premium-shell .saas-topbar{
+    background:rgba(0,0,0,.78);
   }
 }
 
@@ -1408,7 +1981,7 @@ async function signUp(email, password){
 </script>
 
 </head>
-<body class="traceops-premium-shell">
+<body>
 <div id="root"></div>
 
 <script>
@@ -6782,6 +7355,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 <script>
 window.addEventListener("load", function() {
+  if (document.body) document.body.classList.add("traceops-premium-shell");
   if (window.preloadExcelTools) window.preloadExcelTools();
 });
 </script>
