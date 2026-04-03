@@ -1262,9 +1262,7 @@ async function readZip(file) {
     var lastMeta = null;
     var lastTextAny = "";
     var lastTextBySender = {};
-    txt.split(/
-?
-/).forEach(function(rawLine) {
+    txt.split(/\r?\n/).forEach(function(rawLine) {
       var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g, "").trim();
       var m = line.match(reA) || line.match(reB);
       if (m) {
@@ -2799,7 +2797,7 @@ async function buildXlsx(result) {
         actoresStr, e.responsable_sugerido,
         e.estado_historia || "Detectado",
         e.estatus, e.prioridad,
-        {formula: "IF(OR(R"+(ri+2)+"="Abierto",R"+(ri+2)+"="En proceso"),TODAY()-B"+(ri+2)+","")"},
+        {formula: "IF(OR(R"+(ri+2)+"=\"Abierto\",R"+(ri+2)+"=\"En proceso\"),TODAY()-B"+(ri+2)+",\"\")"},
         e.fuente_chat, e.notas
       ]);
       row.height = 38;
