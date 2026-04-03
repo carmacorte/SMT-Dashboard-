@@ -11,21 +11,130 @@ window.TRACEOPS_SUPABASE = {
 </script>
 <meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only -->
 <script>
+window.__traceopsZipReady = null;
+window.__traceopsExcelReady = null;
+window.__traceopsExcelPreloadDone = false;
+
+function traceOpsShowError(title, html, background) {
+  try {
+    var box = document.createElement("div");
+    box.style.cssText =
+      "position:fixed;top:0;left:0;right:0;background:" + (background || "#C0392B") + ";color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all";
+    box.innerHTML = "<strong>" + title + "</strong><br>" + html;
+    (document.body || document.documentElement).appendChild(box);
+  } catch (_) {}
+}
+
+function loadExternalScript(src) {
+  return new Promise(function(resolve, reject) {
+    var existing = document.querySelector('script[data-traceops-src="' + src + '"]');
+    if (existing) {
+      if (existing.dataset.loaded === "true") {
+        resolve();
+        return;
+      }
+      existing.addEventListener("load", function() { resolve(); }, { once: true });
+      existing.addEventListener("error", function() {
+        reject(new Error("No se pudo cargar el script: " + src));
+      }, { once: true });
+      return;
+    }
+
+    var s = document.createElement("script");
+    s.src = src;
+    s.crossOrigin = "anonymous";
+    s.async = true;
+    s.dataset.traceopsSrc = src;
+    s.onload = function() {
+      s.dataset.loaded = "true";
+      resolve();
+    };
+    s.onerror = function() {
+      reject(new Error("No se pudo cargar el script: " + src));
+    };
+    document.head.appendChild(s);
+  });
+}
+
+window.ensureZipTools = function() {
+  if (window.JSZip) return Promise.resolve();
+  if (window.__traceopsZipReady) return window.__traceopsZipReady;
+
+  window.__traceopsZipReady = loadExternalScript(
+    "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"
+  ).catch(function(err) {
+    window.__traceopsZipReady = null;
+    throw err;
+  });
+
+  return window.__traceopsZipReady;
+};
+
+window.ensureExcelTools = function() {
+  if (window.JSZip && window.ExcelJS) return Promise.resolve();
+  if (window.__traceopsExcelReady) return window.__traceopsExcelReady;
+
+  window.__traceopsExcelReady = window.ensureZipTools()
+    .then(function() {
+      if (window.ExcelJS) return;
+      return loadExternalScript(
+        "https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"
+      );
+    })
+    .catch(function(err) {
+      window.__traceopsExcelReady = null;
+      throw err;
+    });
+
+  return window.__traceopsExcelReady;
+};
+
+window.preloadExcelTools = function() {
+  if (window.__traceopsExcelPreloadDone) return;
+  window.__traceopsExcelPreloadDone = true;
+
+  var run = function() {
+    window.ensureExcelTools().catch(function(err) {
+      console.warn("[TraceOps] Excel libs no cargadas:", err);
+    });
+  };
+
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(run, { timeout: 4000 });
+  } else {
+    setTimeout(run, 1500);
+  }
+};
+
 window.onerror = function(msg, src, line, col, err) {
-  var box = document.createElement('div');
-  box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#C0392B;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all';
-  box.innerHTML = '<strong>ERROR</strong><br>' + msg + '<br>Line: ' + line + ' Col: ' + col + '<br>' + (err ? err.toString() : '');
-  document.body.appendChild(box);
+  var parts = [];
+  parts.push(String(msg || "Script error."));
+  if (src) parts.push(src);
+  parts.push("Line: " + (line || 0) + " Col: " + (col || 0));
+  if (err && err.stack) parts.push(err.stack);
+  else if (err) parts.push(String(err));
+  traceOpsShowError("ERROR", parts.join("<br>"), "#C0392B");
   return false;
 };
-window.addEventListener('unhandledrejection', function(ev) {
+
+window.addEventListener("error", function(ev) {
   try {
-    var reason = ev && ev.reason ? (ev.reason.stack || ev.reason.message || String(ev.reason)) : 'Unhandled promise rejection';
-    var box = document.createElement('div');
-    box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#7F1D1D;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all';
-    box.innerHTML = '<strong>PROMISE ERROR</strong><br>' + reason;
-    document.body.appendChild(box);
-  } catch(_) {}
+    var target = ev && ev.target;
+    if (target && target.tagName === "SCRIPT") {
+      traceOpsShowError(
+        "SCRIPT LOAD ERROR",
+        (target.src || "Script sin src") + "<br>Revisa CDN / CORS / Safari",
+        "#7F1D1D"
+      );
+    }
+  } catch (_) {}
+}, true);
+
+window.addEventListener("unhandledrejection", function(ev) {
+  try {
+    var reason = ev && ev.reason ? (ev.reason.stack || ev.reason.message || String(ev.reason)) : "Unhandled promise rejection";
+    traceOpsShowError("PROMISE ERROR", reason, "#7F1D1D");
+  } catch (_) {}
 });
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -33,11 +142,9 @@ window.addEventListener('unhandledrejection', function(ev) {
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231A3D1E'/%3E%3Crect x='8' y='8' width='48' height='48' rx='8' fill='%230D2B10'/%3E%3Crect x='18' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='28' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='38' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='18' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='28' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='38' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='18' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='28' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='38' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='18' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='28' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='38' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Cpolyline points='12,32 18,32 21,22 25,32' fill='none' stroke='%236A9E6E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M25,32 C27,32 29,24 33,21 C37,18 41,20 41,26 C41,32 37,33 33,34 C29,35 27,38 30,42 C33,46 39,45 42,42' fill='none' stroke='%2348A882' stroke-width='2.5' stroke-linecap='round'/%3E%3Cpolyline points='42,32 46,22 49,38 52,32' fill='none' stroke='%236A9E6E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='21' cy='22' r='2' fill='%236A9E6E'/%3E%3Ccircle cx='46' cy='22' r='2' fill='%236A9E6E'/%3E%3C/svg%3E"/>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%231A3D1E'/%3E%3Crect x='22' y='22' width='136' height='136' rx='22' fill='%230D2B10'/%3E%3Crect x='50' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='78' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='106' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='50' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='78' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='106' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='50' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='78' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='106' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='50' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='78' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='106' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Cpolyline points='34,90 50,90 58,62 70,90' fill='none' stroke='%236A9E6E' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70,90 C76,90 82,68 92,60 C102,52 116,56 116,72 C116,88 104,92 92,95 C80,98 76,108 84,118 C92,128 110,126 118,118' fill='none' stroke='%2348A882' stroke-width='7' stroke-linecap='round'/%3E%3Cpolyline points='118,90 130,62 140,108 148,90' fill='none' stroke='%236A9E6E' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='58' cy='62' r='5' fill='%236A9E6E'/%3E%3Ccircle cx='130' cy='62' r='5' fill='%236A9E6E'/%3E%3C/svg%3E"/>
 <meta name="theme-color" content="#1A3D1E"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <style>
@@ -504,7 +611,7 @@ tr:hover td{background:var(--g50)}
 
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 window.TRACEOPS_SUPABASE = window.TRACEOPS_SUPABASE || {
   url: "",
@@ -777,22 +884,6 @@ function getWeekRange(weekN, year) {
     from: monday.toISOString().slice(0,10),
     to: sunday.toISOString().slice(0,10)
   };
-}
-
-function traceOpsParseIsoDateLocal(iso, endOfDay) {
-  var raw = String(iso || '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
-  var p = raw.split('-').map(function(x){ return parseInt(x, 10); });
-  if (p.length !== 3 || p.some(function(n){ return isNaN(n); })) return null;
-  var d = new Date(p[0], p[1] - 1, p[2], endOfDay ? 23 : 12, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-function traceOpsRangeDaysLocal(dateFrom, dateTo) {
-  var fromDate = traceOpsParseIsoDateLocal(dateFrom, false);
-  var toDate = traceOpsParseIsoDateLocal(dateTo, true);
-  if (!fromDate || !toDate) return 0;
-  return Math.max(1, Math.round(Math.abs(toDate.getTime() - fromDate.getTime()) / 86400000) + 1);
 }
 
 function filterMsgs(msgs, mode, days, dateFrom, dateTo, weekNum, weekYear) {
@@ -1118,6 +1209,8 @@ var _zipRef = null;
 var _imgCache = {};
 
 async function readZip(file) {
+  await window.ensureZipTools();
+
   var zip = await JSZip.loadAsync(file);
   _zipRef = zip;
   _imgCache = {};
@@ -1134,11 +1227,10 @@ async function readZip(file) {
     var base = name.split("/").pop();
     if (!base) continue;
 
-    // WhatsApp txt (existente)
     if (!txt && base.endsWith(".txt") && !base.toLowerCase().endsWith(".eml")) {
       txt = await zip.files[name].async("string");
     }
-    // Imagenes (existente) — filtra stickers / noise multimedia
+
     if (/\.(jpe?g|png|webp)$/i.test(base)) {
       if (traceOpsIsStickerMediaLocal(base)) {
         filteredMediaNames.push(base);
@@ -1146,66 +1238,70 @@ async function readZip(file) {
         imgNames.push(base);
       }
     }
-    // EML — nuevo
+
     if (base.toLowerCase().endsWith(".eml")) {
       try {
         var emlRaw = await zip.files[name].async("string");
         var msg = parseEmlToMsg(emlRaw);
         if (msg) emlMsgs.push(msg);
-      } catch(_) {}
+      } catch (_) {}
     }
-    // MBOX — nuevo
+
     if (base.toLowerCase().endsWith(".mbox")) {
       try {
         var mboxRaw = await zip.files[name].async("string");
         var mboxMsgs = parseMboxToMsgs(mboxRaw);
         emlMsgs = emlMsgs.concat(mboxMsgs);
-      } catch(_) {}
+      } catch (_) {}
     }
   }
 
-  // Construir imgMeta desde txt de WhatsApp si existe
   if (txt) {
     var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
     var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
     var lastMeta = null;
     var lastTextAny = "";
     var lastTextBySender = {};
-    txt.split(/\r?\n/).forEach(function(rawLine) {
-      var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g,"").trim();
+    txt.split(/
+?
+/).forEach(function(rawLine) {
+      var line = rawLine.replace(/[‎‏‪- ]/g, "").trim();
       var m = line.match(reA) || line.match(reB);
       if (m) {
         var isA = !!line.match(reA);
-        var d=m[1],mo=m[2],yr=m[3],h2=m[4],min2=m[5];
-        var mer=isA?(m[7]||""):""; var sender=isA?m[8]:m[6]; var text=isA?m[9]:m[7];
-        var year=parseInt(yr); if(year<100) year+=2000;
-        var hour=parseInt(h2);
-        var mlow=(mer||"").toLowerCase().replace(/[\s.]/g,"");
-        if(mlow.indexOf("p")===0 && hour!==12) hour+=12;
-        if(mlow.indexOf("a")===0 && hour===12) hour=0;
-        var senderNorm=(sender||"").replace(/^~/,"").trim();
-        lastMeta={
-          dateIso:year+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0"),
-          timeStr:String(hour).padStart(2,"0")+":"+min2,
-          sender:senderNorm
+        var d = m[1], mo = m[2], yr = m[3], h2 = m[4], min2 = m[5];
+        var mer = isA ? (m[7] || "") : "";
+        var sender = isA ? m[8] : m[6];
+        var text = isA ? m[9] : m[7];
+        var year = parseInt(yr);
+        if (year < 100) year += 2000;
+        var hour = parseInt(h2);
+        var mlow = (mer || "").toLowerCase().replace(/[\s.]/g, "");
+        if (mlow.indexOf("p") === 0 && hour !== 12) hour += 12;
+        if (mlow.indexOf("a") === 0 && hour === 12) hour = 0;
+        var senderNorm = (sender || "").replace(/^~/, "").trim();
+        lastMeta = {
+          dateIso: year + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0"),
+          timeStr: String(hour).padStart(2, "0") + ":" + min2,
+          sender: senderNorm
         };
         if (text && !/<adjunto:/i.test(text)) {
-          lastTextAny = String(text || "").replace(/\s+/g," ").trim();
+          lastTextAny = String(text || "").replace(/\s+/g, " ").trim();
           if (senderNorm) lastTextBySender[senderNorm] = lastTextAny;
         }
       } else if (lastMeta && line && !line.startsWith("[")) {
         var prev = lastTextBySender[lastMeta.sender] || lastTextAny || "";
-        var merged = (prev + " " + line).replace(/\s+/g," ").trim();
+        var merged = (prev + " " + line).replace(/\s+/g, " ").trim();
         lastTextAny = merged;
         if (lastMeta.sender) lastTextBySender[lastMeta.sender] = merged;
       }
       var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
       if (adj && lastMeta) {
         imgMeta[adj[1].trim()] = {
-          dateIso:lastMeta.dateIso,
-          timeStr:lastMeta.timeStr,
-          sender:lastMeta.sender,
-          contextText:(lastTextBySender[lastMeta.sender] || lastTextAny || "").slice(0,320)
+          dateIso: lastMeta.dateIso,
+          timeStr: lastMeta.timeStr,
+          sender: lastMeta.sender,
+          contextText: (lastTextBySender[lastMeta.sender] || lastTextAny || "").slice(0, 320)
         };
       }
     });
@@ -2651,6 +2747,8 @@ async function analyzeWithAI(msgs, apiKey) {
 }
 
 async function buildXlsx(result) {
+  await window.ensureExcelTools();
+
   var ev = result.eventos || [];
   var kpis = result.kpis || [];
   var res = result.resumen || {};
@@ -2701,7 +2799,7 @@ async function buildXlsx(result) {
         actoresStr, e.responsable_sugerido,
         e.estado_historia || "Detectado",
         e.estatus, e.prioridad,
-        {formula: "IF(OR(R"+(ri+2)+"=\"Abierto\",R"+(ri+2)+"=\"En proceso\"),TODAY()-B"+(ri+2)+",\"\")"},
+        {formula: "IF(OR(R"+(ri+2)+"="Abierto",R"+(ri+2)+"="En proceso"),TODAY()-B"+(ri+2)+","")"},
         e.fuente_chat, e.notas
       ]);
       row.height = 38;
@@ -3059,10 +3157,7 @@ function traceOpsGetWindowDays(filterMode, days, dateFrom, dateTo, weekNum, week
   if (filterMode === "quick") return Math.max(1, parseInt(days, 10) || 3);
   if (filterMode === "week") return 7;
   if (filterMode === "range" && dateFrom && dateTo) {
-    var fromDate = traceOpsParseIsoDateLocal(dateFrom, false);
-    var toDate = traceOpsParseIsoDateLocal(dateTo, true);
-    if (!fromDate || !toDate) return 0;
-    var ms = Math.abs(toDate.getTime() - fromDate.getTime());
+    var ms = Math.abs(new Date(dateTo) - new Date(dateFrom));
     return Math.max(1, Math.round(ms / 86400000) + 1);
   }
   return 0;
@@ -3145,30 +3240,17 @@ function App() {
       localRcca: "Local RCCA",
       heroEyebrow: "Operational Intelligence for Manufacturing Teams",
       heroSubtitle: "Turn scattered floor conversations into structured incidents, clear priorities, traceable follow-up, and reusable operational memory.",
-      contextKicker: "Built from real operations",
-      contextTitle: "The information already exists. TraceOps organizes it and turns it into action.",
-      contextSubtitle: "Upload a WhatsApp export, an email thread, or an operational log. TraceOps turns scattered conversations into structured incidents, clear priorities, traceable follow-up, and reusable operational memory.",
-      loadZip: "Upload export",
+      contextKicker: "Built from inside the operation",
+      contextTitle: "Your operation already has the information. It just does not stay together.",
+      contextSubtitle: "Upload a WhatsApp export, email thread, or operational message history. TraceOps turns floor conversations into structured incidents, visible priorities, traceable follow-up, and reusable operational memory.",
+      loadZip: "Load ZIP now",
       uploadTitle: "Start with your WhatsApp export",
       uploadSubtitle: "Drop the ZIP here or click to select it",
       selectFile: "Select file",
       chipsHero: ["Incident detection","Engineer findings","RCCA memory","Yokoten","Operational log"],
-      chipsContext: ["WhatsApp","Email","Operational log","RCCA","Evidence"],
+      chipsContext: ["WhatsApp export","EML / MBOX","Operational Log","Root Cause Archive","Evidence in context"],
       footerTagline: "Operational Intelligence for Manufacturing Teams",
-      langLabel: "Language",
-      captureMaturityTitle: "Capture maturity",
-      captureMaturitySubtitle: "TraceOps also shows how much useful context arrives in each operational message.",
-      captureEventsEvaluated: "events reviewed",
-      captureModel: "With model",
-      captureLine: "With line",
-      captureStation: "With station",
-      captureOwner: "With owner",
-      captureEvidence: "With linked evidence",
-      captureToneStrong: "Strong",
-      captureTonePartial: "Partial",
-      captureToneWeak: "Weak",
-      captureNoteTitle: "What this means",
-      captureNote: "Unidentified fields usually come from messages with limited context. This is not only a system issue; it is also a reporting habit the operation can improve over time."
+      langLabel: "Language"
     },
     es: {
       brandSubtitle: "Inteligencia operativa para equipos de manufactura",
@@ -3180,30 +3262,17 @@ function App() {
       localRcca: "RCCA local",
       heroEyebrow: "Inteligencia operativa para equipos de manufactura",
       heroSubtitle: "Convierte conversaciones dispersas del piso en incidentes estructurados, prioridades claras, seguimiento trazable y memoria operativa reutilizable.",
-      contextKicker: "Hecho desde la operación real",
-      contextTitle: "La información ya existe. TraceOps la ordena y la vuelve accionable.",
-      contextSubtitle: "Carga una exportación de WhatsApp, un hilo de correo o un historial operativo. TraceOps convierte conversaciones dispersas en incidentes estructurados, prioridades claras, seguimiento trazable y memoria operativa reutilizable.",
-      loadZip: "Subir exportación",
+      contextKicker: "Construido desde adentro de la operación",
+      contextTitle: "Tu operación ya tiene la información. Lo que falta es mantenerla unida.",
+      contextSubtitle: "Carga una exportación de WhatsApp, un hilo de correo o un historial de mensajes operativos. TraceOps convierte conversaciones de piso en incidentes estructurados, prioridades visibles, seguimiento trazable y memoria operativa reutilizable.",
+      loadZip: "Cargar ZIP ahora",
       uploadTitle: "Comenzar con export de WhatsApp",
       uploadSubtitle: "Suelta aquí el ZIP o haz clic para seleccionarlo",
       selectFile: "Seleccionar archivo",
       chipsHero: ["Detección de incidentes","Hallazgos técnicos","Memoria RCCA","Yokoten","Bitácora operativa"],
-      chipsContext: ["WhatsApp","Correo","Bitácora","RCCA","Evidencia"],
+      chipsContext: ["Export de WhatsApp","EML / MBOX","Bitácora operativa","Archivo de causa raíz","Evidencia en contexto"],
       footerTagline: "Inteligencia operativa para equipos de manufactura",
-      langLabel: "Idioma",
-      captureMaturityTitle: "Madurez de captura",
-      captureMaturitySubtitle: "TraceOps también muestra cuánto contexto útil llega en cada mensaje operativo.",
-      captureEventsEvaluated: "eventos evaluados",
-      captureModel: "Con modelo",
-      captureLine: "Con línea",
-      captureStation: "Con estación",
-      captureOwner: "Con owner",
-      captureEvidence: "Con evidencia ligada",
-      captureToneStrong: "Fuerte",
-      captureTonePartial: "Parcial",
-      captureToneWeak: "Baja",
-      captureNoteTitle: "Qué significa",
-      captureNote: "Los campos no identificados suelen venir de mensajes con poco contexto. No es solo un tema del sistema; también refleja un hábito de captura que la operación puede mejorar con el tiempo."
+      langLabel: "Idioma"
     },
     zh: {
       brandSubtitle: "面向制造团队的运营智能",
@@ -3215,30 +3284,17 @@ function App() {
       localRcca: "本地 RCCA",
       heroEyebrow: "面向制造团队的运营智能",
       heroSubtitle: "将分散的现场对话转化为结构化事件、清晰优先级、可追踪跟进和可复用的运营记忆。",
-      contextKicker: "来自真实运营现场",
-      contextTitle: "信息已经存在。TraceOps 帮你整理并转化为可执行行动。",
-      contextSubtitle: "上传 WhatsApp 导出、邮件线程或运营记录。TraceOps 将分散对话转化为结构化事件、清晰优先级、可追踪跟进和可复用的运营记忆。",
-      loadZip: "上传导出文件",
+      contextKicker: "源自一线运营内部",
+      contextTitle: "你的运营已经拥有信息，缺少的是把它们留在一起。",
+      contextSubtitle: "上传 WhatsApp 导出、邮件线程或运营消息记录。TraceOps 将现场对话转化为结构化事件、可见优先级、可追踪跟进和可复用的运营记忆。",
+      loadZip: "立即加载 ZIP",
       uploadTitle: "从 WhatsApp 导出开始",
       uploadSubtitle: "将 ZIP 拖到这里，或点击进行选择",
       selectFile: "选择文件",
       chipsHero: ["事件检测","工程发现","RCCA 记忆","横展","运营日志"],
-      chipsContext: ["WhatsApp","邮件","运营日志","RCCA","证据"],
+      chipsContext: ["WhatsApp 导出","EML / MBOX","运营日志","根因档案","证据关联"],
       footerTagline: "面向制造团队的运营智能",
-      langLabel: "语言",
-      captureMaturityTitle: "捕获成熟度",
-      captureMaturitySubtitle: "TraceOps 也会显示每条运营消息带来了多少有用上下文。",
-      captureEventsEvaluated: "已评估事件",
-      captureModel: "带型号",
-      captureLine: "带产线",
-      captureStation: "带工站",
-      captureOwner: "带负责人",
-      captureEvidence: "带关联证据",
-      captureToneStrong: "较强",
-      captureTonePartial: "一般",
-      captureToneWeak: "偏弱",
-      captureNoteTitle: "这意味着",
-      captureNote: "未识别字段通常来自上下文不足的消息。这不只是系统问题，也反映了现场记录习惯仍可持续改进。"
+      langLabel: "语言"
     }
   };
   function t(key){
@@ -3410,7 +3466,7 @@ function App() {
     opts = opts || {};
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
       setAuthReady(true);
-      setCloudStatus("Análisis local");
+      setCloudStatus("Modo local");
       return [];
     }
     try {
@@ -3489,7 +3545,7 @@ function App() {
     try {
       await window.TraceOpsCloud.signOut();
       setAuthUser(null);
-      setCloudStatus("Análisis local");
+      setCloudStatus("Modo local");
       setAuthErrMsg("");
     } catch (err) {
       setAuthErrMsg(err && err.message ? err.message : String(err));
@@ -3501,7 +3557,7 @@ function App() {
   React.useEffect(function(){
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
       setAuthReady(true);
-      setCloudStatus("Análisis local · sin backend");
+      setCloudStatus("Modo local · sin backend");
       return;
     }
     var unsub = window.TraceOpsCloud.onAuthChange(function(evt, user){
@@ -3516,7 +3572,7 @@ function App() {
     refreshCloudRcca();
 
   } else {
-    setCloudStatus("Análisis local");
+    setCloudStatus("Modo local");
   }
 
   setAuthReady(true);
@@ -4248,32 +4304,6 @@ function App() {
   var criticalEventCount=ev.filter(function(e){return e.prioridad==="Critica";}).length;
   var openEventCount=ev.filter(function(e){return e.estatus!=="Cerrado";}).length;
   var findingsEventCount=ev.filter(function(e){return String(e.engineer_findings||"").trim().length>0;}).length;
-  function traceOpsKnownValue(v){
-    var s=String(v==null?"":v).trim();
-    return !!(s && s!=="N/D" && s!=="N/A" && s!=="-");
-  }
-  function traceOpsMetricTone(pct){
-    if(pct>=80) return {fg:"#1A7A3C",bg:"#EBF8EE",bar:"#48A882"};
-    if(pct>=50) return {fg:"#B87820",bg:"#FEF9E8",bar:"#D7A13A"};
-    return {fg:"#B03A2E",bg:"#FEF0EE",bar:"#D96B5B"};
-  }
-  var modelCapturedCount=ev.filter(function(e){return traceOpsKnownValue(e.modelo);}).length;
-  var lineCapturedCount=ev.filter(function(e){return extractLineLocal(e.linea_estacion||"")!=="N/D";}).length;
-  var stationCapturedCount=ev.filter(function(e){return extractStationLocal(e.linea_estacion||"")!=="N/D";}).length;
-  var ownerCapturedCount=ev.filter(function(e){return traceOpsKnownValue(e.reporta)||traceOpsKnownValue(e.responsable_sugerido);}).length;
-  var evidenceLinkedCount=ev.filter(function(e){return ((evImgs[e.id]||[]).length>0);}).length;
-  var captureMaturityCards=[
-    {label:t("captureModel"),count:modelCapturedCount},
-    {label:t("captureLine"),count:lineCapturedCount},
-    {label:t("captureStation"),count:stationCapturedCount},
-    {label:t("captureOwner"),count:ownerCapturedCount},
-    {label:t("captureEvidence"),count:evidenceLinkedCount}
-  ].map(function(item){
-    var pct=visibleEventCount?Math.round((item.count/visibleEventCount)*100):0;
-    item.pct=pct;
-    item.tone=traceOpsMetricTone(pct);
-    return item;
-  });
   var topStations=(function(){
     var map={};
     ev.forEach(function(e){
@@ -5074,7 +5104,7 @@ function App() {
           <div className="sidebar-section-title">Cuenta y sincronizacion RCCA</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             <div style={{fontSize:10,lineHeight:1.5,color:"rgba(255,255,255,.62)"}}>
-              {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Análisis local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
+              {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Modo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
             </div>
             <div style={{fontSize:10,lineHeight:1.4,color:syncBusy?"#CDE7C5":"rgba(255,255,255,.5)",padding:"8px 10px",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,background:"rgba(255,255,255,.03)"}}>
               {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(cloudStatus+(authReady?"":" · cargando"))}
@@ -5309,7 +5339,7 @@ function App() {
             </div>
             {filterMode==="quick"&&<div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:11.5,fontWeight:500,color:"#8A8580",marginRight:4}}>Ultimos:</span>{[1,3,7,14,30].map(function(d){return<button key={d} style={{border:days===d?"none":"1.5px solid #DDDBD7",background:days===d?"#1E5C48":"#fff",color:days===d?"#fff":"#6A6560",borderRadius:99,padding:"5px 14px",fontSize:12,fontWeight:days===d?700:500,cursor:"pointer"}} onClick={function(){setDays(d);}}>{d}d</button>;})}</div>}
             {filterMode==="week"&&<div style={{padding:"12px 16px"}}><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Semana</span><input type="number" min="1" max="53" value={weekNum} onChange={function(e){setWeekNum(e.target.value);}} style={{width:60,border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:13,fontWeight:700,color:"#1A1714",textAlign:"center",outline:"none"}}/></div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>A&#241;o</span><input type="number" min="2020" max="2030" value={weekYear} onChange={function(e){setWeekYear(e.target.value);}} style={{width:76,border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:13,color:"#1A1714",textAlign:"center",outline:"none"}}/></div></div><WeekPreview weekNum={weekNum} weekYear={weekYear} setWeekNum={setWeekNum} setWeekYear={setWeekYear}/></div>}
-            {filterMode==="range"&&<div style={{padding:"12px 16px"}}><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Desde</span><input type="date" value={dateFrom} onChange={function(e){setDateFrom(String(e.target.value||"").slice(0,10));}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/></div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Hasta</span><input type="date" value={dateTo} onChange={function(e){setDateTo(String(e.target.value||"").slice(0,10));}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/></div></div>{dateFrom&&dateTo&&traceOpsRangeDaysLocal(dateFrom,dateTo)>0&&<div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"7px 12px",display:"inline-flex",alignItems:"center",gap:6}}><span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateFrom}</span><span style={{fontSize:10,color:"#8A8580"}}>→</span><span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateTo}</span><span style={{fontSize:9,color:"#6A8060",marginLeft:4}}>{traceOpsRangeDaysLocal(dateFrom,dateTo)} dias</span></div>}</div>}
+            {filterMode==="range"&&<div style={{padding:"12px 16px"}}><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Desde</span><input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/></div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,color:"#8A8580"}}>Hasta</span><input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{border:"1.5px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}/></div></div>{dateFrom&&dateTo&&<div style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"7px 12px",display:"inline-flex",alignItems:"center",gap:6}}><span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateFrom}</span><span style={{fontSize:10,color:"#8A8580"}}>→</span><span style={{fontSize:10,color:"#2A7A60",fontWeight:700,fontFamily:"monospace"}}>{dateTo}</span><span style={{fontSize:9,color:"#6A8060",marginLeft:4}}>{Math.round(Math.abs(new Date(dateTo)-new Date(dateFrom))/86400000)+1} dias</span></div>}</div>}
           </div>
           {analysisWindowDays>7&&!adminOverride&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:12,padding:"10px 14px",marginBottom:14}}>
             <div style={{fontSize:11,fontWeight:700,color:"#8B6A1E",marginBottom:3}}>Rango amplio: {analysisWindowDays} dias</div>
@@ -5406,7 +5436,7 @@ function App() {
                 <span>{visibleEventCount} eventos visibles</span>
                 <span>{(msgStats&&msgStats.clean)||0} msgs limpios</span>
                 <span>{imgNames.length} evidencias en rango</span>
-                {apiUsage&&apiUsage.local_mode&&<span>Análisis local</span>}
+                {apiUsage&&apiUsage.local_mode&&<span>Modo local</span>}
                 {apiUsage&&apiUsage.provider==="openai-backend"&&<span>OpenAI backend</span>}
               </div>
             </div>
@@ -5453,29 +5483,6 @@ function App() {
             </div>
           </div>
 
-          <div className="traceops-panel" style={{marginBottom:18}}>
-            <div className="traceops-panel-head">
-              <div><h3>{t("captureMaturityTitle")}</h3><span>{t("captureMaturitySubtitle")}</span></div>
-              <span>{visibleEventCount} {t("captureEventsEvaluated")}</span>
-            </div>
-            <div className="traceops-panel-body">
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
-                {captureMaturityCards.map(function(card){return(
-                  <div key={card.label} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"14px 14px 12px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:10}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"#3D3A36",lineHeight:1.3}}>{card.label}</div>
-                      <div style={{fontSize:18,fontWeight:800,color:card.tone.fg,lineHeight:1}}>{card.pct}%</div>
-                    </div>
-                    <div style={{background:"#EEECEA",borderRadius:99,height:8,overflow:"hidden",marginBottom:8}}><div style={{height:8,borderRadius:99,background:card.tone.bar,width:card.pct+"%",transition:"width .35s ease"}}/></div>
-                    <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:10.5,color:"#6A6560"}}><span>{card.count}/{visibleEventCount||0}</span><span style={{color:card.tone.fg,fontWeight:700}}>{card.pct>=80?t("captureToneStrong"):(card.pct>=50?t("captureTonePartial"):t("captureToneWeak"))}</span></div>
-                  </div>
-                );})}
-              </div>
-              <div style={{marginTop:12,fontSize:11,color:"#6A6560",lineHeight:1.55,background:"#F8F7F5",border:"1px dashed #DDDBD7",borderRadius:12,padding:"10px 12px"}}>
-                <strong style={{color:"#1A1714"}}>{t("captureNoteTitle")}:</strong> {t("captureNote")}
-              </div>
-            </div>
-          </div>
 
           <div className="traceops-calendar">
             <div className="traceops-calendar-head">
@@ -5632,7 +5639,7 @@ function App() {
                 <h4>Estado operativo</h4>
                 <p>Rango activo, volumen de mensajes y evidencia disponible para el periodo seleccionado.</p>
                 <div className="traceops-bullets">
-                  <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Análisis local":"Pipeline actual")}</div>
+                  <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
                   <div className="traceops-bullet">
                     <strong>Rango base:</strong> {analysisRangeLabel||"N/D"}
                     {requestedWindowLabel&&<span> · <strong>Solicitada:</strong> {requestedWindowLabel}</span>}
@@ -5781,7 +5788,7 @@ function App() {
           </div>
 
           {(byDef.length>0||byTipo.length>0)&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {byDef.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Pareto de hallazgos</h4>{byDef.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B2DA8",width:(x.n/mxD*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
+            {byDef.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Pareto defectos SMT</h4>{byDef.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B2DA8",width:(x.n/mxD*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
             {byTipo.length>0&&<div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px"}}><h4 style={{fontSize:12,fontWeight:700,marginBottom:12,color:"#1A1714"}}>Por tipo</h4>{byTipo.map(function(x,i){return<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:7}}><div style={{fontSize:10,color:"#8A8580",width:88,flexShrink:0}}>{x.l}</div><div style={{flex:1,background:"#EEECEA",borderRadius:99,height:7}}><div style={{height:7,borderRadius:99,background:"#6B8C3A",width:(x.n/mxT*100)+"%"}}/></div><div style={{fontSize:10.5,fontWeight:700,color:"#3D3A36",width:20,textAlign:"right"}}>{x.n}</div></div>;})} </div>}
           </div>}
 
@@ -6158,12 +6165,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 
 <script>
-window.addEventListener('unhandledrejection', function(e) {
-  var box = document.createElement('div');
-  box.style.cssText = 'position:fixed;top:60px;left:0;right:0;background:#8E44AD;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;word-break:break-all';
-  box.innerHTML = '<strong>UNHANDLED REJECTION</strong><br>' + (e.reason ? e.reason.toString() : 'unknown');
-  document.body.appendChild(box);
+window.addEventListener("load", function() {
+  if (window.preloadExcelTools) window.preloadExcelTools();
 });
-</script></body>
-
+</script>
+</body>
 </html>
