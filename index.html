@@ -1494,6 +1494,90 @@ body.traceops-premium-shell .ops-hero{
 }
 /* ==== END GAP HARD FIX ==== */
 
+/* ==== START DRAWER / MOBILE GAP FIX V3 ==== */
+:root{
+  --traceops-vh:100vh;
+}
+
+html.traceops-mobile-drawer-open,
+body.traceops-mobile-drawer-open{
+  overflow:hidden !important;
+  height:var(--traceops-vh,100vh) !important;
+}
+
+body.traceops-premium-shell{
+  overflow-x:hidden !important;
+}
+
+body.traceops-premium-shell #root,
+body.traceops-premium-shell #root > div{
+  min-height:var(--traceops-vh,100vh) !important;
+}
+
+body.traceops-premium-shell .sidebar,
+body.traceops-premium-shell .sidebar-overlay,
+body.traceops-premium-shell .saas-topbar{
+  -webkit-transform:translateZ(0);
+  transform:translateZ(0);
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+
+body.traceops-premium-shell .sidebar-overlay{
+  position:fixed !important;
+  inset:0 !important;
+}
+
+body.traceops-premium-shell .main-content,
+body.traceops-premium-shell .main-content.expanded{
+  position:relative !important;
+  top:0 !important;
+  min-height:calc(var(--traceops-vh,100vh) - 82px) !important;
+}
+
+body.traceops-premium-shell .main-content::before,
+body.traceops-premium-shell .main-content::after{
+  content:none !important;
+  display:none !important;
+}
+
+body.traceops-premium-shell .main-content > br,
+body.traceops-premium-shell .main-content > hr{
+  display:none !important;
+}
+
+@media (max-width:900px){
+  body.traceops-premium-shell .sidebar{
+    position:fixed !important;
+    top:0 !important;
+    left:0 !important;
+    bottom:auto !important;
+    height:var(--traceops-vh,100vh) !important;
+    max-height:var(--traceops-vh,100vh) !important;
+  }
+
+  body.traceops-premium-shell .sidebar-overlay{
+    height:var(--traceops-vh,100vh) !important;
+    max-height:var(--traceops-vh,100vh) !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar{
+    position:fixed !important;
+    top:0 !important;
+    left:0 !important;
+    right:0 !important;
+    width:100% !important;
+  }
+
+  body.traceops-premium-shell .main-content,
+  body.traceops-premium-shell .main-content.expanded{
+    margin-left:0 !important;
+    padding-top:calc(82px + env(safe-area-inset-top,0px)) !important;
+  }
+}
+/* ==== END DRAWER / MOBILE GAP FIX V3 ==== */
+
+
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -4199,6 +4283,49 @@ function App() {
     window.addEventListener("resize", onResize);
     return function(){ window.removeEventListener("resize", onResize); };
   }, []);
+
+  React.useEffect(function(){
+    function syncTraceOpsViewport(){
+      try{
+        var vv = window.visualViewport;
+        var h = vv && vv.height ? vv.height : window.innerHeight;
+        if (h && document && document.documentElement) {
+          document.documentElement.style.setProperty("--traceops-vh", h + "px");
+        }
+      }catch(_){}
+    }
+    syncTraceOpsViewport();
+    window.addEventListener("resize", syncTraceOpsViewport);
+    window.addEventListener("orientationchange", syncTraceOpsViewport);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncTraceOpsViewport);
+      window.visualViewport.addEventListener("scroll", syncTraceOpsViewport);
+    }
+    return function(){
+      window.removeEventListener("resize", syncTraceOpsViewport);
+      window.removeEventListener("orientationchange", syncTraceOpsViewport);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", syncTraceOpsViewport);
+        window.visualViewport.removeEventListener("scroll", syncTraceOpsViewport);
+      }
+    };
+  }, []);
+
+  React.useEffect(function(){
+    var mobileOpen = window.innerWidth <= 900 && !!sidebarOpen;
+    try{
+      if (mobileOpen) window.scrollTo(0,0);
+      document.body.classList.toggle("traceops-mobile-drawer-open", mobileOpen);
+      document.documentElement.classList.toggle("traceops-mobile-drawer-open", mobileOpen);
+    }catch(_){}
+    return function(){
+      try{
+        document.body.classList.remove("traceops-mobile-drawer-open");
+        document.documentElement.classList.remove("traceops-mobile-drawer-open");
+      }catch(_){}
+    };
+  }, [sidebarOpen]);
+
 
   React.useEffect(function(){
     try { localStorage.setItem("traceops_lang", lang); } catch(_) {}
