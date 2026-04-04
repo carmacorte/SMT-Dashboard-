@@ -1434,6 +1434,66 @@ body.traceops-premium-shell .table-reset-btn:active{
 }
 
 
+
+
+/* ==== START GAP HARD FIX ==== */
+body.traceops-premium-shell,
+body.traceops-premium-shell #root{
+  margin:0 !important;
+  padding:0 !important;
+  min-height:100svh !important;
+}
+
+body.traceops-premium-shell .saas-topbar{
+  top:0 !important;
+}
+
+body.traceops-premium-shell .main-content,
+body.traceops-premium-shell .main-content.expanded{
+  margin-top:0 !important;
+  padding-top:84px !important;
+}
+
+body.traceops-premium-shell .main-content > :first-child,
+body.traceops-premium-shell .main-content > div:first-child,
+body.traceops-premium-shell .main-content > section:first-child{
+  margin-top:0 !important;
+}
+
+body.traceops-premium-shell .main-content > div:first-child:empty{
+  display:none !important;
+}
+
+body.traceops-premium-shell .ops-hero{
+  margin-top:0 !important;
+  transform:none !important;
+}
+
+@media (max-width:900px){
+  body.traceops-premium-shell .saas-topbar{
+    top:0 !important;
+    left:0 !important;
+  }
+
+  body.traceops-premium-shell .main-content,
+  body.traceops-premium-shell .main-content.expanded{
+    padding-top:78px !important;
+  }
+}
+
+@supports (padding: max(0px)) {
+  body.traceops-premium-shell .saas-topbar{
+    padding-top:max(14px, env(safe-area-inset-top)) !important;
+    height:calc(72px + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  body.traceops-premium-shell .main-content,
+  body.traceops-premium-shell .main-content.expanded{
+    padding-top:calc(82px + env(safe-area-inset-top, 0px)) !important;
+  }
+}
+/* ==== END GAP HARD FIX ==== */
+
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
