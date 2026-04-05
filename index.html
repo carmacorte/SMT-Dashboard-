@@ -1522,6 +1522,71 @@ body.traceops-premium-shell .ops-hero{
 }
 /* ==== END GAP HARD FIX ==== */
 
+
+/* ==== START MOBILE LANGUAGE SELECTOR FIX ==== */
+@media (max-width:900px){
+  body.traceops-premium-shell .saas-topbar{
+    overflow:visible !important;
+    padding-right:max(14px, calc(14px + env(safe-area-inset-right, 0px))) !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-left{
+    flex:0 1 auto !important;
+    min-width:0 !important;
+    gap:10px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-brand{
+    max-width:24vw !important;
+    min-width:0 !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    flex-wrap:nowrap !important;
+    justify-content:flex-end !important;
+    gap:6px !important;
+    overflow:visible !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill{
+    flex:0 0 auto !important;
+    white-space:nowrap !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child{
+    padding:6px 6px !important;
+    gap:4px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child button{
+    padding:4px 6px !important;
+    font-size:10px !important;
+    line-height:1 !important;
+  }
+}
+
+@media (max-width:420px){
+  body.traceops-premium-shell .saas-topbar-brand{
+    max-width:18vw !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions{
+    gap:5px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child{
+    padding:5px 5px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child button{
+    padding:4px 5px !important;
+    font-size:9px !important;
+  }
+}
+/* ==== END MOBILE LANGUAGE SELECTOR FIX ==== */
+
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
