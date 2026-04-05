@@ -650,14 +650,24 @@ body.traceops-premium-shell::after{
   display:none !important;
 }
 
-body.traceops-premium-shell .sidebar,
-body.traceops-premium-shell .saas-topbar,
-body.traceops-premium-shell .main-content{
-  position:relative;
-  z-index:1;
+body.traceops-premium-shell .sidebar{
+  position:fixed !important;
+  top:0 !important;
+  left:0 !important;
+  bottom:0 !important;
+  z-index:140 !important;
+}
+
+body.traceops-premium-shell .saas-topbar{
+  position:fixed !important;
+  top:0 !important;
+  right:0 !important;
+  z-index:130 !important;
 }
 
 body.traceops-premium-shell .main-content{
+  position:relative !important;
+  z-index:1 !important;
   color:#10231C !important;
   background:transparent !important;
   padding-top:76px !important;
@@ -778,6 +788,24 @@ body.traceops-premium-shell .sidebar-nuevo{
 
 body.traceops-premium-shell .sidebar-overlay{
   background:rgba(0,0,0,.56) !important;
+}
+
+body.traceops-premium-shell .sidebar-overlay{
+  position:fixed !important;
+  inset:0 !important;
+  z-index:125 !important;
+}
+
+@media (max-width:900px){
+  body.traceops-premium-shell .sidebar{
+    width:min(86vw,320px) !important;
+    height:100svh !important;
+    max-height:100svh !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar{
+    left:0 !important;
+  }
 }
 
 /* hero premium */
@@ -1493,55 +1521,6 @@ body.traceops-premium-shell .ops-hero{
   }
 }
 /* ==== END GAP HARD FIX ==== */
-
-
-
-/* ==== HERO GAP FIX AFTER MULTILANG ==== */
-body.traceops-premium-shell .ops-hero{
-  display:flex !important;
-  align-items:flex-start !important;
-  justify-content:flex-start !important;
-  min-height:420px !important;
-  padding:28px 24px 30px !important;
-}
-
-body.traceops-premium-shell .ops-hero-content{
-  justify-content:flex-start !important;
-  padding-top:0 !important;
-  gap:14px !important;
-}
-
-body.traceops-premium-shell .ops-hero-content > div:first-child{
-  display:none !important;
-}
-
-body.traceops-premium-shell .ops-hero-title::before{
-  margin-top:0 !important;
-}
-
-body.traceops-premium-shell .ops-hero-subtitle{
-  margin-top:0 !important;
-}
-
-body.traceops-premium-shell .ops-hero-actions{
-  margin-top:2px !important;
-}
-
-body.traceops-premium-shell .ops-hero::after{
-  bottom:12px !important;
-}
-
-@media (max-width:900px){
-  body.traceops-premium-shell .ops-hero{
-    min-height:390px !important;
-    padding:22px 18px 26px !important;
-  }
-
-  body.traceops-premium-shell .ops-hero-content{
-    gap:12px !important;
-  }
-}
-/* ==== END HERO GAP FIX AFTER MULTILANG ==== */
 
 </style>
 
