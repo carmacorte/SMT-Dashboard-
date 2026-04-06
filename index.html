@@ -1589,129 +1589,131 @@ body.traceops-premium-shell .ops-hero{
 
 
 
-/* ==== START MOBILE MENU OFFSET FIX ==== */
-@media (max-width:900px){
-  body.traceops-premium-shell .saas-topbar-left{
-    align-items:flex-start !important;
-  }
-
-  body.traceops-premium-shell .saas-menu-btn{
-    position:relative !important;
-    top:12px !important;
-    z-index:3 !important;
-    flex:0 0 auto !important;
-  }
-}
-
-@media (max-width:420px){
-  body.traceops-premium-shell .saas-menu-btn{
-    top:14px !important;
-  }
-}
-/* ==== END MOBILE MENU OFFSET FIX ==== */
-
-
-
-/* ==== START STABILITY PATCH 2026-04-05 ==== */
-body.traceops-premium-shell #root,
-body.traceops-premium-shell .main-content{
-  position:relative !important;
-}
-
-body.traceops-premium-shell .main-content,
-body.traceops-premium-shell .main-content.expanded{
-  padding-top:84px !important;
-}
-
-body.traceops-premium-shell .main-content > .ops-hero:first-child,
-body.traceops-premium-shell .main-content > div:first-child > .ops-hero:first-child{
-  margin-top:0 !important;
-}
-
-@supports (padding: max(0px)) {
-  body.traceops-premium-shell .main-content,
-  body.traceops-premium-shell .main-content.expanded{
-    padding-top:calc(84px + env(safe-area-inset-top, 0px)) !important;
-  }
-}
-
+/* ==== START HEADER MOBILE ALIGN FIX ==== */
 @media (max-width:900px){
   body.traceops-premium-shell .saas-topbar{
-    align-items:flex-start !important;
-    min-height:72px !important;
+    display:grid !important;
+    grid-template-columns:44px minmax(0,1fr) auto !important;
+    align-items:center !important;
+    column-gap:10px !important;
+    row-gap:0 !important;
     padding-left:max(14px, calc(14px + env(safe-area-inset-left, 0px))) !important;
     padding-right:max(14px, calc(14px + env(safe-area-inset-right, 0px))) !important;
+    overflow:visible !important;
   }
 
   body.traceops-premium-shell .saas-topbar-left{
-    align-items:flex-start !important;
-    gap:8px !important;
-    padding-top:6px !important;
+    display:contents !important;
   }
 
   body.traceops-premium-shell .saas-menu-btn{
-    top:8px !important;
-    margin-right:2px !important;
+    display:inline-flex !important;
+    position:relative !important;
+    top:0 !important;
+    left:0 !important;
+    margin:0 !important;
+    align-self:center !important;
+    justify-self:start !important;
+    z-index:2 !important;
+    transform:none !important;
   }
 
   body.traceops-premium-shell .saas-topbar-brand{
-    max-width:20vw !important;
+    min-width:0 !important;
+    max-width:none !important;
+    overflow:hidden !important;
+    justify-self:start !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-title{
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
   }
 
   body.traceops-premium-shell .saas-topbar-actions{
-    flex:1 1 auto !important;
     min-width:0 !important;
-    flex-wrap:nowrap !important;
-    justify-content:flex-end !important;
+    display:flex !important;
     align-items:center !important;
+    justify-content:flex-end !important;
+    flex-wrap:nowrap !important;
     gap:6px !important;
-    overflow-x:auto !important;
-    overflow-y:hidden !important;
-    scrollbar-width:none !important;
-    padding-top:2px !important;
-    -webkit-overflow-scrolling:touch !important;
+    overflow:visible !important;
   }
 
-  body.traceops-premium-shell .saas-topbar-actions::-webkit-scrollbar{
-    display:none !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions > *{
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill{
     flex:0 0 auto !important;
+    white-space:nowrap !important;
   }
 
   body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child{
     padding:5px 6px !important;
-    gap:4px !important;
+    gap:3px !important;
+    margin-left:0 !important;
   }
 
   body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child button{
     padding:4px 6px !important;
+    min-width:30px !important;
     font-size:10px !important;
     line-height:1 !important;
   }
+}
 
-  body.traceops-premium-shell .main-content,
-  body.traceops-premium-shell .main-content.expanded{
-    padding-top:calc(80px + env(safe-area-inset-top, 0px)) !important;
+@media (max-width:560px){
+  body.traceops-premium-shell .saas-topbar{
+    grid-template-columns:44px minmax(52px,72px) auto !important;
+    column-gap:8px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-brand{
+    max-width:72px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-title{
+    font-size:13px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions{
+    gap:4px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child{
+    padding:4px 5px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child button{
+    min-width:26px !important;
+    padding:4px 4px !important;
+    font-size:9px !important;
   }
 }
 
 @media (max-width:420px){
-  body.traceops-premium-shell .saas-menu-btn{
-    top:10px !important;
+  body.traceops-premium-shell .saas-topbar{
+    grid-template-columns:44px minmax(44px,60px) auto !important;
+    column-gap:6px !important;
   }
 
   body.traceops-premium-shell .saas-topbar-brand{
-    max-width:16vw !important;
+    max-width:60px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions{
+    gap:3px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child{
+    padding:4px 4px !important;
   }
 
   body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child button{
-    padding:4px 5px !important;
-    font-size:9px !important;
+    min-width:24px !important;
+    padding:4px 3px !important;
+    font-size:8.5px !important;
   }
 }
-/* ==== END STABILITY PATCH 2026-04-05 ==== */
+/* ==== END HEADER MOBILE ALIGN FIX ==== */
 
 </style>
 
