@@ -1715,6 +1715,30 @@ body.traceops-premium-shell .ops-hero{
 }
 /* ==== END HEADER MOBILE ALIGN FIX ==== */
 
+
+/* ==== START GHOST BUTTON TEXT VISIBILITY FIX ==== */
+body.traceops-premium-shell .ops-hero .ops-hero-btn.ghost,
+body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost{
+  background:#F6FBF8 !important;
+  color:#1A5B45 !important;
+  border:1px solid rgba(26,91,69,.14) !important;
+  box-shadow:0 8px 18px rgba(16,35,28,.06) !important;
+}
+
+body.traceops-premium-shell .ops-hero .ops-hero-btn.ghost::before,
+body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost::before{
+  color:#1A5B45 !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+}
+
+body.traceops-premium-shell .ops-hero .ops-hero-btn.ghost:hover,
+body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost:hover{
+  background:#EEF6F1 !important;
+  border-color:rgba(26,91,69,.18) !important;
+}
+/* ==== END GHOST BUTTON TEXT VISIBILITY FIX ==== */
+
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
