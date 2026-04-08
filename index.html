@@ -1589,155 +1589,42 @@ body.traceops-premium-shell .ops-hero{
 
 
 
-/* ==== START HEADER MOBILE ALIGN FIX ==== */
+/* ==== START MOBILE MENU OFFSET FIX ==== */
 @media (max-width:900px){
-  body.traceops-premium-shell .saas-topbar{
-    display:grid !important;
-    grid-template-columns:44px minmax(0,1fr) auto !important;
-    align-items:center !important;
-    column-gap:10px !important;
-    row-gap:0 !important;
-    padding-left:max(14px, calc(14px + env(safe-area-inset-left, 0px))) !important;
-    padding-right:max(14px, calc(14px + env(safe-area-inset-right, 0px))) !important;
-    overflow:visible !important;
-  }
-
   body.traceops-premium-shell .saas-topbar-left{
-    display:contents !important;
+    align-items:flex-start !important;
   }
 
   body.traceops-premium-shell .saas-menu-btn{
-    display:inline-flex !important;
     position:relative !important;
-    top:0 !important;
-    left:0 !important;
-    margin:0 !important;
-    align-self:center !important;
-    justify-self:start !important;
-    z-index:2 !important;
-    transform:none !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-brand{
-    min-width:0 !important;
-    max-width:none !important;
-    overflow:hidden !important;
-    justify-self:start !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-title{
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions{
-    min-width:0 !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:flex-end !important;
-    flex-wrap:nowrap !important;
-    gap:6px !important;
-    overflow:visible !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill{
+    top:12px !important;
+    z-index:3 !important;
     flex:0 0 auto !important;
-    white-space:nowrap !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child{
-    padding:5px 6px !important;
-    gap:3px !important;
-    margin-left:0 !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child button{
-    padding:4px 6px !important;
-    min-width:30px !important;
-    font-size:10px !important;
-    line-height:1 !important;
-  }
-}
-
-@media (max-width:560px){
-  body.traceops-premium-shell .saas-topbar{
-    grid-template-columns:44px minmax(52px,72px) auto !important;
-    column-gap:8px !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-brand{
-    max-width:72px !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-title{
-    font-size:13px !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions{
-    gap:4px !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child{
-    padding:4px 5px !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child button{
-    min-width:26px !important;
-    padding:4px 4px !important;
-    font-size:9px !important;
   }
 }
 
 @media (max-width:420px){
-  body.traceops-premium-shell .saas-topbar{
-    grid-template-columns:44px minmax(44px,60px) auto !important;
-    column-gap:6px !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-brand{
-    max-width:60px !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions{
-    gap:3px !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child{
-    padding:4px 4px !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child button{
-    min-width:24px !important;
-    padding:4px 3px !important;
-    font-size:8.5px !important;
+  body.traceops-premium-shell .saas-menu-btn{
+    top:14px !important;
   }
 }
-/* ==== END HEADER MOBILE ALIGN FIX ==== */
+/* ==== END MOBILE MENU OFFSET FIX ==== */
 
 
-/* ==== START GHOST BUTTON TEXT VISIBILITY FIX ==== */
-body.traceops-premium-shell .ops-hero .ops-hero-btn.ghost,
-body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost{
-  background:#F6FBF8 !important;
-  color:#1A5B45 !important;
-  border:1px solid rgba(26,91,69,.14) !important;
-  box-shadow:0 8px 18px rgba(16,35,28,.06) !important;
-}
-
-body.traceops-premium-shell .ops-hero .ops-hero-btn.ghost::before,
-body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost::before{
-  color:#1A5B45 !important;
-  opacity:1 !important;
-  text-shadow:none !important;
-}
-
-body.traceops-premium-shell .ops-hero .ops-hero-btn.ghost:hover,
-body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost:hover{
-  background:#EEF6F1 !important;
-  border-color:rgba(26,91,69,.18) !important;
-}
-/* ==== END GHOST BUTTON TEXT VISIBILITY FIX ==== */
+.traceops-closure-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.traceops-closure-card .traceops-kpi-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.traceops-ops-panel{margin-bottom:16px}
+.traceops-action-reasons{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.traceops-action-flag{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:#F6FBF8;border:1px solid #DDEBE4;color:#1A5B45}
+.traceops-action-flag.crit{background:#FDEEEE;border-color:#F3D4D4;color:#C44141}
+.traceops-action-flag.warn{background:#FFF7E8;border-color:#F2DFC0;color:#9A6A16}
+.traceops-action-flag.info{background:#EEF7F2;border-color:#D8EADF;color:#1E7B58}
+.traceops-action-age{display:inline-flex;align-items:center;justify-content:center;min-width:62px;padding:8px 10px;border-radius:999px;background:#10231C;color:#FFFFFF;font-size:11px;font-weight:800;align-self:flex-start}
+.traceops-flow-summary{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid #EEECEA;background:#FBFCFA}
+.traceops-flow-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:10px;font-weight:800;background:#F6FBF8;border:1px solid #E1ECE6;color:#1A5B45}
+.traceops-flow-pill strong{color:#10231C;font-size:11px}
+@media(max-width:1180px){.traceops-closure-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:560px){.traceops-closure-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.traceops-action-age{min-width:auto}.traceops-flow-summary{padding:10px 12px}}
 
 </style>
 
@@ -4429,6 +4316,85 @@ function App() {
     var bucket = translations[lang] || translations.en;
     return bucket[key] != null ? bucket[key] : translations.en[key];
   }
+  var ux = lang === "es" ? {
+    closurePressure: "Presión de cierre",
+    pending: "Pendientes",
+    aged01: "0-1 días",
+    aged23: "2-3 días",
+    aged4: "4+ días",
+    noOwner: "Sin owner",
+    noLine: "Sin línea",
+    closedRate: "cierre",
+    needsActionTitle: "Needs action now",
+    needsActionSubtitle: "Eventos que requieren owner, contención o cierre antes de que sigan envejeciendo.",
+    focusImmediate: "foco inmediato",
+    flagCritical: "Crítico",
+    flagAging: "Aging 4+d",
+    flagNoOwner: "Sin owner",
+    flagNoLine: "Sin línea",
+    flagInProgress: "En proceso",
+    dayShort: "día",
+    daysShort: "días",
+    ownerMissingShort: "Sin owner",
+    lineMissingShort: "Sin línea",
+    noActionItems: "No hay pendientes urgentes en el filtro activo.",
+    storyLifecycle: "Ciclo de vida de incidentes",
+    blockedNow: "bloqueados",
+    pendingLabel: "Pendientes",
+    closedLabel: "Cerrados"
+  } : (lang === "zh" ? {
+    closurePressure: "结案压力",
+    pending: "待处理",
+    aged01: "0-1天",
+    aged23: "2-3天",
+    aged4: "4天以上",
+    noOwner: "无负责人",
+    noLine: "无线别",
+    closedRate: "关闭率",
+    needsActionTitle: "Needs action now",
+    needsActionSubtitle: "这些事件需要负责人、遏制动作或关闭推进，避免继续老化。",
+    focusImmediate: "即时焦点",
+    flagCritical: "关键",
+    flagAging: "老化 4天+",
+    flagNoOwner: "无负责人",
+    flagNoLine: "无线别",
+    flagInProgress: "处理中",
+    dayShort: "天",
+    daysShort: "天",
+    ownerMissingShort: "无负责人",
+    lineMissingShort: "无线别",
+    noActionItems: "当前筛选下没有紧急待处理事件。",
+    storyLifecycle: "事件生命周期",
+    blockedNow: "阻塞",
+    pendingLabel: "待处理",
+    closedLabel: "已关闭"
+  } : {
+    closurePressure: "Closure pressure",
+    pending: "Pending",
+    aged01: "0-1 days",
+    aged23: "2-3 days",
+    aged4: "4+ days",
+    noOwner: "No owner",
+    noLine: "No line",
+    closedRate: "closed",
+    needsActionTitle: "Needs action now",
+    needsActionSubtitle: "Events that need an owner, containment, or closure before they age further.",
+    focusImmediate: "immediate focus",
+    flagCritical: "Critical",
+    flagAging: "Aging 4+d",
+    flagNoOwner: "No owner",
+    flagNoLine: "No line",
+    flagInProgress: "In progress",
+    dayShort: "day",
+    daysShort: "days",
+    ownerMissingShort: "No owner",
+    lineMissingShort: "No line",
+    noActionItems: "No urgent pending events in the active filter.",
+    storyLifecycle: "Incident lifecycle",
+    blockedNow: "blocked",
+    pendingLabel: "Pending",
+    closedLabel: "Closed"
+  };
   var statsArr = _useState(null); var msgStats = statsArr[0]; var setMsgStats = statsArr[1];
   var bitSortKeyArr = _useState("fecha"); var bitacoraSortKey = bitSortKeyArr[0]; var setBitacoraSortKey = bitSortKeyArr[1];
   var bitSortDirArr = _useState("desc"); var bitacoraSortDir = bitSortDirArr[0]; var setBitacoraSortDir = bitSortDirArr[1];
@@ -5446,6 +5412,63 @@ function App() {
     if(pb!==pa) return pb-pa;
     return String(a.id||"").localeCompare(String(b.id||""));
   }).slice(0,4);
+
+  var closedEventCount=ev.filter(function(e){return e.estatus==="Cerrado";}).length;
+  var inProgressEventCount=ev.filter(function(e){return e.estatus==="En proceso";}).length;
+  var refAgeMs=eventTimes.length?eventTimes[eventTimes.length-1]:Date.now();
+  function ownerMissingLocal(v){
+    var s=String(v||"").trim().toLowerCase();
+    return !s || s==="n/d" || s==="na" || s==="n-a" || s==="sin owner" || s==="sin responsable" || s==="pendiente" || s==="tbd" || s==="-";
+  }
+  function lineMissingLocal(v){
+    var s=String(v||"").trim().toLowerCase();
+    return !s || s==="n/d" || s==="na" || s==="n-a" || s==="multilinea" || s==="multi-line" || s==="sin linea" || s==="sin línea" || s==="-";
+  }
+  function ageDaysLocal(evRow){
+    var ms=parseBitacoraDateValue(evRow);
+    if(!ms) return 0;
+    return Math.max(0, Math.floor((refAgeMs-ms)/86400000));
+  }
+  function ageLabelLocal(days){
+    if(lang==="zh") return String(days)+ux.daysShort;
+    if(lang==="en") return String(days)+" "+(days===1?ux.dayShort:ux.daysShort);
+    return String(days)+" "+(days===1?ux.dayShort:ux.daysShort);
+  }
+  var pendingEvents=ev.filter(function(e){return e.estatus!=="Cerrado";});
+  var pending01Count=pendingEvents.filter(function(e){var d=ageDaysLocal(e);return d<=1;}).length;
+  var pending23Count=pendingEvents.filter(function(e){var d=ageDaysLocal(e);return d>=2&&d<=3;}).length;
+  var pending4Count=pendingEvents.filter(function(e){return ageDaysLocal(e)>=4;}).length;
+  var noOwnerCount=pendingEvents.filter(function(e){return ownerMissingLocal(e.responsable_sugerido);}).length;
+  var noLineCount=pendingEvents.filter(function(e){return lineMissingLocal(e.linea_estacion);}).length;
+  var closureRate=visibleEventCount?Math.round((closedEventCount/visibleEventCount)*100):0;
+  var actionItems=pendingEvents.map(function(e){
+    var ageDays=ageDaysLocal(e);
+    var missingOwner=ownerMissingLocal(e.responsable_sugerido);
+    var missingLine=lineMissingLocal(e.linea_estacion);
+    var flags=[];
+    if(e.prioridad==="Critica") flags.push({label:ux.flagCritical,kind:"crit"});
+    if(ageDays>=4) flags.push({label:ux.flagAging,kind:"warn"});
+    if(missingOwner) flags.push({label:ux.flagNoOwner,kind:"info"});
+    if(missingLine) flags.push({label:ux.flagNoLine,kind:"info"});
+    if(e.estatus==="En proceso") flags.push({label:ux.flagInProgress,kind:"info"});
+    return Object.assign({}, e, {
+      ageDays:ageDays,
+      ageLabel:ageLabelLocal(ageDays),
+      missingOwner:missingOwner,
+      missingLine:missingLine,
+      reasonFlags:flags
+    });
+  }).filter(function(e){
+    return e.prioridad==="Critica" || e.ageDays>=2 || e.missingOwner || e.missingLine || e.estatus==="En proceso";
+  }).sort(function(a,b){
+    var pa=({Critica:4,Alta:3,Media:2,Baja:1})[a.prioridad]||0;
+    var pb=({Critica:4,Alta:3,Media:2,Baja:1})[b.prioridad]||0;
+    if(pb!==pa) return pb-pa;
+    if((b.ageDays||0)!==(a.ageDays||0)) return (b.ageDays||0)-(a.ageDays||0);
+    if((b.missingOwner?1:0)!==(a.missingOwner?1:0)) return (b.missingOwner?1:0)-(a.missingOwner?1:0);
+    if((b.missingLine?1:0)!==(a.missingLine?1:0)) return (b.missingLine?1:0)-(a.missingLine?1:0);
+    return parseBitacoraDateValue(a)-parseBitacoraDateValue(b);
+  }).slice(0,5);
 
   function clearViewFilters(){
     setViewDateFrom("");setViewDateTo("");setViewHourFrom("");setViewHourTo("");
@@ -6574,6 +6597,66 @@ function App() {
             </div>
           </div>
 
+          <div className="traceops-closure-strip">
+            <div className="traceops-kpi-card traceops-closure-card">
+              <div className="traceops-kpi-label">{ux.pending}</div>
+              <div className="traceops-kpi-value fail">{openEventCount}</div>
+              <div className="traceops-kpi-meta"><span>{ux.closedLabel}</span><strong>{closedEventCount}</strong></div>
+            </div>
+            <div className="traceops-kpi-card traceops-closure-card">
+              <div className="traceops-kpi-label">{ux.aged01}</div>
+              <div className="traceops-kpi-value pass">{pending01Count}</div>
+              <div className="traceops-kpi-meta"><span>{ux.closurePressure}</span><strong>{closureRate}%</strong></div>
+            </div>
+            <div className="traceops-kpi-card traceops-closure-card">
+              <div className="traceops-kpi-label">{ux.aged23}</div>
+              <div className="traceops-kpi-value warn">{pending23Count}</div>
+              <div className="traceops-kpi-meta"><span>{ux.pending}</span><strong>{openEventCount}</strong></div>
+            </div>
+            <div className="traceops-kpi-card traceops-closure-card">
+              <div className="traceops-kpi-label">{ux.aged4}</div>
+              <div className="traceops-kpi-value fail">{pending4Count}</div>
+              <div className="traceops-kpi-meta"><span>{ux.blockedNow}</span><strong>{pending4Count+noOwnerCount}</strong></div>
+            </div>
+            <div className="traceops-kpi-card traceops-closure-card">
+              <div className="traceops-kpi-label">{ux.noOwner}</div>
+              <div className="traceops-kpi-value info">{noOwnerCount}</div>
+              <div className="traceops-kpi-meta"><span>{ux.pending}</span><strong>{openEventCount}</strong></div>
+            </div>
+            <div className="traceops-kpi-card traceops-closure-card">
+              <div className="traceops-kpi-label">{ux.noLine}</div>
+              <div className="traceops-kpi-value warn">{noLineCount}</div>
+              <div className="traceops-kpi-meta"><span>{ux.closedRate}</span><strong>{closureRate}%</strong></div>
+            </div>
+          </div>
+
+          <div className="traceops-panel traceops-ops-panel">
+            <div className="traceops-panel-head">
+              <div><h3>{ux.needsActionTitle}</h3><span>{ux.needsActionSubtitle}</span></div>
+              <span>{actionItems.length} {ux.focusImmediate}</span>
+            </div>
+            <div className="traceops-panel-body">
+              <div className="traceops-alert-list">
+                {actionItems.length?actionItems.map(function(item){
+                  var sev=item.prioridad==="Critica"?"crit":(item.prioridad==="Alta"?"high":"med");
+                  return <div key={item.id} className="traceops-alert-item" style={{alignItems:"stretch"}}>
+                    <div className="traceops-alert-left" style={{flex:1,minWidth:0}}>
+                      <span className={"traceops-alert-badge "+sev}>{item.prioridad||"Media"}</span>
+                      <div className="traceops-alert-copy" style={{flex:1,minWidth:0}}>
+                        <div>{item.id} · {item.evento_detectado||"Sin descripcion"}</div>
+                        <span>{item.linea_estacion||ux.lineMissingShort} · {item.estatus||ux.pendingLabel} · {(item.responsable_sugerido&&String(item.responsable_sugerido).trim())||ux.ownerMissingShort}</span>
+                        <div className="traceops-action-reasons">
+                          {item.reasonFlags.map(function(flag,idx){return <span key={idx} className={"traceops-action-flag "+flag.kind}>{flag.label}</span>;})}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="traceops-action-age">{item.ageLabel}</div>
+                  </div>;
+                }):<div style={{fontSize:12,color:"#5F766C"}}>{ux.noActionItems}</div>}
+              </div>
+            </div>
+          </div>
+
           <div className="traceops-kpi-strip">
             <div className="traceops-kpi-card">
               <div className="traceops-kpi-label">Eventos visibles</div>
@@ -6947,8 +7030,15 @@ function App() {
           {ev.length>0&&(
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
               <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-                <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Incident Story Model</h3><span style={{fontSize:10,color:"#8A8580"}}>Ciclo de vida de incidentes</span></div>
-                <span style={{fontSize:9.5,color:"#2A7A60",fontWeight:600,background:"#EAF5F0",borderRadius:4,padding:"3px 8px"}}>{ev.length} incidentes</span>
+                <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Incident Story Model</h3><span style={{fontSize:10,color:"#8A8580"}}>{ux.storyLifecycle}</span></div>
+                <span style={{fontSize:9.5,color:"#2A7A60",fontWeight:600,background:"#EAF5F0",borderRadius:4,padding:"3px 8px"}}>{closureRate}% {ux.closedRate}</span>
+              </div>
+              <div className="traceops-flow-summary">
+                <span className="traceops-flow-pill"><strong>{ev.length}</strong> {lang==="zh"?"事件":(lang==="en"?"events":"incidentes")}</span>
+                <span className="traceops-flow-pill"><strong>{openEventCount}</strong> {ux.pendingLabel}</span>
+                <span className="traceops-flow-pill"><strong>{closedEventCount}</strong> {ux.closedLabel}</span>
+                <span className="traceops-flow-pill"><strong>{pending4Count}</strong> {ux.aged4}</span>
+                <span className="traceops-flow-pill"><strong>{noOwnerCount}</strong> {ux.noOwner}</span>
               </div>
               <div style={{display:"flex",overflowX:"auto",padding:"14px 12px",gap:8,minHeight:120}}>
                 {[{key:"Detectado",color:"#E8A050",bg:"#FEF6ED",border:"#F5D0A0"},{key:"Contenido",color:"#B87820",bg:"#FEF9E8",border:"#F5E4A0"},{key:"Corregido",color:"#1E7B58",bg:"#EBF0FC",border:"#BDD0F8"},{key:"Validado",color:"#1A7A3C",bg:"#EBF8EE",border:"#A0DEB4"},{key:"Cerrado",color:"#6A6560",bg:"#F8F7F5",border:"#DDDBD7"}].map(function(col){
