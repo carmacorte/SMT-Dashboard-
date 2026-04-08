@@ -1626,6 +1626,47 @@ body.traceops-premium-shell .ops-hero{
 @media(max-width:1180px){.traceops-closure-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:560px){.traceops-closure-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.traceops-action-age{min-width:auto}.traceops-flow-summary{padding:10px 12px}}
 
+
+/* ==== START LIGHT BUTTON TEXT FIX ==== */
+body.traceops-premium-shell .ops-hero-btn.ghost,
+body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost{
+  background:#FFFFFF !important;
+  color:#1A5B45 !important;
+  border:1px solid rgba(16,35,28,.10) !important;
+  box-shadow:0 10px 20px rgba(16,35,28,.06) !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.ghost::before,
+body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost::before{
+  color:#1A5B45 !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.ghost:hover,
+body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost:hover{
+  background:#F6FBF8 !important;
+  border-color:rgba(26,91,69,.16) !important;
+}
+
+/* por si algun boton claro reutiliza la misma capa */
+body.traceops-premium-shell .saas-header-pill,
+body.traceops-premium-shell .table-reset-btn,
+body.traceops-premium-shell .traceops-calendar-btn:not(.active),
+body.traceops-premium-shell .traceops-calendar-chip:not(.active),
+body.traceops-premium-shell .day-btn:not(.active){
+  color:#3E5F52 !important;
+}
+
+body.traceops-premium-shell .saas-header-pill *,
+body.traceops-premium-shell .table-reset-btn *,
+body.traceops-premium-shell .traceops-calendar-btn:not(.active) *,
+body.traceops-premium-shell .traceops-calendar-chip:not(.active) *,
+body.traceops-premium-shell .day-btn:not(.active) *{
+  color:inherit !important;
+}
+/* ==== END LIGHT BUTTON TEXT FIX ==== */
+
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
