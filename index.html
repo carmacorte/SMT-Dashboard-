@@ -1667,6 +1667,28 @@ body.traceops-premium-shell .day-btn:not(.active) *{
 }
 /* ==== END LIGHT BUTTON TEXT FIX ==== */
 
+
+/* ==== START HIERARCHY COMPACT PATCH ==== */
+body.traceops-premium-shell .traceops-context{
+  align-items:stretch !important;
+}
+body.traceops-premium-shell .traceops-context-actions{
+  align-self:stretch !important;
+}
+body.traceops-premium-shell .traceops-context-actions .ops-hero-btn{
+  width:100%;
+  justify-content:center;
+}
+@media (min-width:900px){
+  body.traceops-premium-shell .traceops-context-actions{
+    max-width:240px;
+  }
+}
+body.traceops-premium-shell .traceops-ops-panel .traceops-panel-body{
+  gap:16px;
+}
+/* ==== END HIERARCHY COMPACT PATCH ==== */
+
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -6620,24 +6642,32 @@ function App() {
         <div id="results-section">
           <div className="traceops-context">
             <div className="traceops-context-main">
-              <span className="traceops-context-kicker">Estado operativo</span>
-              <div className="traceops-context-title">Resumen del análisis actual</div>
-              <div className="traceops-context-subtitle">KPIs del rango analizado, alertas prioritarias, evidencia útil y trazabilidad para seguimiento en piso.</div>
+              <span className="traceops-context-kicker">Sesión operativa</span>
+              <div className="traceops-context-title">Ventana activa del análisis</div>
+              <div className="traceops-context-subtitle">Un solo resumen para rango, salud de la sesión, exportación y navegación. El resto del dashboard queda enfocado en acción, tendencias y cierre.</div>
               <div className="traceops-context-chips">
                 <span>{analysisRangeLabel||"Rango activo"}</span>
                 <span>{visibleEventCount} eventos visibles</span>
-                <span>{(msgStats&&msgStats.clean)||0} msgs limpios</span>
-                <span>{imgNames.length} evidencias en rango</span>
+                <span>{((msgStats&&msgStats.clean)||0).toLocaleString()} msgs limpios</span>
+                <span>{imgNames.length} evidencias</span>
                 {apiUsage&&apiUsage.local_mode&&<span>Modo local</span>}
                 {apiUsage&&apiUsage.provider==="openai-backend"&&<span>OpenAI backend</span>}
+                <span>{history.length>0?"Guardado en historial":"Sesion actual"}</span>
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4}}>
+                {["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){
+                  return <span key={s} className="traceops-flow-pill">{s}</span>;
+                })}
+                {apiUsage&&<span className="traceops-flow-pill"><strong>{apiUsage.cache_hit?"Cache":"API"}</strong>{apiUsage.cache_hit?"hit":"1 llamada"}</span>}
+                {apiUsage&&<span className="traceops-flow-pill">in <strong>{(apiUsage.input_tokens||0).toLocaleString()}</strong> tok</span>}
+                {apiUsage&&<span className="traceops-flow-pill">out <strong>{(apiUsage.output_tokens||0).toLocaleString()}</strong> tok</span>}
               </div>
             </div>
-            <div className="traceops-context-actions">
-              <button className="ops-hero-btn" onClick={download}>Descargar XLSX</button>
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("dashboard-filter"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Ir al dashboard</button>
+            <div className="traceops-context-actions" style={{minWidth:isMobile()?"100%":230}}>
+              <button className="ops-hero-btn primary" onClick={download}>Descargar XLSX</button>
+              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("dashboard-filter"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Ir al filtro</button>
             </div>
           </div>
-
           <div className="traceops-closure-strip">
             <div className="traceops-kpi-card traceops-closure-card">
               <div className="traceops-kpi-label">{ux.pending}</div>
@@ -6676,7 +6706,7 @@ function App() {
               <div><h3>{ux.needsActionTitle}</h3><span>{ux.needsActionSubtitle}</span></div>
               <span>{actionItems.length} {ux.focusImmediate}</span>
             </div>
-            <div className="traceops-panel-body">
+            <div className="traceops-panel-body" style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.2fr .8fr",gap:16}}>
               <div className="traceops-alert-list">
                 {actionItems.length?actionItems.map(function(item){
                   var sev=item.prioridad==="Critica"?"crit":(item.prioridad==="Alta"?"high":"med");
@@ -6694,6 +6724,20 @@ function App() {
                     <div className="traceops-action-age">{item.ageLabel}</div>
                   </div>;
                 }):<div style={{fontSize:12,color:"#5F766C"}}>{ux.noActionItems}</div>}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                <div className="traceops-engineering-card" style={{margin:0}}>
+                  <h4>Foco por estación</h4>
+                  <p>Concentración operativa del filtro actual, separando backlog estructural de las estaciones más activas.</p>
+                  <div className="traceops-bullets">
+                    {topStations.length?topStations.slice(0,5).map(function(row){return <div key={row.name} className="traceops-bullet"><strong>{row.name}</strong> · {row.count} evento(s)</div>;}):<div className="traceops-bullet">Sin datos suficientes en el rango actual.</div>}
+                  </div>
+                </div>
+                <div className="traceops-flow-summary" style={{borderTop:"none",padding:0,background:"transparent"}}>
+                  <span className="traceops-flow-pill">Sin linea <strong>{noLineCount}</strong></span>
+                  <span className="traceops-flow-pill">Sin owner <strong>{noOwnerCount}</strong></span>
+                  <span className="traceops-flow-pill">Cierre <strong>{closureRate}%</strong></span>
+                </div>
               </div>
             </div>
           </div>
@@ -6855,70 +6899,6 @@ function App() {
             )}
           </div>
 
-          <div className="traceops-analytics-grid">
-            <div className="traceops-panel">
-              <div className="traceops-panel-head">
-                <div><h3>Alertas con prioridad</h3><span>Eventos visibles que conviene revisar primero</span></div>
-                <span>{topAlerts.length} foco inmediato</span>
-              </div>
-              <div className="traceops-panel-body">
-                <div className="traceops-alert-list">
-                  {topAlerts.length?topAlerts.map(function(item){
-                    var sev=item.prioridad==="Critica"?"crit":(item.prioridad==="Alta"?"high":"med");
-                    return <div key={item.id} className="traceops-alert-item">
-                      <div className="traceops-alert-left">
-                        <span className={"traceops-alert-badge "+sev}>{item.prioridad||"Media"}</span>
-                        <div className="traceops-alert-copy">
-                          <div>{item.id} · {item.evento_detectado||"Sin descripcion"}</div>
-                          <span>{item.linea_estacion||"N/D"} · {item.tipo_evento||"Proceso"} · {item.estatus||"Abierto"}</span>
-                        </div>
-                      </div>
-                    </div>;
-                  }):<div style={{fontSize:12,color:"#5F766C"}}>No hay alertas visibles en el filtro activo.</div>}
-                </div>
-              </div>
-            </div>
-
-            <div className="traceops-engineering-grid">
-              <div className="traceops-engineering-card">
-                <h4>Top estaciones visibles</h4>
-                <p>Resumen rápido de las estaciones/líneas con mayor concentración de eventos en el filtro actual.</p>
-                <div className="traceops-bullets">
-                  {topStations.length?topStations.map(function(row){return <div key={row.name} className="traceops-bullet"><strong>{row.name}</strong> · {row.count} evento(s)</div>;}):<div className="traceops-bullet">Sin datos suficientes en el rango actual.</div>}
-                </div>
-              </div>
-              <div className="traceops-engineering-card">
-                <h4>Estado operativo</h4>
-                <p>Rango activo, volumen de mensajes y evidencia disponible para el periodo seleccionado.</p>
-                <div className="traceops-bullets">
-                  <div className="traceops-bullet"><strong>Motor:</strong> {apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</div>
-                  <div className="traceops-bullet">
-                    <strong>Rango base:</strong> {analysisRangeLabel||"N/D"}
-                    {requestedWindowLabel&&<span> · <strong>Solicitada:</strong> {requestedWindowLabel}</span>}
-                    {requestedWindowDiffers&&<span> · <strong>Con datos:</strong> {actualWindowLabel}</span>}
-                  </div>
-                  <div className="traceops-bullet"><strong>Mensajes limpios:</strong> {((msgStats&&msgStats.clean)||0).toLocaleString()} · <strong>Evidencias:</strong> {imgNames.length}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{background:"linear-gradient(135deg,#1E5C48,#2A7A60)",borderRadius:14,padding:"20px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
-            <div>
-              <h3 style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>Excel listo para junta</h3>
-              <p style={{fontSize:11,color:"rgba(242,236,200,.6)"}}>{(res.periodo||"")+" - "+ev.length+" eventos - "+((msgStats&&msgStats.clean)||0)+" msgs"}</p>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginTop:5}}><div style={{width:6,height:6,borderRadius:50,background:"#8ABD6E"}}/><span style={{fontSize:9.5,color:"rgba(200,220,160,.8)",fontWeight:500}}>Guardado en historial{elapsed>0&&" - "+String(Math.floor(elapsed/60)).padStart(2,"0")+":"+String(elapsed%60).padStart(2,"0")}</span></div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8}}>{["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){return<span key={s} style={{background:"rgba(200,216,150,.12)",border:"1px solid rgba(200,216,150,.2)",borderRadius:4,padding:"2px 8px",fontSize:9,color:"#F2ECC8"}}>{s}</span>;})}</div>
-              {apiUsage&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:10}}>
-                <span style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:99,padding:"4px 10px",fontSize:9.5,color:"#F2ECC8"}}>{apiUsage.cache_hit?"Cache hit":"1 llamada API"}</span>
-                <span style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:99,padding:"4px 10px",fontSize:9.5,color:"#F2ECC8"}}>in {(apiUsage.input_tokens||0).toLocaleString()} tok</span>
-                <span style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:99,padding:"4px 10px",fontSize:9.5,color:"#F2ECC8"}}>out {(apiUsage.output_tokens||0).toLocaleString()} tok</span>
-                <span style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.15)",borderRadius:99,padding:"4px 10px",fontSize:9.5,color:"#F2ECC8"}}>max {TRACEOPS_MAX_OUTPUT_TOKENS.toLocaleString()}</span>
-              </div>}
-            </div>
-            <button onClick={download} style={{background:"#7A9448",color:"#fff",border:"none",borderRadius:10,padding:"12px 22px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,boxShadow:"0 2px 8px rgba(122,148,72,.35)"}}>Descargar .xlsx</button>
-          </div>
-
           {imgNames.length>0&&(
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
               <div style={{padding:"12px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
@@ -6981,9 +6961,6 @@ function App() {
           </div>
 
           {visibleEventCount===0&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:14,padding:"14px 16px",marginBottom:14,fontSize:12,color:"#8B6A1E"}}>No hay eventos dentro del rango seleccionado. Ajusta las fechas u horas para volver a poblar KPIs, timeline y bitacora.</div>}
-
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
-            {[{v:ev.length,l:"Total eventos",c:"#1E5C48"},{v:crit.length,l:"Criticos",c:"#C0392B"},{v:pend.length,l:"Pendientes",c:"#1E7B58"},{v:cerr.length,l:"Cerrados",c:"#1A7A3C"}].map(function(k,i){return<div key={i} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,padding:"16px 18px",boxShadow:"0 1px 2px rgba(0,0,0,.05)"}}><div style={{fontSize:28,fontWeight:800,color:k.c,lineHeight:1,marginBottom:4}}>{k.v}</div><div style={{fontSize:10.5,color:"#8A8580",fontWeight:500}}>{k.l}</div></div>;})}</div>
 
           {kpis.length>0&&<div className="tcard"><div className="tcard-hdr"><h3>KPIs en chat</h3></div><div style={{padding:"10px 14px"}}>{kpis.map(function(k,i){return<div key={i} className="krow"><div className="kval">{k.valor}<span style={{fontSize:9}}>{k.unidad}</span></div><div className="kin"><div className="nm">{k.indicador}</div><div className="ts">{k.fechahora} - {k.fuente}</div></div><div className="kbar"><div className="kbf" style={{width:Math.min(100,k.valor<2?k.valor*100:k.valor)+"%"}}/></div></div>;})} </div></div>}
 
