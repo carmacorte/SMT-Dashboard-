@@ -1668,26 +1668,12 @@ body.traceops-premium-shell .day-btn:not(.active) *{
 /* ==== END LIGHT BUTTON TEXT FIX ==== */
 
 
-/* ==== START HIERARCHY COMPACT PATCH ==== */
-body.traceops-premium-shell .traceops-context{
-  align-items:stretch !important;
+.traceops-ops-panel .traceops-panel-body{padding:18px}
+.traceops-ops-panel .traceops-alert-item{align-items:flex-start}
+.traceops-ops-panel .traceops-bullets{margin-top:10px}
+@media(max-width:560px){
+  .traceops-ops-panel .traceops-panel-body{padding:14px}
 }
-body.traceops-premium-shell .traceops-context-actions{
-  align-self:stretch !important;
-}
-body.traceops-premium-shell .traceops-context-actions .ops-hero-btn{
-  width:100%;
-  justify-content:center;
-}
-@media (min-width:900px){
-  body.traceops-premium-shell .traceops-context-actions{
-    max-width:240px;
-  }
-}
-body.traceops-premium-shell .traceops-ops-panel .traceops-panel-body{
-  gap:16px;
-}
-/* ==== END HIERARCHY COMPACT PATCH ==== */
 
 </style>
 
@@ -6642,32 +6628,30 @@ function App() {
         <div id="results-section">
           <div className="traceops-context">
             <div className="traceops-context-main">
-              <span className="traceops-context-kicker">Sesión operativa</span>
-              <div className="traceops-context-title">Ventana activa del análisis</div>
-              <div className="traceops-context-subtitle">Un solo resumen para rango, salud de la sesión, exportación y navegación. El resto del dashboard queda enfocado en acción, tendencias y cierre.</div>
+              <span className="traceops-context-kicker">{lang==="zh"?"运营会话":"Sesion operativa"}</span>
+              <div className="traceops-context-title">{lang==="zh"?"当前分析上下文":"Contexto actual del analisis"}</div>
+              <div className="traceops-context-subtitle">{lang==="zh"?"把窗口、引擎、消息量、证据和导出状态集中在一个主面板里，避免重复摘要。":"Concentra ventana, motor, volumen de mensajes, evidencia y export en un solo panel maestro para evitar bloques repetidos."}</div>
               <div className="traceops-context-chips">
-                <span>{analysisRangeLabel||"Rango activo"}</span>
-                <span>{visibleEventCount} eventos visibles</span>
-                <span>{((msgStats&&msgStats.clean)||0).toLocaleString()} msgs limpios</span>
-                <span>{imgNames.length} evidencias</span>
-                {apiUsage&&apiUsage.local_mode&&<span>Modo local</span>}
-                {apiUsage&&apiUsage.provider==="openai-backend"&&<span>OpenAI backend</span>}
-                <span>{history.length>0?"Guardado en historial":"Sesion actual"}</span>
+                <span><strong>{lang==="zh"?"范围":"Rango"}:</strong>&nbsp;{analysisRangeLabel||"N/D"}</span>
+                {requestedWindowLabel&&<span><strong>{lang==="zh"?"请求":"Solicitada"}:</strong>&nbsp;{requestedWindowLabel}</span>}
+                {requestedWindowDiffers&&<span><strong>{lang==="zh"?"含数据":"Con datos"}:</strong>&nbsp;{actualWindowLabel}</span>}
+                <span><strong>{lang==="zh"?"消息":"Msgs"}:</strong>&nbsp;{((msgStats&&msgStats.clean)||0).toLocaleString()}</span>
+                <span><strong>{lang==="zh"?"证据":"Evidencias"}:</strong>&nbsp;{imgNames.length}</span>
+                <span><strong>{lang==="zh"?"引擎":"Motor"}:</strong>&nbsp;{apiUsage&&apiUsage.provider==="openai-backend"?"OpenAI backend":(apiUsage&&apiUsage.local_mode?"Modo local":"Pipeline actual")}</span>
+                <span><strong>Excel:</strong>&nbsp;{ev.length} evt · {((msgStats&&msgStats.clean)||0)} msgs</span>
               </div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4}}>
-                {["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){
-                  return <span key={s} className="traceops-flow-pill">{s}</span>;
-                })}
-                {apiUsage&&<span className="traceops-flow-pill"><strong>{apiUsage.cache_hit?"Cache":"API"}</strong>{apiUsage.cache_hit?"hit":"1 llamada"}</span>}
-                {apiUsage&&<span className="traceops-flow-pill">in <strong>{(apiUsage.input_tokens||0).toLocaleString()}</strong> tok</span>}
-                {apiUsage&&<span className="traceops-flow-pill">out <strong>{(apiUsage.output_tokens||0).toLocaleString()}</strong> tok</span>}
+              <div className="traceops-flow-summary" style={{marginTop:12}}>
+                <span className="traceops-flow-pill"><strong>{ux.pendingLabel}</strong> {openEventCount}</span>
+                <span className="traceops-flow-pill"><strong>{ux.closedLabel}</strong> {closedEventCount}</span>
+                <span className="traceops-flow-pill"><strong>{ux.closedRate}</strong> {closureRate}%</span>
+                <span className="traceops-flow-pill"><strong>{ux.noLine}</strong> {noLineCount}</span>
               </div>
             </div>
-            <div className="traceops-context-actions" style={{minWidth:isMobile()?"100%":230}}>
-              <button className="ops-hero-btn primary" onClick={download}>Descargar XLSX</button>
-              <button className="ops-hero-btn ghost" onClick={function(){ var target=document.getElementById("dashboard-filter"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"}); }}>Ir al filtro</button>
+            <div className="traceops-context-actions">
+              <button className="ops-hero-btn" onClick={download}>{lang==="zh"?"下载 XLSX":"Descargar XLSX"}</button>
             </div>
           </div>
+
           <div className="traceops-closure-strip">
             <div className="traceops-kpi-card traceops-closure-card">
               <div className="traceops-kpi-label">{ux.pending}</div>
@@ -6706,7 +6690,7 @@ function App() {
               <div><h3>{ux.needsActionTitle}</h3><span>{ux.needsActionSubtitle}</span></div>
               <span>{actionItems.length} {ux.focusImmediate}</span>
             </div>
-            <div className="traceops-panel-body" style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.2fr .8fr",gap:16}}>
+            <div className="traceops-panel-body">
               <div className="traceops-alert-list">
                 {actionItems.length?actionItems.map(function(item){
                   var sev=item.prioridad==="Critica"?"crit":(item.prioridad==="Alta"?"high":"med");
@@ -6724,20 +6708,6 @@ function App() {
                     <div className="traceops-action-age">{item.ageLabel}</div>
                   </div>;
                 }):<div style={{fontSize:12,color:"#5F766C"}}>{ux.noActionItems}</div>}
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                <div className="traceops-engineering-card" style={{margin:0}}>
-                  <h4>Foco por estación</h4>
-                  <p>Concentración operativa del filtro actual, separando backlog estructural de las estaciones más activas.</p>
-                  <div className="traceops-bullets">
-                    {topStations.length?topStations.slice(0,5).map(function(row){return <div key={row.name} className="traceops-bullet"><strong>{row.name}</strong> · {row.count} evento(s)</div>;}):<div className="traceops-bullet">Sin datos suficientes en el rango actual.</div>}
-                  </div>
-                </div>
-                <div className="traceops-flow-summary" style={{borderTop:"none",padding:0,background:"transparent"}}>
-                  <span className="traceops-flow-pill">Sin linea <strong>{noLineCount}</strong></span>
-                  <span className="traceops-flow-pill">Sin owner <strong>{noOwnerCount}</strong></span>
-                  <span className="traceops-flow-pill">Cierre <strong>{closureRate}%</strong></span>
-                </div>
               </div>
             </div>
           </div>
@@ -6899,6 +6869,66 @@ function App() {
             )}
           </div>
 
+          <div className="traceops-panel traceops-ops-panel">
+            <div className="traceops-panel-head">
+              <div>
+                <h3>{lang==="zh"?"Focus now":"Focus now"}</h3>
+                <span>{lang==="zh"?"把优先事件、站位浓度和会话状态放到一个地方。":"Reune alertas prioritarias, foco por estacion y contexto ejecutivo en un solo panel."}</span>
+              </div>
+              <span>{topAlerts.length} {ux.focusImmediate}</span>
+            </div>
+            <div className="traceops-panel-body" style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.45fr .95fr",gap:16}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",color:"#5F766C",marginBottom:10}}>{ux.needsActionTitle}</div>
+                <div className="traceops-alert-list">
+                  {actionItems.length?actionItems.map(function(item){
+                    var sev=item.prioridad==="Critica"?"crit":(item.prioridad==="Alta"?"high":"med");
+                    return <div key={item.id} className="traceops-alert-item">
+                      <div className="traceops-alert-left">
+                        <span className={"traceops-alert-badge "+sev}>{item.prioridad||"Media"}</span>
+                        <div className="traceops-alert-copy">
+                          <div>{item.id} · {item.evento_detectado||"Sin descripcion"}</div>
+                          <span>{item.linea_estacion||"N/D"} · {item.tipo_evento||"Proceso"} · {item.estatus||"Abierto"}</span>
+                          <div className="traceops-action-reasons">
+                            {item.reasonFlags.map(function(flag, flagIdx){
+                              return <span key={flagIdx} className={"traceops-action-flag "+flag.kind}>{flag.label}</span>;
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="traceops-action-age">{item.ageLabel}</span>
+                    </div>;
+                  }):<div style={{fontSize:12,color:"#5F766C"}}>{ux.noActionItems}</div>}
+                </div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                <div className="traceops-engineering-card" style={{padding:"14px 16px"}}>
+                  <h4 style={{marginBottom:6}}>{lang==="zh"?"站位焦点":"Foco por estacion"}</h4>
+                  <p>{lang==="zh"?"把当前过滤里最受影响的线别/工位聚合在一起。":"Concentracion de lineas o estaciones mas afectadas dentro del filtro actual."}</p>
+                  <div className="traceops-bullets">
+                    {topStations.length?topStations.map(function(row){
+                      return <div key={row.name} className="traceops-bullet"><strong>{row.name}</strong> · {row.count} evento(s)</div>;
+                    }):<div className="traceops-bullet">Sin datos suficientes en el rango actual.</div>}
+                  </div>
+                </div>
+                <div className="traceops-engineering-card" style={{padding:"14px 16px"}}>
+                  <h4 style={{marginBottom:6}}>{lang==="zh"?"Export ready":"Export ready"}</h4>
+                  <p>{lang==="zh"?"导出、范围与缓存状态合并到这里，不再重复单独模块。":"Export, rango y estado de ejecucion consolidados aqui en lugar de un modulo separado."}</p>
+                  <div className="traceops-bullets">
+                    <div className="traceops-bullet"><strong>Excel:</strong> {(res.periodo||analysisRangeLabel||"N/D")} · {ev.length} eventos · {((msgStats&&msgStats.clean)||0)} msgs</div>
+                    <div className="traceops-bullet"><strong>Historial:</strong> Guardado{elapsed>0&&" · "+String(Math.floor(elapsed/60)).padStart(2,"0")+":"+String(elapsed%60).padStart(2,"0")}</div>
+                    {apiUsage&&<div className="traceops-bullet"><strong>API:</strong> {apiUsage.cache_hit?"Cache hit":"1 llamada"} · in {(apiUsage.input_tokens||0).toLocaleString()} tok · out {(apiUsage.output_tokens||0).toLocaleString()} tok</div>}
+                    <div className="traceops-bullets" style={{marginTop:2}}>
+                      {["Resumen_Junta","Bitacora","Pendientes","KPIs_chat","Dashboard_Base","Directorio","Catalogos","Incident_Stories"].map(function(s){
+                        return <span key={s} className="traceops-action-flag">{s}</span>;
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {imgNames.length>0&&(
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
               <div style={{padding:"12px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
@@ -6961,6 +6991,7 @@ function App() {
           </div>
 
           {visibleEventCount===0&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:14,padding:"14px 16px",marginBottom:14,fontSize:12,color:"#8B6A1E"}}>No hay eventos dentro del rango seleccionado. Ajusta las fechas u horas para volver a poblar KPIs, timeline y bitacora.</div>}
+
 
           {kpis.length>0&&<div className="tcard"><div className="tcard-hdr"><h3>KPIs en chat</h3></div><div style={{padding:"10px 14px"}}>{kpis.map(function(k,i){return<div key={i} className="krow"><div className="kval">{k.valor}<span style={{fontSize:9}}>{k.unidad}</span></div><div className="kin"><div className="nm">{k.indicador}</div><div className="ts">{k.fechahora} - {k.fuente}</div></div><div className="kbar"><div className="kbf" style={{width:Math.min(100,k.valor<2?k.valor*100:k.valor)+"%"}}/></div></div>;})} </div></div>}
 
