@@ -5143,67 +5143,7 @@ function App() {
       + '</span><span class="to-pill">Card system export</span></div></section><section class="to-grid-cards">'
       + cards
       + '</section></div><script>window.__TRACEOPS_EXPORT__='+safePayload+';function downloadJson(){var blob=new Blob([JSON.stringify(window.__TRACEOPS_EXPORT__,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download='+JSON.stringify(filename.replace('.html','.json'))+';a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1000)}function downloadHtml(){var html=document.documentElement.outerHTML;var blob=new Blob([html],{type:"text/html"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download='+JSON.stringify(filename)+';a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1000)}<\/script>
-<script>
-(function(){
-  function traceOpsApplyRefinementTags(){
-    try{
-      document.querySelectorAll('.ops-hero').forEach(function(el){
-        el.classList.add('traceops-refined-hero');
-      });
 
-      document.querySelectorAll('.traceops-ops-panel').forEach(function(el){
-        el.classList.add('traceops-refined-focus');
-      });
-
-      var rcca = document.getElementById('rcca-section');
-      if (rcca) {
-        rcca.classList.add('traceops-refined-rcca');
-        rcca.querySelectorAll('button').forEach(function(btn){
-          btn.classList.add('traceops-refined-rcca-btn');
-        });
-      }
-
-      var titleCandidates = Array.from(document.querySelectorAll('div,section,article')).filter(function(el){
-        return (el.textContent || '').trim() === 'Operational Memory';
-      });
-
-      titleCandidates.forEach(function(titleEl){
-        var p = titleEl.parentElement;
-        while (p && p !== document.body) {
-          var tx = p.textContent || '';
-          if (tx.indexOf('Operational Memory') >= 0 && tx.indexOf('LessonTrace') >= 0 && tx.indexOf('RCCA activas') >= 0) {
-            p.classList.add('traceops-refined-memory');
-            break;
-          }
-          p = p.parentElement;
-        }
-      });
-    } catch (_) {}
-  }
-
-  var rafId = null;
-  function scheduleTraceOpsRefinement(){
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(traceOpsApplyRefinementTags);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', scheduleTraceOpsRefinement, { once:true });
-  } else {
-    scheduleTraceOpsRefinement();
-  }
-
-  window.addEventListener('load', scheduleTraceOpsRefinement);
-  setTimeout(scheduleTraceOpsRefinement, 120);
-  setTimeout(scheduleTraceOpsRefinement, 600);
-
-  var target = document.getElementById('root') || document.body;
-  if (target && 'MutationObserver' in window) {
-    var obs = new MutationObserver(function(){ scheduleTraceOpsRefinement(); });
-    obs.observe(target, { childList:true, subtree:true });
-  }
-})();
-</script>
 
 </body></html>';
     var blob = new Blob([doc], {type:"text/html"});
@@ -7680,5 +7620,67 @@ window.addEventListener("load", function() {
   if (window.preloadExcelTools) window.preloadExcelTools();
 });
 </script>
+<script>
+(function(){
+  function traceOpsApplyRefinementTags(){
+    try{
+      document.querySelectorAll('.ops-hero').forEach(function(el){
+        el.classList.add('traceops-refined-hero');
+      });
+
+      document.querySelectorAll('.traceops-ops-panel').forEach(function(el){
+        el.classList.add('traceops-refined-focus');
+      });
+
+      var rcca = document.getElementById('rcca-section');
+      if (rcca) {
+        rcca.classList.add('traceops-refined-rcca');
+        rcca.querySelectorAll('button').forEach(function(btn){
+          btn.classList.add('traceops-refined-rcca-btn');
+        });
+      }
+
+      var titleCandidates = Array.from(document.querySelectorAll('div,section,article')).filter(function(el){
+        return (el.textContent || '').trim() === 'Operational Memory';
+      });
+
+      titleCandidates.forEach(function(titleEl){
+        var p = titleEl.parentElement;
+        while (p && p !== document.body) {
+          var tx = p.textContent || '';
+          if (tx.indexOf('Operational Memory') >= 0 && tx.indexOf('LessonTrace') >= 0 && tx.indexOf('RCCA activas') >= 0) {
+            p.classList.add('traceops-refined-memory');
+            break;
+          }
+          p = p.parentElement;
+        }
+      });
+    } catch (_) {}
+  }
+
+  var rafId = null;
+  function scheduleTraceOpsRefinement(){
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(traceOpsApplyRefinementTags);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scheduleTraceOpsRefinement, { once:true });
+  } else {
+    scheduleTraceOpsRefinement();
+  }
+
+  window.addEventListener('load', scheduleTraceOpsRefinement);
+  setTimeout(scheduleTraceOpsRefinement, 120);
+  setTimeout(scheduleTraceOpsRefinement, 600);
+
+  var target = document.getElementById('root') || document.body;
+  if (target && 'MutationObserver' in window) {
+    var obs = new MutationObserver(function(){ scheduleTraceOpsRefinement(); });
+    obs.observe(target, { childList:true, subtree:true });
+  }
+})();
+</script>
+
 </body>
 </html>
