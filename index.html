@@ -5762,6 +5762,8 @@ function App() {
     })[v] || v;
   }
 
+  function traceOpsGetDateValue(v){if(!v)return 0;var iso=/^\d{4}-\d{2}-\d{2}$/;if(iso.test(v)){var d=new Date(v+"T00:00:00");return isNaN(d.getTime())?0:d.getTime();}var parts=String(v).split("/");if(parts.length===3){var d2=new Date(parts[2]+"-"+String(parts[1]).padStart(2,"0")+"-"+String(parts[0]).padStart(2,"0")+"T00:00:00");return isNaN(d2.getTime())?0:d2.getTime();}var d3=new Date(v);return isNaN(d3.getTime())?0:d3.getTime();}
+
   function InvestigationCarousel(props){
     var cards=props.cards;var allRcca=props.allRcca||[];
     var idxArr=_useState(0);var idx=idxArr[0];var setIdx=idxArr[1];
@@ -5775,8 +5777,7 @@ function App() {
     function getCardClass(i){var diff=i-safeIdx;if(diff===0)return"ic-card active";if(diff===-1)return"ic-card prev";if(diff===1)return"ic-card next";if(diff===-2)return"ic-card far-prev";if(diff===2)return"ic-card far-next";return"ic-card far-prev";}
     function Field(p){return(<div className="ic-field"><div className="ic-field-label">{traceOpsCarouselFieldLabel(p.label)}</div>{p.value?<div className="ic-field-val">{p.value}</div>:<div className="ic-field-val empty">-</div>}</div>);}
     function MetricTile(p){return(<div style={{background:p.bg||"#F8F7F5",border:"1px solid "+(p.border||"#DDDBD7"),borderRadius:14,padding:"8px 7px",minHeight:54,display:"flex",flexDirection:"column",justifyContent:"center",textAlign:"center"}}><div style={{fontSize:8.2,fontWeight:800,letterSpacing:".06em",textTransform:"uppercase",color:p.color||"#6A6560",marginBottom:3}}>{traceOpsCarouselFieldLabel(p.label)}</div><div style={{fontSize:11.5,fontWeight:800,color:p.valueColor||"#1A1714",lineHeight:1.15}}>{p.value||"-"}</div></div>);}
-    function getDateValue(v){if(!v)return 0;var iso=/^\d{4}-\d{2}-\d{2}$/;if(iso.test(v)){var d=new Date(v+"T00:00:00");return isNaN(d.getTime())?0:d.getTime();}var parts=v.split("/");if(parts.length===3){var d2=new Date(parts[2]+"-"+parts[1].padStart(2,"0")+"-"+parts[0].padStart(2,"0")+"T00:00:00");return isNaN(d2.getTime())?0:d2.getTime();}var d3=new Date(v);return isNaN(d3.getTime())?0:d3.getTime();}
-    function daysOpen(v){var t=getDateValue(v);if(!t)return"-";return Math.max(0,Math.floor((Date.now()-t)/86400000))+" d";}
+    function daysOpen(v){var t=traceOpsGetDateValue(v);if(!t)return"-";return Math.max(0,Math.floor((Date.now()-t)/86400000))+" d";}
     function getTopValue(list,getter){var counts={};var best="";var bestN=0;list.forEach(function(item){var val=(getter(item)||"").trim();if(!val||val==="N/D"||val==="N/A")return;counts[val]=(counts[val]||0)+1;if(counts[val]>bestN){best=val;bestN=counts[val];}});return best;}
     function inferTypeFor(item){if(item.tipo_caso)return item.tipo_caso;var txt=[item.problema||"",item.causa_raiz||"",item.patron_detectado||""].join(" ").toLowerCase();if(txt.indexOf("aoi")>=0)return"AOI";if(txt.indexOf("ict")>=0)return"ICT";if(txt.indexOf("bga")>=0)return"BGA";if(txt.indexOf("material")>=0)return"MATERIAL";if(txt.indexOf("proceso")>=0)return"PROCESO";return"GENERAL";}
     function inferStatus(){if(cur.estatus_rcca)return traceOpsCarouselStatusLabel(cur.estatus_rcca); if(cur.leccion_aprendida&&cur.accion_preventiva)return"CLOSED"; if(cur.causa_raiz&&cur.accion_correctiva)return"VALIDATING"; if(cur.causa_raiz)return"IN ANALYSIS"; return"NEW";}
@@ -5796,8 +5797,8 @@ function App() {
     var maturity=inferMaturity();
     var topStation=cur.estacion_dominante||getTopValue(linkedEvents,function(item){return item.linea_estacion;})||cur.linea||"-";
     var topDefect=cur.defecto_dominante||getTopValue(linkedEvents,function(item){return item.defecto_smt;})||"-";
-    var firstSeen=cur.primera_deteccion?{fecha:cur.primera_deteccion}:linkedEvents.slice().sort(function(a,b){return getDateValue(a.fecha)-getDateValue(b.fecha);})[0];
-    var lastSeen=cur.ultima_deteccion?{fecha:cur.ultima_deteccion}:linkedEvents.slice().sort(function(a,b){return getDateValue(b.fecha)-getDateValue(a.fecha);})[0];
+    var firstSeen=cur.primera_deteccion?{fecha:cur.primera_deteccion}:linkedEvents.slice().sort(function(a,b){return traceOpsGetDateValue(a.fecha)-traceOpsGetDateValue(b.fecha);})[0];
+    var lastSeen=cur.ultima_deteccion?{fecha:cur.ultima_deteccion}:linkedEvents.slice().sort(function(a,b){return traceOpsGetDateValue(b.fecha)-traceOpsGetDateValue(a.fecha);})[0];
     var actions=[{l:"Containment",v:cur.contencion,color:"#B87820",bg:"#FEF9E8"},{l:"Corrective Action",v:cur.accion_correctiva,color:"#1E7B58",bg:"#EBF0FC"},{l:"Preventive Action",v:cur.accion_preventiva,color:"#1A7A3C",bg:"#EBF8EE"}];
     return(
       <div className="ic-wrap">
@@ -5965,8 +5966,8 @@ function App() {
       }
       if(newIds.length>0){
         var linked=newIds.map(function(id){return ev.find(function(e){return e.id===id;});}).filter(Boolean);
-        var sortedAsc=linked.slice().sort(function(a,b){return getDateValue(a.fecha)-getDateValue(b.fecha);});
-        var sortedDesc=linked.slice().sort(function(a,b){return getDateValue(b.fecha)-getDateValue(a.fecha);});
+        var sortedAsc=linked.slice().sort(function(a,b){return traceOpsGetDateValue(a.fecha)-traceOpsGetDateValue(b.fecha);});
+        var sortedDesc=linked.slice().sort(function(a,b){return traceOpsGetDateValue(b.fecha)-traceOpsGetDateValue(a.fecha);});
         if(!form.primera_deteccion&&sortedAsc.length>0)n.primera_deteccion=sortedAsc[0].fecha||"";
         if(!form.ultima_deteccion&&sortedDesc.length>0)n.ultima_deteccion=sortedDesc[0].fecha||"";
       }
