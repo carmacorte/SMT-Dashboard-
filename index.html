@@ -1677,7 +1677,7 @@ body.traceops-premium-shell .day-btn:not(.active) *{
 
 
 /* ==== START TRACEOPS AURORA HYBRID REFINEMENT ==== */
-body.traceops-premium-shell .ops-hero.traceops-refined-hero{
+body.traceops-premium-shell .ops-hero{
   isolation:isolate;
   background:
     radial-gradient(circle at 18% 18%, rgba(77,190,175,.20), transparent 28%),
@@ -1686,15 +1686,15 @@ body.traceops-premium-shell .ops-hero.traceops-refined-hero{
     linear-gradient(180deg,#06100C 0%,#0B1A14 58%,#10231C 100%) !important;
 }
 
-body.traceops-premium-shell .ops-hero.traceops-refined-hero::before{
+body.traceops-premium-shell .ops-hero::before{
   opacity:.42 !important;
 }
 
-body.traceops-premium-shell .ops-hero.traceops-refined-hero .ops-hero-content{
+body.traceops-premium-shell .ops-hero .ops-hero-content{
   position:relative;
 }
 
-body.traceops-premium-shell .ops-hero.traceops-refined-hero .ops-hero-content::after{
+body.traceops-premium-shell .ops-hero .ops-hero-content::after{
   content:"";
   position:absolute;
   left:-24px;
@@ -1707,21 +1707,21 @@ body.traceops-premium-shell .ops-hero.traceops-refined-hero .ops-hero-content::a
   filter:blur(34px);
 }
 
-body.traceops-premium-shell .ops-hero.traceops-refined-hero .ops-hero-subtitle::before{
+body.traceops-premium-shell .ops-hero .ops-hero-subtitle::before{
   color:rgba(255,255,255,.68) !important;
 }
 
-body.traceops-premium-shell .ops-hero.traceops-refined-hero .ops-hero-btn.primary{
+body.traceops-premium-shell .ops-hero .ops-hero-btn.primary{
   box-shadow:0 18px 34px rgba(25,128,90,.28) !important;
 }
 
-body.traceops-premium-shell .ops-hero.traceops-refined-hero .ops-hero-btn.ghost{
+body.traceops-premium-shell .ops-hero .ops-hero-btn.ghost{
   background:rgba(255,255,255,.92) !important;
   backdrop-filter:blur(16px) saturate(1.1);
   -webkit-backdrop-filter:blur(16px) saturate(1.1);
 }
 
-body.traceops-premium-shell .traceops-ops-panel.traceops-refined-focus{
+body.traceops-premium-shell .traceops-ops-panel{
   background:linear-gradient(180deg,#FFFFFF 0%,#F8FCFA 100%) !important;
   border:1px solid rgba(26,91,69,.10) !important;
   box-shadow:
@@ -1729,13 +1729,13 @@ body.traceops-premium-shell .traceops-ops-panel.traceops-refined-focus{
     0 18px 38px rgba(18,70,51,.08) !important;
 }
 
-body.traceops-premium-shell .traceops-ops-panel.traceops-refined-focus .traceops-panel-head{
+body.traceops-premium-shell .traceops-ops-panel .traceops-panel-head{
   position:relative;
   overflow:hidden;
   background:linear-gradient(180deg,#F8FCFA 0%,#EEF8F3 100%) !important;
 }
 
-body.traceops-premium-shell .traceops-ops-panel.traceops-refined-focus .traceops-panel-head::after{
+body.traceops-premium-shell .traceops-ops-panel .traceops-panel-head::after{
   content:"";
   position:absolute;
   inset:auto 0 0 0;
@@ -1743,18 +1743,18 @@ body.traceops-premium-shell .traceops-ops-panel.traceops-refined-focus .traceops
   background:linear-gradient(90deg, rgba(30,138,100,.24), rgba(30,138,100,0));
 }
 
-body.traceops-premium-shell .traceops-ops-panel.traceops-refined-focus .traceops-alert-item{
+body.traceops-premium-shell .traceops-ops-panel .traceops-alert-item{
   background:linear-gradient(180deg,#FFFFFF 0%,#FAFCFB 100%) !important;
   border-color:rgba(26,91,69,.09) !important;
   box-shadow:0 10px 24px rgba(18,70,51,.05) !important;
 }
 
-body.traceops-premium-shell .traceops-ops-panel.traceops-refined-focus .traceops-action-age{
+body.traceops-premium-shell .traceops-ops-panel .traceops-action-age{
   background:linear-gradient(135deg,#0D2018 0%,#153326 100%) !important;
   box-shadow:0 10px 22px rgba(13,32,24,.18) !important;
 }
 
-body.traceops-premium-shell .traceops-refined-rcca{
+body.traceops-premium-shell #rcca-section{
   background:linear-gradient(180deg,#FFFFFF 0%,#FBFDFC 100%) !important;
   border:1px solid rgba(16,35,28,.08) !important;
   border-radius:22px !important;
@@ -1762,12 +1762,12 @@ body.traceops-premium-shell .traceops-refined-rcca{
   overflow:hidden !important;
 }
 
-body.traceops-premium-shell .traceops-refined-rcca > div:first-child{
+body.traceops-premium-shell #rcca-section > div:first-child{
   position:relative;
   background:linear-gradient(180deg,#F8FBFA 0%,#F2F8F5 100%) !important;
 }
 
-body.traceops-premium-shell .traceops-refined-rcca > div:first-child::after{
+body.traceops-premium-shell #rcca-section > div:first-child::after{
   content:"";
   position:absolute;
   left:20px;
@@ -1777,76 +1777,13 @@ body.traceops-premium-shell .traceops-refined-rcca > div:first-child::after{
   background:linear-gradient(90deg, rgba(30,138,100,.26), rgba(30,138,100,0));
 }
 
-body.traceops-premium-shell .traceops-refined-rcca .traceops-refined-rcca-btn{
+body.traceops-premium-shell #rcca-section button{
   border-radius:999px !important;
   box-shadow:none !important;
 }
 
-body.traceops-premium-shell .traceops-refined-memory{
-  position:relative;
-  background:linear-gradient(180deg,#FFFFFF 0%,#FBFEFC 100%) !important;
-  border:1px solid rgba(16,35,28,.08) !important;
-  border-radius:24px !important;
-  box-shadow:0 22px 44px rgba(18,70,51,.08) !important;
-  overflow:hidden !important;
-}
-
-body.traceops-premium-shell .traceops-refined-memory::before{
-  content:"";
-  position:absolute;
-  inset:0 0 auto 0;
-  height:220px;
-  pointer-events:none;
-  background:radial-gradient(circle at 50% 0%, rgba(93,224,185,.16), transparent 60%);
-}
-
-body.traceops-premium-shell .traceops-refined-memory [style*="linear-gradient(135deg,#07141D 0%,#0B1F2A 48%,#0A1824 100%)"]{
-  position:relative;
-  background:
-    radial-gradient(circle at 22% 22%, rgba(93,224,185,.18), transparent 30%),
-    radial-gradient(circle at 82% 18%, rgba(102,161,224,.12), transparent 24%),
-    linear-gradient(135deg,#07141D 0%,#0B1F2A 48%,#0A1824 100%) !important;
-  border-color:rgba(93,224,185,.18) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
-    0 16px 34px rgba(5,17,13,.18) !important;
-}
-
-body.traceops-premium-shell .traceops-refined-memory [style*="linear-gradient(180deg,#FFFFFF,#F6FBF8)"],
-body.traceops-premium-shell .traceops-refined-memory [style*="linear-gradient(180deg,#FFFFFF,#FFF9EF)"],
-body.traceops-premium-shell .traceops-refined-memory [style*="linear-gradient(180deg,#FFFFFF,#F4FBF7)"]{
-  border-radius:20px !important;
-  box-shadow:0 12px 26px rgba(18,70,51,.06) !important;
-  transform:translateZ(0);
-}
-
-body.traceops-premium-shell .traceops-refined-memory [style*="linear-gradient(180deg,#FFFFFF,#F6FBF8)"]{
-  background:linear-gradient(180deg,#FFFFFF 0%,#F7FCF9 100%) !important;
-  border-color:#DDEDE5 !important;
-}
-
-body.traceops-premium-shell .traceops-refined-memory [style*="linear-gradient(180deg,#FFFFFF,#FFF9EF)"]{
-  background:linear-gradient(180deg,#FFFFFF 0%,#FFF9F0 100%) !important;
-  border-color:#F1E0B2 !important;
-}
-
-body.traceops-premium-shell .traceops-refined-memory [style*="linear-gradient(180deg,#FFFFFF,#F4FBF7)"]{
-  background:linear-gradient(180deg,#FFFFFF 0%,#F4FBF7 100%) !important;
-  border-color:#D6EBE1 !important;
-}
-
-body.traceops-premium-shell .traceops-refined-memory [style*="background:#EDF7F2"],
-body.traceops-premium-shell .traceops-refined-memory [style*="background:#FFF7E7"],
-body.traceops-premium-shell .traceops-refined-memory [style*="background:#F2EEFF"]{
-  box-shadow:0 8px 18px rgba(18,70,51,.04) !important;
-}
-
-body.traceops-premium-shell .traceops-refined-memory [style*="padding:\"18px 20px 22px\""]{
-  position:relative;
-}
-
 @media (max-width:640px){
-  body.traceops-premium-shell .ops-hero.traceops-refined-hero .ops-hero-content::after{
+  body.traceops-premium-shell .ops-hero .ops-hero-content::after{
     left:-10px;
     right:-10px;
     top:-12px;
@@ -7620,67 +7557,7 @@ window.addEventListener("load", function() {
   if (window.preloadExcelTools) window.preloadExcelTools();
 });
 </script>
-<script>
-(function(){
-  function traceOpsApplyRefinementTags(){
-    try{
-      document.querySelectorAll('.ops-hero').forEach(function(el){
-        el.classList.add('traceops-refined-hero');
-      });
 
-      document.querySelectorAll('.traceops-ops-panel').forEach(function(el){
-        el.classList.add('traceops-refined-focus');
-      });
-
-      var rcca = document.getElementById('rcca-section');
-      if (rcca) {
-        rcca.classList.add('traceops-refined-rcca');
-        rcca.querySelectorAll('button').forEach(function(btn){
-          btn.classList.add('traceops-refined-rcca-btn');
-        });
-      }
-
-      var titleCandidates = Array.from(document.querySelectorAll('div,section,article')).filter(function(el){
-        return (el.textContent || '').trim() === 'Operational Memory';
-      });
-
-      titleCandidates.forEach(function(titleEl){
-        var p = titleEl.parentElement;
-        while (p && p !== document.body) {
-          var tx = p.textContent || '';
-          if (tx.indexOf('Operational Memory') >= 0 && tx.indexOf('LessonTrace') >= 0 && tx.indexOf('RCCA activas') >= 0) {
-            p.classList.add('traceops-refined-memory');
-            break;
-          }
-          p = p.parentElement;
-        }
-      });
-    } catch (_) {}
-  }
-
-  var rafId = null;
-  function scheduleTraceOpsRefinement(){
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(traceOpsApplyRefinementTags);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', scheduleTraceOpsRefinement, { once:true });
-  } else {
-    scheduleTraceOpsRefinement();
-  }
-
-  window.addEventListener('load', scheduleTraceOpsRefinement);
-  setTimeout(scheduleTraceOpsRefinement, 120);
-  setTimeout(scheduleTraceOpsRefinement, 600);
-
-  var target = document.getElementById('root') || document.body;
-  if (target && 'MutationObserver' in window) {
-    var obs = new MutationObserver(function(){ scheduleTraceOpsRefinement(); });
-    obs.observe(target, { childList:true, subtree:true });
-  }
-})();
-</script>
 
 </body>
 </html>
