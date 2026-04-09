@@ -2108,6 +2108,43 @@ function decodeEmlEncoding(str, encoding) {
   return str;
 }
 
+function normalizeEmailSubjectLocal(subject) {
+  var s = decodeMimeWords(subject || '');
+  s = String(s)
+    .replace(/\[[^\]]+\]\s*/g, function(m){ return /^\[(re|fw|fwd):/i.test(m) ? m : ' '; })
+    .replace(/^(\s*(re|fw|fwd)\s*[:\-]\s*)+/i, '')
+    .replace(/\.(xlsx|xlsm|xls|csv|pdf|pptx|ppt|docx|doc)\b/gi, ' ')
+    .replace(/[\/_]+/g, ' ')
+    .replace(/[|]+/g, ' | ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .toLowerCase();
+  return s || 'sin-asunto';
+}
+
+function canonicalEmailMessageIdLocal(raw) {
+  var s = String(raw || '').trim().toLowerCase();
+  if (!s) return '';
+  s = s.replace(/^<|>$/g, '');
+  s = s.replace(/@[^>\s]+$/i, '');
+  return s;
+}
+
+function extractEmailThreadKeyLocal(headers) {
+  var refs = String(headers['references'] || '').trim();
+  var irt = String(headers['in-reply-to'] || '').trim();
+  var mid = String(headers['message-id'] || '').trim();
+  var allRefs = [];
+  function pullIds(raw) {
+    return String(raw || '').match(/<[^>]+>/g) || [];
+  }
+  allRefs = allRefs.concat(pullIds(refs));
+  allRefs = allRefs.concat(pullIds(irt));
+  if (allRefs.length) return canonicalEmailMessageIdLocal(allRefs[0]);
+  if (mid) return canonicalEmailMessageIdLocal(mid);
+  return 'subject:' + normalizeEmailSubjectLocal(headers['subject'] || '');
+}
+
 function parseEmlHeaders(lines) {
   var headers = {};
   var i = 0;
@@ -2209,7 +2246,7 @@ function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
   return cleanEmailTextLocal(decoded);
 }
 
-function parseEmlToMsg(rawText) {
+function parseEmlToMsg(rawText, sourceName) {
   if (!rawText || !rawText.trim()) return null;
   var lines = String(rawText).split(/\r?\n/);
   var info = parseEmlHeaders(lines);
@@ -2234,7 +2271,10 @@ function parseEmlToMsg(rawText) {
   var sender = displayM ? displayM[1].trim() : addr;
   sender = sender.replace(/^~/, '').trim();
 
-  var subject = cleanEmailTextLocal(decodeMimeWords(h['subject'] || ''));
+  var rawSubject = decodeMimeWords(h['subject'] || '');
+  var subject = cleanEmailTextLocal(rawSubject);
+  var normalizedSubject = normalizeEmailSubjectLocal(rawSubject);
+  var threadKey = extractEmailThreadKeyLocal(h);
   var body = extractEmlBodyText(lines, info.bodyStart, h['content-type'] || '', h['content-transfer-encoding'] || '');
   var text = ((subject ? '[' + subject + '] ' : '') + body).replace(/\s+/g, ' ').trim();
   if (!text || text.trim().length < 12) return null;
@@ -2248,7 +2288,14 @@ function parseEmlToMsg(rawText) {
     turno: parseTurno(hour, min, dateIso),
     sender: sender,
     text: text,
-    source: 'email'
+    source: 'email',
+    subject: subject,
+    subjectNormalized: normalizedSubject,
+    threadKey: threadKey,
+    sourceFile: sourceName || '',
+    messageId: String(h['message-id'] || '').trim(),
+    inReplyTo: String(h['in-reply-to'] || '').trim(),
+    references: String(h['references'] || '').trim()
   };
 }
 
@@ -2308,7 +2355,7 @@ async function readZip(file) {
     if (base.toLowerCase().endsWith(".eml")) {
       try {
         var emlRaw = await zip.files[name].async("string");
-        var msg = parseEmlToMsg(emlRaw);
+        var msg = parseEmlToMsg(emlRaw, base);
         if (msg) emlMsgs.push(msg);
       } catch (_) {}
     }
@@ -2813,6 +2860,10 @@ async function analyzeWithAI(msgs, apiKey) {
           sender: m.sender,
           text: m.text,
           turno: m.turno,
+          source: m.source || '',
+          threadKey: m.threadKey || '',
+          threadTitle: m.subject || m.subjectNormalized || '',
+          sourceFile: m.sourceFile || '',
           type: detectTypeLocal(m.text),
           __traceops_signal_count: traceOpsOperationalSignalCountLocal(m.text)
         };
@@ -2837,9 +2888,11 @@ async function analyzeWithAI(msgs, apiKey) {
         var dt = msgTime - last.lastTime;
         var sameType = msg.type === last.type;
         var lineOk = line === last.line || line === "N/D" || last.line === "N/D";
+        var emailScoped = (msg.source === 'email' || last.source === 'email');
+        var sameThread = !emailScoped || !msg.threadKey || !last.threadKey || msg.threadKey === last.threadKey;
 
         // PATCH 1: 180 min window to capture post-incident engineer findings
-        if (sameType && lineOk && dt <= 180) {
+        if (sameType && lineOk && dt <= 180 && sameThread) {
           last.messages.push(msg);
           last.lastTime = msgTime;
           if (last.line === "N/D" && line !== "N/D") last.line = line;
@@ -2853,6 +2906,9 @@ async function analyzeWithAI(msgs, apiKey) {
         line: line,
         station: station,
         lastTime: msgTime,
+        source: msg.source || '',
+        threadKey: msg.threadKey || '',
+        threadTitle: msg.threadTitle || '',
         messages: [msg]
       });
     });
@@ -2879,6 +2935,8 @@ async function analyzeWithAI(msgs, apiKey) {
         "CLUSTER-" + String(i + 1).padStart(2, "0") +
         " | " + (first.dateIso || "") + " " + (first.timeStr || "") +
         " -> " + (last2.dateIso || "") + " " + (last2.timeStr || "") +
+        " | fuente:" + (cluster.source || first.source || 'chat') +
+        (cluster.threadTitle ? (" | hilo:" + cluster.threadTitle) : "") +
         " | tipo:" + cluster.type +
         " | linea:" + cluster.line +
         " | estacion:" + cluster.station +
