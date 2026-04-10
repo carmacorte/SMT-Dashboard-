@@ -5190,6 +5190,41 @@ pre{white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.6;marg
 </html>`;
   }
 
+  function exportEightdHtml(draft) {
+    if (!draft) return;
+    var normalized = Object.assign({}, draft);
+    var filename = String(normalized.eightd_id || normalized.source_rcca_id || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_') + '.html';
+    var html = traceOpsBuildEightdHtml(normalized);
+
+    try {
+      var popup = window.open('', '_blank');
+      if (popup && popup.document) {
+        popup.document.open();
+        popup.document.write(html);
+        popup.document.close();
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      var blob = new Blob([html], {type:'text/html'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function(){ try { URL.revokeObjectURL(url); } catch(_){} }, 1000);
+      return;
+    } catch (_) {}
+
+    try {
+      var dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+      window.location.href = dataUrl;
+    } catch (_) {}
+  }
+
   function traceOpsDownloadJson(filename, payload) {
     var blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     var a = document.createElement("a");
