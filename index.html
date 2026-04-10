@@ -5538,12 +5538,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       </table>
     </div>
 
-    <div class="note"><strong>Evidence checklist.</strong><br>${esc(normalized.evidence_checklist || '□ Customer symptom image / data
-□ Golden reference comparison
-□ Installed-state vs removed-state comparison
-□ Serial / batch trace
-□ Control limitation explanation
-□ Corrective action proof')}</div>
+    <div class="note"><strong>Evidence checklist.</strong><br>${esc(normalized.evidence_checklist || '')}</div>
   </div>
 </body>
 </html>`;
