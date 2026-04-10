@@ -5042,68 +5042,310 @@ function App() {
     return { score: score, missing: missing };
   }
 
+
+  function traceOpsEightdHasText(v) {
+    return String(v || '').replace(/\s+/g,' ').trim().length > 0;
+  }
+
+  function traceOpsEightdEsc(v) {
+    return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function traceOpsEightdUnique(arr) {
+    var seen = {};
+    return (arr || []).filter(function(item){
+      var key = String(item || '').trim();
+      if (!key || seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+  }
+
+  function traceOpsEightdShort(v, max) {
+    var txt = String(v || '').replace(/\s+/g,' ').trim();
+    if (!txt) return '';
+    if (txt.length <= max) return txt;
+    return txt.slice(0, Math.max(0, max - 3)).trim() + '...';
+  }
+
+  function traceOpsEightdJoinParagraphs(parts) {
+    return traceOpsEightdUnique((parts || []).map(function(item){ return String(item || '').trim(); }).filter(Boolean)).join("\n\n");
+  }
+
+  function traceOpsEightdDateMs(ev) {
+    if (!ev || !ev.fecha) return 0;
+    return traceOpsGetDateValue(ev.fecha) || 0;
+  }
+
+  function traceOpsEightdCollectLinkedEvents(ids) {
+    var linked = typeof traceOpsCollectLinkedEventsByIds === 'function' ? traceOpsCollectLinkedEventsByIds(ids || []) : [];
+    return linked.slice().sort(function(a,b){ return traceOpsEightdDateMs(a) - traceOpsEightdDateMs(b); });
+  }
+
+  function traceOpsEightdBuildModel(sourceLike, linkedEvents) {
+    var src = sourceLike || {};
+    var linked = linkedEvents || [];
+    var firstEv = linked.length ? linked[0] : null;
+    var lastEv = linked.length ? linked[linked.length - 1] : null;
+    var stations = traceOpsEightdUnique(linked.map(function(item){ return item && item.linea_estacion ? item.linea_estacion : ''; }));
+    var eventTypes = traceOpsEightdUnique(linked.map(function(item){ return item && item.tipo_evento ? item.tipo_evento : ''; }));
+    var defects = traceOpsEightdUnique(linked.map(function(item){ return item && item.defecto_smt && item.defecto_smt !== 'N/A' ? item.defecto_smt : ''; }));
+    var impacts = traceOpsEightdUnique(linked.map(function(item){ return item && item.impacto ? item.impacto : ''; }));
+    var actions = traceOpsEightdUnique(linked.map(function(item){ return item && (item.accion_ejecutada_full || item.accion_ejecutada) ? (item.id + ': ' + (item.accion_ejecutada_full || item.accion_ejecutada)) : ''; }));
+    var findings = traceOpsEightdUnique(linked.map(function(item){ return item && (item.engineer_findings_full || item.engineer_findings) ? (item.id + ': ' + (item.engineer_findings_full || item.engineer_findings)) : ''; }));
+    var evidenceRefs = traceOpsEightdUnique(linked.map(function(item){ return item && item.id ? (item.id + ' · ' + [item.fecha || '', item.hora || ''].join(' ').trim()) : ''; }));
+    var owners = traceOpsEightdUnique([src.owner_email || '', src.responsable || ''].concat(linked.map(function(item){ return item && (item.reporta || item.responsable_sugerido || item.sender) ? (item.reporta || item.responsable_sugerido || item.sender) : ''; })));
+    var areas = traceOpsEightdUnique(['Quality'].concat(linked.map(function(item){ return item && (item.area_involucrada || item.tipo_evento || '') ? (item.area_involucrada || item.tipo_evento) : ''; })));
+    var firstDate = src.primera_deteccion || (firstEv && firstEv.fecha) || src.fecha || '';
+    var lastDate = src.ultima_deteccion || (lastEv && lastEv.fecha) || src.fecha || '';
+    var detectionWindow = firstDate || lastDate ? [firstDate || 'N/D', lastDate || firstDate || 'N/D'].join(' -> ') : 'N/D';
+    var model = src.modelo || (firstEv && firstEv.modelo) || 'N/D';
+    var line = src.linea || (firstEv && firstEv.linea_estacion) || 'N/D';
+    var station = src.estacion_dominante || stations[0] || 'N/D';
+    var defect = src.defecto_dominante || defects[0] || 'N/A';
+    var pattern = src.patron_detectado || 'No pattern formally captured yet.';
+    var impact = src.alcance_exposicion || impacts[0] || 'Operational and quality impact under review.';
+    var tracePath = linked.length ? linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).join(' -> ') : 'No linked events.';
+    var complaintAnchor = src.problema || src.titulo_corto || (firstEv && (firstEv.evento_detectado_full || firstEv.evento_detectado)) || 'Complaint anchor pending.';
+    var occurrenceSummary = traceOpsEightdHasText(src.causa_raiz)
+      ? ('Confirmed occurrence mechanism: ' + src.causa_raiz)
+      : (traceOpsEightdHasText(src.hipotesis)
+          ? ('Working hypothesis only: ' + src.hipotesis + ' No confirmed root cause has been validated yet.')
+          : 'Occurrence mechanism is still under investigation; no confirmed root cause is available yet.');
+    var escapeSummary = traceOpsEightdHasText(src.escape_point || src.punto_escape)
+      ? ('Confirmed escape point: ' + (src.escape_point || src.punto_escape))
+      : (traceOpsEightdHasText(src.estacion_dominante || station)
+          ? ('Escape point not yet confirmed. Current trace suggests a detection gap around ' + (src.estacion_dominante || station) + ' and requires control review against the actual failure mode.')
+          : 'Escape point not yet confirmed. Control gap analysis is still pending.');
+    return {
+      source: src,
+      linked: linked,
+      firstEv: firstEv,
+      lastEv: lastEv,
+      model: model,
+      line: line,
+      station: station,
+      defect: defect,
+      pattern: pattern,
+      impact: impact,
+      tracePath: tracePath,
+      complaintAnchor: complaintAnchor,
+      detectionWindow: detectionWindow,
+      occurrenceSummary: occurrenceSummary,
+      escapeSummary: escapeSummary,
+      stations: stations,
+      eventTypes: eventTypes,
+      defects: defects,
+      impacts: impacts,
+      actions: actions,
+      findings: findings,
+      evidenceRefs: evidenceRefs,
+      owners: owners,
+      areas: areas,
+      severity: src.severidad || 'N/D',
+      recurrence: src.recurrencia || 'N/D',
+      analysisMaturity: src.madurez_analisis || 'N/D',
+      evidenceSummary: src.evidencia_resumen || '',
+      lotBatch: src.lot_batch || src.lote_afectado || '',
+      serialRange: src.serial_range || src.seriales_afectados || '',
+      buildWindow: src.build_window || detectionWindow,
+      materialAffected: src.material_afectado || '',
+      exposure: src.alcance_exposicion || '',
+      customerImpact: src.impacto_cliente || '',
+      prevention: src.accion_preventiva || '',
+      lesson: src.leccion_aprendida || '',
+      pca: src.accion_correctiva || '',
+      validation: src.validacion || '',
+      containment: src.contencion || '',
+      rootCause: src.causa_raiz || '',
+      hypothesis: src.hipotesis || ''
+    };
+  }
+
+  function traceOpsEightdBuildTeamText(model) {
+    var proofPoints = [];
+    if (model.owners.length) proofPoints.push('Owner: ' + model.owners.join(' | '));
+    if (model.areas.length) proofPoints.push('Core team: ' + model.areas.join(', '));
+    if (model.linked.length) proofPoints.push('TraceOps evidence owner: linked event chain ' + model.evidenceRefs.slice(0,4).join(' | '));
+    proofPoints.push('Quality owns communication, containment tracking, effectiveness review and closure readiness.');
+    return traceOpsEightdJoinParagraphs(proofPoints);
+  }
+
+  function traceOpsEightdBuildProblemText(model) {
+    var lines = [];
+    lines.push('Problem statement: ' + model.complaintAnchor);
+    lines.push('Model / line / station: ' + [model.model, model.line, model.station].join(' · '));
+    lines.push('Defect SMT / failure mode: ' + model.defect);
+    lines.push('Detection window: ' + model.detectionWindow);
+    lines.push('Impact / exposure: ' + (model.exposure || model.customerImpact || model.impact));
+    lines.push('Detected pattern: ' + model.pattern);
+    if (model.linked.length) lines.push('Traceability chain: ' + model.tracePath + '.');
+    if (model.linked.length) lines.push('Affected event references: ' + model.evidenceRefs.join(' | '));
+    lines.push('Technical interpretation: the issue shows a repeatable path across the analyzed trace and must be controlled as a manufacturable quality event, not only as an isolated symptom.');
+    return traceOpsEightdJoinParagraphs(lines);
+  }
+
+  function traceOpsEightdBuildContainmentText(model) {
+    var parts = [];
+    if (traceOpsEightdHasText(model.containment)) parts.push('Immediate containment: ' + model.containment);
+    else parts.push('Immediate containment not formally captured yet. Define lot hold, WIP segregation, targeted inspection and customer protection before closure.');
+    if (traceOpsEightdHasText(model.materialAffected)) parts.push('Affected material / units: ' + model.materialAffected);
+    if (traceOpsEightdHasText(model.exposure)) parts.push('Exposure statement: ' + model.exposure);
+    if (model.actions.length) parts.push('Containment actions seen in the trace: ' + model.actions.join(' | '));
+    parts.push('Required containment check: separate affected vs non-affected population and confirm whether exposure remains internal, shipped or customer-facing.');
+    return traceOpsEightdJoinParagraphs(parts);
+  }
+
+  function traceOpsEightdBuildOccurrenceText(model) {
+    var parts = [];
+    parts.push(model.occurrenceSummary);
+    if (traceOpsEightdHasText(model.evidenceSummary)) parts.push('Supporting evidence: ' + model.evidenceSummary);
+    if (model.findings.length) parts.push('Engineer findings supporting occurrence: ' + model.findings.join(' | '));
+    if (traceOpsEightdHasText(model.pattern)) parts.push('Pattern correlation: ' + model.pattern);
+    if (!traceOpsEightdHasText(model.rootCause) && traceOpsEightdHasText(model.hypothesis)) parts.push('Status: hypothesis under evaluation; root cause is not confirmed yet and must not be treated as validated.');
+    return traceOpsEightdJoinParagraphs(parts);
+  }
+
+  function traceOpsEightdBuildEscapeText(model) {
+    var parts = [];
+    parts.push(model.escapeSummary);
+    parts.push('Relevant control stage: ' + model.station + ' · defect reference: ' + model.defect + '.');
+    if (model.linked.length) parts.push('Escape trace: ' + model.tracePath + '.');
+    if (model.findings.length) parts.push('Technical clues for escape review: ' + model.findings.slice(0,3).join(' | '));
+    parts.push('Verification need: explain why the installed-state or in-line control did not trigger earlier and what specific detection gap allowed the event to move forward.');
+    return traceOpsEightdJoinParagraphs(parts);
+  }
+
+  function traceOpsEightdBuildPcaText(model) {
+    var parts = [];
+    if (traceOpsEightdHasText(model.pca)) parts.push('Permanent corrective action: ' + model.pca);
+    else parts.push('Permanent corrective action is still pending. Define the process change that directly blocks both occurrence and escape.');
+    if (model.findings.length) parts.push('Engineering basis: ' + model.findings.slice(0,2).join(' | '));
+    parts.push('PCA expectation: remove process bypasses, restore capability and implement a control that would have prevented this case under the same trace path.');
+    return traceOpsEightdJoinParagraphs(parts);
+  }
+
+  function traceOpsEightdBuildVerificationText(model) {
+    var parts = [];
+    if (traceOpsEightdHasText(model.validation)) parts.push('Verification of effectiveness: ' + model.validation);
+    else parts.push('Verification of effectiveness is still pending. Required evidence should include repeat inspection or test, recurrence review and post-action stability.');
+    parts.push('Severity / recurrence / analysis maturity: ' + [model.severity, model.recurrence, model.analysisMaturity].join(' · '));
+    if (model.evidenceRefs.length) parts.push('Evidence references used for effectiveness review: ' + model.evidenceRefs.slice(0,5).join(' | '));
+    parts.push('Acceptance rule: no recurrence signature, stable control behavior and traceable evidence connecting the action to the improved outcome.');
+    return traceOpsEightdJoinParagraphs(parts);
+  }
+
+  function traceOpsEightdBuildPreventionText(model) {
+    var parts = [];
+    if (traceOpsEightdHasText(model.prevention)) parts.push('Preventive action: ' + model.prevention);
+    if (traceOpsEightdHasText(model.lesson)) parts.push('Lesson learned: ' + model.lesson);
+    if (traceOpsEightdHasText(model.pattern)) parts.push('Yokoten trigger: ' + model.pattern);
+    parts.push('System-level follow-up: update CTQs, control logic, traceability rules, alerts, audit checks and replication scope for similar models / stations where applicable.');
+    return traceOpsEightdJoinParagraphs(parts);
+  }
+
+  function traceOpsEightdBuildClosureText(model, draftStatus) {
+    var parts = [];
+    if (traceOpsEightdHasText(model.validation)) {
+      parts.push('Closure basis: the case can be reviewed for closure once the validated path confirms the action blocked recurrence and the control gap is addressed.');
+    } else {
+      parts.push('Closure basis not yet achieved. Effectiveness evidence is incomplete and the case should remain open for Quality review.');
+    }
+    parts.push('Current status: ' + (draftStatus || 'Draft') + '.');
+    parts.push('Customer-facing statement: this report remains tied to the trace path, linked evidence and current validation status; no unsupported claim of confirmed root cause is made beyond the available evidence.');
+    return traceOpsEightdJoinParagraphs(parts);
+  }
+
+  function traceOpsEightdHydrateDraftFields(draft) {
+    var model = traceOpsEightdBuildModel((draft && draft.source_snapshot) || draft || {}, traceOpsEightdCollectLinkedEvents((draft && (draft.linked_event_ids || draft.event_ids)) || []));
+    var next = Object.assign({}, draft || {});
+    next.modelo = next.modelo || model.model;
+    next.linea = next.linea || model.line;
+    next.station = next.station || model.station;
+    next.defecto_smt = next.defecto_smt || model.defect;
+    next.detection_window = next.detection_window || model.detectionWindow;
+    next.impact_summary = next.impact_summary || (model.exposure || model.customerImpact || model.impact);
+    next.pattern_detected = next.pattern_detected || model.pattern;
+    next.trace_path = next.trace_path || model.tracePath;
+    next.complaint_anchor = next.complaint_anchor || model.complaintAnchor;
+    next.report_positioning = next.report_positioning || ('Issue under analysis: ' + model.complaintAnchor + ' Issue is not positioned as a confirmed root cause beyond available evidence. Separate component-only findings from installed-state behavior.');
+    next.serial_range = next.serial_range || model.serialRange;
+    next.lot_batch = next.lot_batch || model.lotBatch;
+    next.build_window = next.build_window || model.buildWindow;
+    next.data_anchor = next.data_anchor || traceOpsEightdJoinParagraphs([
+      model.serialRange ? ('Serial range: ' + model.serialRange) : '',
+      model.lotBatch ? ('Lot / batch: ' + model.lotBatch) : '',
+      model.buildWindow ? ('Build window: ' + model.buildWindow) : '',
+      'Line / station: ' + [model.line, model.station].join(' · '),
+      'Defect SMT: ' + model.defect,
+      'Trace path: ' + model.tracePath,
+      model.evidenceRefs.length ? ('Event timestamps: ' + model.evidenceRefs.join(' | ')) : ''
+    ]);
+    next.evidence_summary = next.evidence_summary || traceOpsEightdJoinParagraphs([
+      model.evidenceSummary ? ('Evidence summary: ' + model.evidenceSummary) : '',
+      model.findings.length ? ('Engineer findings: ' + model.findings.join(' | ')) : '',
+      model.actions.length ? ('Executed actions: ' + model.actions.join(' | ')) : ''
+    ]);
+    next.correlation_notes = next.correlation_notes || traceOpsEightdJoinParagraphs([
+      'Correlation logic: ' + model.pattern,
+      traceOpsEightdHasText(model.rootCause) ? ('Occurrence evidence supports: ' + model.rootCause) : (traceOpsEightdHasText(model.hypothesis) ? ('Working hypothesis: ' + model.hypothesis) : 'Occurrence hypothesis is still pending.'),
+      'Escape review focuses on ' + model.station + ' against the observed failure mode ' + model.defect + '.'
+    ]);
+    next.evidence_checklist = next.evidence_checklist || '□ Customer symptom image / data\n□ Golden reference comparison\n□ Installed-state vs removed-state comparison\n□ Serial / batch trace\n□ Control limitation explanation\n□ Corrective action proof';
+    next.d1_team = traceOpsEightdHasText(next.d1_team) ? next.d1_team : traceOpsEightdBuildTeamText(model);
+    next.d2_problem = traceOpsEightdHasText(next.d2_problem) ? next.d2_problem : traceOpsEightdBuildProblemText(model);
+    next.d3_containment = traceOpsEightdHasText(next.d3_containment) ? next.d3_containment : traceOpsEightdBuildContainmentText(model);
+    next.d4_root_cause = traceOpsEightdHasText(next.d4_root_cause) ? next.d4_root_cause : traceOpsEightdBuildOccurrenceText(model);
+    next.d4_escape_point = traceOpsEightdHasText(next.d4_escape_point) ? next.d4_escape_point : traceOpsEightdBuildEscapeText(model);
+    next.d5_pca = traceOpsEightdHasText(next.d5_pca) ? next.d5_pca : traceOpsEightdBuildPcaText(model);
+    next.d6_validation = traceOpsEightdHasText(next.d6_validation) ? next.d6_validation : traceOpsEightdBuildVerificationText(model);
+    next.d7_prevention = traceOpsEightdHasText(next.d7_prevention) ? next.d7_prevention : traceOpsEightdBuildPreventionText(model);
+    next.d8_closure = traceOpsEightdHasText(next.d8_closure) ? next.d8_closure : traceOpsEightdBuildClosureText(model, next.status || 'Draft');
+    return next;
+  }
+
   function traceOpsBuildEightdDraftFromRcca(rcca, existing) {
-    var linkedEvents = traceOpsCollectLinkedEventsByIds((rcca && rcca.event_ids) || []);
-    var firstEv = linkedEvents.length ? linkedEvents.slice().sort(function(a,b){ return traceOpsGetDateValue(a.fecha) - traceOpsGetDateValue(b.fecha); })[0] : null;
-    var lastEv = linkedEvents.length ? linkedEvents.slice().sort(function(a,b){ return traceOpsGetDateValue(b.fecha) - traceOpsGetDateValue(a.fecha); })[0] : null;
-    var problemParts = [];
-    if (rcca && (rcca.titulo_corto || rcca.problema)) problemParts.push((rcca.titulo_corto || rcca.problema));
-    if (rcca && (rcca.modelo || rcca.linea)) problemParts.push("Modelo / Linea: " + [rcca.modelo || "N/D", rcca.linea || "N/D"].join(" · "));
-    if (rcca && (rcca.primera_deteccion || (firstEv && firstEv.fecha) || rcca.ultima_deteccion || (lastEv && lastEv.fecha))) problemParts.push("Ventana de deteccion: " + (rcca.primera_deteccion || (firstEv && firstEv.fecha) || "N/D") + " -> " + (rcca.ultima_deteccion || (lastEv && lastEv.fecha) || "N/D"));
-    if (linkedEvents.length) problemParts.push("Eventos vinculados: " + linkedEvents.map(function(item){ return item.id; }).join(", "));
-    if (rcca && rcca.problema) problemParts.push("Descripcion: " + rcca.problema);
-
-    var containmentParts = [];
-    if (rcca && rcca.contencion) containmentParts.push(rcca.contencion);
-    if (rcca && rcca.material_afectado) containmentParts.push("Material afectado: " + rcca.material_afectado);
-    if (rcca && rcca.alcance_exposicion) containmentParts.push("Alcance / exposicion: " + rcca.alcance_exposicion);
-    var containmentActions = linkedEvents.map(function(item){ return item && item.accion_ejecutada ? (item.id + ": " + item.accion_ejecutada) : ""; }).filter(Boolean);
-    if (containmentActions.length) containmentParts.push("Acciones ejecutadas en eventos: " + containmentActions.join(" | "));
-
-    var rootCauseParts = [];
-    if (rcca && rcca.hipotesis) rootCauseParts.push("Hipotesis: " + rcca.hipotesis);
-    if (rcca && rcca.causa_raiz) rootCauseParts.push("Causa raiz: " + rcca.causa_raiz);
-    if (rcca && rcca.evidencia_resumen) rootCauseParts.push("Evidencia: " + rcca.evidencia_resumen);
-    if (rcca && rcca.patron_detectado) rootCauseParts.push("Patron detectado: " + rcca.patron_detectado);
-
-    var escapePoint = [];
-    if (rcca && (rcca.estacion_dominante || rcca.defecto_dominante)) escapePoint.push("Punto de escape sugerido: " + [rcca.estacion_dominante || "estacion N/D", rcca.defecto_dominante || "defecto N/D"].join(" · "));
-    if (linkedEvents.length) escapePoint.push("Validar por que el control del proceso no bloqueo el evento antes de " + (lastEv && lastEv.linea_estacion ? lastEv.linea_estacion : "la deteccion final") + ".");
-
-    var validationParts = [];
-    if (rcca && rcca.validacion) validationParts.push(rcca.validacion);
-    if (rcca && rcca.severidad) validationParts.push("Severidad: " + rcca.severidad);
-    if (rcca && rcca.recurrencia) validationParts.push("Recurrencia: " + rcca.recurrencia);
-    if (rcca && rcca.madurez_analisis) validationParts.push("Madurez analisis: " + rcca.madurez_analisis);
-
-    var preventionParts = [];
-    if (rcca && rcca.accion_preventiva) preventionParts.push(rcca.accion_preventiva);
-    if (rcca && rcca.leccion_aprendida) preventionParts.push("Leccion aprendida: " + rcca.leccion_aprendida);
-    if (rcca && rcca.patron_detectado) preventionParts.push("Yokoten sugerido desde patron: " + rcca.patron_detectado);
-
-    var draft = Object.assign({}, existing || {}, {
-      eightd_id: existing && existing.eightd_id ? existing.eightd_id : traceOpsBuildEightdId(rcca && rcca.rcca_id),
-      source_rcca_id: rcca && rcca.rcca_id ? rcca.rcca_id : "",
-      source_title: rcca && (rcca.titulo_corto || rcca.problema) ? (rcca.titulo_corto || rcca.problema) : "",
-      modelo: rcca && rcca.modelo ? rcca.modelo : "",
-      linea: rcca && rcca.linea ? rcca.linea : "",
-      fecha: rcca && rcca.fecha ? rcca.fecha : new Date().toISOString().slice(0,10),
-      owner_email: (existing && existing.owner_email) || (rcca && rcca.owner_email) || (authUser && authUser.email) || "",
-      status: (existing && existing.status) || "Draft",
-      linked_event_ids: (rcca && rcca.event_ids ? rcca.event_ids.slice() : []),
-      source_snapshot: Object.assign({}, rcca || {}),
-      d1_team: existing && existing.d1_team ? existing.d1_team : ((rcca && rcca.owner_email) ? ("Owner inicial: " + rcca.owner_email) : ""),
-      d2_problem: problemParts.join("\n\n"),
-      d3_containment: containmentParts.join("\n\n"),
-      d4_root_cause: rootCauseParts.join("\n\n"),
-      d4_escape_point: existing && existing.d4_escape_point ? existing.d4_escape_point : escapePoint.join("\n\n"),
-      d5_pca: rcca && rcca.accion_correctiva ? rcca.accion_correctiva : "",
-      d6_validation: validationParts.join("\n\n"),
-      d7_prevention: preventionParts.join("\n\n"),
-      d8_closure: existing && existing.d8_closure ? existing.d8_closure : "",
+    var source = Object.assign({}, rcca || {});
+    var linkedEvents = traceOpsEightdCollectLinkedEvents((source && source.event_ids) || []);
+    var model = traceOpsEightdBuildModel(source, linkedEvents);
+    var baseDraft = Object.assign({}, existing || {}, {
+      eightd_id: existing && existing.eightd_id ? existing.eightd_id : traceOpsBuildEightdId(source && source.rcca_id),
+      source_rcca_id: source && source.rcca_id ? source.rcca_id : '',
+      source_title: source && (source.titulo_corto || source.problema) ? (source.titulo_corto || source.problema) : '',
+      modelo: model.model,
+      linea: model.line,
+      station: model.station,
+      defecto_smt: model.defect,
+      detection_window: model.detectionWindow,
+      impact_summary: model.exposure || model.customerImpact || model.impact,
+      pattern_detected: model.pattern,
+      trace_path: model.tracePath,
+      complaint_anchor: model.complaintAnchor,
+      report_positioning: existing && existing.report_positioning ? existing.report_positioning : ('Issue under analysis: ' + model.complaintAnchor + ' Issue is not positioned as a confirmed root cause beyond available evidence. Separate component-only findings from installed-state behavior.'),
+      serial_range: (existing && existing.serial_range) || model.serialRange,
+      lot_batch: (existing && existing.lot_batch) || model.lotBatch,
+      build_window: (existing && existing.build_window) || model.buildWindow,
+      fecha: source && source.fecha ? source.fecha : new Date().toISOString().slice(0,10),
+      owner_email: (existing && existing.owner_email) || (source && source.owner_email) || (authUser && authUser.email) || '',
+      status: (existing && existing.status) || 'Draft',
+      linked_event_ids: (source && source.event_ids ? source.event_ids.slice() : []),
+      source_snapshot: source,
+      evidence_summary: (existing && existing.evidence_summary) || '',
+      correlation_notes: (existing && existing.correlation_notes) || '',
+      evidence_checklist: (existing && existing.evidence_checklist) || '',
+      d1_team: (existing && existing.d1_team) || '',
+      d2_problem: (existing && existing.d2_problem) || '',
+      d3_containment: (existing && existing.d3_containment) || '',
+      d4_root_cause: (existing && existing.d4_root_cause) || '',
+      d4_escape_point: (existing && existing.d4_escape_point) || '',
+      d5_pca: (existing && existing.d5_pca) || '',
+      d6_validation: (existing && existing.d6_validation) || '',
+      d7_prevention: (existing && existing.d7_prevention) || '',
+      d8_closure: (existing && existing.d8_closure) || '',
       updated_at: new Date().toISOString(),
       created_at: existing && existing.created_at ? existing.created_at : new Date().toISOString()
     });
+    var draft = traceOpsEightdHydrateDraftFields(baseDraft);
     var readiness = traceOpsComputeEightdReadiness(draft);
     draft.readiness_score = readiness.score;
     draft.missing_fields = readiness.missing;
@@ -5111,13 +5353,13 @@ function App() {
   }
 
   async function saveEightdDraft(draft) {
-    var readiness = traceOpsComputeEightdReadiness(draft);
-    var normalized = Object.assign({}, draft, {
+    var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft, {
       owner_email: authUser && authUser.email ? authUser.email : (draft.owner_email || ""),
-      updated_at: new Date().toISOString(),
-      readiness_score: readiness.score,
-      missing_fields: readiness.missing
-    });
+      updated_at: new Date().toISOString()
+    }));
+    var readiness = traceOpsComputeEightdReadiness(normalized);
+    normalized.readiness_score = readiness.score;
+    normalized.missing_fields = readiness.missing;
     var updated = eightdList.filter(function(item){ return item.eightd_id !== normalized.eightd_id; });
     updated = [normalized].concat(updated).sort(function(a,b){
       var ta = a && a.updated_at ? new Date(a.updated_at).getTime() : 0;
@@ -5155,77 +5397,64 @@ function App() {
   }
 
   function traceOpsBuildEightdHtml(draft) {
-    function esc(v){ return String(v || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-    function arr(v){ return Array.isArray(v) ? v : []; }
-    function block(title, body){
-      return `<section class="fx-card"><div class="fx-label">${esc(title)}</div><div class="fx-copy">${esc(body || "Pending")}</div></section>`;
+    var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
+    var model = traceOpsEightdBuildModel((normalized && normalized.source_snapshot) || normalized || {}, traceOpsEightdCollectLinkedEvents((normalized && (normalized.linked_event_ids || normalized.event_ids)) || []));
+    function esc(v){ return traceOpsEightdEsc(v); }
+    function block(title, body, variant){
+      return `<section class="fx-card${variant ? ' ' + variant : ''}"><div class="fx-label">${esc(title)}</div><div class="fx-copy">${esc(body || 'Pending')}</div></section>`;
     }
-    function shortText(v){ return String(v || "").trim() || "Pending"; }
-    var linkedEvents = (typeof traceOpsCollectLinkedEventsByIds === "function")
-      ? traceOpsCollectLinkedEventsByIds(arr(draft.linked_event_ids || draft.event_ids))
-      : [];
-    linkedEvents = linkedEvents.slice().sort(function(a,b){
-      return (traceOpsGetDateValue(a && a.fecha) || 0) - (traceOpsGetDateValue(b && b.fecha) || 0);
-    });
-    var complaintAnchor = draft.complaint_anchor || draft.d2_problem || draft.source_title || draft.source_rcca_id || "";
-    var reportPositioning = draft.report_positioning || draft.d4_root_cause || draft.d4_escape_point || "";
-    var dataAnchor = [
-      draft.serial_range ? ("Serial range: " + draft.serial_range) : "",
-      draft.lot_batch ? ("Lot / batch: " + draft.lot_batch) : "",
-      draft.build_window ? ("Build window: " + draft.build_window) : "",
-      draft.linea ? ("Line / station: " + draft.linea) : "",
-      linkedEvents.length ? ("Trace path: " + linkedEvents.map(function(item){ return item.id || item.tipo_evento || "Event"; }).join(" → ")) : "",
-      linkedEvents.length ? ("Event timestamps: " + linkedEvents.map(function(item){ return [item.fecha || "", item.hora || ""].join(" ").trim(); }).filter(Boolean).join(" · ")) : ""
-    ].filter(Boolean).join("\n");
-    var timelineRows = linkedEvents.length ? linkedEvents.slice(0,8).map(function(item){
-      var stage = item && (item.tipo_evento || item.area || item.linea_estacion || "Event");
-      var when = [item && item.fecha || "", item && item.hora || ""].join(" ").trim();
-      var obs = item && (item.defecto_smt || item.impacto || item.accion_ejecutada || item.texto || "");
-      var src = item && (item.area || item.sender || "TraceOps");
-      return `<tr><td>${esc(stage)}</td><td>${esc(when || "N/D")}</td><td>${esc(obs || "Pending")}</td><td>${esc(src || "TraceOps")}</td></tr>`;
-    }).join("") : `<tr><td>Build</td><td>N/D</td><td>No linked events</td><td>TraceOps</td></tr>`;
-    var evidenceRows = linkedEvents.length ? linkedEvents.slice(0,10).map(function(item){
-      var step = item && (item.tipo_evento || item.area || item.linea_estacion || "Event");
-      var ts = [item && item.fecha || "", item && item.hora || ""].join(" ").trim();
-      var result = item && (item.resultado || item.status || item.impacto || "Observed");
-      var observation = item && (item.defecto_smt || item.accion_requerida || item.accion_ejecutada || item.texto || "");
-      var source = item && (item.area || item.sender || "TraceOps");
-      var why = item && (item.impacto || item.accion_requerida || "Supports the trace path");
-      return `<tr><td>${esc(step)}</td><td>${esc(ts || "N/D")}</td><td>${esc(result || "Observed")}</td><td>${esc(observation || "Pending")}</td><td>${esc(source || "TraceOps")}</td><td>${esc(why || "Supports the trace path")}</td></tr>`;
-    }).join("") : `<tr><td>SMT Print</td><td>N/D</td><td>Pending</td><td>No evidence linked</td><td>TraceOps</td><td>Starting condition</td></tr>`;
-
+    var linkedEvents = model.linked;
+    var timelineRows = linkedEvents.length ? linkedEvents.slice(0,10).map(function(item){
+      var stage = item && (item.tipo_evento || item.area_involucrada || item.linea_estacion || 'Event');
+      var when = [item && item.fecha || '', item && item.hora || ''].join(' ').trim();
+      var obs = item && (item.evento_detectado_full || item.evento_detectado || item.defecto_smt || item.impacto || '');
+      var src = item && (item.reporta || item.sender || item.area_involucrada || 'TraceOps');
+      return `<tr><td>${esc(stage)}</td><td>${esc(when || 'N/D')}</td><td>${esc(traceOpsEightdShort(obs || 'Pending', 220))}</td><td>${esc(src || 'TraceOps')}</td></tr>`;
+    }).join('') : `<tr><td>Build</td><td>N/D</td><td>No linked events</td><td>TraceOps</td></tr>`;
+    var evidenceRows = linkedEvents.length ? linkedEvents.slice(0,12).map(function(item){
+      var step = item && (item.linea_estacion || item.tipo_evento || item.area_involucrada || 'Event');
+      var ts = [item && item.fecha || '', item && item.hora || ''].join(' ').trim();
+      var result = item && (item.estatus || item.estado_historia || item.impacto || 'Observed');
+      var observation = item && (item.engineer_findings_full || item.engineer_findings || item.evento_detectado_full || item.evento_detectado || item.defecto_smt || 'Pending');
+      var source = item && (item.id || item.reporta || item.sender || 'TraceOps');
+      var why = item && (item.accion_requerida || item.impacto || 'Supports the trace path');
+      return `<tr><td>${esc(step)}</td><td>${esc(ts || 'N/D')}</td><td>${esc(result || 'Observed')}</td><td>${esc(traceOpsEightdShort(observation, 180) || 'Pending')}</td><td>${esc(source || 'TraceOps')}</td><td>${esc(traceOpsEightdShort(why, 120) || 'Supports the trace path')}</td></tr>`;
+    }).join('') : `<tr><td>SMT Print</td><td>N/D</td><td>Pending</td><td>No evidence linked</td><td>TraceOps</td><td>Starting condition</td></tr>`;
+    var dataAnchor = normalized.data_anchor || traceOpsEightdJoinParagraphs([
+      normalized.serial_range ? ('Serial range: ' + normalized.serial_range) : '',
+      normalized.lot_batch ? ('Lot / batch: ' + normalized.lot_batch) : '',
+      normalized.build_window ? ('Build window: ' + normalized.build_window) : '',
+      'Line / station: ' + [normalized.linea || model.line, normalized.station || model.station].join(' · '),
+      'Defect SMT: ' + (normalized.defecto_smt || model.defect),
+      'Trace path: ' + (normalized.trace_path || model.tracePath)
+    ]);
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${esc(draft.eightd_id)}</title>
+<title>${esc(normalized.eightd_id)}</title>
 <style>
-:root{--ink:#10231C;--muted:#5F766C;--soft:#F6FBF8;--line:#DCE9E2;--paper:#FFFFFF;--bg:#EEF4F0}
+:root{--ink:#10231C;--muted:#5F766C;--soft:#F6FBF8;--line:#DCE9E2;--paper:#FFFFFF;--bg:#EEF4F0;--accent:#1E8A64}
 *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
 .page{width:1280px;min-height:720px;margin:0 auto 18px;background:var(--paper);padding:34px 40px;box-shadow:0 18px 38px rgba(16,35,28,.10);page-break-after:always}
+.page:last-child{page-break-after:auto}
 .hero{background:linear-gradient(135deg,#07100C,#10231C);color:#fff;border-radius:28px;padding:28px 32px;margin-bottom:18px}
 .eyebrow{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#A8D6C4}
-.title{font-size:34px;font-weight:800;line-height:1.02;margin:10px 0 8px}
-.sub{font-size:13px;color:rgba(255,255,255,.74)}
-.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:18px}
-.kpi{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:14px}
-.kpi span{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.62)}
-.kpi b{display:block;font-size:24px;margin-top:6px;color:#fff;line-height:1.1}
-.grid-top{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.title{font-size:34px;font-weight:800;line-height:1.02;margin:10px 0 8px}.sub{font-size:13px;color:rgba(255,255,255,.74)}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:18px}.kpi{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:14px}.kpi span{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.62)}.kpi b{display:block;font-size:24px;margin-top:6px;color:#fff;line-height:1.1}
+.meta-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.meta-card{background:#F7FBF9;border:1px solid var(--line);border-radius:18px;padding:12px 14px}.meta-card span{display:block;font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}.meta-card b{display:block;font-size:13px;line-height:1.4;color:var(--ink);margin-top:5px}
+.grid-top{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:14px;margin-bottom:14px}
 .fx-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 4px 16px rgba(16,35,28,.04)}
-.fx-card.dark{background:var(--soft)}
+.fx-card.soft{background:var(--soft)}
 .fx-label{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-.fx-copy{white-space:pre-wrap;font-size:13px;line-height:1.58;color:var(--ink)}
-.section-title{font-size:20px;font-weight:800;color:var(--ink);margin:8px 0 12px}
-.d-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.table-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;overflow:hidden}
-.table-head{padding:16px 18px;background:var(--soft);border-bottom:1px solid var(--line);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px 12px;border-bottom:1px solid #EAF1ED;font-size:11px;text-align:left;vertical-align:top}
-th{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:#FBFDFC}
+.fx-copy{white-space:pre-wrap;font-size:12.8px;line-height:1.6;color:var(--ink)}
+.section-band{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.section-band.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.table-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;overflow:hidden}.table-head{padding:16px 18px;background:var(--soft);border-bottom:1px solid var(--line);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:1px solid #EAF1ED;font-size:11px;text-align:left;vertical-align:top}th{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:#FBFDFC}
 .note{margin-top:14px;padding:16px 18px;border-radius:18px;background:#F7FBF9;border:1px solid var(--line);font-size:12px;line-height:1.6;color:var(--ink)}
-.page:last-child{page-break-after:auto}
+.badge{display:inline-flex;align-items:center;border-radius:999px;padding:5px 10px;font-size:10px;font-weight:800;background:#ECF8F1;color:#1E7B58;border:1px solid #CFE7DB;margin-right:6px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -5233,38 +5462,65 @@ th{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
     <div class="hero">
       <div class="eyebrow">FOXCONN | TraceOps 8D Draft</div>
       <div class="title">8D RCCA Draft</div>
-      <div class="sub">${esc(draft.eightd_id)} · RCCA ${esc(draft.source_rcca_id)} · ${esc(draft.status || "Draft")} · Use actual source evidence only</div>
+      <div class="sub">${esc(normalized.eightd_id)} · RCCA ${esc(normalized.source_rcca_id)} · ${esc(normalized.status || 'Draft')} · Use actual source evidence only</div>
       <div class="kpi-grid">
-        <div class="kpi"><span>Readiness</span><b>${esc(draft.readiness_score || 0)}%</b></div>
-        <div class="kpi"><span>Model</span><b>${esc(draft.modelo || "Product / Part No.")}</b></div>
-        <div class="kpi"><span>Line</span><b>${esc(draft.linea || "SMT / Assembly line")}</b></div>
-        <div class="kpi"><span>Trace Events</span><b>${esc(linkedEvents.length ? linkedEvents.length + " linked" : "Build → Test → Complaint")}</b></div>
+        <div class="kpi"><span>Readiness</span><b>${esc(normalized.readiness_score || 0)}%</b></div>
+        <div class="kpi"><span>Model</span><b>${esc(normalized.modelo || 'Product / Part No.')}</b></div>
+        <div class="kpi"><span>Line</span><b>${esc(normalized.linea || 'SMT / Assembly line')}</b></div>
+        <div class="kpi"><span>Trace Events</span><b>${esc(linkedEvents.length ? linkedEvents.length + ' linked' : 'Build → Test → Complaint')}</b></div>
       </div>
     </div>
 
+    <div class="meta-grid">
+      <div class="meta-card"><span>Station</span><b>${esc(normalized.station || model.station || 'N/D')}</b></div>
+      <div class="meta-card"><span>Defect SMT</span><b>${esc(normalized.defecto_smt || model.defect || 'N/A')}</b></div>
+      <div class="meta-card"><span>Detection Window</span><b>${esc(normalized.detection_window || model.detectionWindow || 'N/D')}</b></div>
+      <div class="meta-card"><span>Impact</span><b>${esc(normalized.impact_summary || model.impact || 'Pending')}</b></div>
+      <div class="meta-card"><span>Pattern</span><b>${esc(normalized.pattern_detected || model.pattern || 'Pending')}</b></div>
+      <div class="meta-card"><span>Evidence</span><b>${esc(model.evidenceRefs.length ? model.evidenceRefs.length + ' refs' : 'No refs')}</b></div>
+    </div>
+
     <div class="grid-top">
-      ${block("Complaint Anchor", complaintAnchor)}
-      ${block("Report Positioning", reportPositioning)}
-      ${block("TraceOps Data Anchor", dataAnchor)}
+      ${block('Complaint Anchor', normalized.complaint_anchor || model.complaintAnchor)}
+      ${block('Report Positioning', normalized.report_positioning)}
+      ${block('TraceOps Data Anchor', dataAnchor)}
     </div>
 
-    <div class="d-grid">
-      ${block("D1 Team", draft.d1_team)}
-      ${block("D2 Problem Description", draft.d2_problem)}
-      ${block("D3 Containment", draft.d3_containment)}
-      ${block("D4 Occurrence", draft.d4_root_cause)}
-      ${block("D4 Escape", draft.d4_escape_point)}
-      ${block("D5 Permanent Corrective Actions", draft.d5_pca)}
-      ${block("D6 Verification", draft.d6_validation)}
-      ${block("D7 Prevention / Yokoten", draft.d7_prevention)}
+    <div class="section-band three">
+      ${block('D1 Team', normalized.d1_team)}
+      ${block('D2 Problem Description', normalized.d2_problem)}
+      ${block('D3 Containment Actions', normalized.d3_containment)}
     </div>
 
-    <div class="fx-card dark" style="margin-top:14px">
-      <div class="section-title" style="margin-top:0">Root Cause, Actions & Closure</div>
-      <div class="fx-copy">${esc(shortText(draft.d8_closure || "Close the case with a technical statement tied to the validated path and recurrence reduction."))}</div>
+    <div class="section-band">
+      ${block('D4 Occurrence', normalized.d4_root_cause)}
+      ${block('D4 Escape', normalized.d4_escape_point)}
     </div>
 
-    <div class="table-card" style="margin-top:14px">
+    <div class="section-band three">
+      ${block('D5 Permanent Corrective Actions', normalized.d5_pca)}
+      ${block('D6 Verification of Effectiveness', normalized.d6_validation)}
+      ${block('D7 Prevention / Yokoten', normalized.d7_prevention)}
+    </div>
+
+    ${block('D8 Closure Statement', normalized.d8_closure, 'soft')}
+
+    <div class="note"><strong>Traceability rule.</strong> This 8D remains connected to the original chat analysis, linked events, engineer findings, RCCA content and Yokoten knowledge. No confirmed root cause is claimed unless explicitly validated in the source evidence.</div>
+  </div>
+
+  <div class="page">
+    <div class="hero" style="padding:22px 26px">
+      <div class="eyebrow">FOXCONN | TraceOps 8D Draft</div>
+      <div class="title" style="font-size:30px">TraceOps Evidence Page</div>
+      <div class="sub">Use this page to export a one-look traceability summary for Quality review, PPT or PDF release.</div>
+    </div>
+
+    <div class="section-band">
+      ${block('Evidence Summary', normalized.evidence_summary || 'Pending evidence summary.')}
+      ${block('Correlation Notes', normalized.correlation_notes || 'Pending correlation notes.')}
+    </div>
+
+    <div class="table-card" style="margin-bottom:14px">
       <div class="table-head">Event Timeline</div>
       <table>
         <thead><tr><th>Stage</th><th>Timestamp</th><th>Observation</th><th>Source</th></tr></thead>
@@ -5272,39 +5528,22 @@ th{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
       </table>
     </div>
 
-    <div class="note"><strong>Writing Rule.</strong> Use real source visuals only. The 8D explains evidence; it is not the evidence itself. Write like a customer-facing FA engineer, not like an internal checklist.</div>
-  </div>
-
-  <div class="page">
-    <div class="hero" style="padding:22px 26px">
-      <div class="eyebrow">FOXCONN | TraceOps 8D Draft</div>
-      <div class="title" style="font-size:30px">TraceOps Evidence Page</div>
-      <div class="sub">Use this page to export a one-look traceability summary</div>
-    </div>
-
     <div class="table-card">
       <div class="table-head">Traceability Mapping</div>
       <table>
         <thead>
-          <tr>
-            <th>Process Step</th>
-            <th>Timestamp</th>
-            <th>Result</th>
-            <th>Observation</th>
-            <th>Source</th>
-            <th>Why it matters</th>
-          </tr>
+          <tr><th>Process Step</th><th>Timestamp</th><th>Result</th><th>Observation</th><th>Source</th><th>Why it matters</th></tr>
         </thead>
         <tbody>${evidenceRows}</tbody>
       </table>
     </div>
 
-    <div class="d-grid" style="margin-top:14px">
-      ${block("Correlation Notes", draft.correlation_notes || draft.d4_root_cause || draft.d6_validation)}
-      ${block("Evidence Checklist", draft.evidence_checklist || "□ Customer symptom image / data\n□ Golden reference comparison\n□ Installed-state vs removed-state comparison\n□ Serial / batch trace\n□ Control limitation explanation\n□ Corrective action proof")}
-    </div>
-
-    <div class="note"><strong>Export Note.</strong> This template is built in 16:9 landscape for PPT/PDF export. Replace placeholders with actual evidence and keep each statement tied to one visible proof point.</div>
+    <div class="note"><strong>Evidence checklist.</strong><br>${esc(normalized.evidence_checklist || '□ Customer symptom image / data
+□ Golden reference comparison
+□ Installed-state vs removed-state comparison
+□ Serial / batch trace
+□ Control limitation explanation
+□ Corrective action proof')}</div>
   </div>
 </body>
 </html>`;
@@ -5356,146 +5595,149 @@ th{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
 
   function exportEightdPpt(draft) {
     if (!draft) return;
-    var normalized = Object.assign({}, draft);
+    var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
     window.ensurePptxTools().then(async function(){
       var pptx = new PptxGenJS();
       try { if (typeof pptx.layout !== 'undefined') pptx.layout = 'LAYOUT_WIDE'; } catch(_){ }
       try { if (typeof pptx.defineLayout === 'function') { pptx.defineLayout({ name:'TRACEOPS_WIDE', width:13.333, height:7.5 }); pptx.layout = 'TRACEOPS_WIDE'; } } catch(_){ }
       try { if (typeof pptx.setLayout === 'function') pptx.setLayout('LAYOUT_WIDE'); } catch(_){ }
-      pptx.author = "OpenAI";
-      pptx.company = "TraceOps by SMTintel";
-      pptx.subject = "TraceOps 8D Draft";
-      pptx.title = traceOpsPptSafe(normalized.eightd_id || "TraceOps_8D_Draft");
-      var linked = traceOpsGetEightdLinkedEventsForExport(normalized);
-      var fileBase = String(normalized.eightd_id || normalized.source_rcca_id || "TraceOps_8D_Draft").replace(/[^A-Za-z0-9_-]+/g,"_");
-      var complaintAnchor = normalized.complaint_anchor || normalized.d2_problem || normalized.source_title || normalized.source_rcca_id || "Pending";
-      var reportPositioning = normalized.report_positioning || normalized.d4_root_cause || normalized.d4_escape_point || "Pending";
-      var dataAnchor = [
-        normalized.serial_range ? ("Serial range: " + normalized.serial_range) : "",
-        normalized.lot_batch ? ("Lot / batch: " + normalized.lot_batch) : "",
-        normalized.build_window ? ("Build window: " + normalized.build_window) : "",
-        normalized.linea ? ("Line / station: " + normalized.linea) : "",
-        linked.length ? ("Trace path: " + linked.map(function(item){ return item.id || item.tipo_evento || "Event"; }).join(" → ")) : "",
-        linked.length ? ("Event timestamps: " + linked.map(function(item){ return [item.fecha || "", item.hora || ""].join(" ").trim(); }).filter(Boolean).join(" · ")) : ""
-      ].filter(Boolean).join("\n") || "Pending";
+      pptx.author = 'OpenAI';
+      pptx.company = 'TraceOps by SMTintel';
+      pptx.subject = 'TraceOps 8D Draft';
+      pptx.title = traceOpsPptSafe(normalized.eightd_id || 'TraceOps_8D_Draft');
+      var model = traceOpsEightdBuildModel((normalized && normalized.source_snapshot) || normalized || {}, traceOpsGetEightdLinkedEventsForExport(normalized));
+      var linked = model.linked;
+      var fileBase = String(normalized.eightd_id || normalized.source_rcca_id || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_');
+      var complaintAnchor = normalized.complaint_anchor || model.complaintAnchor || 'Pending';
+      var reportPositioning = normalized.report_positioning || 'Pending';
+      var dataAnchor = normalized.data_anchor || traceOpsEightdJoinParagraphs([
+        normalized.serial_range ? ('Serial range: ' + normalized.serial_range) : '',
+        normalized.lot_batch ? ('Lot / batch: ' + normalized.lot_batch) : '',
+        normalized.build_window ? ('Build window: ' + normalized.build_window) : '',
+        'Line / station: ' + [normalized.linea || model.line, normalized.station || model.station].join(' · '),
+        'Defect SMT: ' + (normalized.defecto_smt || model.defect),
+        'Trace path: ' + (normalized.trace_path || model.tracePath)
+      ]);
 
       var s1 = pptx.addSlide();
-      s1.background = { color: "EEF4F0" };
-      s1.addShape("roundRect", {x:0.28, y:0.22, w:12.75, h:1.42, rectRadius:0.08, line:{color:"10231C", pt:0}, fill:{color:"10231C"}});
-      s1.addText("FOXCONN | TraceOps 8D Draft", {x:0.54, y:0.40, w:4.2, h:0.18, fontFace:"Arial", fontSize:10, bold:true, color:"A8D6C4"});
-      s1.addText("8D RCCA Draft", {x:0.54, y:0.64, w:4.8, h:0.34, fontFace:"Arial", fontSize:25, bold:true, color:"FFFFFF"});
-      s1.addText(traceOpsPptSafe((normalized.eightd_id || "") + " · RCCA " + (normalized.source_rcca_id || "") + " · " + (normalized.status || "Draft") + " · Use actual source evidence only"), {x:0.54, y:1.02, w:6.9, h:0.18, fontFace:"Arial", fontSize:10.5, color:"D7E7E0"});
+      s1.background = { color: 'EEF4F0' };
+      s1.addShape('roundRect', {x:0.28, y:0.22, w:12.75, h:1.42, rectRadius:0.08, line:{color:'10231C', pt:0}, fill:{color:'10231C'}});
+      s1.addText('FOXCONN | TraceOps 8D Draft', {x:0.54, y:0.40, w:4.2, h:0.18, fontFace:'Arial', fontSize:10, bold:true, color:'A8D6C4'});
+      s1.addText('8D RCCA Draft', {x:0.54, y:0.64, w:4.8, h:0.34, fontFace:'Arial', fontSize:25, bold:true, color:'FFFFFF'});
+      s1.addText(traceOpsPptSafe((normalized.eightd_id || '') + ' · RCCA ' + (normalized.source_rcca_id || '') + ' · ' + (normalized.status || 'Draft') + ' · Use actual source evidence only'), {x:0.54, y:1.02, w:6.9, h:0.18, fontFace:'Arial', fontSize:10.5, color:'D7E7E0'});
 
       var kpis = [
-        ["Readiness", String(normalized.readiness_score || 0) + "%"],
-        ["Model", normalized.modelo || "Product / Part No."],
-        ["Line", normalized.linea || "SMT / Assembly line"],
-        ["Trace Events", linked.length ? (linked.length + " linked") : "Build → Test → Complaint"]
+        ['Readiness', String(normalized.readiness_score || 0) + '%'],
+        ['Model', normalized.modelo || 'Product / Part No.'],
+        ['Line', normalized.linea || 'SMT / Assembly line'],
+        ['Trace Events', linked.length ? (linked.length + ' linked') : 'Build → Test → Complaint']
       ];
       var kx = 0.54;
       for (var i=0;i<kpis.length;i++){
-        s1.addShape("roundRect", {x:kx + (i*3.08), y:0.50, w:2.82, h:0.92, rectRadius:0.06, line:{color:"2A3D36", pt:1}, fill:{color:"173328"}});
-        s1.addText(kpis[i][0], {x:kx + (i*3.08) + 0.14, y:0.64, w:2.5, h:0.14, fontFace:"Arial", fontSize:9, bold:true, color:"A9CFC0"});
-        s1.addText(traceOpsPptWrap(kpis[i][1], 28), {x:kx + (i*3.08) + 0.14, y:0.84, w:2.5, h:0.34, fontFace:"Arial", fontSize:16, bold:true, color:"FFFFFF"});
+        s1.addShape('roundRect', {x:kx + (i*3.08), y:0.50, w:2.82, h:0.92, rectRadius:0.06, line:{color:'2A3D36', pt:1}, fill:{color:'173328'}});
+        s1.addText(kpis[i][0], {x:kx + (i*3.08) + 0.14, y:0.64, w:2.5, h:0.14, fontFace:'Arial', fontSize:9, bold:true, color:'A9CFC0'});
+        s1.addText(traceOpsPptWrap(kpis[i][1], 28), {x:kx + (i*3.08) + 0.14, y:0.84, w:2.5, h:0.34, fontFace:'Arial', fontSize:16, bold:true, color:'FFFFFF'});
       }
 
-      traceOpsPptAddBlock(s1, "Complaint Anchor", complaintAnchor, 0.34, 1.86, 4.1, 1.42, "FFFFFF");
-      traceOpsPptAddBlock(s1, "Report Positioning", reportPositioning, 4.53, 1.86, 4.1, 1.42, "FFFFFF");
-      traceOpsPptAddBlock(s1, "TraceOps Data Anchor", dataAnchor, 8.72, 1.86, 4.0, 1.42, "FFFFFF");
+      var meta = [
+        ['Station', normalized.station || model.station || 'N/D'],
+        ['Defect SMT', normalized.defecto_smt || model.defect || 'N/A'],
+        ['Detection Window', normalized.detection_window || model.detectionWindow || 'N/D'],
+        ['Impact', normalized.impact_summary || model.impact || 'Pending'],
+        ['Pattern', normalized.pattern_detected || model.pattern || 'Pending'],
+        ['Evidence', model.evidenceRefs.length ? (model.evidenceRefs.length + ' refs') : 'No refs']
+      ];
+      for (var m=0;m<meta.length;m++){
+        var mx = 0.34 + (m * 2.08);
+        s1.addShape('roundRect', {x:mx, y:1.68, w:1.92, h:0.78, rectRadius:0.05, line:{color:'DCE9E2', pt:1}, fill:{color:'F7FBF9'}});
+        s1.addText(meta[m][0], {x:mx+0.10, y:1.80, w:1.7, h:0.12, fontFace:'Arial', fontSize:8.6, bold:true, color:'5F766C'});
+        s1.addText(traceOpsPptWrap(meta[m][1], 38), {x:mx+0.10, y:1.98, w:1.7, h:0.24, fontFace:'Arial', fontSize:10.5, bold:true, color:'10231C'});
+      }
+
+      traceOpsPptAddBlock(s1, 'Complaint Anchor', complaintAnchor, 0.34, 2.62, 4.1, 1.10, 'FFFFFF');
+      traceOpsPptAddBlock(s1, 'Report Positioning', reportPositioning, 4.53, 2.62, 4.1, 1.10, 'FFFFFF');
+      traceOpsPptAddBlock(s1, 'TraceOps Data Anchor', dataAnchor, 8.72, 2.62, 4.0, 1.10, 'FFFFFF');
 
       var blocks = [
-        ["D1 Team", normalized.d1_team],
-        ["D2 Problem Description", normalized.d2_problem],
-        ["D3 Containment", normalized.d3_containment],
-        ["D4 Occurrence", normalized.d4_root_cause],
-        ["D4 Escape", normalized.d4_escape_point],
-        ["D5 Permanent Corrective Actions", normalized.d5_pca],
-        ["D6 Verification", normalized.d6_validation],
-        ["D7 Prevention / Yokoten", normalized.d7_prevention]
+        ['D1 Team', normalized.d1_team],
+        ['D2 Problem Description', normalized.d2_problem],
+        ['D3 Containment Actions', normalized.d3_containment],
+        ['D4 Occurrence', normalized.d4_root_cause],
+        ['D4 Escape', normalized.d4_escape_point],
+        ['D5 Permanent Corrective Actions', normalized.d5_pca],
+        ['D6 Verification of Effectiveness', normalized.d6_validation],
+        ['D7 Prevention / Yokoten', normalized.d7_prevention]
       ];
-      var coords = [
-        [0.34, 3.45],[4.53, 3.45],[8.72, 3.45],
-        [0.34, 5.02],[4.53, 5.02],[8.72, 5.02],
-        [0.34, 6.59],[4.53, 6.59]
-      ];
+      var coords = [[0.34,3.90],[4.53,3.90],[8.72,3.90],[0.34,5.26],[4.53,5.26],[8.72,5.26],[0.34,6.62],[4.53,6.62]];
       for (var j=0;j<blocks.length;j++){
-        traceOpsPptAddBlock(s1, blocks[j][0], blocks[j][1], coords[j][0], coords[j][1], 3.91, 1.35, j % 2 ? "F8FBF9" : "FFFFFF");
+        traceOpsPptAddBlock(s1, blocks[j][0], blocks[j][1], coords[j][0], coords[j][1], 3.91, 1.18, j % 2 ? 'F8FBF9' : 'FFFFFF');
       }
-      traceOpsPptAddBlock(s1, "D8 Closure Statement", normalized.d8_closure || "Close the case with a technical statement tied to the validated path and recurrence reduction.", 8.72, 6.59, 3.91, 1.35, "F8FBF9");
+      traceOpsPptAddBlock(s1, 'D8 Closure Statement', normalized.d8_closure, 8.72, 6.62, 3.91, 1.18, 'F8FBF9');
 
       var s2 = pptx.addSlide();
-      s2.background = { color: "EEF4F0" };
-      s2.addShape("roundRect", {x:0.28, y:0.22, w:12.75, h:0.92, rectRadius:0.08, line:{color:"10231C", pt:0}, fill:{color:"10231C"}});
-      s2.addText("FOXCONN | TraceOps 8D Draft", {x:0.54, y:0.40, w:4.2, h:0.18, fontFace:"Arial", fontSize:10, bold:true, color:"A8D6C4"});
-      s2.addText("TraceOps Evidence Page", {x:0.54, y:0.60, w:5.8, h:0.24, fontFace:"Arial", fontSize:22, bold:true, color:"FFFFFF"});
-      s2.addText("Use this page to export a one-look traceability summary", {x:0.54, y:0.84, w:5.8, h:0.14, fontFace:"Arial", fontSize:10.5, color:"D7E7E0"});
+      s2.background = { color: 'EEF4F0' };
+      s2.addShape('roundRect', {x:0.28, y:0.22, w:12.75, h:0.92, rectRadius:0.08, line:{color:'10231C', pt:0}, fill:{color:'10231C'}});
+      s2.addText('FOXCONN | TraceOps 8D Draft', {x:0.54, y:0.40, w:4.2, h:0.18, fontFace:'Arial', fontSize:10, bold:true, color:'A8D6C4'});
+      s2.addText('TraceOps Evidence Page', {x:0.54, y:0.60, w:5.8, h:0.24, fontFace:'Arial', fontSize:22, bold:true, color:'FFFFFF'});
+      s2.addText('Use this page to export a one-look traceability summary for Quality review, PPT or PDF release.', {x:0.54, y:0.84, w:6.9, h:0.14, fontFace:'Arial', fontSize:10.5, color:'D7E7E0'});
 
-      s2.addText("Event Timeline", {x:0.34, y:1.36, w:2.0, h:0.18, fontFace:"Arial", fontSize:11, bold:true, color:"5F766C"});
+      s2.addText('Event Timeline', {x:0.34, y:1.36, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
       var timelineData = [[
-        {text:"Build", options:{bold:true}},
-        {text:"Line Test", options:{bold:true}},
-        {text:"Escaped", options:{bold:true}},
-        {text:"Complaint", options:{bold:true}},
-        {text:"RCCA", options:{bold:true}}
+        {text:'Build', options:{bold:true}},
+        {text:'Line Test', options:{bold:true}},
+        {text:'Escaped', options:{bold:true}},
+        {text:'Complaint', options:{bold:true}},
+        {text:'RCCA', options:{bold:true}}
       ],[
-        linked[0] ? traceOpsPptWrap((linked[0].id || linked[0].tipo_evento || "Initial build / lot released") + "\n" + ([linked[0].fecha || "", linked[0].hora || ""].join(" ").trim()), 80) : "Initial build / lot released",
-        linked[1] ? traceOpsPptWrap((linked[1].tipo_evento || linked[1].area || "SPI / AOI / ICT / FCT outcome") + "\n" + ([linked[1].fecha || "", linked[1].hora || ""].join(" ").trim()), 80) : "SPI / AOI / ICT / FCT outcome",
-        linked[2] ? traceOpsPptWrap((linked[2].impacto || linked[2].accion_requerida || "No internal trigger or weak trigger"), 80) : "No internal trigger or weak trigger",
-        linked[3] ? traceOpsPptWrap((linked[3].defecto_smt || linked[3].impacto || "Customer symptom confirmed"), 80) : "Customer symptom confirmed",
-        traceOpsPptWrap(normalized.d5_pca || "Actions defined and validated", 80)
+        linked[0] ? traceOpsPptWrap((linked[0].id || linked[0].tipo_evento || 'Initial build / lot released') + '\n' + ([linked[0].fecha || '', linked[0].hora || ''].join(' ').trim()), 80) : 'Initial build / lot released',
+        linked[1] ? traceOpsPptWrap((linked[1].tipo_evento || linked[1].linea_estacion || 'SPI / AOI / ICT / FCT outcome') + '\n' + ([linked[1].fecha || '', linked[1].hora || ''].join(' ').trim()), 80) : 'SPI / AOI / ICT / FCT outcome',
+        linked[2] ? traceOpsPptWrap((linked[2].impacto || linked[2].accion_requerida || 'No internal trigger or weak trigger'), 80) : 'No internal trigger or weak trigger',
+        linked[3] ? traceOpsPptWrap((linked[3].defecto_smt || linked[3].impacto || 'Customer symptom confirmed'), 80) : 'Customer symptom confirmed',
+        traceOpsPptWrap(normalized.d5_pca || 'Actions defined and validated', 80)
       ]];
-      s2.addTable(timelineData, {
-        x:0.34, y:1.58, w:12.28, h:1.30,
-        border:{type:"solid", pt:1, color:"DCE9E2"},
-        fill:"FFFFFF",
-        color:"10231C",
-        fontFace:"Arial",
-        fontSize:10,
-        margin:0.06,
-        rowH:[0.26,0.82],
-        bold:true,
-        valign:"mid",
-        align:"center"
-      });
+      s2.addTable(timelineData, {x:0.34, y:1.58, w:12.28, h:1.25, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:10, margin:0.06, rowH:[0.26,0.80], valign:'mid', align:'center'});
 
-      s2.addText("Traceability Mapping", {x:0.34, y:3.10, w:2.4, h:0.18, fontFace:"Arial", fontSize:11, bold:true, color:"5F766C"});
+      traceOpsPptAddBlock(s2, 'Evidence Summary', normalized.evidence_summary || 'Pending evidence summary.', 0.34, 3.02, 6.0, 1.08, 'FFFFFF');
+      traceOpsPptAddBlock(s2, 'Correlation Notes', normalized.correlation_notes || 'Pending correlation notes.', 6.62, 3.02, 6.0, 1.08, 'FFFFFF');
+
+      s2.addText('Traceability Mapping', {x:0.34, y:4.28, w:2.4, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
       var evidenceRows = traceOpsPptEventRows(normalized);
       var tableData = [[
-        {text:"Process Step", options:{bold:true}},
-        {text:"Timestamp", options:{bold:true}},
-        {text:"Result", options:{bold:true}},
-        {text:"Observation", options:{bold:true}},
-        {text:"Source", options:{bold:true}},
-        {text:"Why it matters", options:{bold:true}}
+        {text:'Process Step', options:{bold:true}},
+        {text:'Timestamp', options:{bold:true}},
+        {text:'Result', options:{bold:true}},
+        {text:'Observation', options:{bold:true}},
+        {text:'Source', options:{bold:true}},
+        {text:'Why it matters', options:{bold:true}}
       ]].concat(evidenceRows);
-      s2.addTable(tableData, {
-        x:0.34, y:3.32, w:12.28, h:2.36,
-        border:{type:"solid", pt:1, color:"DCE9E2"},
-        fill:"FFFFFF",
-        color:"10231C",
-        fontFace:"Arial",
-        fontSize:9.5,
-        margin:0.05,
-        rowH:0.32,
-        autoFit:true,
-        colW:[1.55,1.38,1.22,3.16,1.18,3.79]
-      });
+      s2.addTable(tableData, {x:0.34, y:4.50, w:12.28, h:1.80, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:9.2, margin:0.05, rowH:0.28, colW:[1.55,1.38,1.22,3.16,1.18,3.79]});
 
-      traceOpsPptAddBlock(s2, "Correlation Notes", normalized.correlation_notes || normalized.d4_root_cause || normalized.d6_validation, 0.34, 5.92, 6.0, 1.20, "FFFFFF");
-      traceOpsPptAddBlock(s2, "Evidence Checklist", normalized.evidence_checklist || "□ Customer symptom image / data\n□ Golden reference comparison\n□ Installed-state vs removed-state comparison\n□ Serial / batch trace\n□ Control limitation explanation\n□ Corrective action proof", 6.62, 5.92, 6.0, 1.20, "FFFFFF");
+      traceOpsPptAddBlock(s2, 'Evidence Checklist', normalized.evidence_checklist || '- Customer symptom image / data\n- Golden reference comparison\n- Installed-state vs removed-state comparison\n- Serial / batch trace\n- Control limitation explanation\n- Corrective action proof', 0.34, 6.48, 12.28, 0.78, 'F8FBF9');
 
-      s2.addText("Export Note: This template is built in 16:9 landscape for PPT/PDF export. Replace placeholders with actual evidence and keep each statement tied to one visible proof point.", {x:0.40, y:7.15, w:12.10, h:0.20, fontFace:"Arial", fontSize:8.8, color:"5F766C"});
-
-      if (typeof pptx.writeFile === "function") {
-        await pptx.writeFile({ fileName: fileBase + ".pptx" });
-      } else if (typeof pptx.save === "function") {
-        pptx.save(fileBase + ".pptx");
+      if (typeof pptx.write === 'function') {
+        var arr = await pptx.write({ outputType: 'arraybuffer' });
+        var blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = String(fileBase || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_') + '.pptx';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function(){
+          try { document.body.removeChild(a); } catch(_) {}
+          try { URL.revokeObjectURL(url); } catch(_) {}
+        }, 3000);
+      } else if (typeof pptx.writeFile === 'function') {
+        await pptx.writeFile({ fileName: fileBase + '.pptx' });
+      } else if (typeof pptx.save === 'function') {
+        pptx.save(fileBase + '.pptx');
       } else {
-        throw new Error("PptxGenJS no expone writeFile/save en este navegador.");
+        throw new Error('PptxGenJS no expone write/writeFile/save en este navegador.');
       }
     }).catch(function(err){
       console.error(err);
-      alert("No se pudo generar el PPT. " + (err && (err.message || String(err)) || "Error desconocido"));
+      alert('No se pudo generar el PPT. ' + (err && (err.message || String(err)) || 'Error desconocido'));
     });
   }
 
