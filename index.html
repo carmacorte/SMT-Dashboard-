@@ -6423,103 +6423,128 @@ pre{white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.6;marg
     var sourceRcca = props.sourceRcca || null;
     var formArr = _useState(function(){ return Object.assign({}, init); });
     var form = formArr[0]; var setForm = formArr[1];
+    var mobileArr = _useState(function(){ try { return window.innerWidth <= 760; } catch(_) { return false; } });
+    var mobile = mobileArr[0]; var setMobile = mobileArr[1];
+    var collapsedArr = _useState(function(){ return { source:false, missing:false, events:true }; });
+    var collapsed = collapsedArr[0]; var setCollapsed = collapsedArr[1];
     React.useEffect(function(){ setForm(Object.assign({}, props.init || {})); }, [props.init && props.init.eightd_id, props.init && props.init.updated_at]);
+    React.useEffect(function(){
+      function onResize(){
+        try { setMobile(window.innerWidth <= 760); } catch(_) {}
+      }
+      onResize();
+      window.addEventListener('resize', onResize);
+      return function(){ window.removeEventListener('resize', onResize); };
+    }, []);
     function upd(k,v){ var next = Object.assign({}, form); next[k] = v; var ready = traceOpsComputeEightdReadiness(next); next.readiness_score = ready.score; next.missing_fields = ready.missing; setForm(next); }
+    function togglePanel(key){ var next = Object.assign({}, collapsed); next[key] = !next[key]; setCollapsed(next); }
     var readiness = traceOpsComputeEightdReadiness(form);
     var linkedEvents = traceOpsCollectLinkedEventsByIds(form.linked_event_ids || []);
     var missingPretty = { d1_team:"D1 Team", d2_problem:"D2 Problem", d3_containment:"D3 Containment", d4_root_cause:"D4 Root Cause", d4_escape_point:"Escape Point", d5_pca:"D5 Corrective Action", d6_validation:"D6 Validation", d7_prevention:"D7 Prevention" };
-    return(
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.58)",zIndex:9996,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={function(){props.onClose();}}>
-        <div style={{background:"#fff",borderRadius:18,maxWidth:1120,width:"100%",maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.24)"}} onClick={function(e){e.stopPropagation();}}>
-          <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"16px 20px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap",zIndex:2}}>
-            <div>
-              <div style={{fontSize:11,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",color:"#1E7B58"}}>8D Draft Generator</div>
-              <div style={{fontSize:18,fontWeight:800,color:"#1A1714",marginTop:4}}>{form.source_title || form.source_rcca_id || "Draft 8D"}</div>
-              <div style={{fontSize:10.5,color:"#6A6560",marginTop:4,fontFamily:"monospace"}}>{form.eightd_id} · Source RCCA {form.source_rcca_id || "N/D"}</div>
+    var sectionDefs = [
+      ["d1_team","D1 Team","Equipo multifuncional, owner y areas soporte."],
+      ["d2_problem","D2 Problem Description","Que, donde, cuando, cuanto, impacto y eventos vinculados."],
+      ["d3_containment","D3 Containment","Contencion inmediata, material bloqueado, WIP / FG, accion ejecutada."],
+      ["d4_root_cause","D4 Root Cause","Hipotesis, causa raiz confirmada, evidencia y patron."],
+      ["d4_escape_point","D4 Escape Point","Control que no detecto o no bloqueo el problema."],
+      ["d5_pca","D5 Permanent Corrective Action","Accion correctiva permanente."],
+      ["d6_validation","D6 Validation","Metodo de validacion, resultados y recurrencia."],
+      ["d7_prevention","D7 Prevention / Yokoten","Prevencion, leccion aprendida, reapplication."],
+      ["d8_closure","D8 Closure","Cierre ejecutivo, efectividad y aprobacion."],
+    ];
+    function badge(bg,color,text){
+      return <span style={{fontSize:9.5,fontWeight:700,background:bg,color:color,borderRadius:999,padding:mobile?"4px 8px":"4px 8px",display:"inline-flex",alignItems:"center"}}>{text}</span>;
+    }
+    function renderPanel(title, subtitle, keyName, body){
+      var canCollapse = !!mobile;
+      var isClosed = canCollapse ? !!collapsed[keyName] : false;
+      return <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+        <div style={{padding:mobile?"11px 12px":"12px 14px",background:"#F8F7F5",borderBottom:isClosed?"none":"1px solid #EEECEA",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10}}>
+          <div style={{minWidth:0,flex:1}}>
+            <div style={{fontSize:mobile?12:12.5,fontWeight:800,color:"#1A1714"}}>{title}</div>
+            <div style={{fontSize:mobile?9.5:10,color:"#8A8580",marginTop:2,lineHeight:1.35}}>{subtitle}</div>
+          </div>
+          {canCollapse&&<button onClick={function(){togglePanel(keyName);}} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:999,padding:"5px 10px",fontSize:10,fontWeight:800,color:"#6A6560",cursor:"pointer",flex:"0 0 auto"}}>{isClosed?"Abrir":"Ocultar"}</button>}
+        </div>
+        {!isClosed&&body}
+      </div>;
+    }
+    var sourcePanel = renderPanel("Source RCCA","Referencia congelada del caso base.","source",
+      <div style={{padding:mobile?12:14,display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {badge("#F5F0FE","#6B2DA8",form.source_rcca_id || "Sin RCCA")}
+          {form.modelo&&badge("#EAF5F0","#1E5C48",form.modelo)}
+          {form.linea&&badge("#EAF5F0","#1E5C48",form.linea)}
+          {form.status&&badge("#EBF0FC","#1E7B58",form.status)}
+        </div>
+        <div style={{fontSize:mobile?12.5:13,fontWeight:800,color:"#1A1714",lineHeight:1.35,overflowWrap:"anywhere"}}>{form.source_title || "Sin titulo"}</div>
+        <div style={{fontSize:10.5,color:"#6A6560",overflowWrap:"anywhere"}}>Owner: {form.owner_email || "N/D"}</div>
+        <div style={{fontSize:10.5,color:"#6A6560"}}>Fecha base: {form.fecha || "N/D"}</div>
+      </div>
+    );
+    var missingPanel = renderPanel("Missing fields","Campos que todavia requieren decision humana.","missing",
+      <div style={{padding:mobile?12:14}}>
+        {readiness.missing.length===0 ? <div style={{fontSize:11.5,color:"#1E7B58",fontWeight:700}}>Draft listo para revision.</div> : <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.missing.map(function(key){return <span key={key} style={{fontSize:9.5,fontWeight:700,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"4px 8px"}}>{missingPretty[key] || key}</span>;})}</div>}
+      </div>
+    );
+    var eventsPanel = renderPanel("Linked events", linkedEvents.length + " evento" + (linkedEvents.length!==1?"s":"") + " usados para construir el draft.", "events",
+      <div style={{padding:mobile?12:14,display:"flex",flexDirection:"column",gap:8,maxHeight:mobile?"none":260,overflowY:mobile?"visible":"auto"}}>
+        {linkedEvents.length===0 ? <div style={{fontSize:11.5,color:"#8A8580"}}>Sin eventos vinculados.</div> : linkedEvents.map(function(item){
+          return <div key={item.id} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:10,padding:"10px 12px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}><span style={{fontSize:9.5,fontFamily:"monospace",fontWeight:700,color:"#2A7A60"}}>{item.id}</span><span style={{fontSize:9.5,color:"#8A8580"}}>{item.fecha} · {item.turno}</span></div>
+            <div style={{fontSize:11.5,fontWeight:700,color:"#1A1714",marginTop:4,lineHeight:1.35}}>{item.evento_detectado || item.tipo_evento}</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
+              {item.linea_estacion&&<span style={{fontSize:8.8,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.linea_estacion}</span>}
+              {item.defecto_smt&&item.defecto_smt!=="N/A"&&<span style={{fontSize:8.8,background:"#F5F0FE",color:"#6B2DA8",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.defecto_smt}</span>}
             </div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
-              <span style={{fontSize:10,fontWeight:800,background:readiness.score>=85?"#EAF5F0":readiness.score>=60?"#FEF9E8":"#FDF0EE",color:readiness.score>=85?"#1E5C48":readiness.score>=60?"#B87820":"#C0392B",border:"1px solid "+(readiness.score>=85?"#B8DECE":readiness.score>=60?"#F5E4A0":"#F0C4BE"),borderRadius:999,padding:"6px 10px"}}>Readiness {readiness.score}%</span>
-              <button onClick={function(){ props.onSave(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:"10px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Guardar Draft</button>
-              <button onClick={function(){ exportEightdHtml(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",color:"#1E7B58",borderRadius:10,padding:"10px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Exportar HTML</button>
-              {sourceRcca&&<button onClick={function(){ props.onRefresh(sourceRcca); }} style={{background:"#F5F0FE",border:"1px solid #DBCDF8",color:"#6B2DA8",borderRadius:10,padding:"10px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Refresh from RCCA</button>}
-              <button onClick={props.onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",color:"#6A6560",borderRadius:10,padding:"10px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Cerrar</button>
+          </div>;
+        })}
+      </div>
+    );
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.58)",zIndex:9996,display:"flex",alignItems:mobile?"stretch":"center",justifyContent:"center",padding:mobile?0:16}} onClick={function(){props.onClose();}}>
+        <div style={{background:"#fff",borderRadius:mobile?0:18,maxWidth:1120,width:"100%",height:mobile?"100svh":"auto",maxHeight:mobile?"100svh":"90vh",overflow:"auto",boxShadow:mobile?"none":"0 20px 60px rgba(0,0,0,.24)"}} onClick={function(e){e.stopPropagation();}}>
+          <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:mobile?"12px 12px 10px":"16px 20px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap",zIndex:2}}>
+            <div style={{minWidth:0,flex:mobile?"1 1 100%":"1 1 auto"}}>
+              <div style={{fontSize:10.5,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",color:"#1E7B58"}}>8D Draft Generator</div>
+              <div style={{fontSize:mobile?16:18,fontWeight:800,color:"#1A1714",marginTop:4,lineHeight:1.15,overflowWrap:"anywhere"}}>{form.source_title || form.source_rcca_id || "Draft 8D"}</div>
+              <div style={{fontSize:10,color:"#6A6560",marginTop:4,fontFamily:"monospace",overflowWrap:"anywhere"}}>{form.eightd_id} · Source RCCA {form.source_rcca_id || "N/D"}</div>
+              {mobile&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+                {form.modelo&&badge("#EAF5F0","#1E5C48",form.modelo)}
+                {form.linea&&badge("#EAF5F0","#1E5C48",form.linea)}
+                {form.status&&badge("#EBF0FC","#1E7B58",form.status)}
+              </div>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:mobile?"repeat(2,minmax(0,1fr))":"repeat(" + (sourceRcca?"4":"3") + ",auto)",gap:8,justifyContent:mobile?"stretch":"flex-end",width:mobile?"100%":"auto",alignItems:"stretch"}}>
+              <span style={{gridColumn:mobile?"1 / -1":"auto",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.score>=85?"#EAF5F0":readiness.score>=60?"#FEF9E8":"#FDF0EE",color:readiness.score>=85?"#1E5C48":readiness.score>=60?"#B87820":"#C0392B",border:"1px solid "+(readiness.score>=85?"#B8DECE":readiness.score>=60?"#F5E4A0":"#F0C4BE"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Readiness {readiness.score}%</span>
+              <button onClick={function(){ props.onSave(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"Guardar":"Guardar Draft"}</button>
+              <button onClick={function(){ exportEightdHtml(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",color:"#1E7B58",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"HTML":"Exportar HTML"}</button>
+              {sourceRcca&&<button onClick={function(){ props.onRefresh(sourceRcca); }} style={{background:"#F5F0FE",border:"1px solid #DBCDF8",color:"#6B2DA8",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"Refresh":"Refresh from RCCA"}</button>}
+              <button onClick={props.onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",color:"#6A6560",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%",gridColumn:mobile&&(!sourceRcca)?"1 / -1":"auto"}}>{mobile?"Cerrar":"Cerrar"}</button>
             </div>
           </div>
-          <div style={{padding:"18px 20px",display:"grid",gridTemplateColumns:"1.55fr .95fr",gap:16}}>
+          <div style={{padding:mobile?"12px":"18px 20px",display:"grid",gridTemplateColumns:mobile?"1fr":"1.55fr .95fr",gap:12}}>
+            {mobile&&<div style={{display:"flex",flexDirection:"column",gap:12}}>{sourcePanel}{missingPanel}{eventsPanel}</div>}
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              {[
-                ["d1_team","D1 Team","Equipo multifuncional, owner y areas soporte."],
-                ["d2_problem","D2 Problem Description","Que, donde, cuando, cuanto, impacto y eventos vinculados."],
-                ["d3_containment","D3 Containment","Contencion inmediata, material bloqueado, WIP / FG, accion ejecutada."],
-                ["d4_root_cause","D4 Root Cause","Hipotesis, causa raiz confirmada, evidencia y patron."],
-                ["d4_escape_point","D4 Escape Point","Control que no detecto o no bloqueo el problema."],
-                ["d5_pca","D5 Permanent Corrective Action","Accion correctiva permanente."],
-                ["d6_validation","D6 Validation","Metodo de validacion, resultados y recurrencia."],
-                ["d7_prevention","D7 Prevention / Yokoten","Prevencion, leccion aprendida, reapplication."],
-                ["d8_closure","D8 Closure","Cierre ejecutivo, efectividad y aprobacion."],
-              ].map(function(sec){
+              {sectionDefs.map(function(sec){
                 return <div key={sec[0]} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
-                  <div style={{padding:"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
-                    <div style={{fontSize:12.5,fontWeight:800,color:"#1A1714"}}>{sec[1]}</div>
-                    <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>{sec[2]}</div>
+                  <div style={{padding:mobile?"11px 12px":"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
+                    <div style={{fontSize:mobile?12.5:12.5,fontWeight:800,color:"#1A1714",lineHeight:1.2}}>{sec[1]}</div>
+                    <div style={{fontSize:mobile?9.5:10,color:"#8A8580",marginTop:2,lineHeight:1.35}}>{sec[2]}</div>
                   </div>
-                  <div style={{padding:12}}>
-                    <textarea value={form[sec[0]] || ""} rows={sec[0]==="d2_problem"||sec[0]==="d4_root_cause"?6:4} onChange={function(e){upd(sec[0], e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit",lineHeight:1.55}} />
+                  <div style={{padding:mobile?10:12}}>
+                    <textarea value={form[sec[0]] || ""} rows={mobile?(sec[0]==="d2_problem"||sec[0]==="d4_root_cause"?5:3):(sec[0]==="d2_problem"||sec[0]==="d4_root_cause"?6:4)} onChange={function(e){upd(sec[0], e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:mobile?"10px":"10px 12px",fontSize:mobile?11.5:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit",lineHeight:1.55,minHeight:mobile?80:"auto"}} />
                   </div>
                 </div>;
               })}
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
-                <div style={{padding:"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
-                  <div style={{fontSize:12.5,fontWeight:800,color:"#1A1714"}}>Source RCCA</div>
-                  <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>Referencia congelada del caso base.</div>
-                </div>
-                <div style={{padding:14,display:"flex",flexDirection:"column",gap:8}}>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    <span style={{fontSize:9.5,fontWeight:700,background:"#F5F0FE",color:"#6B2DA8",borderRadius:999,padding:"4px 8px"}}>{form.source_rcca_id || "Sin RCCA"}</span>
-                    {form.modelo&&<span style={{fontSize:9.5,fontWeight:700,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"4px 8px"}}>{form.modelo}</span>}
-                    {form.linea&&<span style={{fontSize:9.5,fontWeight:700,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"4px 8px"}}>{form.linea}</span>}
-                    {form.status&&<span style={{fontSize:9.5,fontWeight:700,background:"#EBF0FC",color:"#1E7B58",borderRadius:999,padding:"4px 8px"}}>{form.status}</span>}
-                  </div>
-                  <div style={{fontSize:13,fontWeight:700,color:"#1A1714",lineHeight:1.35}}>{form.source_title || "Sin titulo"}</div>
-                  <div style={{fontSize:10.5,color:"#6A6560"}}>Owner: {form.owner_email || "N/D"}</div>
-                  <div style={{fontSize:10.5,color:"#6A6560"}}>Fecha base: {form.fecha || "N/D"}</div>
-                </div>
-              </div>
-              <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
-                <div style={{padding:"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
-                  <div style={{fontSize:12.5,fontWeight:800,color:"#1A1714"}}>Missing fields</div>
-                  <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>Campos que todavia requieren decision humana.</div>
-                </div>
-                <div style={{padding:14}}>
-                  {readiness.missing.length===0 ? <div style={{fontSize:11.5,color:"#1E7B58",fontWeight:700}}>Draft listo para revision.</div> : <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.missing.map(function(key){return <span key={key} style={{fontSize:9.5,fontWeight:700,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"4px 8px"}}>{missingPretty[key] || key}</span>;})}</div>}
-                </div>
-              </div>
-              <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
-                <div style={{padding:"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
-                  <div style={{fontSize:12.5,fontWeight:800,color:"#1A1714"}}>Linked events</div>
-                  <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>{linkedEvents.length} evento{linkedEvents.length!==1?"s":""} usados para construir el draft.</div>
-                </div>
-                <div style={{padding:14,display:"flex",flexDirection:"column",gap:8,maxHeight:260,overflowY:"auto"}}>
-                  {linkedEvents.length===0 ? <div style={{fontSize:11.5,color:"#8A8580"}}>Sin eventos vinculados.</div> : linkedEvents.map(function(item){
-                    return <div key={item.id} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:10,padding:"10px 12px"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}><span style={{fontSize:9.5,fontFamily:"monospace",fontWeight:700,color:"#2A7A60"}}>{item.id}</span><span style={{fontSize:9.5,color:"#8A8580"}}>{item.fecha} · {item.turno}</span></div>
-                      <div style={{fontSize:11.5,fontWeight:700,color:"#1A1714",marginTop:4,lineHeight:1.35}}>{item.evento_detectado || item.tipo_evento}</div>
-                      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
-                        {item.linea_estacion&&<span style={{fontSize:8.8,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.linea_estacion}</span>}
-                        {item.defecto_smt&&item.defecto_smt!=="N/A"&&<span style={{fontSize:8.8,background:"#F5F0FE",color:"#6B2DA8",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.defecto_smt}</span>}
-                      </div>
-                    </div>;
-                  })}
-                </div>
-              </div>
-            </div>
+            {!mobile&&<div style={{display:"flex",flexDirection:"column",gap:12}}>{sourcePanel}{missingPanel}{eventsPanel}</div>}
           </div>
         </div>
       </div>
     );
   }
+
 
   function RccaCard(props){var r=props.r;var score=props.score;
     var title=r.titulo_corto||r.problema;
