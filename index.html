@@ -5140,51 +5140,178 @@ function App() {
   }
 
   function traceOpsBuildEightdHtml(draft) {
-    var sections = [
-      ["D1 Team", draft.d1_team],
-      ["D2 Problem Description", draft.d2_problem],
-      ["D3 Containment", draft.d3_containment],
-      ["D4 Root Cause", draft.d4_root_cause],
-      ["D4 Escape Point", draft.d4_escape_point],
-      ["D5 Permanent Corrective Action", draft.d5_pca],
-      ["D6 Validation", draft.d6_validation],
-      ["D7 Prevention / Yokoten", draft.d7_prevention],
-      ["D8 Closure", draft.d8_closure]
+    function esc(v){ return String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+    function asText(v){ return String(v == null ? "" : v).trim(); }
+    function nl(v){ return esc(asText(v)).replace(/\n/g,"<br>"); }
+    function joinNonEmpty(arr, sep){ return (arr || []).filter(function(item){ return !!String(item || "").trim(); }).join(sep || " · "); }
+    function eventStamp(item){
+      if (!item) return "N/D";
+      return joinNonEmpty([item.fecha || "", item.timeStr || "", item.turno ? ("Turno " + item.turno) : ""], " · ") || "N/D";
+    }
+    function eventHaystack(item){
+      return [item && item.tipo_evento, item && item.evento_detectado, item && item.defecto_smt, item && item.linea_estacion, item && item.impacto, item && item.accion_requerida, item && item.accion_ejecutada, item && item.sender].join(" ").toLowerCase();
+    }
+    function pickEvent(keywords){
+      for (var i = 0; i < linkedEvents.length; i++) {
+        var hay = eventHaystack(linkedEvents[i]);
+        for (var j = 0; j < keywords.length; j++) {
+          if (hay.indexOf(String(keywords[j]).toLowerCase()) >= 0) return linkedEvents[i];
+        }
+      }
+      return null;
+    }
+    function buildTimelineCopy(item, fallback){
+      if (!item) return fallback;
+      return joinNonEmpty([
+        item.linea_estacion || item.tipo_evento || fallback,
+        item.evento_detectado || item.defecto_smt || "",
+        item.impacto || item.accion_requerida || item.accion_ejecutada || "",
+        eventStamp(item)
+      ], " · ");
+    }
+    function sectionCard(title, body, cls){
+      return '<section class="fx-card ' + (cls || '') + '"><div class="fx-card-title">' + esc(title) + '</div><div class="fx-card-body">' + (body || '<span class="fx-empty">Pending field</span>') + '</div></section>';
+    }
+    function evidenceCheck(label, ok){
+      return '<div class="fx-check ' + (ok ? 'ok' : '') + '"><span>' + (ok ? '&#10003;' : '&#9633;') + '</span><span>' + esc(label) + '</span></div>';
+    }
+
+    var source = draft && draft.source_snapshot ? draft.source_snapshot : {};
+    var linkedEvents = traceOpsCollectLinkedEventsByIds((draft && draft.linked_event_ids) || []).slice().sort(function(a,b){
+      var av = (a && a.fecha ? traceOpsGetDateValue(a.fecha) : 0) + (((a && a.timeStr) || '00:00').replace(':','') * 1 || 0) / 10000;
+      var bv = (b && b.fecha ? traceOpsGetDateValue(b.fecha) : 0) + (((b && b.timeStr) || '00:00').replace(':','') * 1 || 0) / 10000;
+      return av - bv;
+    });
+    var firstEvent = linkedEvents[0] || null;
+    var lastEvent = linkedEvents.length ? linkedEvents[linkedEvents.length - 1] : null;
+    var buildEvent = pickEvent(['build','print','placement','smt','assembly']);
+    var lineTestEvent = pickEvent(['spi','aoi','ict','fct','test']);
+    var complaintEvent = pickEvent(['complaint','customer','field','fa','failure']);
+    var readinessScore = Number(draft && draft.readiness_score ? draft.readiness_score : 0) || 0;
+    var readinessTone = readinessScore >= 85 ? 'good' : (readinessScore >= 60 ? 'warn' : 'bad');
+    var complaintAnchor = asText(source.problema || draft.d2_problem || draft.source_title || draft.source_rcca_id);
+    var reportPositioning = joinNonEmpty([
+      source.defecto_dominante ? ('Issue centered on defect signature: ' + source.defecto_dominante + '.') : '',
+      source.estacion_dominante ? ('Primary process touchpoint: ' + source.estacion_dominante + '.') : '',
+      source.material_afectado ? ('Separate material-only evidence from installed-state behavior: ' + source.material_afectado + '.') : '',
+      source.alcance_exposicion ? ('Exposure declared: ' + source.alcance_exposicion + '.') : ''
+    ], ' ');
+    var dataAnchor = joinNonEmpty([
+      source.material_afectado ? ('Serial / lot anchor: ' + source.material_afectado) : '',
+      (source.primera_deteccion || (firstEvent && firstEvent.fecha)) ? ('Build window start: ' + (source.primera_deteccion || firstEvent.fecha)) : '',
+      (source.ultima_deteccion || (lastEvent && lastEvent.fecha)) ? ('Build window end: ' + (source.ultima_deteccion || lastEvent.fecha)) : '',
+      (draft.linea || source.linea || (lastEvent && lastEvent.linea_estacion)) ? ('Line / station: ' + (draft.linea || source.linea || lastEvent.linea_estacion)) : '',
+      linkedEvents.length ? ('Trace path: ' + linkedEvents.map(function(item){ return item.id || item.linea_estacion || item.tipo_evento || 'event'; }).join(' -> ')) : ''
+    ], ' · ');
+    var traceEvents = linkedEvents.length ? linkedEvents.map(function(item){ return item.id || item.linea_estacion || item.tipo_evento || 'event'; }).join(' -> ') : 'Build -> Test -> Complaint';
+    var missingHtml = (draft && draft.missing_fields && draft.missing_fields.length)
+      ? draft.missing_fields.map(function(item){ return '<span class="fx-chip fx-chip-missing">' + esc(item.replace(/_/g,' ')) + '</span>'; }).join('')
+      : '<span class="fx-chip fx-chip-good">Ready for validation</span>';
+
+    var timelineItems = [
+      ['Build', buildTimelineCopy(buildEvent || firstEvent, 'Initial build / lot released')],
+      ['Line Test', buildTimelineCopy(lineTestEvent, 'SPI / AOI / ICT / FCT outcome')],
+      ['Escaped', buildTimelineCopy(lastEvent && !complaintEvent ? lastEvent : null, 'No internal trigger or weak trigger')],
+      ['Complaint', buildTimelineCopy(complaintEvent || lastEvent, 'Customer symptom confirmed')],
+      ['RCCA', joinNonEmpty([draft.source_rcca_id || '', asText(source.estatus_rcca || draft.status || 'Draft'), asText(draft.d6_validation || 'Actions defined and validated')], ' · ')]
     ];
-    function esc(v){ return String(v || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+    var evidenceRows = linkedEvents.length ? linkedEvents.slice(0, 12).map(function(item){
+      return '<tr>'
+        + '<td>' + esc(item.linea_estacion || item.tipo_evento || 'Trace event') + '</td>'
+        + '<td>' + esc(eventStamp(item)) + '</td>'
+        + '<td>' + esc(item.accion_requerida || item.impacto || 'Logged') + '</td>'
+        + '<td>' + esc(item.evento_detectado || item.defecto_smt || item.accion_ejecutada || 'Operational trace event') + '</td>'
+        + '<td>' + esc(item.sender || 'TraceOps log') + '</td>'
+        + '<td>' + esc(item.impacto || item.accion_ejecutada || item.accion_requerida || 'Use as causal evidence anchor') + '</td>'
+      + '</tr>';
+    }).join('') : '<tr><td>SMT Print</td><td>' + esc(asText(draft.fecha || source.fecha || 'yyyy-mm-dd')) + '</td><td>Flag</td><td>' + esc(asText(source.defecto_dominante || complaintAnchor || 'Pending observation')) + '</td><td>TraceOps RCCA</td><td>Starting condition</td></tr>';
+
+    var correlationNotes = joinNonEmpty([
+      asText(source.patron_detectado) ? ('Detected pattern: ' + source.patron_detectado + '.') : '',
+      asText(draft.d4_root_cause) ? ('Occurrence: ' + asText(draft.d4_root_cause).replace(/\n+/g, ' ')) : '',
+      asText(draft.d4_escape_point) ? ('Escape: ' + asText(draft.d4_escape_point).replace(/\n+/g, ' ')) : '',
+      asText(draft.d6_validation) ? ('Verification: ' + asText(draft.d6_validation).replace(/\n+/g, ' ')) : ''
+    ], ' ');
+
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${esc(draft.eightd_id)}</title>
+<title>${esc(draft.eightd_id || 'TraceOps_8D_Draft')}</title>
 <style>
-body{font-family:Inter,Segoe UI,sans-serif;background:#F4F3F0;color:#1A1714;padding:24px}
-.wrap{max-width:980px;margin:0 auto}
-.hero{background:#10231C;color:#fff;border-radius:18px;padding:24px 28px;margin-bottom:18px}
-.muted{color:rgba(255,255,255,.7)}
-.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}
-.tile{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px}
-.tile b{display:block;font-size:22px;margin-top:4px}
-.card{background:#fff;border:1px solid #DDDBD7;border-radius:16px;padding:18px 20px;margin-bottom:12px}
-h2{font-size:15px;margin:0 0 10px 0}
-pre{white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.6;margin:0}
+:root{--ink:#10231C;--muted:#5F766C;--line:#DCE7E1;--soft:#F6FBF8;--green:#1E7B58;--green2:#1A5B45;--warn:#A56C12;--bad:#C44141}
+*{box-sizing:border-box} html,body{margin:0;padding:0;background:#E8F1EC;color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif}
+body{padding:18px}.fx-doc{max-width:1360px;margin:0 auto}.fx-page{background:#fff;border:1px solid var(--line);border-radius:28px;box-shadow:0 18px 44px rgba(18,70,51,.10);padding:28px 28px 24px;margin-bottom:18px;min-height:720px}
+.fx-hero{display:grid;grid-template-columns:1.45fr .95fr;gap:16px;margin-bottom:16px}.fx-hero-main{background:linear-gradient(180deg,#07100C,#10231C);color:#fff;border-radius:24px;padding:24px 24px 20px;position:relative;overflow:hidden}.fx-hero-main:after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.06),transparent 58%)}
+.fx-overline{position:relative;z-index:1;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9FC4B6}.fx-title{position:relative;z-index:1;margin:8px 0 6px;font-size:36px;line-height:.95;letter-spacing:-.04em;font-weight:800}.fx-sub{position:relative;z-index:1;font-size:12px;line-height:1.55;color:rgba(255,255,255,.74)}.fx-idline{position:relative;z-index:1;margin-top:12px;font-size:12px;font-weight:700;color:rgba(255,255,255,.82)}
+.fx-meta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.fx-meta-card{border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,#FFFFFF,#F8FBF9);padding:18px}.fx-meta-label{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.fx-meta-value{margin-top:6px;font-size:28px;line-height:1;font-weight:800;letter-spacing:-.04em;color:var(--ink)}.fx-meta-value.good{color:var(--green)} .fx-meta-value.warn{color:var(--warn)} .fx-meta-value.bad{color:var(--bad)}.fx-meta-note{margin-top:8px;font-size:11px;line-height:1.45;color:var(--muted)}
+.fx-grid-top{display:grid;grid-template-columns:1.15fr 1.15fr .9fr;gap:14px;margin-bottom:14px}.fx-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px 16px 14px}.fx-card-title{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--green2);margin-bottom:8px}.fx-card-body{font-size:12px;line-height:1.6;color:var(--ink)}.fx-empty{color:#9AAEA5;font-style:italic}
+.fx-chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.fx-chip{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);background:#F6FBF8;color:var(--green2)}.fx-chip-missing{background:#FFF7E8;border-color:#F1DF9E;color:#A56C12}.fx-chip-good{background:#ECF8F1;border-color:#CFE7DB;color:var(--green)}
+.fx-main-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}.fx-stack{display:grid;gap:14px}.fx-section-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.fx-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-radius:18px;background:linear-gradient(90deg,#F6FBF8,#FFFFFF);border:1px solid var(--line)}.fx-banner-title{font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}.fx-banner-sub{font-size:11px;color:var(--muted)}
+.fx-timeline{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.fx-timeline-item{background:#F8FBF9;border:1px solid var(--line);border-radius:16px;padding:12px}.fx-timeline-step{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--green2);margin-bottom:6px}.fx-timeline-copy{font-size:11px;line-height:1.55;color:var(--ink)}.fx-rule{font-size:11px;line-height:1.6;color:var(--muted)}
+.fx-table-wrap{margin-top:14px;border:1px solid var(--line);border-radius:18px;overflow:hidden}table{width:100%;border-collapse:collapse}th,td{padding:11px 12px;text-align:left;vertical-align:top;border-bottom:1px solid #ECF1EE;font-size:11px;line-height:1.45}th{background:#F6FBF8;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--green2)}tr:last-child td{border-bottom:none}
+.fx-check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.fx-check{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff;font-size:11px;color:var(--ink)}.fx-check.ok{background:#ECF8F1;border-color:#CFE7DB}.fx-footer-note{margin-top:12px;font-size:10.5px;line-height:1.6;color:var(--muted)}
+@page{size:landscape;margin:10mm}@media print{body{padding:0;background:#fff}.fx-doc{max-width:none}.fx-page{page-break-after:always;margin:0;border:none;border-radius:0;box-shadow:none;min-height:auto}}@media (max-width:1100px){.fx-hero,.fx-grid-top,.fx-main-grid,.fx-section-grid,.fx-timeline,.fx-check-grid{grid-template-columns:1fr}.fx-page{padding:18px}.fx-title{font-size:30px}.fx-meta-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="hero">
-    <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">TraceOps 8D Draft</div>
-    <h1 style="margin:8px 0 6px;font-size:30px">${esc(draft.source_title || draft.source_rcca_id)}</h1>
-    <div class="muted">${esc(draft.eightd_id)} · RCCA ${esc(draft.source_rcca_id)} · ${esc(draft.status || "Draft")}</div>
-    <div class="grid">
-      <div class="tile">Readiness<b>${esc(draft.readiness_score || 0)}%</b></div>
-      <div class="tile">Modelo<b>${esc(draft.modelo || "N/D")}</b></div>
-      <div class="tile">Linea<b>${esc(draft.linea || "N/D")}</b></div>
-      <div class="tile">Eventos<b>${esc((draft.linked_event_ids || []).length)}</b></div>
+<div class="fx-doc">
+  <section class="fx-page">
+    <div class="fx-hero">
+      <div class="fx-hero-main">
+        <div class="fx-overline">TraceOps 8D Draft</div>
+        <div class="fx-title">8D RCCA Draft</div>
+        <div class="fx-sub">TraceOps-ready landscape template for export and customer-facing refinement.</div>
+        <div class="fx-idline">${esc(draft.eightd_id || '8D-XXXXXX')} · ${esc(draft.source_rcca_id || 'RCCA-XXXX')} · ${esc(draft.status || 'Draft')} · Use actual source evidence only</div>
+      </div>
+      <div class="fx-meta-grid">
+        <div class="fx-meta-card"><div class="fx-meta-label">Readiness</div><div class="fx-meta-value ${readinessTone}">${esc(readinessScore)}%</div><div class="fx-meta-note">Draft ${esc(readinessScore)}% ready for validation.</div></div>
+        <div class="fx-meta-card"><div class="fx-meta-label">Model</div><div class="fx-meta-value">${esc(asText(draft.modelo || source.modelo || 'Product / Part No.'))}</div><div class="fx-meta-note">Source RCCA title: ${esc(asText(draft.source_title || complaintAnchor || 'N/D'))}</div></div>
+        <div class="fx-meta-card"><div class="fx-meta-label">Line</div><div class="fx-meta-value">${esc(asText(draft.linea || source.linea || 'SMT / Assembly line'))}</div><div class="fx-meta-note">Owner: ${esc(asText(draft.owner_email || 'N/D'))}</div></div>
+        <div class="fx-meta-card"><div class="fx-meta-label">Trace Events</div><div class="fx-meta-note" style="font-size:13px;color:var(--ink);font-weight:700;margin-top:8px">${esc(traceEvents)}</div><div class="fx-chip-row">${missingHtml}</div></div>
+      </div>
     </div>
-  </div>
-  ${sections.map(function(sec){ return `<div class="card"><h2>${esc(sec[0])}</h2><pre>${esc(sec[1] || "")}</pre></div>`; }).join("")}
+    <div class="fx-grid-top">
+      ${sectionCard('Complaint Anchor', nl(complaintAnchor || 'Customer-observed symptom only.'))}
+      ${sectionCard('Report Positioning', nl(reportPositioning || 'State what the issue is and what it is not. Separate component-only findings from installed-state behavior.'))}
+      ${sectionCard('TraceOps Data Anchor', nl(dataAnchor || 'Serial range · Lot / batch · Build window · Line / station · Trace path · Event timestamps.'))}
+    </div>
+    <div class="fx-main-grid">
+      <div class="fx-stack">
+        <div class="fx-section-grid">
+          ${sectionCard('D1 Team', nl(draft.d1_team || 'Quality owns communication and closure. Process, production, AOI/ICT, maintenance, and TraceOps each contribute one proof point.'))}
+          ${sectionCard('D2 Problem Description', nl(draft.d2_problem || complaintAnchor))}
+          ${sectionCard('D3 Containment', nl(draft.d3_containment || 'Define affected vs non-affected serials, hold strategy, targeted inspection, and customer protection.'))}
+          ${sectionCard('D4 Occurrence', nl(draft.d4_root_cause || 'Explain the technical mechanism that introduced the defect.'))}
+          ${sectionCard('D4 Escape', nl(draft.d4_escape_point || 'Explain why controls did not detect the issue.'))}
+          <section class="fx-card"><div class="fx-card-title">Writing Rule</div><div class="fx-rule">Use real source visuals only. The 8D explains evidence; it is not the evidence itself. Write like a customer-facing FA engineer, not like an internal checklist.</div></section>
+        </div>
+        <div class="fx-banner"><div><div class="fx-banner-title">Root Cause, Actions &amp; Closure</div><div class="fx-banner-sub">Keep the story evidence-led and tied to the trace path.</div></div><div class="fx-chip-row"><span class="fx-chip">${esc((draft.linked_event_ids || []).length)} linked events</span><span class="fx-chip">${esc(asText(source.estatus_rcca || draft.status || 'Draft'))}</span></div></div>
+        <section class="fx-card"><div class="fx-card-title">Event Timeline</div><div class="fx-timeline">${timelineItems.map(function(item){ return '<div class="fx-timeline-item"><div class="fx-timeline-step">' + esc(item[0]) + '</div><div class="fx-timeline-copy">' + esc(item[1]) + '</div></div>'; }).join('')}</div></section>
+      </div>
+      <div class="fx-stack">
+        ${sectionCard('D5 Permanent Corrective Actions', nl(draft.d5_pca || 'Actions must be linked directly to occurrence and escape.'))}
+        ${sectionCard('D6 Verification', nl(draft.d6_validation || 'Show before vs after evidence and absence of recurrence signatures.'))}
+        ${sectionCard('D7 Prevention / Yokoten', nl(draft.d7_prevention || 'Strengthen the system: update CTQs, control limits, traceability rules, alerts, audit checks, supplier controls, and replication.'))}
+        ${sectionCard('D8 Closure Statement', nl(draft.d8_closure || 'Close the case with a technical statement and summarize why recurrence risk is reduced.'))}
+      </div>
+    </div>
+  </section>
+  <section class="fx-page">
+    <div class="fx-banner" style="margin-bottom:14px"><div><div class="fx-banner-title">TraceOps Evidence Page</div><div class="fx-banner-sub">Use this page to export a one-look traceability summary.</div></div><div class="fx-chip-row"><span class="fx-chip">Traceability Mapping</span><span class="fx-chip">Correlation Notes</span><span class="fx-chip">Evidence Checklist</span></div></div>
+    <div class="fx-table-wrap"><table><thead><tr><th>Process Step</th><th>Timestamp</th><th>Result</th><th>Observation</th><th>Source</th><th>Why it matters</th></tr></thead><tbody>${evidenceRows}</tbody></table></div>
+    <div class="fx-main-grid" style="margin-top:14px">
+      <div class="fx-stack">
+        ${sectionCard('Correlation Notes', nl(correlationNotes || 'Capture the causal pattern in one paragraph. Tie each phrase to one data source.'))}
+        ${sectionCard('Export Note', nl('This template is built in 16:9 landscape for PPT/PDF export. Replace placeholders with actual evidence and keep each statement tied to one visible proof point.'))}
+      </div>
+      <div class="fx-stack">
+        <section class="fx-card"><div class="fx-card-title">Evidence Checklist</div><div class="fx-check-grid">${evidenceCheck('Customer symptom image / data', !!complaintEvent || !!complaintAnchor)}${evidenceCheck('Golden reference comparison', !!asText(source.validacion))}${evidenceCheck('Installed-state vs removed-state comparison', !!asText(source.evidencia_resumen))}${evidenceCheck('Serial / batch trace', !!asText(source.material_afectado) || linkedEvents.length > 0)}${evidenceCheck('Control limitation explanation', !!asText(draft.d4_escape_point))}${evidenceCheck('Corrective action proof', !!asText(draft.d5_pca) && !!asText(draft.d6_validation))}</div><div class="fx-footer-note">Keep each statement tied to one visible proof point. Use the RCCA as narrative structure and the trace log as evidence anchor.</div></section>
+      </div>
+    </div>
+  </section>
 </div>
 </body>
 </html>`;
