@@ -5544,16 +5544,53 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 </html>`;
   }
 
-  function traceOpsPptSafe(v){
-    return String(v || "").replace(/\r/g,"").trim();
+  var TRACEOPS_PPT_MAX_TEXT = 4000;
+
+  function traceOpsPptSanitizeText(v, limit){
+    var txt = String(v == null ? '' : v);
+    try { if (typeof decodeHtmlEntities === 'function') txt = decodeHtmlEntities(txt); } catch(_) {}
+    try { if (typeof stripHtmlToText === 'function') txt = stripHtmlToText(txt); } catch(_) {}
+    txt = txt
+      .replace(/\r/g, '\n')
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, ' ')
+      .replace(/[\u200B-\u200F\u202A-\u202E\u2060\uFEFF]/g, '')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2013\u2014]/g, '-')
+      .replace(/\u2026/g, '...')
+      .replace(/\t/g, ' ')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '- ')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ ]{2,}/g, ' ')
+      .replace(/ *\n */g, '\n')
+      .trim();
+    if (!txt) txt = 'Pending';
+    var maxLen = Math.max(64, Math.min(limit || TRACEOPS_PPT_MAX_TEXT, TRACEOPS_PPT_MAX_TEXT));
+    if (txt.length > maxLen) txt = txt.slice(0, Math.max(0, maxLen - 3)).trim() + '...';
+    return txt;
+  }
+
+  function traceOpsPptSafe(v, limit){
+    return traceOpsPptSanitizeText(v, limit || TRACEOPS_PPT_MAX_TEXT);
   }
 
   function traceOpsPptWrap(v, limit){
-    var txt = traceOpsPptSafe(v);
-    if (!txt) return "Pending";
-    var clean = txt.replace(/\n{3,}/g,"\n\n");
-    if (clean.length <= limit) return clean;
-    return clean.slice(0, Math.max(0, limit - 3)).trim() + "...";
+    return traceOpsPptSanitizeText(v, limit || 460);
+  }
+
+  function traceOpsPptTextOpts(base){
+    var opts = Object.assign({}, base || {});
+    opts.fontFace = opts.fontFace || 'Arial';
+    opts.margin = typeof opts.margin === 'number' ? opts.margin : 0.03;
+    opts.breakLine = typeof opts.breakLine === 'boolean' ? opts.breakLine : false;
+    opts.valign = opts.valign || 'top';
+    opts.fit = opts.fit || 'shrink';
+    opts.wrap = typeof opts.wrap === 'boolean' ? opts.wrap : true;
+    return opts;
   }
 
   function traceOpsGetEightdLinkedEventsForExport(draft){
@@ -5566,9 +5603,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   }
 
   function traceOpsPptAddBlock(slide, title, body, x, y, w, h, fill){
-    slide.addText(title, {x:x, y:y, w:w, h:0.22, fontFace:"Arial", fontSize:10, bold:true, color:"5F766C", breakLine:false, margin:0});
+    slide.addText(traceOpsPptSafe(title, 120), traceOpsPptTextOpts({x:x, y:y, w:w, h:0.22, fontSize:10, bold:true, color:'5F766C', breakLine:false, margin:0}));
     slide.addShape("roundRect", {x:x, y:y+0.22, w:w, h:h-0.22, rectRadius:0.08, line:{color:"DCE9E2", pt:1}, fill:{color:fill || "FFFFFF"}});
-    slide.addText(traceOpsPptWrap(body, 460), {x:x+0.08, y:y+0.32, w:w-0.16, h:h-0.36, fontFace:"Arial", fontSize:11, color:"10231C", valign:"top", margin:0.02});
+    slide.addText(traceOpsPptWrap(body, 460), traceOpsPptTextOpts({x:x+0.08, y:y+0.32, w:w-0.16, h:h-0.36, fontSize:11, color:'10231C', valign:'top', margin:0.02}));
   }
 
   function traceOpsPptEventRows(draft){
@@ -5599,7 +5636,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       pptx.author = 'OpenAI';
       pptx.company = 'TraceOps by SMTintel';
       pptx.subject = 'TraceOps 8D Draft';
-      pptx.title = traceOpsPptSafe(normalized.eightd_id || 'TraceOps_8D_Draft');
+      pptx.title = traceOpsPptSafe(normalized.eightd_id || 'TraceOps_8D_Draft', 120);
+      try { pptx.lang = 'es-MX'; } catch(_) {}
+      try { pptx.theme = { headFontFace:'Arial', bodyFontFace:'Arial', lang:'es-MX' }; } catch(_) {}
       var model = traceOpsEightdBuildModel((normalized && normalized.source_snapshot) || normalized || {}, traceOpsGetEightdLinkedEventsForExport(normalized));
       var linked = model.linked;
       var fileBase = String(normalized.eightd_id || normalized.source_rcca_id || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_');
@@ -5617,9 +5656,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var s1 = pptx.addSlide();
       s1.background = { color: 'EEF4F0' };
       s1.addShape('roundRect', {x:0.28, y:0.22, w:12.75, h:1.42, rectRadius:0.08, line:{color:'10231C', pt:0}, fill:{color:'10231C'}});
-      s1.addText('FOXCONN | TraceOps 8D Draft', {x:0.54, y:0.40, w:4.2, h:0.18, fontFace:'Arial', fontSize:10, bold:true, color:'A8D6C4'});
-      s1.addText('8D RCCA Draft', {x:0.54, y:0.64, w:4.8, h:0.34, fontFace:'Arial', fontSize:25, bold:true, color:'FFFFFF'});
-      s1.addText(traceOpsPptSafe((normalized.eightd_id || '') + ' · RCCA ' + (normalized.source_rcca_id || '') + ' · ' + (normalized.status || 'Draft') + ' · Use actual source evidence only'), {x:0.54, y:1.02, w:6.9, h:0.18, fontFace:'Arial', fontSize:10.5, color:'D7E7E0'});
+      s1.addText(traceOpsPptSafe('FOXCONN | TraceOps 8D Draft', 80), traceOpsPptTextOpts({x:0.54, y:0.40, w:4.2, h:0.18, fontSize:10, bold:true, color:'A8D6C4'}));
+      s1.addText(traceOpsPptSafe('8D RCCA Draft', 80), traceOpsPptTextOpts({x:0.54, y:0.64, w:4.8, h:0.34, fontSize:25, bold:true, color:'FFFFFF'}));
+      s1.addText(traceOpsPptSafe((normalized.eightd_id || '') + ' · RCCA ' + (normalized.source_rcca_id || '') + ' · ' + (normalized.status || 'Draft') + ' · Use actual source evidence only', 180), traceOpsPptTextOpts({x:0.54, y:1.02, w:6.9, h:0.18, fontSize:10.5, color:'D7E7E0'}));
 
       var kpis = [
         ['Readiness', String(normalized.readiness_score || 0) + '%'],
@@ -5630,8 +5669,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var kx = 0.54;
       for (var i=0;i<kpis.length;i++){
         s1.addShape('roundRect', {x:kx + (i*3.08), y:0.50, w:2.82, h:0.92, rectRadius:0.06, line:{color:'2A3D36', pt:1}, fill:{color:'173328'}});
-        s1.addText(kpis[i][0], {x:kx + (i*3.08) + 0.14, y:0.64, w:2.5, h:0.14, fontFace:'Arial', fontSize:9, bold:true, color:'A9CFC0'});
-        s1.addText(traceOpsPptWrap(kpis[i][1], 28), {x:kx + (i*3.08) + 0.14, y:0.84, w:2.5, h:0.34, fontFace:'Arial', fontSize:16, bold:true, color:'FFFFFF'});
+        s1.addText(traceOpsPptSafe(kpis[i][0], 40), traceOpsPptTextOpts({x:kx + (i*3.08) + 0.14, y:0.64, w:2.5, h:0.14, fontSize:9, bold:true, color:'A9CFC0'}));
+        s1.addText(traceOpsPptWrap(kpis[i][1], 28), traceOpsPptTextOpts({x:kx + (i*3.08) + 0.14, y:0.84, w:2.5, h:0.34, fontSize:16, bold:true, color:'FFFFFF'}));
       }
 
       var meta = [
@@ -5645,8 +5684,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       for (var m=0;m<meta.length;m++){
         var mx = 0.34 + (m * 2.08);
         s1.addShape('roundRect', {x:mx, y:1.68, w:1.92, h:0.78, rectRadius:0.05, line:{color:'DCE9E2', pt:1}, fill:{color:'F7FBF9'}});
-        s1.addText(meta[m][0], {x:mx+0.10, y:1.80, w:1.7, h:0.12, fontFace:'Arial', fontSize:8.6, bold:true, color:'5F766C'});
-        s1.addText(traceOpsPptWrap(meta[m][1], 38), {x:mx+0.10, y:1.98, w:1.7, h:0.24, fontFace:'Arial', fontSize:10.5, bold:true, color:'10231C'});
+        s1.addText(traceOpsPptSafe(meta[m][0], 40), traceOpsPptTextOpts({x:mx+0.10, y:1.80, w:1.7, h:0.12, fontSize:8.6, bold:true, color:'5F766C'}));
+        s1.addText(traceOpsPptWrap(meta[m][1], 38), traceOpsPptTextOpts({x:mx+0.10, y:1.98, w:1.7, h:0.24, fontSize:10.5, bold:true, color:'10231C'}));
       }
 
       traceOpsPptAddBlock(s1, 'Complaint Anchor', complaintAnchor, 0.34, 2.62, 4.1, 1.10, 'FFFFFF');
@@ -5672,11 +5711,11 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var s2 = pptx.addSlide();
       s2.background = { color: 'EEF4F0' };
       s2.addShape('roundRect', {x:0.28, y:0.22, w:12.75, h:0.92, rectRadius:0.08, line:{color:'10231C', pt:0}, fill:{color:'10231C'}});
-      s2.addText('FOXCONN | TraceOps 8D Draft', {x:0.54, y:0.40, w:4.2, h:0.18, fontFace:'Arial', fontSize:10, bold:true, color:'A8D6C4'});
-      s2.addText('TraceOps Evidence Page', {x:0.54, y:0.60, w:5.8, h:0.24, fontFace:'Arial', fontSize:22, bold:true, color:'FFFFFF'});
-      s2.addText('Use this page to export a one-look traceability summary for Quality review, PPT or PDF release.', {x:0.54, y:0.84, w:6.9, h:0.14, fontFace:'Arial', fontSize:10.5, color:'D7E7E0'});
+      s2.addText(traceOpsPptSafe('FOXCONN | TraceOps 8D Draft', 80), traceOpsPptTextOpts({x:0.54, y:0.40, w:4.2, h:0.18, fontSize:10, bold:true, color:'A8D6C4'}));
+      s2.addText(traceOpsPptSafe('TraceOps Evidence Page', 80), traceOpsPptTextOpts({x:0.54, y:0.60, w:5.8, h:0.24, fontSize:22, bold:true, color:'FFFFFF'}));
+      s2.addText(traceOpsPptSafe('Use this page to export a one-look traceability summary for Quality review, PPT or PDF release.', 160), traceOpsPptTextOpts({x:0.54, y:0.84, w:6.9, h:0.14, fontSize:10.5, color:'D7E7E0'}));
 
-      s2.addText('Event Timeline', {x:0.34, y:1.36, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+      s2.addText(traceOpsPptSafe('Event Timeline', 40), traceOpsPptTextOpts({x:0.34, y:1.36, w:2.0, h:0.18, fontSize:11, bold:true, color:'5F766C'}));
       var timelineData = [[
         {text:'Build', options:{bold:true}},
         {text:'Line Test', options:{bold:true}},
@@ -5690,12 +5729,12 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
         linked[3] ? traceOpsPptWrap((linked[3].defecto_smt || linked[3].impacto || 'Customer symptom confirmed'), 80) : 'Customer symptom confirmed',
         traceOpsPptWrap(normalized.d5_pca || 'Actions defined and validated', 80)
       ]];
-      s2.addTable(timelineData, {x:0.34, y:1.58, w:12.28, h:1.25, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:10, margin:0.06, rowH:[0.26,0.80], valign:'mid', align:'center'});
+      s2.addTable(timelineData, {x:0.34, y:1.58, w:12.28, h:1.25, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:10, margin:0.06, rowH:[0.26,0.80], valign:'mid', align:'center', fit:'shrink', autoFit:false});
 
       traceOpsPptAddBlock(s2, 'Evidence Summary', normalized.evidence_summary || 'Pending evidence summary.', 0.34, 3.02, 6.0, 1.08, 'FFFFFF');
       traceOpsPptAddBlock(s2, 'Correlation Notes', normalized.correlation_notes || 'Pending correlation notes.', 6.62, 3.02, 6.0, 1.08, 'FFFFFF');
 
-      s2.addText('Traceability Mapping', {x:0.34, y:4.28, w:2.4, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+      s2.addText(traceOpsPptSafe('Traceability Mapping', 60), traceOpsPptTextOpts({x:0.34, y:4.28, w:2.4, h:0.18, fontSize:11, bold:true, color:'5F766C'}));
       var evidenceRows = traceOpsPptEventRows(normalized);
       var tableData = [[
         {text:'Process Step', options:{bold:true}},
@@ -5705,12 +5744,12 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
         {text:'Source', options:{bold:true}},
         {text:'Why it matters', options:{bold:true}}
       ]].concat(evidenceRows);
-      s2.addTable(tableData, {x:0.34, y:4.50, w:12.28, h:1.80, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:9.2, margin:0.05, rowH:0.28, colW:[1.55,1.38,1.22,3.16,1.18,3.79]});
+      s2.addTable(tableData, {x:0.34, y:4.50, w:12.28, h:1.80, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:9.2, margin:0.05, rowH:0.28, colW:[1.55,1.38,1.22,3.16,1.18,3.79], fit:'shrink', autoFit:false});
 
       traceOpsPptAddBlock(s2, 'Evidence Checklist', normalized.evidence_checklist || '- Customer symptom image / data\n- Golden reference comparison\n- Installed-state vs removed-state comparison\n- Serial / batch trace\n- Control limitation explanation\n- Corrective action proof', 0.34, 6.48, 12.28, 0.78, 'F8FBF9');
 
       if (typeof pptx.write === 'function') {
-        var arr = await pptx.write({ outputType: 'arraybuffer' });
+        var arr = await pptx.write({ outputType: 'arraybuffer', compression: true });
         var blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
