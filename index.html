@@ -4549,6 +4549,7 @@ function App() {
   var GAL_PAGE_SIZE = 48;
   var RCCA_KEY = "traceops_rcca";
   var RCCA_DRAFT_KEY = "traceops_rcca_form_draft_v1";
+  var EIGHTD_KEY = "traceops_8d_drafts_v1";
   function readRccaDraft(){
     try { var raw = localStorage.getItem(RCCA_DRAFT_KEY); return raw ? JSON.parse(raw) : null; } catch(_) { return null; }
   }
@@ -4573,6 +4574,12 @@ function App() {
   var rccaFormArr = _useState(null); var rccaForm = rccaFormArr[0]; var setRccaForm = rccaFormArr[1];
   var rccaDetailArr = _useState(null); var rccaDetail = rccaDetailArr[0]; var setRccaDetail = rccaDetailArr[1];
   var rccaFilterArr = _useState(""); var rccaFilter = rccaFilterArr[0]; var setRccaFilter = rccaFilterArr[1];
+  var eightdArr = _useState(function(){
+    try { var raw = localStorage.getItem(EIGHTD_KEY); return raw ? JSON.parse(raw) : []; } catch(_) { return []; }
+  });
+  var eightdList = eightdArr[0]; var setEightdList = eightdArr[1];
+  var eightdDetailArr = _useState(null); var eightdDetail = eightdDetailArr[0]; var setEightdDetail = eightdDetailArr[1];
+  var eightdFilterArr = _useState(""); var eightdFilter = eightdFilterArr[0]; var setEightdFilter = eightdFilterArr[1];
 
   var authEmailArr = _useState(localStorage.getItem("traceops_auth_email") || "");
   var authEmail = authEmailArr[0]; var setAuthEmail = authEmailArr[1];
@@ -4624,6 +4631,27 @@ function App() {
     return function(){ active = false; };
   }, []);
 
+  React.useEffect(function(){
+    var active = true;
+    (async function(){
+      var loaded = null;
+      try {
+        loaded = await traceOpsDbGet(EIGHTD_KEY);
+      } catch(_) {}
+      if (!active) return;
+      if (Array.isArray(loaded) && loaded.length) {
+        setEightdList(loaded);
+        return;
+      }
+      try {
+        var raw = localStorage.getItem(EIGHTD_KEY);
+        var parsed = raw ? JSON.parse(raw) : [];
+        if (active && Array.isArray(parsed) && parsed.length) setEightdList(parsed);
+      } catch(_) {}
+    })();
+    return function(){ active = false; };
+  }, []);
+
   function mergeRccaRecords(localItems, remoteItems) {
     var map = {};
     (localItems || []).forEach(function(item){
@@ -4656,6 +4684,26 @@ function App() {
     }
     try {
       localStorage.setItem(RCCA_KEY, JSON.stringify(payload));
+      return { ok:true, mode:"localStorage" };
+    } catch (err2) {
+      lastErr = err2;
+    }
+    return { ok:false, error:lastErr };
+  }
+
+  async function persistEightdLocal(list) {
+    var payload = list || [];
+    setEightdList(payload);
+    var lastErr = null;
+    try {
+      await traceOpsDbSet(EIGHTD_KEY, payload);
+      try { localStorage.removeItem(EIGHTD_KEY); } catch(_) {}
+      return { ok:true, mode:"indexeddb" };
+    } catch (err) {
+      lastErr = err;
+    }
+    try {
+      localStorage.setItem(EIGHTD_KEY, JSON.stringify(payload));
       return { ok:true, mode:"localStorage" };
     } catch (err2) {
       lastErr = err2;
@@ -4860,6 +4908,195 @@ function App() {
       setSyncBusy(false);
     }
   }
+
+  function traceOpsTextFilled(v) {
+    return !!String(v || "").trim();
+  }
+
+  function traceOpsBuildEightdId(rccaId) {
+    return "8D-" + String(rccaId || "CASE").replace(/[^A-Za-z0-9]+/g, "-") + "-" + Date.now().toString().slice(-6);
+  }
+
+  function traceOpsCollectLinkedEventsByIds(ids) {
+    var map = {};
+    (ev || []).forEach(function(item){ if (item && item.id) map[item.id] = item; });
+    return (ids || []).map(function(id){ return map[id]; }).filter(Boolean);
+  }
+
+  function traceOpsComputeEightdReadiness(draft) {
+    var weights = { d1_team:5, d2_problem:20, d3_containment:15, d4_root_cause:20, d4_escape_point:10, d5_pca:15, d6_validation:10, d7_prevention:5, d8_closure:0 };
+    var score = 0;
+    var missing = [];
+    Object.keys(weights).forEach(function(key){
+      if (traceOpsTextFilled(draft && draft[key])) score += weights[key];
+      else if (weights[key] > 0) missing.push(key);
+    });
+    return { score: score, missing: missing };
+  }
+
+  function traceOpsBuildEightdDraftFromRcca(rcca, existing) {
+    var linkedEvents = traceOpsCollectLinkedEventsByIds((rcca && rcca.event_ids) || []);
+    var firstEv = linkedEvents.length ? linkedEvents.slice().sort(function(a,b){ return traceOpsGetDateValue(a.fecha) - traceOpsGetDateValue(b.fecha); })[0] : null;
+    var lastEv = linkedEvents.length ? linkedEvents.slice().sort(function(a,b){ return traceOpsGetDateValue(b.fecha) - traceOpsGetDateValue(a.fecha); })[0] : null;
+    var problemParts = [];
+    if (rcca && (rcca.titulo_corto || rcca.problema)) problemParts.push((rcca.titulo_corto || rcca.problema));
+    if (rcca && (rcca.modelo || rcca.linea)) problemParts.push("Modelo / Linea: " + [rcca.modelo || "N/D", rcca.linea || "N/D"].join(" · "));
+    if (rcca && (rcca.primera_deteccion || (firstEv && firstEv.fecha) || rcca.ultima_deteccion || (lastEv && lastEv.fecha))) problemParts.push("Ventana de deteccion: " + (rcca.primera_deteccion || (firstEv && firstEv.fecha) || "N/D") + " -> " + (rcca.ultima_deteccion || (lastEv && lastEv.fecha) || "N/D"));
+    if (linkedEvents.length) problemParts.push("Eventos vinculados: " + linkedEvents.map(function(item){ return item.id; }).join(", "));
+    if (rcca && rcca.problema) problemParts.push("Descripcion: " + rcca.problema);
+
+    var containmentParts = [];
+    if (rcca && rcca.contencion) containmentParts.push(rcca.contencion);
+    if (rcca && rcca.material_afectado) containmentParts.push("Material afectado: " + rcca.material_afectado);
+    if (rcca && rcca.alcance_exposicion) containmentParts.push("Alcance / exposicion: " + rcca.alcance_exposicion);
+    var containmentActions = linkedEvents.map(function(item){ return item && item.accion_ejecutada ? (item.id + ": " + item.accion_ejecutada) : ""; }).filter(Boolean);
+    if (containmentActions.length) containmentParts.push("Acciones ejecutadas en eventos: " + containmentActions.join(" | "));
+
+    var rootCauseParts = [];
+    if (rcca && rcca.hipotesis) rootCauseParts.push("Hipotesis: " + rcca.hipotesis);
+    if (rcca && rcca.causa_raiz) rootCauseParts.push("Causa raiz: " + rcca.causa_raiz);
+    if (rcca && rcca.evidencia_resumen) rootCauseParts.push("Evidencia: " + rcca.evidencia_resumen);
+    if (rcca && rcca.patron_detectado) rootCauseParts.push("Patron detectado: " + rcca.patron_detectado);
+
+    var escapePoint = [];
+    if (rcca && (rcca.estacion_dominante || rcca.defecto_dominante)) escapePoint.push("Punto de escape sugerido: " + [rcca.estacion_dominante || "estacion N/D", rcca.defecto_dominante || "defecto N/D"].join(" · "));
+    if (linkedEvents.length) escapePoint.push("Validar por que el control del proceso no bloqueo el evento antes de " + (lastEv && lastEv.linea_estacion ? lastEv.linea_estacion : "la deteccion final") + ".");
+
+    var validationParts = [];
+    if (rcca && rcca.validacion) validationParts.push(rcca.validacion);
+    if (rcca && rcca.severidad) validationParts.push("Severidad: " + rcca.severidad);
+    if (rcca && rcca.recurrencia) validationParts.push("Recurrencia: " + rcca.recurrencia);
+    if (rcca && rcca.madurez_analisis) validationParts.push("Madurez analisis: " + rcca.madurez_analisis);
+
+    var preventionParts = [];
+    if (rcca && rcca.accion_preventiva) preventionParts.push(rcca.accion_preventiva);
+    if (rcca && rcca.leccion_aprendida) preventionParts.push("Leccion aprendida: " + rcca.leccion_aprendida);
+    if (rcca && rcca.patron_detectado) preventionParts.push("Yokoten sugerido desde patron: " + rcca.patron_detectado);
+
+    var draft = Object.assign({}, existing || {}, {
+      eightd_id: existing && existing.eightd_id ? existing.eightd_id : traceOpsBuildEightdId(rcca && rcca.rcca_id),
+      source_rcca_id: rcca && rcca.rcca_id ? rcca.rcca_id : "",
+      source_title: rcca && (rcca.titulo_corto || rcca.problema) ? (rcca.titulo_corto || rcca.problema) : "",
+      modelo: rcca && rcca.modelo ? rcca.modelo : "",
+      linea: rcca && rcca.linea ? rcca.linea : "",
+      fecha: rcca && rcca.fecha ? rcca.fecha : new Date().toISOString().slice(0,10),
+      owner_email: (existing && existing.owner_email) || (rcca && rcca.owner_email) || (authUser && authUser.email) || "",
+      status: (existing && existing.status) || "Draft",
+      linked_event_ids: (rcca && rcca.event_ids ? rcca.event_ids.slice() : []),
+      source_snapshot: Object.assign({}, rcca || {}),
+      d1_team: existing && existing.d1_team ? existing.d1_team : ((rcca && rcca.owner_email) ? ("Owner inicial: " + rcca.owner_email) : ""),
+      d2_problem: problemParts.join("\n\n"),
+      d3_containment: containmentParts.join("\n\n"),
+      d4_root_cause: rootCauseParts.join("\n\n"),
+      d4_escape_point: existing && existing.d4_escape_point ? existing.d4_escape_point : escapePoint.join("\n\n"),
+      d5_pca: rcca && rcca.accion_correctiva ? rcca.accion_correctiva : "",
+      d6_validation: validationParts.join("\n\n"),
+      d7_prevention: preventionParts.join("\n\n"),
+      d8_closure: existing && existing.d8_closure ? existing.d8_closure : "",
+      updated_at: new Date().toISOString(),
+      created_at: existing && existing.created_at ? existing.created_at : new Date().toISOString()
+    });
+    var readiness = traceOpsComputeEightdReadiness(draft);
+    draft.readiness_score = readiness.score;
+    draft.missing_fields = readiness.missing;
+    return draft;
+  }
+
+  async function saveEightdDraft(draft) {
+    var readiness = traceOpsComputeEightdReadiness(draft);
+    var normalized = Object.assign({}, draft, {
+      owner_email: authUser && authUser.email ? authUser.email : (draft.owner_email || ""),
+      updated_at: new Date().toISOString(),
+      readiness_score: readiness.score,
+      missing_fields: readiness.missing
+    });
+    var updated = eightdList.filter(function(item){ return item.eightd_id !== normalized.eightd_id; });
+    updated = [normalized].concat(updated).sort(function(a,b){
+      var ta = a && a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      var tb = b && b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      return tb - ta;
+    });
+    var persistResult = await persistEightdLocal(updated);
+    if (!persistResult || !persistResult.ok) {
+      alert("No se pudo guardar el Draft 8D localmente. " + traceOpsSafeStorageError(persistResult && persistResult.error));
+      return false;
+    }
+    setEightdDetail(normalized);
+    return true;
+  }
+
+  async function deleteEightdDraft(eightdId) {
+    var updated = eightdList.filter(function(item){ return item.eightd_id !== eightdId; });
+    var persistResult = await persistEightdLocal(updated);
+    if (!persistResult || !persistResult.ok) {
+      alert("No se pudo eliminar el Draft 8D. " + traceOpsSafeStorageError(persistResult && persistResult.error));
+      return;
+    }
+    if (eightdDetail && eightdDetail.eightd_id === eightdId) setEightdDetail(null);
+  }
+
+  function openEightdDraftFromRcca(rcca, forceRefresh) {
+    if (!rcca || !rcca.rcca_id) return;
+    var existing = eightdList.find(function(item){ return item.source_rcca_id === rcca.rcca_id; });
+    if (existing && !forceRefresh) {
+      setEightdDetail(existing);
+      return;
+    }
+    var draft = traceOpsBuildEightdDraftFromRcca(rcca, existing);
+    setEightdDetail(draft);
+  }
+
+  function traceOpsBuildEightdHtml(draft) {
+    var sections = [
+      ["D1 Team", draft.d1_team],
+      ["D2 Problem Description", draft.d2_problem],
+      ["D3 Containment", draft.d3_containment],
+      ["D4 Root Cause", draft.d4_root_cause],
+      ["D4 Escape Point", draft.d4_escape_point],
+      ["D5 Permanent Corrective Action", draft.d5_pca],
+      ["D6 Validation", draft.d6_validation],
+      ["D7 Prevention / Yokoten", draft.d7_prevention],
+      ["D8 Closure", draft.d8_closure]
+    ];
+    function esc(v){ return String(v || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(draft.eightd_id)}</title>
+<style>
+body{font-family:Inter,Segoe UI,sans-serif;background:#F4F3F0;color:#1A1714;padding:24px}
+.wrap{max-width:980px;margin:0 auto}
+.hero{background:#10231C;color:#fff;border-radius:18px;padding:24px 28px;margin-bottom:18px}
+.muted{color:rgba(255,255,255,.7)}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}
+.tile{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px}
+.tile b{display:block;font-size:22px;margin-top:4px}
+.card{background:#fff;border:1px solid #DDDBD7;border-radius:16px;padding:18px 20px;margin-bottom:12px}
+h2{font-size:15px;margin:0 0 10px 0}
+pre{white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.6;margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">TraceOps 8D Draft</div>
+    <h1 style="margin:8px 0 6px;font-size:30px">${esc(draft.source_title || draft.source_rcca_id)}</h1>
+    <div class="muted">${esc(draft.eightd_id)} · RCCA ${esc(draft.source_rcca_id)} · ${esc(draft.status || "Draft")}</div>
+    <div class="grid">
+      <div class="tile">Readiness<b>${esc(draft.readiness_score || 0)}%</b></div>
+      <div class="tile">Modelo<b>${esc(draft.modelo || "N/D")}</b></div>
+      <div class="tile">Linea<b>${esc(draft.linea || "N/D")}</b></div>
+      <div class="tile">Eventos<b>${esc((draft.linked_event_ids || []).length)}</b></div>
+    </div>
+  </div>
+  ${sections.map(function(sec){ return `<div class="card"><h2>${esc(sec[0])}</h2><pre>${esc(sec[1] || "")}</pre></div>`; }).join("")}
+</div>
+</body>
+</html>`;
+  }
+
   function traceOpsDownloadJson(filename, payload) {
     var blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     var a = document.createElement("a");
@@ -6053,6 +6290,109 @@ function App() {
     );
   }
 
+  function EightdDraftEditor(props){
+    var init = props.init || {};
+    var sourceRcca = props.sourceRcca || null;
+    var formArr = _useState(function(){ return Object.assign({}, init); });
+    var form = formArr[0]; var setForm = formArr[1];
+    React.useEffect(function(){ setForm(Object.assign({}, props.init || {})); }, [props.init && props.init.eightd_id, props.init && props.init.updated_at]);
+    function upd(k,v){ var next = Object.assign({}, form); next[k] = v; var ready = traceOpsComputeEightdReadiness(next); next.readiness_score = ready.score; next.missing_fields = ready.missing; setForm(next); }
+    var readiness = traceOpsComputeEightdReadiness(form);
+    var linkedEvents = traceOpsCollectLinkedEventsByIds(form.linked_event_ids || []);
+    var missingPretty = { d1_team:"D1 Team", d2_problem:"D2 Problem", d3_containment:"D3 Containment", d4_root_cause:"D4 Root Cause", d4_escape_point:"Escape Point", d5_pca:"D5 Corrective Action", d6_validation:"D6 Validation", d7_prevention:"D7 Prevention" };
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.58)",zIndex:9996,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={function(){props.onClose();}}>
+        <div style={{background:"#fff",borderRadius:18,maxWidth:1120,width:"100%",maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.24)"}} onClick={function(e){e.stopPropagation();}}>
+          <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"16px 20px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap",zIndex:2}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",color:"#1E7B58"}}>8D Draft Generator</div>
+              <div style={{fontSize:18,fontWeight:800,color:"#1A1714",marginTop:4}}>{form.source_title || form.source_rcca_id || "Draft 8D"}</div>
+              <div style={{fontSize:10.5,color:"#6A6560",marginTop:4,fontFamily:"monospace"}}>{form.eightd_id} · Source RCCA {form.source_rcca_id || "N/D"}</div>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
+              <span style={{fontSize:10,fontWeight:800,background:readiness.score>=85?"#EAF5F0":readiness.score>=60?"#FEF9E8":"#FDF0EE",color:readiness.score>=85?"#1E5C48":readiness.score>=60?"#B87820":"#C0392B",border:"1px solid "+(readiness.score>=85?"#B8DECE":readiness.score>=60?"#F5E4A0":"#F0C4BE"),borderRadius:999,padding:"6px 10px"}}>Readiness {readiness.score}%</span>
+              <button onClick={function(){ props.onSave(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#1E5C48",color:"#fff",border:"none",borderRadius:10,padding:"10px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Guardar Draft</button>
+              <button onClick={function(){ exportEightdHtml(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",color:"#1E7B58",borderRadius:10,padding:"10px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Exportar HTML</button>
+              {sourceRcca&&<button onClick={function(){ props.onRefresh(sourceRcca); }} style={{background:"#F5F0FE",border:"1px solid #DBCDF8",color:"#6B2DA8",borderRadius:10,padding:"10px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Refresh from RCCA</button>}
+              <button onClick={props.onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",color:"#6A6560",borderRadius:10,padding:"10px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Cerrar</button>
+            </div>
+          </div>
+          <div style={{padding:"18px 20px",display:"grid",gridTemplateColumns:"1.55fr .95fr",gap:16}}>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {[
+                ["d1_team","D1 Team","Equipo multifuncional, owner y areas soporte."],
+                ["d2_problem","D2 Problem Description","Que, donde, cuando, cuanto, impacto y eventos vinculados."],
+                ["d3_containment","D3 Containment","Contencion inmediata, material bloqueado, WIP / FG, accion ejecutada."],
+                ["d4_root_cause","D4 Root Cause","Hipotesis, causa raiz confirmada, evidencia y patron."],
+                ["d4_escape_point","D4 Escape Point","Control que no detecto o no bloqueo el problema."],
+                ["d5_pca","D5 Permanent Corrective Action","Accion correctiva permanente."],
+                ["d6_validation","D6 Validation","Metodo de validacion, resultados y recurrencia."],
+                ["d7_prevention","D7 Prevention / Yokoten","Prevencion, leccion aprendida, reapplication."],
+                ["d8_closure","D8 Closure","Cierre ejecutivo, efectividad y aprobacion."],
+              ].map(function(sec){
+                return <div key={sec[0]} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+                  <div style={{padding:"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
+                    <div style={{fontSize:12.5,fontWeight:800,color:"#1A1714"}}>{sec[1]}</div>
+                    <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>{sec[2]}</div>
+                  </div>
+                  <div style={{padding:12}}>
+                    <textarea value={form[sec[0]] || ""} rows={sec[0]==="d2_problem"||sec[0]==="d4_root_cause"?6:4} onChange={function(e){upd(sec[0], e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit",lineHeight:1.55}} />
+                  </div>
+                </div>;
+              })}
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+                <div style={{padding:"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
+                  <div style={{fontSize:12.5,fontWeight:800,color:"#1A1714"}}>Source RCCA</div>
+                  <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>Referencia congelada del caso base.</div>
+                </div>
+                <div style={{padding:14,display:"flex",flexDirection:"column",gap:8}}>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <span style={{fontSize:9.5,fontWeight:700,background:"#F5F0FE",color:"#6B2DA8",borderRadius:999,padding:"4px 8px"}}>{form.source_rcca_id || "Sin RCCA"}</span>
+                    {form.modelo&&<span style={{fontSize:9.5,fontWeight:700,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"4px 8px"}}>{form.modelo}</span>}
+                    {form.linea&&<span style={{fontSize:9.5,fontWeight:700,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"4px 8px"}}>{form.linea}</span>}
+                    {form.status&&<span style={{fontSize:9.5,fontWeight:700,background:"#EBF0FC",color:"#1E7B58",borderRadius:999,padding:"4px 8px"}}>{form.status}</span>}
+                  </div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#1A1714",lineHeight:1.35}}>{form.source_title || "Sin titulo"}</div>
+                  <div style={{fontSize:10.5,color:"#6A6560"}}>Owner: {form.owner_email || "N/D"}</div>
+                  <div style={{fontSize:10.5,color:"#6A6560"}}>Fecha base: {form.fecha || "N/D"}</div>
+                </div>
+              </div>
+              <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+                <div style={{padding:"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
+                  <div style={{fontSize:12.5,fontWeight:800,color:"#1A1714"}}>Missing fields</div>
+                  <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>Campos que todavia requieren decision humana.</div>
+                </div>
+                <div style={{padding:14}}>
+                  {readiness.missing.length===0 ? <div style={{fontSize:11.5,color:"#1E7B58",fontWeight:700}}>Draft listo para revision.</div> : <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.missing.map(function(key){return <span key={key} style={{fontSize:9.5,fontWeight:700,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"4px 8px"}}>{missingPretty[key] || key}</span>;})}</div>}
+                </div>
+              </div>
+              <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+                <div style={{padding:"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
+                  <div style={{fontSize:12.5,fontWeight:800,color:"#1A1714"}}>Linked events</div>
+                  <div style={{fontSize:10,color:"#8A8580",marginTop:2}}>{linkedEvents.length} evento{linkedEvents.length!==1?"s":""} usados para construir el draft.</div>
+                </div>
+                <div style={{padding:14,display:"flex",flexDirection:"column",gap:8,maxHeight:260,overflowY:"auto"}}>
+                  {linkedEvents.length===0 ? <div style={{fontSize:11.5,color:"#8A8580"}}>Sin eventos vinculados.</div> : linkedEvents.map(function(item){
+                    return <div key={item.id} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:10,padding:"10px 12px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}><span style={{fontSize:9.5,fontFamily:"monospace",fontWeight:700,color:"#2A7A60"}}>{item.id}</span><span style={{fontSize:9.5,color:"#8A8580"}}>{item.fecha} · {item.turno}</span></div>
+                      <div style={{fontSize:11.5,fontWeight:700,color:"#1A1714",marginTop:4,lineHeight:1.35}}>{item.evento_detectado || item.tipo_evento}</div>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
+                        {item.linea_estacion&&<span style={{fontSize:8.8,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.linea_estacion}</span>}
+                        {item.defecto_smt&&item.defecto_smt!=="N/A"&&<span style={{fontSize:8.8,background:"#F5F0FE",color:"#6B2DA8",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.defecto_smt}</span>}
+                      </div>
+                    </div>;
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function RccaCard(props){var r=props.r;var score=props.score;
     var title=r.titulo_corto||r.problema;
     var status=r.estatus_rcca||"NUEVO";
@@ -6064,7 +6404,7 @@ function App() {
       <div style={{background:"#fff",border:"1.5px solid "+(score>=70?"#B8DECE":score>=50?"#F5E4A0":"#DDDBD7"),borderRadius:12,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:8}}>
           <div style={{minWidth:0,flex:1}}><div><span style={{fontSize:9,fontWeight:700,fontFamily:"monospace",color:"#2A7A60"}}>{r.rcca_id}</span>{score>0&&<span style={{marginLeft:6,fontSize:9,fontWeight:700,color:score>=70?"#1A7A3C":score>=50?"#B87820":"#8A8580",background:score>=70?"#EBF8EE":score>=50?"#FEF9E8":"#F8F7F5",borderRadius:99,padding:"1px 7px"}}>{score}%</span>}</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:4}}><span style={{fontSize:8.5,background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:999,padding:"2px 7px",color:"#6A6560",fontWeight:700}}>{type}</span><span style={{fontSize:8.5,background:status==="CERRADO"?"#EAF5F0":status==="VALIDANDO"?"#F5F0FE":status==="CONTENIDO"?"#FEF9E8":status==="IN ANALYSIS"?"#EBF0FC":"#F8F7F5",border:"1px solid "+(status==="CERRADO"?"#B8DECE":status==="VALIDANDO"?"#DBCDF8":status==="CONTENIDO"?"#F5E4A0":status==="IN ANALYSIS"?"#C8D7F8":"#DDDBD7"),borderRadius:999,padding:"2px 7px",color:status==="CERRADO"?"#1E5C48":status==="VALIDANDO"?"#6B2DA8":status==="CONTENIDO"?"#B87820":status==="IN ANALYSIS"?"#1E7B58":"#6A6560",fontWeight:700}}>{status}</span></div></div>
-          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button onClick={function(){setRccaDetail(r);}} style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E5C48",cursor:"pointer"}}>Ver</button><button onClick={function(){setRccaForm(Object.assign({},r,{event_ids:(r.event_ids||[]).slice()}));}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E7B58",cursor:"pointer"}}>Edit</button><button onClick={function(){deleteRcca(r.rcca_id);}} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>x</button></div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button onClick={function(){setRccaDetail(r);}} style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E5C48",cursor:"pointer"}}>Ver</button><button onClick={function(){setRccaForm(Object.assign({},r,{event_ids:(r.event_ids||[]).slice()}));}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#1E7B58",cursor:"pointer"}}>Edit</button><button onClick={function(){openEightdDraftFromRcca(r,false);}} style={{background:"#F5F0FE",border:"1px solid #DBCDF8",borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:600,color:"#6B2DA8",cursor:"pointer"}}>8D</button><button onClick={function(){deleteRcca(r.rcca_id);}} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#8A8580",cursor:"pointer"}}>x</button></div>
         </div>
         <div style={{fontSize:12,fontWeight:700,color:"#1A1714",marginBottom:5,lineHeight:1.3}}>{title}</div>
         <div style={{fontSize:10.5,color:"#6A6560",marginBottom:6,lineHeight:1.4}}>{r.problema?r.problema.slice(0,92)+(r.problema.length>92?"...":""):""}</div>
@@ -6408,6 +6748,7 @@ function App() {
             <button className={"sidebar-btn"+(state==="idle"?" active":"")} onClick={function(){if(state!=="idle")reset();if(isMobile())setSidebarOpen(false);window.scrollTo({top:0,behavior:"smooth"});}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Inicio</button>
             <button className={"sidebar-btn"+(state==="done"?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("results-section");if(el){el.scrollIntoView({behavior:"smooth"});}else if(state!=="done"){window.scrollTo({top:0,behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Resultados</button>
             <button className={"sidebar-btn"+(false?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("rcca-section");if(el){el.scrollIntoView({behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>RCCA</button>
+            <button className={"sidebar-btn"+(false?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("eightd-section");if(el){el.scrollIntoView({behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3h6l1 2h4v16H4V5h4l1-2z"/><path d="M9 10h6"/><path d="M9 14h6"/><path d="M9 18h4"/></svg>8D Drafts</button>
           </div>
         </div>
         <div className="sidebar-section">
@@ -6476,12 +6817,13 @@ function App() {
         </div>
       )}
       {rccaForm&&<RccaForm init={rccaForm} onSave={saveRcca} onClose={function(){clearRccaDraft();setRccaForm(null);}}/>}
+      {eightdDetail&&<EightdDraftEditor init={eightdDetail} sourceRcca={(eightdDetail&&eightdDetail.source_rcca_id)?(rccaList.find(function(item){return item.rcca_id===eightdDetail.source_rcca_id;})||eightdDetail.source_snapshot||null):null} onSave={saveEightdDraft} onRefresh={function(source){openEightdDraftFromRcca(source,true);}} onClose={function(){setEightdDetail(null);}}/>}
       {rccaDetail&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9997,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={function(){setRccaDetail(null);}}>
           <div style={{background:"#fff",borderRadius:16,maxWidth:720,width:"100%",maxHeight:"85vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
             <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
               <div><div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>RCCA Detail</div><div style={{fontSize:10,color:"#2A7A60",fontFamily:"monospace"}}>{rccaDetail.rcca_id}</div></div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button onClick={function(){setRccaForm(Object.assign({},rccaDetail,{event_ids:(rccaDetail.event_ids||[]).slice()}));setRccaDetail(null);}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#1E7B58",fontWeight:600}}>Edit</button><button onClick={function(){setRccaDetail(null);}} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Close</button></div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button onClick={function(){setRccaForm(Object.assign({},rccaDetail,{event_ids:(rccaDetail.event_ids||[]).slice()}));setRccaDetail(null);}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#1E7B58",fontWeight:600}}>Edit</button><button onClick={function(){openEightdDraftFromRcca(rccaDetail,false);setRccaDetail(null);}} style={{background:"#F5F0FE",border:"1px solid #DBCDF8",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6B2DA8",fontWeight:600}}>8D Draft</button><button onClick={function(){setRccaDetail(null);}} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Close</button></div>
             </div>
             <div style={{padding:"18px 20px",display:"flex",flexDirection:"column",gap:12}}>
               <div>
@@ -7213,6 +7555,69 @@ function App() {
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {rccaList.filter(function(r){if(!rccaFilter)return true;var q=rccaFilter.toLowerCase();return(r.modelo||"").toLowerCase().indexOf(q)>=0||(r.linea||"").toLowerCase().indexOf(q)>=0||(r.problema||"").toLowerCase().indexOf(q)>=0||(r.rcca_id||"").toLowerCase().indexOf(q)>=0;}).map(function(r){return<RccaCard key={r.rcca_id} r={r} score={0}/>;})}
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div id="eightd-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+            <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+              <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>8D Drafts</h3><span style={{fontSize:10,color:"#8A8580"}}>Borradores generados a partir de RCCA</span></div>
+              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{fontSize:9.5,color:"#1E7B58",fontWeight:700,background:"#EAF5F0",borderRadius:999,padding:"4px 9px"}}>{eightdList.length} drafts</span>
+                {eightdList.length>0&&<button onClick={function(){traceOpsDownloadJson("traceops_8d_drafts_"+new Date().toISOString().slice(0,10)+".json", eightdList);}} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:7,padding:"4px 11px",fontSize:10,color:"#6A6560",cursor:"pointer"}}>Exportar JSON</button>}
+              </div>
+            </div>
+            <div style={{padding:"12px 16px"}}>
+              {rccaList.length===0 ? (
+                <div style={{textAlign:"center",padding:"24px 0",color:"#B8B4AE",fontSize:13}}>Necesitas al menos una RCCA para generar un Draft 8D.</div>
+              ) : (
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:10}}>
+                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Drafts</div><div style={{fontSize:26,fontWeight:800,color:"#1A1714",marginTop:5}}>{eightdList.length}</div></div>
+                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Ready >= 85%</div><div style={{fontSize:26,fontWeight:800,color:"#1E7B58",marginTop:5}}>{eightdList.filter(function(item){return (item.readiness_score||0)>=85;}).length}</div></div>
+                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Need review</div><div style={{fontSize:26,fontWeight:800,color:"#B87820",marginTop:5}}>{eightdList.filter(function(item){return (item.readiness_score||0)<85;}).length}</div></div>
+                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>RCCA source</div><div style={{fontSize:26,fontWeight:800,color:"#6B2DA8",marginTop:5}}>{rccaList.length}</div></div>
+                  </div>
+                  <input placeholder="Buscar draft por RCCA, modelo, linea o titulo..." value={eightdFilter} onChange={function(e){setEightdFilter(e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#1A1714",outline:"none"}}/>
+                  {eightdList.length===0 ? (
+                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"16px 18px",fontSize:12,color:"#6A6560"}}>Todavia no hay Drafts 8D. Genera uno desde cualquier RCCA usando el boton <b>8D</b>.</div>
+                  ) : (
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {eightdList.filter(function(item){
+                        if(!eightdFilter) return true;
+                        var q = eightdFilter.toLowerCase();
+                        return (item.eightd_id||"").toLowerCase().indexOf(q)>=0 || (item.source_rcca_id||"").toLowerCase().indexOf(q)>=0 || (item.source_title||"").toLowerCase().indexOf(q)>=0 || (item.modelo||"").toLowerCase().indexOf(q)>=0 || (item.linea||"").toLowerCase().indexOf(q)>=0;
+                      }).map(function(item){
+                        var source = rccaList.find(function(r){ return r.rcca_id === item.source_rcca_id; }) || item.source_snapshot || null;
+                        return <div key={item.eightd_id} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+                          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+                            <div style={{minWidth:0,flex:1}}>
+                              <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                                <span style={{fontSize:9.5,fontFamily:"monospace",fontWeight:700,color:"#6B2DA8"}}>{item.eightd_id}</span>
+                                <span style={{fontSize:8.8,fontWeight:800,background:(item.readiness_score||0)>=85?"#EAF5F0":(item.readiness_score||0)>=60?"#FEF9E8":"#FDF0EE",color:(item.readiness_score||0)>=85?"#1E5C48":(item.readiness_score||0)>=60?"#B87820":"#C0392B",borderRadius:999,padding:"3px 8px"}}>{item.readiness_score||0}%</span>
+                                <span style={{fontSize:8.8,fontWeight:800,background:"#EBF0FC",color:"#1E7B58",borderRadius:999,padding:"3px 8px"}}>{item.status||"Draft"}</span>
+                              </div>
+                              <div style={{fontSize:13,fontWeight:800,color:"#1A1714",marginTop:6,lineHeight:1.32}}>{item.source_title || item.source_rcca_id}</div>
+                              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
+                                <span style={{fontSize:9,background:"#F5F0FE",color:"#6B2DA8",borderRadius:999,padding:"3px 7px",fontWeight:700}}>RCCA {item.source_rcca_id || "N/D"}</span>
+                                {item.modelo&&<span style={{fontSize:9,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.modelo}</span>}
+                                {item.linea&&<span style={{fontSize:9,background:"#EAF5F0",color:"#1E5C48",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.linea}</span>}
+                                <span style={{fontSize:9,color:"#8A8580"}}>{item.linked_event_ids && item.linked_event_ids.length ? item.linked_event_ids.length : 0} eventos</span>
+                              </div>
+                              {item.missing_fields&&item.missing_fields.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:8}}>{item.missing_fields.slice(0,4).map(function(key){return <span key={key} style={{fontSize:8.5,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{({d1_team:"D1",d2_problem:"D2",d3_containment:"D3",d4_root_cause:"D4",d4_escape_point:"Escape",d5_pca:"D5",d6_validation:"D6",d7_prevention:"D7"}[key]||key)}</span>;})}</div>}
+                            </div>
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                              <button onClick={function(){setEightdDetail(item);}} style={{background:"#F5F0FE",border:"1px solid #DBCDF8",borderRadius:8,padding:"6px 12px",fontSize:10.5,fontWeight:700,color:"#6B2DA8",cursor:"pointer"}}>Open</button>
+                              {source&&<button onClick={function(){openEightdDraftFromRcca(source,true);}} style={{background:"#EBF0FC",border:"1px solid #C8D7F8",borderRadius:8,padding:"6px 12px",fontSize:10.5,fontWeight:700,color:"#1E7B58",cursor:"pointer"}}>Refresh</button>}
+                              <button onClick={function(){exportEightdHtml(item);}} style={{background:"#EAF5F0",border:"1px solid #B8DECE",borderRadius:8,padding:"6px 12px",fontSize:10.5,fontWeight:700,color:"#1E5C48",cursor:"pointer"}}>HTML</button>
+                              <button onClick={function(){deleteEightdDraft(item.eightd_id);}} style={{background:"none",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:10.5,color:"#8A8580",cursor:"pointer"}}>x</button>
+                            </div>
+                          </div>
+                        </div>;
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
