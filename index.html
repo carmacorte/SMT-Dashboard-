@@ -1675,6 +1675,96 @@ body.traceops-premium-shell .day-btn:not(.active) *{
   .traceops-ops-panel .traceops-panel-body{padding:14px}
 }
 
+/* ==== START MOBILE TOPBAR OVERFLOW FIX V2 ==== */
+@media (max-width:900px){
+  body.traceops-premium-shell .saas-topbar{
+    display:grid !important;
+    grid-template-columns:42px minmax(0,1fr) !important;
+    align-items:center !important;
+    column-gap:10px !important;
+    padding:14px 12px !important;
+    overflow:hidden !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-left{
+    min-width:42px !important;
+    width:42px !important;
+    justify-content:center !important;
+    align-items:center !important;
+    gap:0 !important;
+    flex:0 0 42px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-brand{
+    display:none !important;
+  }
+
+  body.traceops-premium-shell .saas-menu-btn{
+    position:static !important;
+    top:auto !important;
+    margin:0 !important;
+    width:42px !important;
+    height:42px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions{
+    min-width:0 !important;
+    width:100% !important;
+    flex-wrap:nowrap !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    justify-content:flex-start !important;
+    gap:8px !important;
+    padding:2px 2px 4px !important;
+    scrollbar-width:none !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions::-webkit-scrollbar{
+    display:none !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > *{
+    flex:0 0 auto !important;
+  }
+
+  body.traceops-premium-shell .saas-header-pill{
+    padding:8px 10px !important;
+  }
+
+  body.traceops-premium-shell .saas-header-btn{
+    height:40px !important;
+    padding:0 12px !important;
+    font-size:11px !important;
+    white-space:nowrap !important;
+  }
+
+  body.traceops-premium-shell .saas-header-btn span{
+    white-space:nowrap !important;
+  }
+
+  body.traceops-premium-shell .saas-header-btn.primary{
+    padding:0 14px !important;
+  }
+}
+
+@media (max-width:420px){
+  body.traceops-premium-shell .saas-topbar{
+    padding:12px 10px !important;
+    column-gap:8px !important;
+  }
+
+  body.traceops-premium-shell .saas-header-pill{
+    padding:7px 8px !important;
+  }
+
+  body.traceops-premium-shell .saas-header-btn{
+    padding:0 10px !important;
+    font-size:10px !important;
+  }
+}
+/* ==== END MOBILE TOPBAR OVERFLOW FIX V2 ==== */
+
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -4355,6 +4445,7 @@ function App() {
     en: {
       brandSubtitle: "Operational Intelligence for Manufacturing Teams",
       startExport: "Start with your WhatsApp export",
+      startExportShort: "Export ZIP",
       recentAnalyses: "See recent analyses",
       newAnalysis: "New",
       downloadXlsx: "Download XLSX log",
@@ -4377,6 +4468,7 @@ function App() {
     es: {
       brandSubtitle: "Inteligencia operativa para equipos de manufactura",
       startExport: "Comenzar con export de WhatsApp",
+      startExportShort: "Exportar ZIP",
       recentAnalyses: "Ver análisis recientes",
       newAnalysis: "Nuevo",
       downloadXlsx: "Descargar bitácora XLSX",
@@ -4399,6 +4491,7 @@ function App() {
     zh: {
       brandSubtitle: "面向制造团队的运营智能",
       startExport: "从 WhatsApp 导出开始",
+      startExportShort: "导出 ZIP",
       recentAnalyses: "查看最近分析",
       newAnalysis: "新建",
       downloadXlsx: "下载 XLSX 日志",
@@ -6797,7 +6890,7 @@ pre{white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.6;marg
             <span className="hide-mobile">{authUser?t("cloudRcca"):t("localRcca")}</span>
           </div>
           {state==="done"&&<button className="saas-header-btn" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg><span className="hide-mobile">{t("newAnalysis")}</span></button>}
-          <button className="saas-header-btn primary" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>{t("startExport")}</span></button>
+          <button className="saas-header-btn primary" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>{isMobile()?t("startExportShort"):t("startExport")}</span></button>
           {xlsxBytes&&<button className="saas-header-btn" onClick={function(){download();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span className="hide-mobile">{t("downloadXlsx")}</span></button>}
         </div>
       </header>
