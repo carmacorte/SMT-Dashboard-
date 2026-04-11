@@ -5706,6 +5706,59 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     slide.addShape('roundRect', {x:x, y:y, w:w, h:h, rectRadius:0.06, line:{color:lineColor || 'DCE9E2', pt:1}, fill:{color:fill || 'FFFFFF'}});
   }
 
+  function traceOpsPptMiniNote(slide, text, x, y, w){
+    if (!text) return;
+    slide.addText(traceOpsPptWrap(text, 180), {x:x, y:y, w:w, h:0.16, fontFace:'Arial', fontSize:9.0, color:'5F766C', italic:true, margin:0, fit:'shrink'});
+  }
+
+  function traceOpsPptDrawFlowSteps(slide, steps, x, y, w, h){
+    var list = Array.isArray(steps) && steps.length ? steps.slice(0,4) : ['Contain lot','Inspect targeted positions','Shield customer','Confirm release gate'];
+    var rowH = h / list.length;
+    for (var i = 0; i < list.length; i++) {
+      var yy = y + (i * rowH);
+      slide.addShape('roundRect', {x:x + 0.06, y:yy + 0.04, w:w - 0.42, h:rowH - 0.08, rectRadius:0.05, line:{color:(i === list.length - 1 ? 'E4A24A' : 'DCE9E2'), pt:1}, fill:{color:(i === list.length - 1 ? 'FFF5E7' : (i % 2 ? 'F8FBF9' : 'FFFFFF'))}});
+      slide.addShape('roundRect', {x:x + w - 0.30, y:yy + 0.10, w:0.18, h:rowH - 0.20, rectRadius:0.04, line:{color:(i === list.length - 1 ? 'E4A24A' : '2F5F9A'), pt:1}, fill:{color:(i === list.length - 1 ? 'E4A24A' : '2F5F9A')}});
+      slide.addText(String(i + 1), {x:x + 0.14, y:yy + 0.10, w:0.24, h:0.14, fontFace:'Arial', fontSize:10.5, bold:true, color:'1E7B58', align:'center', margin:0});
+      slide.addText(traceOpsPptWrap(list[i], 95), {x:x + 0.46, y:yy + 0.11, w:w - 0.92, h:rowH - 0.18, fontFace:'Arial', fontSize:10.0, color:'10231C', margin:0, fit:'shrink', valign:'mid'});
+    }
+  }
+
+  function traceOpsPptDrawFishbone(slide, categories, x, y, w, h){
+    var centerY = y + (h / 2);
+    slide.addShape('line', {x:x + 0.40, y:centerY, w:w - 1.10, h:0, line:{color:'2F5F9A', pt:1.8}});
+    slide.addShape('chevron', {x:x + w - 0.72, y:centerY - 0.20, w:0.50, h:0.40, line:{color:'E4A24A', pt:1}, fill:{color:'E4A24A'}});
+    var anchors = [0.95, 2.05, 3.15, 4.25];
+    for (var i = 0; i < 4; i++) {
+      var itemTop = categories[i] || {label:'Category', items:['No evidence yet']};
+      var itemBot = categories[i + 4] || {label:'Category', items:['No evidence yet']};
+      var ax = x + anchors[i];
+      slide.addShape('line', {x:ax, y:centerY, w:-0.58, h:-0.56, line:{color:'2F5F9A', pt:1.2}});
+      slide.addShape('line', {x:ax, y:centerY, w:-0.58, h:0.56, line:{color:'2F5F9A', pt:1.2}});
+      slide.addShape('roundRect', {x:ax - 0.98, y:y + 0.12, w:1.32, h:0.34, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
+      slide.addText(traceOpsPptSafe(itemTop.label, 28), {x:ax - 0.92, y:y + 0.21, w:1.18, h:0.10, fontFace:'Arial', fontSize:8.4, bold:true, color:'1E7B58', align:'center', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptWrap((itemTop.items && itemTop.items[0]) || 'No evidence yet', 72), {x:ax - 0.96, y:y + 0.48, w:1.34, h:0.42, fontFace:'Arial', fontSize:7.8, color:'10231C', margin:0, fit:'shrink', align:'center'});
+      slide.addShape('roundRect', {x:ax - 0.98, y:y + h - 0.46, w:1.32, h:0.34, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'F8FBF9'}});
+      slide.addText(traceOpsPptSafe(itemBot.label, 28), {x:ax - 0.92, y:y + h - 0.37, w:1.18, h:0.10, fontFace:'Arial', fontSize:8.4, bold:true, color:'1E7B58', align:'center', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptWrap((itemBot.items && itemBot.items[0]) || 'No evidence yet', 72), {x:ax - 0.96, y:y + h - 0.88, w:1.34, h:0.36, fontFace:'Arial', fontSize:7.8, color:'10231C', margin:0, fit:'shrink', align:'center'});
+    }
+    slide.addText('Probable\nCause', {x:x + w - 1.28, y:centerY - 0.30, w:0.54, h:0.40, fontFace:'Arial', fontSize:9.0, bold:true, color:'E4A24A', margin:0, align:'center', valign:'mid'});
+  }
+
+  function traceOpsPptDrawWhyCards(slide, whys, x, y, w, h, opts){
+    var items = Array.isArray(whys) && whys.length ? whys : ['Under validation'];
+    var gap = (opts && opts.gap) || 0.10;
+    var topPad = (opts && opts.topPad) || 0.10;
+    var maxItems = Math.min((opts && opts.maxItems) || items.length, items.length);
+    var rowH = (h - topPad - (gap * (maxItems - 1))) / maxItems;
+    for (var i = 0; i < maxItems; i++) {
+      var yy = y + topPad + (i * (rowH + gap));
+      slide.addShape('roundRect', {x:x, y:yy, w:w, h:rowH, rectRadius:0.05, line:{color:'DCE9E2', pt:1}, fill:{color:(i % 2 ? 'F8FBF9' : 'FFFFFF')}});
+      slide.addShape('roundRect', {x:x + 0.08, y:yy + 0.07, w:0.52, h:rowH - 0.14, rectRadius:0.04, line:{color:'E6EFEA', pt:1}, fill:{color:'ECF5F1'}});
+      slide.addText(String(i + 1), {x:x + 0.19, y:yy + (rowH/2) - 0.08, w:0.28, h:0.14, fontFace:'Arial', fontSize:10.0, bold:true, color:'1E7B58', align:'center', margin:0});
+      slide.addText(traceOpsPptWrap(items[i], 110), {x:x + 0.72, y:yy + 0.06, w:w - 0.84, h:rowH - 0.12, fontFace:'Arial', fontSize:9.2, color:'10231C', margin:0, fit:'shrink', valign:'mid'});
+    }
+  }
+
   function traceOpsPptAddBadge(slide, label, x, y, tone){
     var fill = 'F6FBF8';
     var line = 'D7E6DE';
@@ -5785,77 +5838,80 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var parts = [];
     if (model.actions && model.actions.length) parts = parts.concat(model.actions.slice(0, 2));
     if (traceOpsEightdHasText(model.validation)) parts.push('Verification gate: ' + model.validation);
-    if (traceOpsEightdHasText(model.containment) && parts.length < 3) parts.push(model.containment);
-    parts = traceOpsEightdUnique(parts).map(function(item){ return traceOpsEightdShort(item, 150); }).filter(Boolean);
+    if (traceOpsEightdHasText(model.containment) && parts.length < 4) parts.push('Hold / containment: ' + model.containment);
+    parts = traceOpsEightdUnique(parts).map(function(item){ return traceOpsEightdShort(item, 140); }).filter(Boolean);
     if (!parts.length) {
       parts = [
-        'Define sort scope by lot / feeder / kitting return path.',
-        'Inspect affected positions and adjacent material before release.',
-        'Confirm customer protection status before closure.'
+        'Identify affected lot, work order or serial population before release.',
+        'Inspect critical locations and adjacent material before disposition.',
+        'Keep customer shielding active until control verification closes.'
       ];
     }
-    return parts.slice(0, 4).join(' | ');
+    return parts.slice(0, 4);
   }
 
   function traceOpsPptEscapeConclusionText(normalized, model){
     var base = traceOpsEightdHasText(normalized && normalized.d4_escape_point) ? normalized.d4_escape_point : model.escapeSummary;
-    var station = model.station || normalized.station || 'relevant control stage';
+    var station = model.station || normalized.station || 'the expected detection stage';
     var defect = normalized.defecto_smt || model.defect || 'the failure mode';
     var parts = [];
-    if (traceOpsEightdHasText(base)) parts.push(traceOpsEightdShort(base, 220));
-    parts.push('Expected detection control around ' + station + ' must be reviewed against ' + defect + '.');
-    parts.push('Keep the escape conclusion neutral until the specific control limitation is validated with trace evidence.');
+    if (traceOpsEightdHasText(base)) parts.push(traceOpsEightdShort(base, 190));
+    parts.push('Expected control at ' + station + ' did not reliably trigger on ' + defect + '.');
+    parts.push('Control limitation remains under validation until evidence links the missed trigger to one specific gap.');
     return traceOpsEightdJoinParagraphs(parts);
   }
 
   function traceOpsPptEvidenceSummaryText(normalized, model){
     if (traceOpsEightdHasText(normalized && normalized.evidence_summary)) return normalized.evidence_summary;
     var parts = [];
-    if (model.findings && model.findings.length) parts.push('Technical findings: ' + model.findings.slice(0, 2).join(' | '));
-    if (model.evidenceRefs && model.evidenceRefs.length) parts.push('Linked references: ' + model.evidenceRefs.slice(0, 4).join(' | '));
-    if (traceOpsEightdHasText(model.pattern)) parts.push('Pattern seen in trace: ' + model.pattern);
-    if (!parts.length) parts.push('Evidence summary pending. Capture physical evidence, lot trace and control proof before closure.');
-    return traceOpsEightdJoinParagraphs(parts);
+    if (model.findings && model.findings.length) parts = parts.concat(model.findings.slice(0, 3));
+    if (model.evidenceRefs && model.evidenceRefs.length) parts.push('Linked references: ' + model.evidenceRefs.slice(0, 3).join(' | '));
+    if (traceOpsEightdHasText(model.pattern)) parts.push('Pattern confirmed in trace: ' + model.pattern);
+    parts = traceOpsEightdUnique(parts).filter(Boolean);
+    if (!parts.length) parts = ['Evidence summary pending. Add symptom proof, lot trace and control records before closure.'];
+    return parts.join(' ');
   }
 
   function traceOpsPptCorrelationText(normalized, model){
     if (traceOpsEightdHasText(normalized && normalized.correlation_notes)) return normalized.correlation_notes;
     var parts = [];
-    if (traceOpsEightdHasText(model.occurrenceSummary)) parts.push('Occurrence path: ' + model.occurrenceSummary);
-    if (traceOpsEightdHasText(model.escapeSummary)) parts.push('Escape path: ' + model.escapeSummary);
+    if (traceOpsEightdHasText(model.occurrenceSummary)) parts.push('Occurrence pattern: ' + model.occurrenceSummary);
+    if (traceOpsEightdHasText(model.escapeSummary)) parts.push('Escape logic: ' + model.escapeSummary);
     if (model.tracePath && model.tracePath !== 'No linked events.') parts.push('Trace path: ' + model.tracePath + '.');
-    parts.push('Each causal claim should map to one visible source, one affected control and one validation step.');
+    if (!parts.length) parts.push('Correlation pending. Connect one visible variation, one missed control and one measurable symptom.');
     return traceOpsEightdJoinParagraphs(parts);
   }
 
   function traceOpsPptBuildActionRows(normalized, model){
     var bullets = traceOpsPptSplitBullets(normalized && normalized.d5_pca || model && model.pca || '', 8, 1800);
     if (!bullets.length || (bullets.length === 1 && bullets[0] === 'Pending')) {
-      bullets = model && model.actions && model.actions.length ? model.actions.slice(0,6) : [];
+      bullets = model && model.actions && model.actions.length ? model.actions.slice(0, 6) : [];
     }
     bullets = traceOpsEightdUnique((bullets || []).map(function(item){ return String(item || '').trim(); }).filter(Boolean));
     if (!bullets.length) {
       bullets = [
-        'Define permanent corrective action that blocks recurrence at feeder setup and kitting return.',
-        'Add independent part-number verification before load and after replenishment.',
-        'Validate control effectiveness with traceable post-action evidence.'
+        'Block recurrence at feeder setup / material return with independent part-number verification.',
+        'Strengthen in-line detection coverage at the relevant control stage.',
+        'Validate effectiveness with traceable post-action evidence before closure.'
       ];
     }
-    return bullets.slice(0,6).map(function(item, idx){
+    return bullets.slice(0, 5).map(function(item, idx){
       var low = String(item || '').toLowerCase();
       var address = 'Occurrence + Escape';
-      if (/detect|aoi|ict|control|screen|inspection|coverage|escape|verification|audit/.test(low)) address = 'Escape / detection';
-      else if (/feeder|kitting|material|reel|part|component|setup|process|placement|reflow|return/.test(low)) address = 'Occurrence / process';
+      if (/detect|aoi|ict|control|screen|inspection|coverage|escape|verification|audit/.test(low)) address = 'Escape';
+      else if (/feeder|kitting|material|reel|part|component|setup|process|placement|reflow|return|stencil|paste|profile/.test(low)) address = 'Occurrence';
       var owner = (model && model.owners && model.owners.length ? model.owners[0] : 'Quality');
-      if (/kitting|material|reel|part|pn|return/.test(low)) owner = 'Materiales / Kitting';
-      else if (/feeder|setup|placement|process|smt/.test(low)) owner = 'Process / SMT';
-      else if (/aoi|ict|detect|inspection|coverage|audit|verification/.test(low)) owner = 'Quality / Test';
-      var dueStatus = (normalized && normalized.status ? normalized.status : 'Draft') + (idx < 2 ? ' · Priority action' : ' · Due date pending');
+      if (/kitting|material|reel|part|return/.test(low)) owner = 'Materiales / Kitting';
+      else if (/feeder|setup|placement|process|smt|stencil|paste|reflow/.test(low)) owner = 'Process / SMT';
+      else if (/aoi|ict|detect|inspection|coverage|audit|verification|screen/.test(low)) owner = 'Quality / Test';
+      var due = idx < 2 ? 'Priority' : 'Planned';
+      var status = traceOpsEightdHasText(normalized && normalized.d6_validation) ? 'Under validation' : (idx < 2 ? 'Open' : 'Planned');
       return [
-        traceOpsPptWrap(item, 118),
+        traceOpsPptWrap(item, 96),
         address,
         owner,
-        dueStatus
+        due,
+        status
       ];
     });
   }
@@ -5961,29 +6017,36 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D3 Containment', 'Immediate protection and implementation status', 2, (normalized.status || 'Draft'));
 
-    traceOpsPptBox(slide, 0.42, 1.66, 6.18, 4.54, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Immediate containment actions', 0.58, 1.80, 2.2);
-    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(normalized.d3_containment || traceOpsEightdBuildContainmentText(model), 9, 1500), 0.60, 2.08, 5.74, 3.54, {fontSize:11.0, lineGap:0.38, maxItems:9});
+    var flowSteps = traceOpsPptSplitBullets(normalized.d3_containment || traceOpsEightdBuildContainmentText(model), 4, 1200);
+    var strategyBullets = traceOpsPptSortStrategyText(model, normalized);
+    var exposureBullets = traceOpsPptSplitBullets((model.materialAffected || '') + '. ' + (model.exposure || model.impact || ''), 4, 520);
 
-    traceOpsPptBox(slide, 6.82, 1.66, 6.08, 1.38, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Sort / inspection strategy', 7.00, 1.80, 2.0);
-    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(traceOpsPptSortStrategyText(model, normalized), 4, 520), 7.02, 2.08, 5.58, 0.70, {fontSize:10.3, lineGap:0.24, maxItems:4});
+    traceOpsPptBox(slide, 0.42, 1.66, 6.14, 4.74, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Containment flow', 0.58, 1.80, 1.8);
+    traceOpsPptMiniNote(slide, 'Operational containment should read like a release gate, not like a long paragraph.', 0.58, 2.00, 5.50);
+    traceOpsPptDrawFlowSteps(slide, flowSteps, 0.72, 2.34, 5.42, 3.56);
 
-    traceOpsPptBox(slide, 6.82, 3.24, 6.08, 1.28, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Affected material / exposure', 7.00, 3.38, 2.2);
-    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets((model.materialAffected || '') + '. ' + (model.exposure || model.impact || ''), 4, 420), 7.02, 3.66, 5.58, 0.54, {fontSize:10.4, lineGap:0.24, maxItems:4});
+    traceOpsPptBox(slide, 6.82, 1.66, 6.08, 2.22, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Immediate containment actions', 6.98, 1.80, 2.4);
+    traceOpsPptDrawBulletList(slide, flowSteps, 7.00, 2.10, 5.56, 1.38, {fontSize:10.6, lineGap:0.32, maxItems:4});
 
-    traceOpsPptBox(slide, 6.82, 4.72, 6.08, 1.48, 'F8FBF9');
-    traceOpsPptPanelTitle(slide, 'Shielding / implementation status', 7.00, 4.86, 2.3);
-    slide.addText(traceOpsPptWrap('Operational shielding should confirm affected population, customer protection and implementation discipline. Status: ' + (normalized.status || 'Draft') + '.', 180), {x:7.00, y:5.14, w:5.56, h:0.56, fontFace:'Arial', fontSize:10.6, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 6.82, 3.98, 6.08, 1.08, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, 'Sort / inspection strategy', 6.98, 4.12, 2.1);
+    traceOpsPptDrawBulletList(slide, strategyBullets, 7.00, 4.38, 5.56, 0.42, {fontSize:9.8, lineGap:0.20, maxItems:3});
 
-    traceOpsPptBox(slide, 0.42, 6.36, 12.48, 0.58, '10231C', '10231C');
-    slide.addText(traceOpsPptSafe('Owner', 20), {x:0.62, y:6.56, w:0.7, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:'A8D6C4', margin:0});
-    slide.addText(traceOpsPptWrap((model.owners[0] || 'Quality'), 32), {x:1.16, y:6.50, w:2.2, h:0.18, fontFace:'Arial', fontSize:10.2, bold:true, color:'FFFFFF', margin:0, fit:'shrink'});
-    slide.addText(traceOpsPptSafe('Date implemented', 24), {x:4.36, y:6.56, w:1.0, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:'A8D6C4', margin:0});
-    slide.addText(traceOpsPptWrap(normalized.updated_at || normalized.fecha || model.detectionWindow || 'Pending', 40), {x:5.56, y:6.50, w:2.6, h:0.18, fontFace:'Arial', fontSize:10.2, bold:true, color:'FFFFFF', margin:0, fit:'shrink'});
-    slide.addText(traceOpsPptSafe('Current verification status', 32), {x:8.66, y:6.56, w:1.6, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:'A8D6C4', margin:0});
-    slide.addText(traceOpsPptWrap(traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Evidence pending', 40), {x:10.56, y:6.50, w:2.0, h:0.18, fontFace:'Arial', fontSize:10.2, bold:true, color:'FFFFFF', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 6.82, 5.18, 6.08, 1.22, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Affected material / exposure', 6.98, 5.32, 2.2);
+    traceOpsPptDrawBulletList(slide, exposureBullets, 7.00, 5.58, 5.56, 0.48, {fontSize:9.9, lineGap:0.22, maxItems:3});
+
+    traceOpsPptBox(slide, 0.42, 6.54, 12.48, 0.40, '10231C', '10231C');
+    slide.addText(traceOpsPptSafe('Owner', 20), {x:0.62, y:6.67, w:0.7, h:0.10, fontFace:'Arial', fontSize:8.6, bold:true, color:'A8D6C4', margin:0});
+    slide.addText(traceOpsPptWrap((model.owners[0] || 'Quality'), 32), {x:1.14, y:6.61, w:2.0, h:0.16, fontFace:'Arial', fontSize:9.8, bold:true, color:'FFFFFF', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Start', 20), {x:4.08, y:6.67, w:0.6, h:0.10, fontFace:'Arial', fontSize:8.6, bold:true, color:'A8D6C4', margin:0});
+    slide.addText(traceOpsPptWrap(normalized.updated_at || normalized.fecha || model.detectionWindow || 'Pending', 34), {x:4.60, y:6.61, w:2.6, h:0.16, fontFace:'Arial', fontSize:9.8, bold:true, color:'FFFFFF', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Status', 20), {x:8.82, y:6.67, w:0.7, h:0.10, fontFace:'Arial', fontSize:8.6, bold:true, color:'A8D6C4', margin:0});
+    slide.addText(traceOpsPptWrap(traceOpsEightdHasText(normalized.d6_validation) ? 'In validation' : 'Draft containment', 30), {x:9.42, y:6.61, w:2.2, h:0.16, fontFace:'Arial', fontSize:9.8, bold:true, color:'FFFFFF', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Shielding', 24), {x:11.38, y:6.67, w:0.8, h:0.10, fontFace:'Arial', fontSize:8.6, bold:true, color:'A8D6C4', margin:0});
+    slide.addText(traceOpsPptWrap('Customer protection active', 28), {x:12.00, y:6.61, w:0.70, h:0.16, fontFace:'Arial', fontSize:9.2, bold:true, color:'FFFFFF', margin:0, fit:'shrink'});
     return slide;
   }
 
@@ -5991,34 +6054,28 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D4A – Occurrence Analysis', 'Occurrence only. Keep the conclusion neutral unless evidence is validated.', 3, 'Under Validation');
 
-    traceOpsPptBox(slide, 0.42, 1.66, 7.18, 0.92, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Occurrence framing', 0.58, 1.80, 1.8);
-    slide.addText(traceOpsPptWrap(normalized.d4_root_cause || model.occurrenceSummary || 'Probable occurrence mechanism under validation.', 220), {x:0.58, y:2.00, w:6.74, h:0.38, fontFace:'Arial', fontSize:10.8, color:'10231C', margin:0, fit:'shrink'});
-
-    traceOpsPptBox(slide, 7.82, 1.66, 5.08, 0.92, 'F8FBF9');
-    traceOpsPptPanelTitle(slide, 'Supporting evidence', 7.98, 1.80, 1.8);
-    traceOpsPptDrawBulletList(slide, traceOpsPptOccurrenceEvidence(model, normalized), 7.98, 2.02, 4.56, 0.32, {fontSize:10.0, lineGap:0.18, maxItems:2});
-
     var fish = traceOpsPptBuildIshikawa(normalized);
-    var fishX = [0.42, 4.64, 8.86, 0.42, 4.64, 8.86];
-    var fishY = [2.82, 2.82, 2.82, 4.02, 4.02, 4.02];
-    for (var i = 0; i < fish.length; i++) {
-      traceOpsPptBox(slide, fishX[i], fishY[i], 3.80, 0.96, i < 3 ? 'FFFFFF' : 'F8FBF9');
-      slide.addText(traceOpsPptSafe(fish[i].label, 40), {x:fishX[i]+0.10, y:fishY[i]+0.10, w:2.0, h:0.14, fontFace:'Arial', fontSize:9.8, bold:true, color:'1E7B58', margin:0});
-      traceOpsPptDrawBulletList(slide, fish[i].items, fishX[i]+0.10, fishY[i]+0.32, 3.42, 0.40, {fontSize:8.9, lineGap:0.18, maxItems:2});
-    }
-
     var occWhys = traceOpsPptNormalizeWhys(normalized && normalized.d4_occurrence_5whys || normalized && normalized.d4_root_cause || model.occurrenceSummary, 'Occurrence why');
-    traceOpsPptBox(slide, 0.42, 5.26, 7.18, 1.48, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, '5 Whys – occurrence', 0.58, 5.40, 2.0);
-    for (var ow = 0; ow < occWhys.length; ow++) {
-      slide.addText('Why ' + (ow + 1), {x:0.62, y:5.66 + (ow * 0.20), w:0.54, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:'5F766C', margin:0});
-      slide.addText(traceOpsPptWrap(occWhys[ow], 120), {x:1.18, y:5.62 + (ow * 0.20), w:6.12, h:0.14, fontFace:'Arial', fontSize:9.6, color:'10231C', margin:0, fit:'shrink'});
-    }
 
-    traceOpsPptBox(slide, 7.82, 5.26, 5.08, 1.48, 'F8FBF9');
-    traceOpsPptPanelTitle(slide, 'Occurrence conclusion', 7.98, 5.40, 1.8);
-    slide.addText(traceOpsPptWrap(traceOpsEightdHasText(model.rootCause) ? ('Supported by current evidence: ' + model.rootCause + '. Keep final root-cause wording under validation until effectiveness is closed.') : 'Probable occurrence mechanism supported by current evidence. Do not present as confirmed root cause until validation closes the gap.', 250), {x:7.98, y:5.68, w:4.56, h:0.74, fontFace:'Arial', fontSize:10.3, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 0.42, 1.66, 6.42, 0.84, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Occurrence framing', 0.58, 1.80, 1.8);
+    slide.addText(traceOpsPptWrap(normalized.d4_root_cause || model.occurrenceSummary || 'Probable occurrence mechanism under validation.', 210), {x:0.58, y:2.00, w:6.00, h:0.26, fontFace:'Arial', fontSize:10.6, color:'10231C', margin:0, fit:'shrink'});
+
+    traceOpsPptBox(slide, 0.42, 2.66, 6.42, 3.54, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Structured cause categories', 0.58, 2.80, 2.1);
+    traceOpsPptDrawFishbone(slide, fish, 0.74, 3.14, 5.82, 2.62);
+
+    traceOpsPptBox(slide, 7.10, 1.66, 5.80, 2.28, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, '5 Whys – occurrence', 7.26, 1.80, 2.0);
+    traceOpsPptDrawWhyCards(slide, occWhys, 7.24, 2.04, 5.36, 1.72, {gap:0.08, topPad:0.02, maxItems:5});
+
+    traceOpsPptBox(slide, 7.10, 4.06, 5.80, 1.12, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Supporting evidence', 7.26, 4.20, 1.8);
+    traceOpsPptDrawBulletList(slide, traceOpsPptOccurrenceEvidence(model, normalized), 7.28, 4.46, 5.28, 0.44, {fontSize:9.8, lineGap:0.22, maxItems:3});
+
+    traceOpsPptBox(slide, 7.10, 5.32, 5.80, 0.88, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, 'Occurrence conclusion', 7.26, 5.46, 1.8);
+    slide.addText(traceOpsPptWrap(traceOpsEightdHasText(model.rootCause) ? ('Supported by current evidence: ' + model.rootCause + '. Keep final root-cause wording under validation until effectiveness closes.') : 'Probable occurrence mechanism supported by current evidence. Do not present as confirmed root cause until validation closes the gap.', 230), {x:7.26, y:5.70, w:5.30, h:0.26, fontFace:'Arial', fontSize:10.0, color:'10231C', margin:0, fit:'shrink'});
     return slide;
   }
 
@@ -6030,21 +6087,22 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     traceOpsPptKeyTile(slide, 'Expected detection control', model.station || normalized.station || 'AOI / ICT / control stage', 4.66, 1.66, 4.02);
     traceOpsPptKeyTile(slide, 'Control limitation / gap', model.defect || 'Detection gap under review', 8.90, 1.66, 4.00);
 
-    traceOpsPptBox(slide, 0.42, 2.64, 7.18, 2.46, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, '5 Whys – escape', 0.58, 2.78, 1.8);
     var escWhys = traceOpsPptNormalizeWhys(normalized && normalized.d4_escape_5whys || normalized && normalized.d4_escape_point || model.escapeSummary, 'Escape why');
-    for (var ew = 0; ew < escWhys.length; ew++) {
-      slide.addText('Why ' + (ew + 1), {x:0.62, y:3.06 + (ew * 0.34), w:0.54, h:0.10, fontFace:'Arial', fontSize:9.0, bold:true, color:'5F766C', margin:0});
-      slide.addText(traceOpsPptWrap(escWhys[ew], 122), {x:1.18, y:3.00 + (ew * 0.34), w:6.08, h:0.20, fontFace:'Arial', fontSize:10.0, color:'10231C', margin:0, fit:'shrink'});
-    }
+    traceOpsPptBox(slide, 0.42, 2.72, 6.12, 2.78, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, '5 Whys – escape', 0.58, 2.86, 1.8);
+    traceOpsPptDrawWhyCards(slide, escWhys, 0.60, 3.06, 5.70, 2.18, {gap:0.10, topPad:0.02, maxItems:5});
 
-    traceOpsPptBox(slide, 7.82, 2.64, 5.08, 2.46, 'F8FBF9');
-    traceOpsPptPanelTitle(slide, 'Why the control did not detect the defect', 7.98, 2.78, 3.0);
-    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(model.escapeSummary + ' ' + (model.findings.slice(0,2).join(' | ') || ''), 6, 900), 7.98, 3.06, 4.56, 1.38, {fontSize:10.1, lineGap:0.30, maxItems:6});
+    traceOpsPptBox(slide, 6.78, 2.72, 6.12, 1.14, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Detection gap identified', 6.94, 2.86, 2.1);
+    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(model.escapeSummary || normalized.d4_escape_point || 'Control gap under analysis.', 3, 420), 6.96, 3.10, 5.58, 0.46, {fontSize:9.9, lineGap:0.20, maxItems:3});
 
-    traceOpsPptBox(slide, 0.42, 5.34, 12.48, 1.40, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Escape conclusion', 0.58, 5.48, 1.6);
-    slide.addText(traceOpsPptWrap(traceOpsPptEscapeConclusionText(normalized, model), 340), {x:0.58, y:5.78, w:11.92, h:0.58, fontFace:'Arial', fontSize:10.4, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 6.78, 4.00, 6.12, 1.50, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, 'Why the control did not detect the defect', 6.94, 4.14, 3.0);
+    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets((model.escapeSummary || '') + ' ' + (model.findings.slice(0,2).join(' | ') || ''), 4, 700), 6.96, 4.40, 5.58, 0.72, {fontSize:9.8, lineGap:0.22, maxItems:4});
+
+    traceOpsPptBox(slide, 0.42, 5.66, 12.48, 0.92, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, 'Escape conclusion', 0.58, 5.80, 1.6);
+    slide.addText(traceOpsPptWrap(traceOpsPptEscapeConclusionText(normalized, model), 270), {x:0.58, y:6.06, w:11.92, h:0.24, fontFace:'Arial', fontSize:10.0, color:'10231C', margin:0, fit:'shrink'});
     return slide;
   }
 
@@ -6052,26 +6110,27 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D5 – Permanent Corrective Actions', 'Management-friendly action structure tied to failure mode and control improvement', 5, (normalized.status || 'Draft'));
 
-    traceOpsPptBox(slide, 0.42, 1.66, 12.48, 0.78, 'FFFFFF');
+    traceOpsPptBox(slide, 0.42, 1.66, 12.48, 0.64, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'PCA expectation', 0.58, 1.80, 1.6);
-    slide.addText(traceOpsPptWrap('Use actions that directly address the occurrence mechanism and the escape path. Keep actions editable, owner-driven and traceable to the failure mode.', 240), {x:0.58, y:2.02, w:11.90, h:0.18, fontFace:'Arial', fontSize:10.7, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap('Translate the probable mechanism into owner-driven actions that block recurrence and close the detection gap.', 190), {x:0.58, y:2.00, w:11.80, h:0.16, fontFace:'Arial', fontSize:10.5, color:'10231C', margin:0, fit:'shrink'});
 
     var actionRows = traceOpsPptBuildActionRows(normalized, model);
     var actionTable = traceOpsPptSafeTable([[
       {text:'Action', options:{bold:true}},
       {text:'Addresses', options:{bold:true}},
       {text:'Owner', options:{bold:true}},
-      {text:'Due Date / Status', options:{bold:true}}
+      {text:'Due', options:{bold:true}},
+      {text:'Status', options:{bold:true}}
     ]].concat(actionRows));
-    slide.addTable(actionTable, {x:0.42, y:2.68, w:12.48, h:2.84, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:9.8, margin:0.05, rowH:0.34, colW:[5.18,2.22,2.10,2.98], fit:'shrink'});
+    slide.addTable(actionTable, {x:0.42, y:2.50, w:12.48, h:2.86, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:9.4, margin:0.05, rowH:0.36, colW:[5.10,1.86,2.08,1.44,2.00], fit:'shrink'});
 
-    traceOpsPptBox(slide, 0.42, 5.72, 6.08, 1.02, 'F8FBF9');
-    traceOpsPptPanelTitle(slide, 'Control improvement introduced', 0.58, 5.86, 2.2);
-    slide.addText(traceOpsPptWrap(model.pca || normalized.d5_pca || 'Control improvement pending definition. Tie each action to the failure mode and the detection gap.', 210), {x:0.58, y:6.08, w:5.56, h:0.40, fontFace:'Arial', fontSize:10.2, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 0.42, 5.56, 6.08, 0.92, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, 'Control improvement', 0.58, 5.70, 1.6);
+    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(model.pca || normalized.d5_pca || 'Control improvement pending definition.', 3, 500), 0.60, 5.96, 5.54, 0.30, {fontSize:9.7, lineGap:0.20, maxItems:3});
 
-    traceOpsPptBox(slide, 6.82, 5.72, 6.08, 1.02, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Link to failure mode', 6.98, 5.86, 1.8);
-    slide.addText(traceOpsPptWrap('Failure mode: ' + (normalized.defecto_smt || model.defect || 'N/A') + '. Ensure each action explains whether it blocks occurrence, escape, or both.', 180), {x:6.98, y:6.12, w:5.56, h:0.34, fontFace:'Arial', fontSize:10.5, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 6.82, 5.56, 6.08, 0.92, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Risk mitigation achieved', 6.98, 5.70, 1.8);
+    slide.addText(traceOpsPptWrap('Link each action to ' + (normalized.defecto_smt || model.defect || 'the failure mode') + ' and state whether it blocks occurrence, escape, or both.', 170), {x:6.98, y:5.96, w:5.54, h:0.20, fontFace:'Arial', fontSize:9.9, color:'10231C', margin:0, fit:'shrink'});
     return slide;
   }
 
@@ -6131,17 +6190,17 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
     slide.addText(traceOpsPptSafe('Event timeline', 40), {x:0.42, y:1.66, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
     var timelineData = traceOpsPptTimelineTable(normalized, linked, model);
-    slide.addTable(timelineData, {x:0.42, y:1.90, w:12.48, h:1.08, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:9.8, margin:0.06, rowH:[0.26,0.72], valign:'mid', align:'center', fit:'shrink'});
+    slide.addTable(timelineData, {x:0.42, y:1.90, w:12.48, h:1.00, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:9.6, margin:0.06, rowH:[0.24,0.68], valign:'mid', align:'center', fit:'shrink'});
 
-    traceOpsPptBox(slide, 0.42, 3.20, 6.12, 1.04, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Evidence summary', 0.58, 3.34, 1.8);
-    slide.addText(traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 260), {x:0.58, y:3.58, w:5.62, h:0.46, fontFace:'Arial', fontSize:10.2, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 0.42, 3.10, 6.12, 1.12, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Evidence summary', 0.58, 3.24, 1.8);
+    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(traceOpsPptEvidenceSummaryText(normalized, model), 4, 600), 0.60, 3.50, 5.60, 0.48, {fontSize:9.8, lineGap:0.22, maxItems:4});
 
-    traceOpsPptBox(slide, 6.78, 3.20, 6.12, 1.04, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Correlation notes', 6.94, 3.34, 1.8);
-    slide.addText(traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 260), {x:6.94, y:3.58, w:5.62, h:0.46, fontFace:'Arial', fontSize:10.2, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 6.78, 3.10, 6.12, 1.12, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Correlation notes', 6.94, 3.24, 1.8);
+    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(traceOpsPptCorrelationText(normalized, model), 4, 600), 6.96, 3.50, 5.58, 0.48, {fontSize:9.8, lineGap:0.22, maxItems:4});
 
-    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:4.50, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:4.48, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
     var evidenceRows = traceOpsPptEventRows(normalized);
     var tableData = traceOpsPptSafeTable([[
       {text:'Process Step', options:{bold:true}},
@@ -6151,11 +6210,14 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       {text:'Source', options:{bold:true}},
       {text:'Why it matters', options:{bold:true}}
     ]].concat(Array.isArray(evidenceRows) ? evidenceRows : []));
-    slide.addTable(tableData, {x:0.42, y:4.74, w:12.48, h:1.34, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:9.0, margin:0.05, rowH:0.26, colW:[1.50,1.34,1.18,3.12,1.18,4.16], fit:'shrink'});
+    slide.addTable(tableData, {x:0.42, y:4.72, w:8.80, h:1.30, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.8, margin:0.05, rowH:0.25, colW:[1.18,1.04,0.90,2.30,0.88,2.50], fit:'shrink'});
 
-    traceOpsPptBox(slide, 0.42, 6.24, 12.48, 0.62, 'F8FBF9');
-    traceOpsPptPanelTitle(slide, 'Evidence checklist', 0.58, 6.36, 1.8);
-    slide.addText(traceOpsPptWrap(normalized.evidence_checklist || 'Customer symptom image / data · Golden reference comparison · Installed-state vs removed-state comparison · Serial / batch trace · Control limitation explanation · Corrective action proof', 260), {x:2.16, y:6.34, w:10.30, h:0.18, fontFace:'Arial', fontSize:10.2, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 9.48, 4.72, 3.42, 1.30, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, 'Evidence checklist', 9.64, 4.86, 1.8);
+    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(normalized.evidence_checklist || '- Customer symptom image / data\n- Golden reference comparison\n- Installed-state vs removed-state comparison\n- Serial / batch trace\n- Control limitation explanation\n- Corrective action proof', 6, 500), 9.66, 5.12, 2.98, 0.72, {fontSize:8.9, lineGap:0.18, maxItems:6});
+
+    traceOpsPptBox(slide, 0.42, 6.18, 12.48, 0.56, '10231C', '10231C');
+    slide.addText(traceOpsPptWrap('Appendix view: keep each statement tied to one visible proof point and avoid unsupported cause claims.', 180), {x:0.66, y:6.38, w:11.80, h:0.12, fontFace:'Arial', fontSize:9.0, bold:true, color:'D7E7E0', margin:0, fit:'shrink'});
     return slide;
   }
 
