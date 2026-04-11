@@ -1988,6 +1988,31 @@ function parseTurno(h, min, dateIso) {
   return "2T";
 }
 
+function traceOpsNormalizeUnicodeFilenameLocal(name) {
+  try {
+    return String(name || '').normalize('NFC');
+  } catch (_) {
+    return String(name || '');
+  }
+}
+
+function traceOpsNormalizeWhatsAppLineLocal(raw) {
+  return String(raw || '')
+    .replace(/[\u00a0\u200e\u200f\u202a-\u202f\u2066-\u2069]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function traceOpsIsWhatsAppSystemLineLocal(line) {
+  var s = traceOpsNormalizeWhatsAppLineLocal(line);
+  if (!s) return false;
+  var bracketUser = /^\[\d{1,2}\/\d{1,2}\/\d{2,4},\s*\d{1,2}:\d{2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\]\s*[^:]+?:\s*/i;
+  var dashUser = /^\d{1,2}\/\d{1,2}\/\d{2,4},\s*\d{1,2}:\d{2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\s*-\s*[^:]+?:\s*/i;
+  if (bracketUser.test(s) || dashUser.test(s)) return false;
+  var tsOnly = /^(?:\[)?\d{1,2}\/\d{1,2}\/\d{2,4},\s*\d{1,2}:\d{2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?(?:\])?\s*-\s*/i;
+  return tsOnly.test(s);
+}
+
 function parseWhatsApp(txt) {
   var lines = txt.split(/\r?\n/);
   var msgs = [];
@@ -1996,7 +2021,7 @@ function parseWhatsApp(txt) {
   var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\s*-\s*([^:]+?):\s*(.*)$/i;
   var cur = null;
   for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].replace(/[\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u202f]/g, '').trim();
+    var line = traceOpsNormalizeWhatsAppLineLocal(lines[i]);
     var matchA = line.match(reA);
     var matchB = matchA ? null : line.match(reB);
     var m = matchA || matchB;
@@ -2022,6 +2047,8 @@ function parseWhatsApp(txt) {
         sender: String(sender || '').replace(/^~/, '').trim(),
         text: String(text || '').trim()
       };
+    } else if (traceOpsIsWhatsAppSystemLineLocal(line)) {
+      continue;
     } else if (cur && line && !line.startsWith('[')) {
       cur.text += ' ' + line;
     }
@@ -2138,7 +2165,7 @@ function traceOpsFilterMediaNamesBySelectedRange(mediaNames, imgMeta, filteredMs
 }
 
 function cleanMsgs(msgs) {
-  var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|media omitted|image omitted|sticker omitted|audio omitted|video omitted|document omitted|messages and calls are end-to-end encrypted|cifrados de extremo|ahora es admin/i;
+  var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|media omitted|image omitted|sticker omitted|audio omitted|video omitted|document omitted|messages and calls are end-to-end encrypted|cifrados de extremo|ahora es admin|created group|added you|security code changed|changed this group's icon|changed the group description|join(?:ed)? using this group's invite link/i;
   var noise = /^(buenos d|buenas t|buen d|gracias|de nada|enterado|recibido|entendido|ok|thanks|got it|understood|roger)$/i;
   return msgs.filter(function(m){
     return m.text && m.text.trim().length > 8 && !m.text.match(skip) && !m.text.trim().match(noise);
@@ -2152,7 +2179,7 @@ function inferWhatsAppDateOrder(txt) {
   var mdyScore = 0;
   var inspected = 0;
   for (var i = 0; i < lines.length && inspected < 80; i++) {
-    var line = String(lines[i] || '').replace(/[\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u202f]/g, '').trim();
+    var line = traceOpsNormalizeWhatsAppLineLocal(lines[i]);
     var m = line.match(re);
     if (!m) continue;
     inspected += 1;
@@ -2476,10 +2503,10 @@ async function readZip(file) {
   for (var i = 0; i < names.length; i++) {
     var name = names[i];
     if (name.startsWith("__MACOSX")) continue;
-    var base = name.split("/").pop();
+    var base = traceOpsNormalizeUnicodeFilenameLocal(name.split("/").pop());
     if (!base) continue;
 
-    if (!txt && base.endsWith(".txt") && !base.toLowerCase().endsWith(".eml")) {
+    if (!txt && /\.txt$/i.test(base) && !base.toLowerCase().endsWith(".eml")) {
       txt = await zip.files[name].async("string");
     }
 
@@ -2516,7 +2543,7 @@ async function readZip(file) {
     var lastTextAny = '';
     var lastTextBySender = {};
     txt.split(/\r?\n/).forEach(function(rawLine) {
-      var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g, '').trim();
+      var line = traceOpsNormalizeWhatsAppLineLocal(rawLine);
       var matchA = line.match(reA);
       var matchB = matchA ? null : line.match(reB);
       var m = matchA || matchB;
@@ -2534,10 +2561,12 @@ async function readZip(file) {
           timeStr: t.timeStr,
           sender: senderNorm
         };
-        if (text && !/<(?:adjunto|attached):/i.test(text)) {
+        if (text && !/(?:<(?:adjunto|attached):|<media omitted>|<imagen omitida>|<video omitted>|<sticker omitted>|<audio omitted>)/i.test(text)) {
           lastTextAny = String(text || '').replace(/\s+/g, ' ').trim();
           if (senderNorm) lastTextBySender[senderNorm] = lastTextAny;
         }
+      } else if (traceOpsIsWhatsAppSystemLineLocal(line)) {
+        return;
       } else if (lastMeta && line && !line.startsWith('[')) {
         var prev = lastTextBySender[lastMeta.sender] || lastTextAny || '';
         var merged = (prev + ' ' + line).replace(/\s+/g, ' ').trim();
@@ -2546,7 +2575,8 @@ async function readZip(file) {
       }
       var adj = line.match(/<(?:adjunto|attached):\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
       if (adj && lastMeta) {
-        imgMeta[adj[1].trim()] = {
+        var adjName = traceOpsNormalizeUnicodeFilenameLocal(adj[1].trim());
+        imgMeta[adjName] = {
           dateIso: lastMeta.dateIso,
           timeStr: lastMeta.timeStr,
           sender: lastMeta.sender,
@@ -2578,7 +2608,8 @@ async function loadImg(fname) {
   if (_imgCache[fname]) return _imgCache[fname];
   if (!_zipRef) return null;
   var allNames = Object.keys(_zipRef.files);
-  var match = allNames.find(function(n){ return n.split("/").pop() === fname; });
+  var targetName = traceOpsNormalizeUnicodeFilenameLocal(fname);
+  var match = allNames.find(function(n){ return traceOpsNormalizeUnicodeFilenameLocal(n.split("/").pop()) === targetName; });
   if (!match) return null;
   try {
     var b64 = await _zipRef.files[match].async("base64");
