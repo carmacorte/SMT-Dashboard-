@@ -3503,7 +3503,11 @@ async function analyzeWithAI(msgs, apiKey) {
     s = s.replace(/\s*\|\|\s*/g, " ");
     s = s.replace(/\s{2,}/g, " ").trim();
 
-    var rawParts = s.split(/(?<=[\.!?;])\s+|\s+\u2022\s+|\s+-\s+/);
+    var rawParts = s
+      .replace(/([.!?;])\s+/g, "$1\n")
+      .replace(/\s+\u2022\s+/g, "\n")
+      .replace(/\s+-\s+/g, "\n")
+      .split(/\n+/);
     var kept = [];
     rawParts.forEach(function(part) {
       var p = String(part || "").trim();
