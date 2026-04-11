@@ -1998,7 +1998,7 @@ function parseWhatsApp(txt) {
   var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\s*-\s*([^:]+?):\s*(.*)$/i;
   var cur = null;
   for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].replace(/[‎‏‪‫‬‭‮ ]/g, '').trim();
+    var line = lines[i].replace(/[\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u202f]/g, '').trim();
     var matchA = line.match(reA);
     var matchB = matchA ? null : line.match(reB);
     var m = matchA || matchB;
@@ -2156,7 +2156,7 @@ function inferWhatsAppDateOrder(txt) {
   var mdyScore = 0;
   var inspected = 0;
   for (var i = 0; i < lines.length && inspected < 80; i++) {
-    var line = String(lines[i] || '').replace(/[‎‏‪‫‬‭‮ ]/g, '').trim();
+    var line = String(lines[i] || '').replace(/[\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u202f]/g, '').trim();
     var m = line.match(re);
     if (!m) continue;
     inspected += 1;
@@ -2522,7 +2522,7 @@ async function readZip(file) {
     txt.split(/
 ?
 /).forEach(function(rawLine) {
-      var line = rawLine.replace(/[‎‏‪- ]/g, '').trim();
+      var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g, '').trim();
       var matchA = line.match(reA);
       var matchB = matchA ? null : line.match(reB);
       var m = matchA || matchB;
