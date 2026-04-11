@@ -1989,9 +1989,7 @@ function parseTurno(h, min, dateIso) {
 }
 
 function parseWhatsApp(txt) {
-  var lines = txt.split(/
-?
-/);
+  var lines = txt.split(/\r?\n/);
   var msgs = [];
   var dateOrder = inferWhatsAppDateOrder(txt);
   var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
@@ -2148,9 +2146,7 @@ function cleanMsgs(msgs) {
 }
 
 function inferWhatsAppDateOrder(txt) {
-  var lines = String(txt || '').split(/
-?
-/);
+  var lines = String(txt || '').split(/\r?\n/);
   var re = /^(?:\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)|(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\s*-\s*([^:]+?):\s*(.*))$/i;
   var dmyScore = 0;
   var mdyScore = 0;
@@ -2519,9 +2515,7 @@ async function readZip(file) {
     var lastMeta = null;
     var lastTextAny = '';
     var lastTextBySender = {};
-    txt.split(/
-?
-/).forEach(function(rawLine) {
+    txt.split(/\r?\n/).forEach(function(rawLine) {
       var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g, '').trim();
       var matchA = line.match(reA);
       var matchB = matchA ? null : line.match(reB);
