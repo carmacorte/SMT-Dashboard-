@@ -3166,9 +3166,9 @@ async function analyzeWithAI(msgs, apiKey) {
       /password/i,
       /contrasena/i,
       /\befox\b/i,
-      /no hay e(?:-| )?fox/i,
-      /e(?:-| )?fox down/i,
-      /sin e(?:-| )?fox/i,
+      /no hay e[- ]?fox/i,
+      /e[- ]?fox down/i,
+      /sin e[- ]?fox/i,
       /agenda.*auditoria/i,
       /apertura.*auditoria/i,
       /\baudit\b/i,
@@ -3212,7 +3212,7 @@ async function analyzeWithAI(msgs, apiKey) {
       /notification/i,
       /recordatorio/i,
       /reminder/i,
-      /no hay e(?:-| )?fox/i,
+      /no hay e[- ]?fox/i,
       /no hay red/i,
       /sin red/i,
       /it support/i,
@@ -3235,8 +3235,8 @@ async function analyzeWithAI(msgs, apiKey) {
       /\blogin\b/i,
       /password/i,
       /\befox\b/i,
-      /no hay e(?:-| )?fox/i,
-      /sin e(?:-| )?fox/i,
+      /no hay e[- ]?fox/i,
+      /sin e[- ]?fox/i,
       /agenda/i,
       /auditoria/i,
       /meeting/i,
@@ -5544,18 +5544,61 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 </html>`;
   }
 
-  function traceOpsPptSafe(v){
-    return String(v || "").replace(/\r/g,"").trim();
+  function traceOpsPptSanitizeText(v, limit){
+    var s = String(v == null ? "" : v);
+    s = s
+      .replace(/\r/g, "")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+      .replace(/[\u200B\u200C\u200D\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u202F\uFEFF]/g, "")
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, "\"")
+      .replace(/[\u2013\u2014]/g, "-")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/\t/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ ]{2,}/g, " ")
+      .trim();
+    if (limit && s.length > limit) s = s.slice(0, Math.max(0, limit - 3)).trim() + "...";
+    return s;
+  }
+
+  function traceOpsPptSafe(v, limit){
+    return traceOpsPptSanitizeText(v, limit || 0);
+  }
+
+  function traceOpsPptSafeCell(v, limit){
+    var clean = traceOpsPptSanitizeText(v, limit || 180);
+    return clean.replace(/\n+/g, " ").trim();
+  }
+
+  function traceOpsPptSafeTable(rows){
+    if (!Array.isArray(rows)) return [];
+    return rows.map(function(row){
+      if (!Array.isArray(row)) row = [row];
+      return row.map(function(cell){
+        if (cell && typeof cell === "object" && cell.text != null) {
+          return {
+            text: traceOpsPptSafeCell(cell.text, 220),
+            options: cell.options || {}
+          };
+        }
+        return traceOpsPptSafeCell(cell, 220);
+      });
+    });
   }
 
   function traceOpsPptWrap(v, limit){
-    var txt = traceOpsPptSafe(v);
+    var txt = traceOpsPptSafe(v, limit || 0);
     if (!txt) return "Pending";
     var clean = txt.replace(/\n{3,}/g,"\n\n");
-    if (clean.length <= limit) return clean;
-    return clean.slice(0, Math.max(0, limit - 3)).trim() + "...";
+    if (limit && clean.length > limit) return clean.slice(0, Math.max(0, limit - 3)).trim() + "...";
+    return clean;
   }
-
   function traceOpsGetEightdLinkedEventsForExport(draft){
     var ids = (draft && (draft.linked_event_ids || draft.event_ids)) || [];
     if (typeof traceOpsCollectLinkedEventsByIds !== "function") return [];
