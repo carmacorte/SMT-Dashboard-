@@ -1989,37 +1989,43 @@ function parseTurno(h, min, dateIso) {
 }
 
 function parseWhatsApp(txt) {
-  var lines = txt.split(/\r?\n/);
+  var lines = txt.split(/
+?
+/);
   var msgs = [];
+  var dateOrder = inferWhatsAppDateOrder(txt);
   var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
-  var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
+  var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\s*-\s*([^:]+?):\s*(.*)$/i;
   var cur = null;
   for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].replace(/[\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u202f]/g, "").trim();
-    var m = line.match(reA) || line.match(reB);
+    var line = lines[i].replace(/[‎‏‪‫‬‭‮ ]/g, '').trim();
+    var matchA = line.match(reA);
+    var matchB = matchA ? null : line.match(reB);
+    var m = matchA || matchB;
     if (m) {
       if (cur) msgs.push(cur);
       var d, mo, yr, h2, min, sec, mer, sender, text;
-      if (line.match(reA)) {
-        d=m[1]; mo=m[2]; yr=m[3]; h2=m[4]; min=m[5]; sec=m[6]||"00"; mer=m[7]||""; sender=m[8]; text=m[9];
+      if (matchA) {
+        d = m[1]; mo = m[2]; yr = m[3]; h2 = m[4]; min = m[5]; sec = m[6] || '00'; mer = m[7] || ''; sender = m[8]; text = m[9];
       } else {
-        d=m[1]; mo=m[2]; yr=m[3]; h2=m[4]; min=m[5]; sec="00"; mer=""; sender=m[6]; text=m[7];
+        d = m[1]; mo = m[2]; yr = m[3]; h2 = m[4]; min = m[5]; sec = m[6] || '00'; mer = m[7] || ''; sender = m[8]; text = m[9];
       }
-      var year = parseInt(yr);
+      var resolved = resolveWhatsAppDatePartsLocal(d, mo, dateOrder);
+      var year = parseInt(yr, 10);
       if (year < 100) year += 2000;
       var t = to24h(h2, min, sec, mer);
-      var dateIso = year + "-" + String(mo).padStart(2,"0") + "-" + String(d).padStart(2,"0");
+      var dateIso = year + '-' + String(resolved.month).padStart(2, '0') + '-' + String(resolved.day).padStart(2, '0');
       cur = {
         dateIso: dateIso,
-        dateDisp: String(d).padStart(2,"0") + "/" + String(mo).padStart(2,"0") + "/" + year,
+        dateDisp: String(resolved.day).padStart(2, '0') + '/' + String(resolved.month).padStart(2, '0') + '/' + year,
         timeStr: t.timeStr,
         hour: t.hour,
         turno: parseTurno(t.hour, min, dateIso),
-        sender: sender.replace(/^~/,"").trim(),
-        text: text.trim()
+        sender: String(sender || '').replace(/^~/, '').trim(),
+        text: String(text || '').trim()
       };
-    } else if (cur && line && !line.startsWith("[")) {
-      cur.text += " " + line;
+    } else if (cur && line && !line.startsWith('[')) {
+      cur.text += ' ' + line;
     }
   }
   if (cur) msgs.push(cur);
@@ -2134,11 +2140,43 @@ function traceOpsFilterMediaNamesBySelectedRange(mediaNames, imgMeta, filteredMs
 }
 
 function cleanMsgs(msgs) {
-  var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|cifrados de extremo|ahora es admin/i;
-  var noise = /^(buenos d|buenas t|buen d|gracias|de nada|enterado|recibido|entendido)/i;
+  var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|media omitted|image omitted|sticker omitted|audio omitted|video omitted|document omitted|messages and calls are end-to-end encrypted|cifrados de extremo|ahora es admin/i;
+  var noise = /^(buenos d|buenas t|buen d|gracias|de nada|enterado|recibido|entendido|ok|thanks|got it|understood|roger)$/i;
   return msgs.filter(function(m){
     return m.text && m.text.trim().length > 8 && !m.text.match(skip) && !m.text.trim().match(noise);
   });
+}
+
+function inferWhatsAppDateOrder(txt) {
+  var lines = String(txt || '').split(/
+?
+/);
+  var re = /^(?:\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)|(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\s*-\s*([^:]+?):\s*(.*))$/i;
+  var dmyScore = 0;
+  var mdyScore = 0;
+  var inspected = 0;
+  for (var i = 0; i < lines.length && inspected < 80; i++) {
+    var line = String(lines[i] || '').replace(/[‎‏‪‫‬‭‮ ]/g, '').trim();
+    var m = line.match(re);
+    if (!m) continue;
+    inspected += 1;
+    var a = parseInt(m[1] || m[9] || 0, 10) || 0;
+    var b = parseInt(m[2] || m[10] || 0, 10) || 0;
+    var mer = String(m[7] || m[15] || '').toLowerCase();
+    if (a > 12 && b <= 12) dmyScore += 3;
+    else if (b > 12 && a <= 12) mdyScore += 3;
+    else if (mer) mdyScore += 1;
+  }
+  return mdyScore > dmyScore ? 'MDY' : 'DMY';
+}
+
+function resolveWhatsAppDatePartsLocal(a, b, order) {
+  var p1 = parseInt(a, 10) || 0;
+  var p2 = parseInt(b, 10) || 0;
+  if (p1 > 12 && p2 <= 12) return { day: p1, month: p2 };
+  if (p2 > 12 && p1 <= 12) return { day: p2, month: p1 };
+  if (String(order || 'DMY').toUpperCase() === 'MDY') return { day: p2, month: p1 };
+  return { day: p1, month: p2 };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2475,49 +2513,50 @@ async function readZip(file) {
   }
 
   if (txt) {
+    var dateOrder = inferWhatsAppDateOrder(txt);
     var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
-    var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})\s*-\s*([^:]+?):\s*(.*)$/i;
+    var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\s*-\s*([^:]+?):\s*(.*)$/i;
     var lastMeta = null;
-    var lastTextAny = "";
+    var lastTextAny = '';
     var lastTextBySender = {};
-    txt.split(/\r?\n/).forEach(function(rawLine) {
-      var line = rawLine.replace(/[\u200e\u200f\u202a-\u202f]/g, "").trim();
-      var m = line.match(reA) || line.match(reB);
+    txt.split(/
+?
+/).forEach(function(rawLine) {
+      var line = rawLine.replace(/[‎‏‪- ]/g, '').trim();
+      var matchA = line.match(reA);
+      var matchB = matchA ? null : line.match(reB);
+      var m = matchA || matchB;
       if (m) {
-        var isA = !!line.match(reA);
-        var d = m[1], mo = m[2], yr = m[3], h2 = m[4], min2 = m[5];
-        var mer = isA ? (m[7] || "") : "";
-        var sender = isA ? m[8] : m[6];
-        var text = isA ? m[9] : m[7];
-        var year = parseInt(yr);
+        var d = m[1], mo = m[2], yr = m[3], h2 = m[4], min2 = m[5], sec2 = m[6] || '00', mer = m[7] || '';
+        var sender = m[8];
+        var text = m[9];
+        var resolved = resolveWhatsAppDatePartsLocal(d, mo, dateOrder);
+        var year = parseInt(yr, 10);
         if (year < 100) year += 2000;
-        var hour = parseInt(h2);
-        var mlow = (mer || "").toLowerCase().replace(/[\s.]/g, "");
-        if (mlow.indexOf("p") === 0 && hour !== 12) hour += 12;
-        if (mlow.indexOf("a") === 0 && hour === 12) hour = 0;
-        var senderNorm = (sender || "").replace(/^~/, "").trim();
+        var t = to24h(h2, min2, sec2, mer);
+        var senderNorm = String(sender || '').replace(/^~/, '').trim();
         lastMeta = {
-          dateIso: year + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0"),
-          timeStr: String(hour).padStart(2, "0") + ":" + min2,
+          dateIso: year + '-' + String(resolved.month).padStart(2, '0') + '-' + String(resolved.day).padStart(2, '0'),
+          timeStr: t.timeStr,
           sender: senderNorm
         };
-        if (text && !/<adjunto:/i.test(text)) {
-          lastTextAny = String(text || "").replace(/\s+/g, " ").trim();
+        if (text && !/<(?:adjunto|attached):/i.test(text)) {
+          lastTextAny = String(text || '').replace(/\s+/g, ' ').trim();
           if (senderNorm) lastTextBySender[senderNorm] = lastTextAny;
         }
-      } else if (lastMeta && line && !line.startsWith("[")) {
-        var prev = lastTextBySender[lastMeta.sender] || lastTextAny || "";
-        var merged = (prev + " " + line).replace(/\s+/g, " ").trim();
+      } else if (lastMeta && line && !line.startsWith('[')) {
+        var prev = lastTextBySender[lastMeta.sender] || lastTextAny || '';
+        var merged = (prev + ' ' + line).replace(/\s+/g, ' ').trim();
         lastTextAny = merged;
         if (lastMeta.sender) lastTextBySender[lastMeta.sender] = merged;
       }
-      var adj = line.match(/<adjunto:\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
+      var adj = line.match(/<(?:adjunto|attached):\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
       if (adj && lastMeta) {
         imgMeta[adj[1].trim()] = {
           dateIso: lastMeta.dateIso,
           timeStr: lastMeta.timeStr,
           sender: lastMeta.sender,
-          contextText: (lastTextBySender[lastMeta.sender] || lastTextAny || "").slice(0, 320)
+          contextText: (lastTextBySender[lastMeta.sender] || lastTextAny || '').slice(0, 320)
         };
       }
     });
