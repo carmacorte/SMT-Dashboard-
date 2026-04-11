@@ -3503,7 +3503,11 @@ async function analyzeWithAI(msgs, apiKey) {
     s = s.replace(/\s*\|\|\s*/g, " ");
     s = s.replace(/\s{2,}/g, " ").trim();
 
-    var rawParts = s.split(/(?<=[\.!?;])\s+|\s+\u2022\s+|\s+-\s+/);
+    var rawParts = s
+      .replace(/([.!?;])\s+/g, "$1\n")
+      .replace(/\s+•\s+/g, "\n")
+      .replace(/\s+-\s+/g, "\n")
+      .split(/\n+/);
     var kept = [];
     rawParts.forEach(function(part) {
       var p = String(part || "").trim();
@@ -5163,12 +5167,80 @@ function App() {
   }
 
   function traceOpsEightdBuildTeamText(model) {
-    var proofPoints = [];
-    if (model.owners.length) proofPoints.push('Owner: ' + model.owners.join(' | '));
-    if (model.areas.length) proofPoints.push('Core team: ' + model.areas.join(', '));
-    if (model.linked.length) proofPoints.push('TraceOps evidence owner: linked event chain ' + model.evidenceRefs.slice(0,4).join(' | '));
-    proofPoints.push('Quality owns communication, containment tracking, effectiveness review and closure readiness.');
-    return traceOpsEightdJoinParagraphs(proofPoints);
+    var roles = [];
+    if (model.owners.length) roles.push('Owner: ' + model.owners.join(' | '));
+    roles.push('Core team: ' + model.areas.join(', '));
+    roles.push('Primary functions: Quality, Process / SMT, Test / ICT and Production are required to review occurrence, escape and effectiveness.');
+    if (model.linked.length) roles.push('TraceOps evidence anchor: ' + model.evidenceRefs.slice(0,4).join(' | '));
+    if (model.findings.length) roles.push('Technical contributors observed in trace: ' + model.findings.slice(0,2).join(' | '));
+    roles.push('Responsibility split: Quality drives containment and closure readiness; Process / SMT validates occurrence mechanism; Test / ICT confirms escape and verification logic.');
+    return traceOpsEightdJoinParagraphs(roles);
+  }
+
+  function traceOpsEightdBuildIshikawaMap(model) {
+    var raw = [
+      model.rootCause || '',
+      model.hypothesis || '',
+      model.occurrenceSummary || '',
+      model.escapeSummary || '',
+      model.containment || '',
+      model.pca || '',
+      model.validation || '',
+      model.pattern || '',
+      model.impact || '',
+      model.evidenceSummary || ''
+    ].concat(model.findings || []).join(' | ');
+    var bullets = traceOpsEightdUnique(String(raw || '').split(/\s*[|
+]+\s*/).map(function(item){
+      return String(item || '').replace(/^\s*(confirmed occurrence mechanism|working hypothesis only|supporting evidence|engineer findings supporting occurrence|technical clues for escape review|correlation logic|occurrence evidence supports|relevant control stage|verification need|engineering basis)\s*:\s*/i, '').trim();
+    }).filter(function(item){ return item && item.length > 12; }));
+    function pick(pattern, fallback){
+      var out = bullets.filter(function(item){ return pattern.test(String(item || '').toLowerCase()); }).slice(0,2);
+      if (!out.length && fallback) out = [fallback];
+      return out;
+    }
+    return {
+      machine: pick(/aoi|5dx|x ray|x-ray|ict|tester|fixture|equipment|machine|printer|oven|detection/, 'No direct equipment evidence yet'),
+      method: pick(/stencil|aperture|print|profile|reflow|process|method|inspection|control|procedure|escape/, 'Method review pending confirmation'),
+      material: pick(/solder|paste|flux|component|geometry|package|pad|material|bridge|short/, 'Material interaction under review'),
+      man: pick(/operator|setup|handling|training|manual|discipline/, 'No direct human-factor evidence yet'),
+      measurement: pick(/spi|measurement|detect|coverage|threshold|limit|inspection|verification/, 'Measurement / detection gap under review'),
+      environment: pick(/humidity|temperature|storage|contamination|environment|clean/, 'No direct environmental evidence yet')
+    };
+  }
+
+  function traceOpsEightdBuildOccurrenceWhys(model) {
+    var list = [];
+    list.push(model.rootCause ? ('Failure observed because ' + model.rootCause) : (model.hypothesis ? ('Failure observed because current analysis points to ' + model.hypothesis) : 'Failure mechanism remains under investigation.'));
+    if (traceOpsEightdHasText(model.pattern)) list.push('Why repeated here: ' + model.pattern);
+    if (model.findings.length) list.push('Why technically supported: ' + model.findings[0]);
+    list.push(traceOpsEightdHasText(model.validation) ? ('Why current path is being verified: ' + model.validation) : 'Why final validation is still pending: controlled trial or comparative evidence has not closed the mechanism yet.');
+    list.push(model.rootCause ? 'Confirmed occurrence mechanism based on current draft evidence.' : 'Probable root cause under validation');
+    return list;
+  }
+
+  function traceOpsEightdBuildEscapeWhys(model) {
+    var list = [];
+    list.push(model.escapeSummary || 'Escape path remains under review.');
+    list.push('Why not detected earlier: current control path centers on ' + model.station + ' against defect mode ' + model.defect + '.');
+    if (model.findings.length) list.push('Why this gap is suspected: ' + model.findings.slice(0,2).join(' | '));
+    list.push('Why verification is needed: detection coverage, installed-state behavior and control thresholds must be demonstrated against the actual failure mode.');
+    list.push('Escape path under confirmation');
+    return list;
+  }
+
+  function traceOpsEightdBuildEvidenceChecklist(model) {
+    var items = [
+      '□ Customer symptom image / data',
+      '□ Golden reference comparison',
+      '□ Installed-state vs removed-state comparison',
+      '□ Serial / batch trace',
+      '□ Control limitation explanation',
+      '□ Corrective action proof'
+    ];
+    if (model.evidenceRefs.length) items.push('□ Linked event timestamps captured in TraceOps');
+    if (model.findings.length) items.push('□ Engineer findings tied to occurrence / escape');
+    return items.join('\n');
   }
 
   function traceOpsEightdBuildProblemText(model) {
@@ -5283,20 +5355,25 @@ function App() {
     ]);
     next.evidence_summary = next.evidence_summary || traceOpsEightdJoinParagraphs([
       model.evidenceSummary ? ('Evidence summary: ' + model.evidenceSummary) : '',
-      model.findings.length ? ('Engineer findings: ' + model.findings.join(' | ')) : '',
-      model.actions.length ? ('Executed actions: ' + model.actions.join(' | ')) : ''
+      model.linked.length ? ('Linked events reviewed: ' + model.evidenceRefs.join(' | ')) : 'No linked events yet; evidence remains draft-level.',
+      model.findings.length ? ('Engineer findings: ' + model.findings.slice(0,4).join(' | ')) : '',
+      model.actions.length ? ('Executed actions: ' + model.actions.slice(0,4).join(' | ')) : ''
     ]);
     next.correlation_notes = next.correlation_notes || traceOpsEightdJoinParagraphs([
       'Correlation logic: ' + model.pattern,
       traceOpsEightdHasText(model.rootCause) ? ('Occurrence evidence supports: ' + model.rootCause) : (traceOpsEightdHasText(model.hypothesis) ? ('Working hypothesis: ' + model.hypothesis) : 'Occurrence hypothesis is still pending.'),
-      'Escape review focuses on ' + model.station + ' against the observed failure mode ' + model.defect + '.'
+      'Escape review focuses on ' + model.station + ' against the observed failure mode ' + model.defect + '.',
+      model.linked.length ? ('Trace path used for this draft: ' + model.tracePath + '.') : 'Trace path still needs linked events for a stronger evidence page.'
     ]);
-    next.evidence_checklist = next.evidence_checklist || '□ Customer symptom image / data\n□ Golden reference comparison\n□ Installed-state vs removed-state comparison\n□ Serial / batch trace\n□ Control limitation explanation\n□ Corrective action proof';
+    next.evidence_checklist = next.evidence_checklist || traceOpsEightdBuildEvidenceChecklist(model);
     next.d1_team = traceOpsEightdHasText(next.d1_team) ? next.d1_team : traceOpsEightdBuildTeamText(model);
     next.d2_problem = traceOpsEightdHasText(next.d2_problem) ? next.d2_problem : traceOpsEightdBuildProblemText(model);
     next.d3_containment = traceOpsEightdHasText(next.d3_containment) ? next.d3_containment : traceOpsEightdBuildContainmentText(model);
     next.d4_root_cause = traceOpsEightdHasText(next.d4_root_cause) ? next.d4_root_cause : traceOpsEightdBuildOccurrenceText(model);
     next.d4_escape_point = traceOpsEightdHasText(next.d4_escape_point) ? next.d4_escape_point : traceOpsEightdBuildEscapeText(model);
+    next.d4_ishikawa = (next.d4_ishikawa && typeof next.d4_ishikawa === 'object') ? next.d4_ishikawa : traceOpsEightdBuildIshikawaMap(model);
+    next.d4_occurrence_5whys = (Array.isArray(next.d4_occurrence_5whys) && next.d4_occurrence_5whys.length) ? next.d4_occurrence_5whys : traceOpsEightdBuildOccurrenceWhys(model);
+    next.d4_escape_5whys = (Array.isArray(next.d4_escape_5whys) && next.d4_escape_5whys.length) ? next.d4_escape_5whys : traceOpsEightdBuildEscapeWhys(model);
     next.d5_pca = traceOpsEightdHasText(next.d5_pca) ? next.d5_pca : traceOpsEightdBuildPcaText(model);
     next.d6_validation = traceOpsEightdHasText(next.d6_validation) ? next.d6_validation : traceOpsEightdBuildVerificationText(model);
     next.d7_prevention = traceOpsEightdHasText(next.d7_prevention) ? next.d7_prevention : traceOpsEightdBuildPreventionText(model);
@@ -5637,7 +5714,10 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var txt = traceOpsPptWrap(value, maxLen || 700);
     if (!txt) return ['Pending'];
     var parts = String(txt)
-      .split(/\n+|\s*[•\-]\s+|(?<=[\.!?;])\s+/)
+      .replace(/([.!?;])\s+/g, "$1\n")
+      .replace(/\s*•\s+/g, "\n")
+      .replace(/\s+-\s+/g, "\n")
+      .split(/\n+/)
       .map(function(item){ return traceOpsPptSafe(item, 160).trim(); })
       .filter(function(item){ return item && item.length > 3; });
     if (!parts.length) parts = [traceOpsPptSafe(txt, 160)];
