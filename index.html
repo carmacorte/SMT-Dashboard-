@@ -6277,7 +6277,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
   function traceOpsPptBuildOccurrenceSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
-    traceOpsPptApplyShell(slide, 'D4A - Occurrence Analysis', 'Occurrence only. Keep the conclusion neutral unless evidence is validated.', 3, 'Under Validation');
+    traceOpsPptApplyShell(slide, 'D4A - Occurrence Analysis', 'Foxconn occurrence analysis and root cause summary', 3, 'Under Validation');
 
     var fish = traceOpsPptBuildIshikawa(normalized, model);
     var occWhys = traceOpsPptNormalizeWhys(normalized && normalized.d4_occurrence_5whys || normalized && normalized.d4_root_cause || model.occurrenceSummary, 'Occurrence why');
@@ -6308,7 +6308,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
   function traceOpsPptBuildEscapeSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
-    traceOpsPptApplyShell(slide, 'D4B - Escape Analysis', 'Separate how the defect escaped from how it occurred.', 4, 'Evidence Pending');
+    traceOpsPptApplyShell(slide, 'D4B - Escape Analysis', 'Foxconn detection 5 Whys and escape confirmation', 4, 'Evidence Pending');
 
     traceOpsPptKeyTile(slide, 'Escape point', normalized.d4_escape_point || model.escapeSummary || 'Escape point under analysis', 0.42, 1.66, 4.02);
     traceOpsPptKeyTile(slide, 'Expected detection control', model.station || normalized.station || 'AOI / ICT / control stage', 4.66, 1.66, 4.02);
@@ -6391,7 +6391,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
   function traceOpsPptBuildPreventionClosureSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
-    traceOpsPptApplyShell(slide, 'D7 Prevention / Yokoten + D8 Closure', 'Formal closeout view with preventive replication and closure basis', 7, (normalized.status || 'Draft'));
+    traceOpsPptApplyShell(slide, 'D7 Prevention / Yokoten + D8 Closure', 'Preventive replication and closure status', 7, (normalized.status || 'Draft'));
 
     traceOpsPptBox(slide, 0.42, 1.66, 6.18, 5.10, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'D7 Prevention / Yokoten', 0.58, 1.80, 2.0);
