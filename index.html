@@ -6099,103 +6099,56 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return 'Occurrence';
   }
 
-  function traceOpsPptNormLow(text){
-    return String(text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
-  }
-
-  function traceOpsPptOwnerForAxis(axis, model, normalized, seed){
-    var ownerDefault = (model && model.owners && model.owners.length ? model.owners[0] : (normalized && normalized.owner_email) || 'Pending');
-    var low = traceOpsPptNormLow(seed || '');
-    if (axis === 'Detection') return /ict|aoi|inspection|test|quality/.test(low) ? 'Quality / Test' : ownerDefault;
-    if (axis === 'System') return /material|kitting|supplier|traceability/.test(low) ? 'Materiales / Kitting' : 'Quality';
-    if (/material|kitting|reel|part|supplier/.test(low)) return 'Materiales / Kitting';
-    if (/feeder|setup|placement|printer|stencil|paste|reflow|smt|process/.test(low)) return 'Process / SMT';
-    return ownerDefault;
-  }
-
-  function traceOpsPptExtractDateDdMmYyyy(text){
-    var s = String(text || '').trim();
-    if (!s) return '';
-    var dm = s.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    if (dm) return dm[1] + '/' + dm[2] + '/' + dm[3];
-    var iso = s.match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) return iso[3] + '/' + iso[2] + '/' + iso[1];
-    return '';
-  }
-
-  function traceOpsPptPlannedDateFromBase(baseDate, daysToAdd){
-    var ms = traceOpsGetDateValue(baseDate);
-    if (!ms) return 'Pending';
-    var d = new Date(ms);
-    d.setDate(d.getDate() + (daysToAdd || 0));
-    var dd = String(d.getDate()).padStart(2, '0');
-    var mm = String(d.getMonth() + 1).padStart(2, '0');
-    var yy = d.getFullYear();
-    return dd + '/' + mm + '/' + yy;
-  }
-
-  function traceOpsPptEcdForAxis(axis, normalized, model, seed){
-    var explicit = traceOpsPptExtractDateDdMmYyyy(seed) || traceOpsPptExtractDateDdMmYyyy(normalized && normalized.d5_pca) || traceOpsPptExtractDateDdMmYyyy(normalized && normalized.d6_validation);
-    if (explicit) return explicit;
-    var baseDate = '';
-    if (normalized && normalized.detection_window) {
-      baseDate = String(normalized.detection_window).split('->')[0].trim();
-    }
-    if (!baseDate) baseDate = (model && model.buildWindow) || '';
-    if (axis === 'Occurrence') return traceOpsPptPlannedDateFromBase(baseDate, 7);
-    if (axis === 'Detection') return traceOpsPptPlannedDateFromBase(baseDate, 14);
-    return traceOpsPptPlannedDateFromBase(baseDate, 21);
-  }
-
-  function traceOpsPptInferOccurrenceAction(normalized, model){
-    var low = traceOpsPptNormLow([normalized && normalized.defecto_smt, model && model.defect, normalized && normalized.complaint_anchor, model && model.complaintAnchor, normalized && normalized.d4_root_cause, model && model.rootCause, model && model.hypothesis].join(' '));
-    var bullets = traceOpsPptSplitBullets((normalized && normalized.d5_pca) || (model && model.pca) || '', 8, 1200);
-    var occ = (bullets || []).find(function(item){ return traceOpsPptNormalizeAxisLabel(item) === 'Occurrence'; });
-    if (occ) return traceOpsEightdShort(occ, 160);
-    if (/wrong component|wrong p n|material mix|wrong part|feeder|reel|laser mark|kitting/.test(low)) return 'Implement positive P/N verification at feeder release, eliminate empty-reel reuse, and block mixed-kitting returns before run start.';
-    if (/short|bridge|solder|micro solder|u518|u519|fine pitch|stencil|paste|reflow/.test(low)) return 'Adjust stencil / print / reflow controls at the occurrence point and verify the solder-bridge signature is removed under controlled build conditions.';
-    if (/open|lifted|pad|coplanar|pressfit|connector/.test(low)) return 'Correct the occurrence mechanism at setup or assembly level and verify the physical defect signature is no longer created.';
-    return 'Block recurrence at the occurrence point with one controlled setup or process action tied to the validated mechanism.';
-  }
-
-  function traceOpsPptInferDetectionAction(normalized, model){
-    var low = traceOpsPptNormLow([normalized && normalized.d4_escape_point, model && model.escapeSummary, normalized && normalized.station, model && model.station, normalized && normalized.defecto_smt, model && model.defect].join(' '));
-    if (/wrong component|wrong p n|material mix|feeder|laser mark/.test(low)) return 'Add positive wrong-part detection at setup: independent P/N confirmation, laser-mark match, and challenge verification against the actual wrong-part signature.';
-    if (/short|bridge|solder|micro solder|fine pitch|ict|aoi|5dx|x ray/.test(low)) return 'Challenge AOI / ICT / X-ray coverage against the actual solder-bridge signature and document the specific control limitation that allowed escape.';
-    return 'Challenge the expected detection control with the real defect signature and confirm the trigger blocks the escape path.';
-  }
-
-  function traceOpsPptInferSystemAction(normalized, model){
-    var low = traceOpsPptNormLow([normalized && normalized.d7_prevention, model && model.lesson, model && model.pattern, normalized && normalized.complaint_anchor].join(' '));
-    if (/wrong component|wrong p n|material mix|feeder|kitting|traceability/.test(low)) return 'Update kitting, feeder-release, and traceability rules; train affected teams; and replicate the control to similar packages, models, and lines.';
-    if (/short|bridge|solder|fine pitch|stencil|paste|reflow/.test(low)) return 'Standardize design / stencil / process rules for similar fine-pitch components, update control documents, and deploy the lesson learned across affected families.';
-    return 'Update standards, training, and audit controls so the same failure pattern cannot recur in similar models, stations, or process families.';
-  }
-
   function traceOpsPptComplianceActionRows(normalized, model){
-    var occAction = traceOpsPptInferOccurrenceAction(normalized, model);
-    var detAction = traceOpsPptInferDetectionAction(normalized, model);
-    var sysAction = traceOpsPptInferSystemAction(normalized, model);
-    return [
-      ['Occurrence', traceOpsEightdShort(occAction, 160), traceOpsPptEcdForAxis('Occurrence', normalized, model, occAction), traceOpsPptOwnerForAxis('Occurrence', model, normalized, occAction), 'Open'],
-      ['Detection', traceOpsEightdShort(detAction, 160), traceOpsPptEcdForAxis('Detection', normalized, model, detAction), traceOpsPptOwnerForAxis('Detection', model, normalized, detAction), 'Pending'],
-      ['System', traceOpsEightdShort(sysAction, 160), traceOpsPptEcdForAxis('System', normalized, model, sysAction), traceOpsPptOwnerForAxis('System', model, normalized, sysAction), 'Pending']
-    ];
+    var ownerDefault = (model && model.owners && model.owners.length ? model.owners[0] : (normalized && normalized.owner_email) || 'Pending');
+    function toDate(val){
+      var s = String(val || '').trim();
+      if (!s) return 'Pending';
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+      var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return m[3] + '/' + m[2] + '/' + m[1];
+      return 'Pending';
+    }
+    function firstBullet(txt, fallback){
+      var arr = traceOpsPptSplitBullets(txt || '', 6, 900);
+      return (arr && arr[0]) ? arr[0] : fallback;
+    }
+    var baseRows = [];
+    try { baseRows = traceOpsPptBuildActionRows(normalized, model) || []; } catch(_) { baseRows = []; }
+    var picked = {Occurrence:null, Detection:null, System:null};
+    baseRows.forEach(function(row){
+      var action = Array.isArray(row) ? String(row[0] || '').trim() : String(row || '').trim();
+      if (!action) return;
+      var axis = traceOpsPptNormalizeAxisLabel(action);
+      if (picked[axis]) return;
+      picked[axis] = [
+        axis,
+        traceOpsEightdShort(action, 160),
+        toDate(Array.isArray(row) ? row[3] : ''),
+        String((Array.isArray(row) ? row[2] : '') || ownerDefault).trim() || ownerDefault,
+        String((Array.isArray(row) ? row[4] : '') || 'Pending').trim() || 'Pending'
+      ];
+    });
+    if (!picked.Occurrence) picked.Occurrence = ['Occurrence', traceOpsEightdShort(firstBullet((normalized&&normalized.d5_pca) || model.pca, 'Block recurrence at the occurrence point with controlled setup or process action.'), 160), 'Pending', ownerDefault, 'Pending'];
+    if (!picked.Detection) picked.Detection = ['Detection', traceOpsEightdShort(firstBullet((normalized&&normalized.d4_escape_point) || model.escapeSummary, 'Implement positive P/N confirmation or stronger detection at the escape control.'), 160), 'Pending', ownerDefault, 'Pending'];
+    if (!picked.System) picked.System = ['System', traceOpsEightdShort(firstBullet((normalized&&normalized.d7_prevention) || model.lesson, 'Update standards, training and traceability governance for similar models or stations.'), 160), 'Pending', ownerDefault, 'Pending'];
+    return [picked.Occurrence, picked.Detection, picked.System];
   }
 
   function traceOpsPptComplianceVerificationRows(normalized, model){
     var actionRows = traceOpsPptComplianceActionRows(normalized, model);
     var validationText = traceOpsEightdHasText(normalized && normalized.d6_validation) ? normalized.d6_validation : ((model && model.validation) || 'Validation pending.');
+    var ownerDefault = (model && model.owners && model.owners.length ? model.owners[0] : (normalized && normalized.owner_email) || 'Pending');
     return actionRows.map(function(row){
       var axis = String(row[0] || 'Occurrence');
       var action = String(row[1] || 'Pending');
       var due = String(row[2] || 'Pending');
-      var owner = String(row[3] || 'Pending').trim() || 'Pending';
+      var owner = String(row[3] || ownerDefault).trim() || ownerDefault;
       var method = axis === 'Detection'
-        ? 'Challenge control logic against the actual defect signature and verify the trigger fires under controlled test conditions.'
+        ? 'Challenge control logic against the actual wrong-part signature and verify the trigger fires.'
         : (axis === 'System'
-          ? 'Audit rollout, training completion, document update, and rule adoption across replicated scope.'
-          : 'Verify setup, material handling, or process control at the occurrence point and confirm non-recurrence in controlled builds.');
+          ? 'Audit rollout, training completion and rule adoption across affected families or stations.'
+          : 'Verify setup, material handling or process control at the occurrence point and confirm non-recurrence.');
       var result = axis === 'Detection'
         ? traceOpsEightdShort('Detection validation: ' + validationText, 130)
         : (axis === 'System'
@@ -6405,37 +6358,18 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     traceOpsPptKeyTile(slide, 'Expected detection control', model.station || normalized.station || 'AOI / ICT / control stage', 4.66, 1.66, 4.02);
     traceOpsPptKeyTile(slide, 'Control limitation / gap', model.defect || 'Detection gap under review', 8.90, 1.66, 4.00);
 
-    var escBase = traceOpsEightdHasText(normalized && normalized.d4_escape_5whys) ? normalized.d4_escape_5whys : '';
-    var finding = (model && model.findings && model.findings.length) ? model.findings[0] : '';
-    var station = model.station || normalized.station || 'the expected detection stage';
-    var defect = normalized.defecto_smt || model.defect || 'the failure mode';
-    var controlGap = traceOpsPptInferDetectionAction(normalized, model);
-    var escWhys = traceOpsEightdHasText(escBase) ? traceOpsPptNormalizeWhys(escBase, 'Escape why') : [
-      'The defect reached downstream detection because the expected control at ' + station + ' did not stop the actual ' + defect + ' signature.',
-      'The installed control was not designed or challenged against the real signature seen in this case.',
-      traceOpsEightdShort('Specific control gap: ' + controlGap, 120),
-      traceOpsEightdHasText(finding) ? traceOpsEightdShort('Supporting technical clue: ' + finding, 120) : 'Evidence still needs one confirmed control-gap proof point tied to the real symptom.',
-      'Escape point remains unconfirmed until one specific missed trigger is validated against the actual failure mode.'
-    ];
+    var escWhys = traceOpsPptNormalizeWhys(normalized && normalized.d4_escape_5whys || normalized && normalized.d4_escape_point || model.escapeSummary, 'Escape why');
     traceOpsPptBox(slide, 0.42, 2.72, 5.88, 3.52, 'FFFFFF');
     traceOpsPptPanelTitle(slide, '5 Whys - escape', 0.58, 2.86, 1.8);
     traceOpsPptDrawWhyCards(slide, escWhys, 0.60, 3.08, 5.40, 2.82, {gap:0.10, topPad:0.02, maxItems:5});
 
     traceOpsPptBox(slide, 6.54, 2.72, 6.36, 1.42, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Detection gap identified', 6.70, 2.86, 2.1);
-    traceOpsPptDrawBulletList(slide, [
-      traceOpsEightdShort('Expected control stage: ' + station + '.', 110),
-      traceOpsEightdShort('Failure mode under review: ' + defect + '.', 110),
-      traceOpsEightdShort(controlGap, 120)
-    ], 6.72, 3.14, 5.82, 0.64, {fontSize:9.7, lineGap:0.20, maxItems:3});
+    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(model.escapeSummary || normalized.d4_escape_point || 'Control gap under analysis.', 3, 320), 6.72, 3.14, 5.82, 0.64, {fontSize:9.7, lineGap:0.20, maxItems:3});
 
     traceOpsPptBox(slide, 6.54, 4.28, 6.36, 1.96, 'F8FBF9');
     traceOpsPptPanelTitle(slide, 'Why the control did not detect the defect', 6.70, 4.42, 3.0);
-    traceOpsPptDrawBulletList(slide, [
-      'The control must be reviewed against the real defect signature, not only against nominal setup intent.',
-      traceOpsEightdHasText(finding) ? traceOpsEightdShort(finding, 125) : 'No confirmed technical clue has been validated yet; keep the field visible as evidence pending.',
-      'Do not close escape until one specific missed trigger is confirmed and linked to the control limitation.'
-    ], 6.72, 4.70, 5.82, 1.12, {fontSize:9.7, lineGap:0.22, maxItems:4});
+    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets((normalized.d4_escape_point || model.escapeSummary || '') + '. ' + ((model.findings && model.findings[0]) || ''), 4, 520), 6.72, 4.70, 5.82, 1.12, {fontSize:9.7, lineGap:0.22, maxItems:4});
 
     traceOpsPptBox(slide, 0.42, 6.42, 12.48, 0.54, 'F8FBF9');
     traceOpsPptPanelTitle(slide, 'Escape conclusion', 0.58, 6.54, 1.6);
@@ -6447,7 +6381,26 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D5 - Permanent Corrective Actions', 'Foxconn standard D5 action matrix', 5, (normalized.status || 'Draft'));
     var actionRows = traceOpsPptComplianceActionRows(normalized, model);
-    slide.addTable(traceOpsPptSafeTable([[{text:'Axis', options:{bold:true}},{text:'Corrective Actions', options:{bold:true}},{text:'ECD', options:{bold:true}},{text:'Responsible', options:{bold:true}},{text:'Status', options:{bold:true}}]].concat(actionRows)), {x:0.42, y:1.92, w:12.48, h:4.68, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:9.0, margin:0.05, rowH:0.76, colW:[1.34,6.10,1.20,2.02,1.62], fit:'shrink'});
+    slide.addText(traceOpsPptWrap('Visible action matrix by axis: Occurrence, Detection and System. Keep pending rows visible until closure evidence is completed.', 170), {x:0.58, y:1.80, w:12.00, h:0.18, fontFace:'Segoe UI', fontSize:9.4, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Axis', options:{bold:true}},{text:'Corrective Actions', options:{bold:true}},{text:'ECD', options:{bold:true}},{text:'Responsible', options:{bold:true}},{text:'Status', options:{bold:true}}]].concat(actionRows)), {x:0.42, y:2.06, w:12.48, h:3.02, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:9.0, margin:0.05, rowH:0.58, colW:[1.34,6.10,1.20,2.02,1.62], fit:'shrink'});
+
+    var cardY = 5.28;
+    var cardW = 4.02;
+    var cardGap = 0.18;
+    actionRows.slice(0,3).forEach(function(row, idx){
+      var x = 0.42 + (cardW + cardGap) * idx;
+      var axis = String(row[0] || 'Axis');
+      var action = String(row[1] || 'Pending');
+      var ecd = String(row[2] || 'Pending');
+      var owner = String(row[3] || 'Pending');
+      var status = String(row[4] || 'Pending');
+      traceOpsPptBox(slide, x, cardY, cardW, 1.36, idx === 1 ? 'F8FBF9' : 'FFFFFF');
+      traceOpsPptPanelTitle(slide, axis, x + 0.16, cardY + 0.14, 1.2);
+      slide.addText(traceOpsPptWrap(action, 92), {x:x + 0.16, y:cardY + 0.36, w:cardW - 0.32, h:0.42, fontFace:'Segoe UI', fontSize:9.1, color:'10231C', margin:0, fit:'shrink'});
+      slide.addText('ECD: ' + traceOpsPptWrap(ecd, 28), {x:x + 0.16, y:cardY + 0.88, w:1.24, h:0.14, fontFace:'Segoe UI', fontSize:8.4, bold:true, color:'1E5C48', margin:0, fit:'shrink'});
+      slide.addText('Owner: ' + traceOpsPptWrap(owner, 28), {x:x + 1.42, y:cardY + 0.88, w:1.54, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'10231C', margin:0, fit:'shrink'});
+      slide.addText('Status: ' + traceOpsPptWrap(status, 24), {x:x + 3.00, y:cardY + 0.88, w:0.76, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'10231C', margin:0, fit:'shrink'});
+    });
     return slide;
   }
 
@@ -6455,8 +6408,26 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D6 - Verification of Effectiveness', 'Foxconn standard D6 validation matrix', 6, traceOpsEightdHasText(normalized.d6_validation) ? 'Under Validation' : 'Evidence Pending');
     var rows = traceOpsPptComplianceVerificationRows(normalized, model);
-    slide.addTable(traceOpsPptSafeTable([[{text:'Axis',options:{bold:true}},{text:'Corrective Actions',options:{bold:true}},{text:'Measurement Method',options:{bold:true}},{text:'Validation Efficacy Results',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Completion Date',options:{bold:true}}]].concat(rows)), {x:0.42, y:1.92, w:12.48, h:4.72, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.4, margin:0.04, rowH:0.78, colW:[0.90,2.52,3.06,3.38,1.22,1.40], fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Acceptance criteria',options:{bold:true}},{text:'Recurrence status',options:{bold:true}},{text:'Conclusion',options:{bold:true}}],['No recurrence signature, stable control behavior and traceable closure evidence.', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation; no recurrence confirmed in current window.' : 'Pending validation window.', traceOpsPptWrap(traceOpsEightdHasText(normalized.d6_validation) ? traceOpsEightdShort(normalized.d6_validation, 100) : 'Controlled verification remains open until sustained non-recurrence is demonstrated.', 100)]]), {x:0.42, y:6.00, w:12.48, h:0.70, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.3, margin:0.04, rowH:[0.20,0.40], colW:[3.96,3.00,5.12], fit:'shrink'});
+    slide.addText(traceOpsPptWrap('Verification matrix remains visible by axis so occurrence, detection and system closure can be audited independently.', 170), {x:0.58, y:1.80, w:12.00, h:0.18, fontFace:'Segoe UI', fontSize:9.4, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Axis',options:{bold:true}},{text:'Corrective Actions',options:{bold:true}},{text:'Measurement Method',options:{bold:true}},{text:'Validation Efficacy Results',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Completion Date',options:{bold:true}}]].concat(rows)), {x:0.42, y:2.06, w:12.48, h:2.94, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.4, margin:0.04, rowH:0.56, colW:[0.90,2.52,3.06,3.38,1.22,1.40], fit:'shrink'});
+
+    var cardY = 5.16;
+    var cardW = 4.02;
+    var cardGap = 0.18;
+    rows.slice(0,3).forEach(function(row, idx){
+      var x = 0.42 + (cardW + cardGap) * idx;
+      var axis = String(row[0] || 'Axis');
+      var method = String(row[2] || 'Pending');
+      var result = String(row[3] || 'Pending');
+      var due = String(row[5] || 'Pending');
+      traceOpsPptBox(slide, x, cardY, cardW, 1.08, idx === 1 ? 'F8FBF9' : 'FFFFFF');
+      traceOpsPptPanelTitle(slide, axis + ' verification', x + 0.16, cardY + 0.12, 1.8);
+      slide.addText(traceOpsPptWrap('Method: ' + method, 90), {x:x + 0.16, y:cardY + 0.34, w:cardW - 0.32, h:0.24, fontFace:'Segoe UI', fontSize:8.5, color:'10231C', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptWrap('Result: ' + result, 90), {x:x + 0.16, y:cardY + 0.62, w:cardW - 0.32, h:0.22, fontFace:'Segoe UI', fontSize:8.5, color:'10231C', margin:0, fit:'shrink'});
+      slide.addText('Date: ' + traceOpsPptWrap(due, 24), {x:x + 0.16, y:cardY + 0.88, w:1.24, h:0.12, fontFace:'Segoe UI', fontSize:8.2, bold:true, color:'1E5C48', margin:0, fit:'shrink'});
+    });
+
+    slide.addTable(traceOpsPptSafeTable([[{text:'Acceptance criteria',options:{bold:true}},{text:'Recurrence status',options:{bold:true}},{text:'Conclusion',options:{bold:true}}],['No recurrence signature, stable control behavior and traceable closure evidence.', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation; no recurrence confirmed in current window.' : 'Pending validation window.', traceOpsPptWrap(traceOpsEightdHasText(normalized.d6_validation) ? traceOpsEightdShort(normalized.d6_validation, 100) : 'Controlled verification remains open until sustained non-recurrence is demonstrated.', 100)]]), {x:0.42, y:6.34, w:12.48, h:0.42, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.1, margin:0.03, rowH:[0.16,0.20], colW:[3.96,3.00,5.12], fit:'shrink'});
     return slide;
   }
 
@@ -6484,12 +6455,19 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'Appendix A - Traceability & Evidence', 'Foxconn-aligned traceability and evidence summary', 8, model.evidenceRefs.length ? 'Under Validation' : 'Draft');
     slide.addText(traceOpsPptSafe('Event timeline', 40), {x:0.42, y:1.66, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptTimelineTable(normalized, linked, model), {x:0.42, y:1.90, w:12.48, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:9.0, margin:0.05, rowH:[0.22,0.52], valign:'mid', align:'center', fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 180), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 180)]]), {x:0.42, y:2.96, w:12.48, h:0.96, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.8, margin:0.05, rowH:[0.20,0.64], colW:[6.18,6.18], fit:'shrink'});
-    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:4.10, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptTimelineTable(normalized, linked, model), {x:0.42, y:1.90, w:12.48, h:0.72, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.8, margin:0.04, rowH:[0.20,0.44], valign:'mid', align:'center', fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:2.82, w:12.48, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.5, margin:0.04, rowH:[0.18,0.54], colW:[6.18,6.18], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:3.84, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:3.86, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'5F766C', margin:0, fit:'shrink'});
     var evidenceRows = traceOpsPptDetailedEventRows(normalized, model);
-    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:4.34, w:12.48, h:1.44, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.1, margin:0.04, rowH:0.22, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:5.96, w:12.48, h:0.86, border:{type:'solid', pt:1, color:'10231C'}, fill:'10231C', color:'FFFFFF', fontFace:'Segoe UI', fontSize:8.2, margin:0.04, rowH:0.13, colW:[2.86,1.40,8.22], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:4.10, w:12.48, h:1.26, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.0, margin:0.04, rowH:0.20, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], fit:'shrink'});
+
+    var firstEvidence = (Array.isArray(evidenceRows) && evidenceRows.length ? evidenceRows[0] : ['Pending','Pending','Pending','Pending','Pending','Pending','TraceOps']);
+    traceOpsPptBox(slide, 0.42, 5.52, 12.48, 0.52, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 5.64, 1.4);
+    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending') + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:5.64, w:10.70, h:0.14, fontFace:'Segoe UI', fontSize:8.6, color:'10231C', margin:0, fit:'shrink'});
+
+    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.16, w:12.48, h:0.58, border:{type:'solid', pt:1, color:'10231C'}, fill:'10231C', color:'FFFFFF', fontFace:'Segoe UI', fontSize:8.0, margin:0.03, rowH:0.08, colW:[2.86,1.40,8.22], fit:'shrink'});
     return slide;
   }
 
