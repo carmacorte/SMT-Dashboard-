@@ -2019,6 +2019,35 @@ function traceOpsNormalizeWhatsAppLineLocal(raw) {
     .trim();
 }
 
+function traceOpsExtractAttachmentNameFromTextLocal(text) {
+  var s = traceOpsNormalizeWhatsAppLineLocal(text);
+  if (!s) return '';
+  var m = s.match(/<(?:adjunto|attached):\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
+  if (m && m[1]) return traceOpsNormalizeUnicodeFilenameLocal(m[1].trim());
+  m = s.match(/\b([^\s][^()<>]{0,220}?\.(?:jpe?g|png|webp))\s*\((?:file attached|attached file|archivo adjunto|adjunto)\)\s*$/i);
+  if (m && m[1]) return traceOpsNormalizeUnicodeFilenameLocal(m[1].trim());
+  return '';
+}
+
+function traceOpsStripAttachmentMarkerTextLocal(text) {
+  var s = traceOpsNormalizeWhatsAppLineLocal(text);
+  if (!s) return '';
+  s = s.replace(/<(?:adjunto|attached):\s*[^>]+\.(?:jpe?g|png|webp)\s*>/ig, ' ');
+  s = s.replace(/\b[^\s][^()<>]{0,220}?\.(?:jpe?g|png|webp)\s*\((?:file attached|attached file|archivo adjunto|adjunto)\)\s*$/ig, ' ');
+  s = s.replace(/\b(?:file attached|attached file|archivo adjunto|adjunto)\b/ig, ' ');
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+function traceOpsInferImageMetaFromFilenameLocal(name) {
+  var s = traceOpsNormalizeUnicodeFilenameLocal(name);
+  if (!s) return null;
+  var m = s.match(/(?:^|[^0-9])(20\d{2})(\d{2})(\d{2})(?:[^0-9]|$)/);
+  if (m) return { dateIso: m[1] + '-' + m[2] + '-' + m[3], timeStr: '', sender: '', contextText: '' };
+  m = s.match(/(?:^|[^0-9])(\d{4})-(\d{2})-(\d{2})(?:[^0-9]|$)/);
+  if (m) return { dateIso: m[1] + '-' + m[2] + '-' + m[3], timeStr: '', sender: '', contextText: '' };
+  return null;
+}
+
 function traceOpsIsWhatsAppSystemLineLocal(line) {
   var s = traceOpsNormalizeWhatsAppLineLocal(line);
   if (!s) return false;
@@ -2061,7 +2090,7 @@ function parseWhatsApp(txt) {
         hour: t.hour,
         turno: parseTurno(t.hour, min, dateIso),
         sender: String(sender || '').replace(/^~/, '').trim(),
-        text: String(text || '').trim()
+        text: traceOpsStripAttachmentMarkerTextLocal(text || '')
       };
     } else if (traceOpsIsWhatsAppSystemLineLocal(line)) {
       continue;
@@ -2181,7 +2210,7 @@ function traceOpsFilterMediaNamesBySelectedRange(mediaNames, imgMeta, filteredMs
 }
 
 function cleanMsgs(msgs) {
-  var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|media omitted|image omitted|sticker omitted|audio omitted|video omitted|document omitted|messages and calls are end-to-end encrypted|cifrados de extremo|ahora es admin|created group|added you|security code changed|changed this group's icon|changed the group description|join(?:ed)? using this group's invite link/i;
+  var skip = /imagen omitida|sticker omitido|audio omitido|video omitido|gif omitido|documento omitido|media omitted|image omitted|sticker omitted|audio omitted|video omitted|document omitted|file attached|attached file|archivo adjunto|adjunto|messages and calls are end-to-end encrypted|cifrados de extremo|ahora es admin|created group|added you|security code changed|changed this group's icon|changed the group description|join(?:ed)? using this group's invite link/i;
   var noise = /^(buenos d|buenas t|buen d|gracias|de nada|enterado|recibido|entendido|ok|thanks|got it|understood|roger)$/i;
   return msgs.filter(function(m){
     return m.text && m.text.trim().length > 8 && !m.text.match(skip) && !m.text.trim().match(noise);
@@ -2556,49 +2585,68 @@ async function readZip(file) {
     var reA = /^\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\]\s*([^:]+?):\s*(.*)$/i;
     var reB = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\s*-\s*([^:]+?):\s*(.*)$/i;
     var lastMeta = null;
-    var lastTextAny = '';
+    var lastTextAny = "";
     var lastTextBySender = {};
+    var pendingAttachmentNames = [];
     txt.split(/\r?\n/).forEach(function(rawLine) {
       var line = traceOpsNormalizeWhatsAppLineLocal(rawLine);
       var matchA = line.match(reA);
       var matchB = matchA ? null : line.match(reB);
       var m = matchA || matchB;
       if (m) {
-        var d = m[1], mo = m[2], yr = m[3], h2 = m[4], min2 = m[5], sec2 = m[6] || '00', mer = m[7] || '';
+        var d = m[1], mo = m[2], yr = m[3], h2 = m[4], min2 = m[5], sec2 = m[6] || "00", mer = m[7] || "";
         var sender = m[8];
-        var text = m[9];
+        var textMsg = m[9];
         var resolved = resolveWhatsAppDatePartsLocal(d, mo, dateOrder);
         var year = parseInt(yr, 10);
         if (year < 100) year += 2000;
         var t = to24h(h2, min2, sec2, mer);
-        var senderNorm = String(sender || '').replace(/^~/, '').trim();
+        var senderNorm = (sender || "").replace(/^~/, "").trim();
+        var attachmentName = traceOpsExtractAttachmentNameFromTextLocal(textMsg || "");
+        var cleanedMsgText = traceOpsStripAttachmentMarkerTextLocal(textMsg || "");
         lastMeta = {
-          dateIso: year + '-' + String(resolved.month).padStart(2, '0') + '-' + String(resolved.day).padStart(2, '0'),
+          dateIso: year + "-" + String(resolved.month).padStart(2, "0") + "-" + String(resolved.day).padStart(2, "0"),
           timeStr: t.timeStr,
           sender: senderNorm
         };
-        if (text && !/(?:<(?:adjunto|attached):|<media omitted>|<imagen omitida>|<video omitted>|<sticker omitted>|<audio omitted>)/i.test(text)) {
-          lastTextAny = String(text || '').replace(/\s+/g, ' ').trim();
+        if (attachmentName) {
+          imgMeta[attachmentName] = {
+            dateIso: lastMeta.dateIso,
+            timeStr: lastMeta.timeStr,
+            sender: lastMeta.sender,
+            contextText: ""
+          };
+          pendingAttachmentNames.push(attachmentName);
+        }
+        if (cleanedMsgText && !/(?:media omitted|imagen omitida|video omitted|sticker omitted|audio omitted)/i.test(cleanedMsgText)) {
+          lastTextAny = String(cleanedMsgText || "").replace(/\s+/g, " ").trim();
           if (senderNorm) lastTextBySender[senderNorm] = lastTextAny;
+          if (pendingAttachmentNames.length) {
+            pendingAttachmentNames.forEach(function(pName) {
+              if (imgMeta[pName]) imgMeta[pName].contextText = (lastTextBySender[lastMeta.sender] || lastTextAny || "").slice(0, 320);
+            });
+            pendingAttachmentNames = [];
+          }
         }
       } else if (traceOpsIsWhatsAppSystemLineLocal(line)) {
         return;
-      } else if (lastMeta && line && !line.startsWith('[')) {
-        var prev = lastTextBySender[lastMeta.sender] || lastTextAny || '';
-        var merged = (prev + ' ' + line).replace(/\s+/g, ' ').trim();
+      } else if (lastMeta && line && !line.startsWith("[")) {
+        var prev = lastTextBySender[lastMeta.sender] || lastTextAny || "";
+        var merged = (prev + " " + line).replace(/\s+/g, " ").trim();
         lastTextAny = merged;
         if (lastMeta.sender) lastTextBySender[lastMeta.sender] = merged;
+        if (pendingAttachmentNames.length) {
+          pendingAttachmentNames.forEach(function(pName) {
+            if (imgMeta[pName]) imgMeta[pName].contextText = merged.slice(0, 320);
+          });
+          pendingAttachmentNames = [];
+        }
       }
-      var adj = line.match(/<(?:adjunto|attached):\s*([^>]+\.(?:jpe?g|png|webp))\s*>/i);
-      if (adj && lastMeta) {
-        var adjName = traceOpsNormalizeUnicodeFilenameLocal(adj[1].trim());
-        imgMeta[adjName] = {
-          dateIso: lastMeta.dateIso,
-          timeStr: lastMeta.timeStr,
-          sender: lastMeta.sender,
-          contextText: (lastTextBySender[lastMeta.sender] || lastTextAny || '').slice(0, 320)
-        };
-      }
+    });
+    imgNames.forEach(function(fname){
+      if (imgMeta[fname]) return;
+      var inferred = traceOpsInferImageMetaFromFilenameLocal(fname);
+      if (inferred) imgMeta[fname] = inferred;
     });
   }
 
