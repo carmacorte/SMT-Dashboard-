@@ -6573,12 +6573,12 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var ownerMail = /@/.test(ownerRaw) ? ownerRaw : traceOpsPptFoxconnText(normalized.qe_email, 'quality.owner@pending', 34);
     var ownerName = /@/.test(ownerRaw) ? traceOpsPptFoxconnText(normalized.qe_contact || 'Quality owner pending', 'Quality owner pending', 40) : traceOpsPptFoxconnText(ownerRaw, 'Quality owner pending', 40);
     var rows = [
-      ['PM', 'Program Management', traceOpsPptFoxconnText(normalized.pm_contact, 'Pending nomination', 40), traceOpsPptFoxconnText(normalized.pm_email, 'pm.owner@pending', 34)],
+      ['PM', 'Program Management', traceOpsPptFoxconnText(normalized.pm_contact, 'Pending nomination', 38), traceOpsPptFoxconnText(normalized.pm_email, 'pm.owner@pending', 34)],
       ['QE', 'Quality Engineering', ownerName, ownerMail],
-      ['SQE', 'Supplier Quality', traceOpsPptFoxconnText(normalized.sqe_contact, 'Pending nomination', 40), traceOpsPptFoxconnText(normalized.sqe_email, 'sqe.owner@pending', 34)],
-      ['TE', 'Test Engineering', traceOpsPptFoxconnText(normalized.te_contact, /ict|aoi|test/i.test([model.station, model.defect].join(' ')) ? 'Test / ICT owner pending' : 'N/A', 40), traceOpsPptFoxconnText(normalized.te_email, /ict|aoi|test/i.test([model.station, model.defect].join(' ')) ? 'test.owner@pending' : 'N/A', 34)],
-      ['PE', 'Process Engineering', traceOpsPptFoxconnText(normalized.pe_contact, 'Process / SMT owner pending', 40), traceOpsPptFoxconnText(normalized.pe_email, 'process.owner@pending', 34)],
-      ['PD', 'Production', traceOpsPptFoxconnText(normalized.pd_contact, 'Production owner pending', 40), traceOpsPptFoxconnText(normalized.pd_email, 'production.owner@pending', 34)]
+      ['SQE', 'Supplier Quality', traceOpsPptFoxconnText(normalized.sqe_contact, 'Pending nomination', 38), traceOpsPptFoxconnText(normalized.sqe_email, 'sqe.owner@pending', 34)],
+      ['TE', 'Test Engineering', traceOpsPptFoxconnText(normalized.te_contact, /ict|aoi|test/i.test([model.station, model.defect].join(' ')) ? 'Test / ICT owner pending' : 'Pending nomination', 38), traceOpsPptFoxconnText(normalized.te_email, /ict|aoi|test/i.test([model.station, model.defect].join(' ')) ? 'test.owner@pending' : 'N/D', 34)],
+      ['PE', 'Process Engineering', traceOpsPptFoxconnText(normalized.pe_contact, 'Process / SMT owner pending', 38), traceOpsPptFoxconnText(normalized.pe_email, 'process.owner@pending', 34)],
+      ['PD', 'Production', traceOpsPptFoxconnText(normalized.pd_contact, 'Production owner pending', 38), traceOpsPptFoxconnText(normalized.pd_email, 'production.owner@pending', 34)]
     ];
     return traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Function',options:{bold:true}},{text:'Owner',options:{bold:true}},{text:'Name / Contact',options:{bold:true}}]].concat(rows));
   }
@@ -6586,14 +6586,14 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   function traceOpsPptFoxconnEscalationRows(model, normalized){
     var owner = traceOpsPptFoxconnText((model && model.owners && model.owners[0]) || normalized.owner_email || normalized.responsable, 'quality.owner@pending', 42);
     var rows = [
-      ['Process Coordinator', traceOpsPptFoxconnText(normalized.process_coordinator, 'Process / SMT owner pending', 44)],
+      ['Process Coordinator', traceOpsPptFoxconnText(normalized.process_coordinator, 'Process / SMT owner pending', 40)],
       ['Quality Coordinator', owner],
-      ['Quality Manager', traceOpsPptFoxconnText(normalized.quality_manager, 'Quality manager pending', 44)],
-      ['TE Manager', traceOpsPptFoxconnText(normalized.te_manager, 'Test manager pending', 44)],
-      ['Manufacturing Manager', traceOpsPptFoxconnText(normalized.mfg_manager, 'Manufacturing manager pending', 44)],
-      ['BU Manager', traceOpsPptFoxconnText(normalized.bu_manager, 'BU manager pending', 44)]
+      ['Quality Manager', traceOpsPptFoxconnText(normalized.quality_manager, 'Quality manager pending', 40)],
+      ['TE Manager', traceOpsPptFoxconnText(normalized.te_manager, 'Test manager pending', 40)],
+      ['Manufacturing Manager', traceOpsPptFoxconnText(normalized.mfg_manager, 'Manufacturing manager pending', 40)],
+      ['BU Manager', traceOpsPptFoxconnText(normalized.bu_manager, 'BU manager pending', 40)]
     ];
-    return traceOpsPptSafeTable([[{text:'Escalation',options:{bold:true}},{text:'Name / Contact',options:{bold:true}}]].concat(rows));
+    return traceOpsPptSafeTable([[{text:'Escalation level',options:{bold:true}},{text:'Name / Contact',options:{bold:true}}]].concat(rows));
   }
 
   function traceOpsPptFoxconnTraceabilityRows(model, normalized){
@@ -6630,17 +6630,17 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   }
 
   function traceOpsPptFoxconnContainmentRows(model, normalized){
-    var exposure = traceOpsPptFoxconnText(model.exposure || model.impact, 'Pending quantity confirmation', 48);
-    var owner = traceOpsPptFoxconnText((model && model.owners && model.owners[0]) || normalized.owner_email || normalized.responsable, 'Quality owner pending', 28);
+    var exposure = traceOpsPptFoxconnText(model.exposure || model.impact, 'Pending quantity confirmation', 44);
+    var owner = traceOpsPptFoxconnText((model && model.owners && model.owners[0]) || normalized.owner_email || normalized.responsable, 'Quality owner pending', 26);
     var cleanDate = traceOpsPptFoxconnText(normalized.fecha || normalized.updated_at || '', 'Pending', 18);
     return traceOpsPptSafeTable([
-      [{text:'Stock status',options:{bold:true}},{text:'Quantity suspect',options:{bold:true}},{text:'Good part',options:{bold:true}},{text:'Bad part',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Clean date',options:{bold:true}}],
-      ['Stock in FJZ WHSE', traceOpsPptFoxconnText(normalized.qty_fjz_suspect, exposure, 20), traceOpsPptFoxconnText(normalized.qty_fjz_good, 'Pending clean split', 20), traceOpsPptFoxconnText(normalized.qty_fjz_bad, 'Pending suspect split', 20), owner, cleanDate],
-      ['Stock in external WHSE', traceOpsPptFoxconnText(normalized.qty_external_suspect, 'N/D', 20), traceOpsPptFoxconnText(normalized.qty_external_good, 'Pending clean split', 20), traceOpsPptFoxconnText(normalized.qty_external_bad, 'Pending suspect split', 20), owner, cleanDate],
-      ['Stock in SMT', traceOpsPptFoxconnText(normalized.qty_smt_suspect, 'N/D', 20), traceOpsPptFoxconnText(normalized.qty_smt_good, 'Pending clean split', 20), traceOpsPptFoxconnText(normalized.qty_smt_bad, 'Pending suspect split', 20), owner, cleanDate],
-      ['Stock in PCBA', traceOpsPptFoxconnText(normalized.qty_pcba_suspect, 'N/D', 20), traceOpsPptFoxconnText(normalized.qty_pcba_good, 'Pending clean split', 20), traceOpsPptFoxconnText(normalized.qty_pcba_bad, 'Pending suspect split', 20), owner, cleanDate],
-      ['Stock in DF', traceOpsPptFoxconnText(normalized.qty_df_suspect, 'N/D', 20), traceOpsPptFoxconnText(normalized.qty_df_good, 'Pending clean split', 20), traceOpsPptFoxconnText(normalized.qty_df_bad, 'Pending suspect split', 20), owner, cleanDate],
-      ['Other', traceOpsPptFoxconnText(normalized.qty_other_suspect, 'N/D', 20), traceOpsPptFoxconnText(normalized.qty_other_good, 'Pending clean split', 20), traceOpsPptFoxconnText(normalized.qty_other_bad, 'Pending suspect split', 20), owner, cleanDate]
+      [{text:'Stock status / location',options:{bold:true}},{text:'Quantity suspect',options:{bold:true}},{text:'Good part',options:{bold:true}},{text:'Bad part',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Clean date',options:{bold:true}}],
+      ['Stock in FJZ WHSE', traceOpsPptFoxconnText(normalized.qty_fjz_suspect, exposure, 18), traceOpsPptFoxconnText(normalized.qty_fjz_good, 'Pending', 18), traceOpsPptFoxconnText(normalized.qty_fjz_bad, 'Pending', 18), owner, cleanDate],
+      ['Stock in external WHSE', traceOpsPptFoxconnText(normalized.qty_external_suspect, 'N/D', 18), traceOpsPptFoxconnText(normalized.qty_external_good, 'Pending', 18), traceOpsPptFoxconnText(normalized.qty_external_bad, 'Pending', 18), owner, cleanDate],
+      ['Stock in SMT', traceOpsPptFoxconnText(normalized.qty_smt_suspect, 'N/D', 18), traceOpsPptFoxconnText(normalized.qty_smt_good, 'Pending', 18), traceOpsPptFoxconnText(normalized.qty_smt_bad, 'Pending', 18), owner, cleanDate],
+      ['Stock in PCBA', traceOpsPptFoxconnText(normalized.qty_pcba_suspect, 'N/D', 18), traceOpsPptFoxconnText(normalized.qty_pcba_good, 'Pending', 18), traceOpsPptFoxconnText(normalized.qty_pcba_bad, 'Pending', 18), owner, cleanDate],
+      ['Stock in DF', traceOpsPptFoxconnText(normalized.qty_df_suspect, 'N/D', 18), traceOpsPptFoxconnText(normalized.qty_df_good, 'Pending', 18), traceOpsPptFoxconnText(normalized.qty_df_bad, 'Pending', 18), owner, cleanDate],
+      ['Other / transit', traceOpsPptFoxconnText(normalized.qty_other_suspect, 'N/D', 18), traceOpsPptFoxconnText(normalized.qty_other_good, 'Pending', 18), traceOpsPptFoxconnText(normalized.qty_other_bad, 'Pending', 18), owner, cleanDate]
     ]);
   }
 
@@ -6707,33 +6707,48 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return rows;
   }
 
+
+  function traceOpsPptFoxconnAppendixChecklistRows(model, normalized){
+    var hasEvidence = traceOpsPptHasEvidence(normalized, model);
+    var status = hasEvidence ? 'Available' : 'Pending';
+    return traceOpsPptSafeTable([
+      [{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Reference',options:{bold:true}}],
+      ['Customer symptom image / data', status, traceOpsPptFoxconnText(normalized.customer_symptom_ref, 'Complaint / FA', 30)],
+      ['Golden reference comparison', traceOpsPptFoxconnText(normalized.golden_ref_status, hasEvidence ? 'Available' : 'Pending', 16), traceOpsPptFoxconnText(normalized.golden_ref_source, 'Golden sample / reference', 34)],
+      ['Installed-state vs removed-state comparison', traceOpsPptFoxconnText(normalized.installed_removed_status, hasEvidence ? 'Available' : 'Pending', 16), traceOpsPptFoxconnText(normalized.installed_removed_source, 'Repair / FA comparison', 34)],
+      ['Serial / batch trace', traceOpsPptFoxconnText(normalized.serial_trace_status, 'Pending', 16), traceOpsPptFoxconnText(normalized.serial_range || model.serialRange, 'Batch / serial record pending', 34)],
+      ['Control limitation explanation', traceOpsPptFoxconnText(normalized.control_gap_status, 'Under validation', 18), traceOpsPptFoxconnText(model.escapeSummary || normalized.d4_escape_point, 'Detection gap under validation', 34)],
+      ['Corrective action proof', traceOpsPptFoxconnText(normalized.action_proof_status, 'Pending', 16), traceOpsPptFoxconnText(normalized.d5_pca || model.pca, 'Action evidence pending', 34)]
+    ]);
+  }
+
   function traceOpsPptBuildTeamProblemSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D1 Team + D2 Problem Description', 'Foxconn standard D1 / D2 required fields', 1, (normalized.status || 'Draft'));
 
-    traceOpsPptBox(slide, 0.42, 1.66, 3.54, 5.10, 'FFFFFF');
+    traceOpsPptBox(slide, 0.42, 1.66, 4.04, 5.10, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'D1 Team', 0.58, 1.80, 1.4);
-    slide.addTable(traceOpsPptFoxconnRoleRows(model, normalized), {x:0.58, y:2.08, w:3.18, h:2.08, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:9.0, margin:0.04, rowH:0.29, colW:[0.42,0.98,0.88,0.90], fit:'shrink'});
-    traceOpsPptBox(slide, 0.58, 4.34, 3.18, 2.02, 'F8FBF9');
-    traceOpsPptPanelTitle(slide, 'Escalation', 0.74, 4.48, 1.2);
-    slide.addTable(traceOpsPptFoxconnEscalationRows(model, normalized), {x:0.74, y:4.74, w:2.86, h:1.42, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.7, margin:0.04, rowH:0.22, colW:[1.06,1.74], fit:'shrink'});
-    slide.addText(traceOpsPptWrap('Fields without confirmed owner data remain marked as Pending to preserve Foxconn required structure.', 120), {x:0.74, y:6.20, w:2.82, h:0.18, fontFace:TRACEOPS_PPT_FONT, fontSize:8.6, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addTable(traceOpsPptFoxconnRoleRows(model, normalized), {x:0.58, y:2.04, w:3.72, h:2.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.7, margin:0.04, rowH:0.31, colW:[0.38,1.06,1.02,1.20], fit:'shrink'});
+    traceOpsPptBox(slide, 0.58, 4.58, 3.72, 1.74, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, 'Escalation', 0.74, 4.72, 1.2);
+    slide.addTable(traceOpsPptFoxconnEscalationRows(model, normalized), {x:0.74, y:4.96, w:3.40, h:1.06, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.4, margin:0.04, rowH:0.16, colW:[1.36,2.00], fit:'shrink'});
+    slide.addText(traceOpsPptWrap('Mandatory Foxconn roles stay visible even when source ownership is still Pending.', 110), {x:0.74, y:6.08, w:3.28, h:0.16, fontFace:TRACEOPS_PPT_FONT, fontSize:8.2, color:'5F766C', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 4.10, 1.66, 8.80, 2.28, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'D2 Traceability', 4.28, 1.80, 1.8);
-    slide.addTable(traceOpsPptFoxconnTraceabilityRows(model, normalized), {x:4.28, y:2.08, w:8.46, h:1.60, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.8, margin:0.04, rowH:0.25, colW:[1.22,3.00,1.42,2.82], fit:'shrink'});
+    traceOpsPptBox(slide, 4.64, 1.66, 8.26, 2.46, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'D2 Traceability', 4.82, 1.80, 1.8);
+    slide.addTable(traceOpsPptFoxconnTraceabilityRows(model, normalized), {x:4.82, y:2.04, w:7.90, h:1.86, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.5, margin:0.04, rowH:0.29, colW:[1.10,2.72,1.28,2.80], fit:'shrink'});
 
-    traceOpsPptBox(slide, 4.10, 4.10, 4.98, 2.66, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, '5W2H problem delimitation', 4.28, 4.24, 2.2);
-    slide.addTable(traceOpsPptFoxconn5W2HRows(model, normalized), {x:4.28, y:4.50, w:4.60, h:1.94, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.8, margin:0.04, rowH:0.24, colW:[0.78,3.78], fit:'shrink'});
+    traceOpsPptBox(slide, 4.64, 4.30, 4.54, 2.46, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, '5W2H problem delimitation', 4.82, 4.44, 2.2);
+    slide.addTable(traceOpsPptFoxconn5W2HRows(model, normalized), {x:4.82, y:4.72, w:4.16, h:1.78, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.5, margin:0.04, rowH:0.25, colW:[0.70,3.42], fit:'shrink'});
 
     var bg = traceOpsPptFoxconnBadGoodRows(model, normalized);
-    traceOpsPptBox(slide, 9.30, 4.10, 3.60, 1.22, 'FDF5F4', 'E8B9B2');
-    traceOpsPptPanelTitle(slide, 'Bad part / situation', 9.48, 4.24, 1.8);
-    traceOpsPptDrawBulletList(slide, bg.bad, 9.50, 4.50, 3.06, 0.48, {fontSize:8.8, lineGap:0.18, maxItems:2});
-    traceOpsPptBox(slide, 9.30, 5.54, 3.60, 1.22, 'EEF8F2', 'B8DECE');
-    traceOpsPptPanelTitle(slide, 'Good part / situation', 9.48, 5.68, 1.8);
-    traceOpsPptDrawBulletList(slide, bg.good, 9.50, 5.94, 3.06, 0.48, {fontSize:8.8, lineGap:0.18, maxItems:2});
+    traceOpsPptBox(slide, 9.40, 4.30, 3.50, 1.06, 'FDF5F4', 'E8B9B2');
+    traceOpsPptPanelTitle(slide, 'Bad part / situation', 9.58, 4.44, 1.8);
+    traceOpsPptDrawBulletList(slide, bg.bad, 9.60, 4.70, 2.96, 0.34, {fontSize:8.4, lineGap:0.16, maxItems:2});
+    traceOpsPptBox(slide, 9.40, 5.62, 3.50, 1.06, 'EEF8F2', 'B8DECE');
+    traceOpsPptPanelTitle(slide, 'Good part / situation', 9.58, 5.76, 1.8);
+    traceOpsPptDrawBulletList(slide, bg.good, 9.60, 6.02, 2.96, 0.34, {fontSize:8.4, lineGap:0.16, maxItems:2});
     return slide;
   }
 
@@ -6741,19 +6756,20 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D3 Containment', 'Foxconn standard D3 containment by location', 2, (normalized.status || 'Draft'));
 
-    slide.addTable(traceOpsPptFoxconnContainmentRows(model, normalized), {x:0.42, y:1.82, w:12.48, h:2.24, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:9.0, margin:0.04, rowH:0.29, colW:[2.06,1.34,1.18,1.18,2.26,1.08], fit:'shrink'});
+    slide.addTable(traceOpsPptFoxconnContainmentRows(model, normalized), {x:0.42, y:1.82, w:12.48, h:2.56, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.8, margin:0.04, rowH:0.31, colW:[2.26,1.26,1.10,1.10,2.30,1.06], fit:'shrink'});
 
-    traceOpsPptBox(slide, 0.42, 4.24, 7.48, 2.16, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Additional containment actions', 0.58, 4.38, 2.4);
-    slide.addTable(traceOpsPptSafeTable([[{text:'Actions',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Clean date',options:{bold:true}}]].concat(traceOpsPptFoxconnContainmentActions(model, normalized).slice(0,4).map(function(item){ return [item, traceOpsPptFoxconnText((model.owners&&model.owners[0])||normalized.owner_email||normalized.responsable,'Quality owner pending',28), traceOpsPptFoxconnText(normalized.fecha||normalized.updated_at,'Pending',18)]; }))), {x:0.60, y:4.68, w:7.08, h:1.42, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.8, margin:0.04, rowH:0.26, colW:[4.82,1.34,0.92], fit:'shrink'});
+    traceOpsPptBox(slide, 0.42, 4.52, 7.54, 1.88, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Additional containment actions', 0.58, 4.66, 2.4);
+    slide.addTable(traceOpsPptSafeTable([[{text:'Actions',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Clean date',options:{bold:true}}]].concat(traceOpsPptFoxconnContainmentActions(model, normalized).slice(0,5).map(function(item){ return [item, traceOpsPptFoxconnText((model.owners&&model.owners[0])||normalized.owner_email||normalized.responsable,'Quality owner pending',28), traceOpsPptFoxconnText(normalized.fecha||normalized.updated_at,'Pending',18)]; }))), {x:0.60, y:4.94, w:7.18, h:1.18, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.6, margin:0.04, rowH:0.22, colW:[4.92,1.34,0.92], fit:'shrink'});
 
-    traceOpsPptBox(slide, 8.14, 4.24, 4.76, 2.16, 'F8FBF9');
-    traceOpsPptPanelTitle(slide, 'Customer notification / shielding', 8.30, 4.38, 2.6);
-    traceOpsPptDrawBulletList(slide, [
-      'Notify customer / internal owner of containment status within 24 hours when exposure exists.',
-      'Maintain shielding until suspect, clean and rejected population are documented.',
-      'Release only after owner, clean date and lot segregation evidence are confirmed.'
-    ], 8.32, 4.68, 4.22, 1.22, {fontSize:9.2, lineGap:0.20, maxItems:3});
+    traceOpsPptBox(slide, 8.18, 4.52, 4.72, 1.88, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, 'Customer notification / shielding', 8.34, 4.66, 2.6);
+    slide.addTable(traceOpsPptSafeTable([
+      [{text:'Requirement',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],
+      ['24h notification', 'Required', 'Notify customer / internal owner when exposure exists'],
+      ['Shielding active', 'Required', 'Maintain shielding until suspect vs clean split is documented'],
+      ['Release gate', 'Required', 'Release only after owner, clean date and lot segregation evidence']
+    ]), {x:8.34, y:4.94, w:4.22, h:1.18, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.2, margin:0.04, rowH:0.21, colW:[1.18,0.78,2.18], fit:'shrink'});
 
     traceOpsPptBox(slide, 0.42, 6.54, 12.48, 0.40, '10231C', '10231C');
     slide.addText(traceOpsPptSafe('Owner', 20), {x:0.62, y:6.67, w:0.7, h:0.10, fontFace:TRACEOPS_PPT_FONT, fontSize:8.6, bold:true, color:'A8D6C4', margin:0});
@@ -6821,19 +6837,19 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D5 - Permanent Corrective Actions', 'Foxconn standard D5 action matrix', 5, (normalized.status || 'Draft'));
 
-    slide.addText(traceOpsPptWrap('Each row remains visible even when source data is pending; use Pending or N/D instead of leaving Foxconn required fields blank.', 185), {x:0.58, y:1.82, w:12.00, h:0.18, fontFace:TRACEOPS_PPT_FONT, fontSize:TRACEOPS_PPT_SUBTITLE_SIZE, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap('Occurrence, detection and system actions remain visible row by row. Pending or N/D preserves required Foxconn fields.', 175), {x:0.58, y:1.82, w:12.00, h:0.18, fontFace:TRACEOPS_PPT_FONT, fontSize:13.2, color:'5F766C', margin:0, fit:'shrink'});
 
     var rows = traceOpsPptFoxconnActionRows(model, normalized);
     var table = traceOpsPptSafeTable([[{text:'Occurrence / Detection / System',options:{bold:true}},{text:'Corrective Actions',options:{bold:true}},{text:'ECD',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Status',options:{bold:true}}]].concat(rows));
-    slide.addTable(table, {x:0.42, y:2.10, w:12.48, h:3.76, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:9.4, margin:0.05, rowH:0.52, colW:[2.04,5.46,1.12,1.88,1.98], fit:'shrink'});
+    slide.addTable(table, {x:0.42, y:2.10, w:12.48, h:4.06, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:9.1, margin:0.05, rowH:0.56, colW:[2.18,5.24,1.18,1.86,2.02], fit:'shrink'});
 
-    traceOpsPptBox(slide, 0.42, 6.02, 6.10, 0.66, 'F8FBF9');
-    traceOpsPptPanelTitle(slide, 'Control improvement', 0.58, 6.12, 1.6);
-    slide.addText(traceOpsPptWrap(model.pca || normalized.d5_pca || 'Pending control improvement detail.', 180), {x:0.60, y:6.32, w:5.54, h:0.18, fontFace:TRACEOPS_PPT_FONT, fontSize:8.8, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 0.42, 6.26, 6.10, 0.42, 'F8FBF9');
+    traceOpsPptPanelTitle(slide, 'Control improvement', 0.58, 6.34, 1.6);
+    slide.addText(traceOpsPptWrap(model.pca || normalized.d5_pca || 'Pending control improvement detail.', 170), {x:2.18, y:6.34, w:4.08, h:0.12, fontFace:TRACEOPS_PPT_FONT, fontSize:8.4, color:'10231C', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 6.80, 6.02, 6.10, 0.66, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Risk mitigation achieved', 6.96, 6.12, 1.8);
-    slide.addText(traceOpsPptWrap('Occurrence, detection and system closure gates remain mapped in the action matrix above.', 180), {x:6.98, y:6.32, w:5.54, h:0.18, fontFace:TRACEOPS_PPT_FONT, fontSize:8.8, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 6.80, 6.26, 6.10, 0.42, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Risk mitigation achieved', 6.96, 6.34, 1.8);
+    slide.addText(traceOpsPptWrap('Occurrence, detection and system closure gates remain mapped in the matrix.', 170), {x:8.90, y:6.34, w:3.70, h:0.12, fontFace:TRACEOPS_PPT_FONT, fontSize:8.4, color:'10231C', margin:0, fit:'shrink'});
     return slide;
   }
 
@@ -6841,21 +6857,21 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D6 - Verification of Effectiveness', 'Foxconn standard D6 validation matrix', 6, traceOpsEightdHasText(normalized.d6_validation) ? 'Under Validation' : 'Evidence Pending');
 
-    slide.addText(traceOpsPptWrap('Verification remains action-by-action: measurement method, efficacy result, responsible owner and completion date must stay visible.', 190), {x:0.58, y:1.82, w:12.00, h:0.18, fontFace:TRACEOPS_PPT_FONT, fontSize:TRACEOPS_PPT_SUBTITLE_SIZE, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap('Verification remains action-by-action: measurement method, efficacy result, responsible owner and completion date must stay visible.', 190), {x:0.58, y:1.82, w:12.00, h:0.18, fontFace:TRACEOPS_PPT_FONT, fontSize:13.2, color:'5F766C', margin:0, fit:'shrink'});
 
     var rows = traceOpsPptFoxconnVerificationRows(model, normalized);
-    slide.addTable(traceOpsPptSafeTable([[{text:'Corrective Actions',options:{bold:true}},{text:'Corrective Action Measurement Method',options:{bold:true}},{text:'Corrective Action Validation Efficacy Results',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Completion Date',options:{bold:true}}]].concat(rows)), {x:0.42, y:2.10, w:12.48, h:3.88, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:9.0, margin:0.05, rowH:0.58, colW:[3.06,2.86,3.82,1.26,1.48], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Corrective Actions',options:{bold:true}},{text:'Corrective Action Measurement Method',options:{bold:true}},{text:'Corrective Action Validation Efficacy Results',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Completion Date',options:{bold:true}}]].concat(rows)), {x:0.42, y:2.10, w:12.48, h:4.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.8, margin:0.05, rowH:0.60, colW:[3.00,2.84,3.90,1.24,1.50], fit:'shrink'});
 
-    traceOpsPptBox(slide, 0.42, 6.16, 4.00, 0.54, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Acceptance criteria', 0.58, 6.28, 1.6);
-    slide.addText(traceOpsPptWrap('No recurrence signature, stable control behavior and traceable closure evidence.', 96), {x:2.08, y:6.28, w:2.10, h:0.14, fontFace:TRACEOPS_PPT_FONT, fontSize:8.6, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 0.42, 6.28, 4.00, 0.42, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Acceptance criteria', 0.58, 6.36, 1.6);
+    slide.addText(traceOpsPptWrap('No recurrence signature, stable control behavior and traceable closure evidence.', 96), {x:2.08, y:6.36, w:2.10, h:0.10, fontFace:TRACEOPS_PPT_FONT, fontSize:8.2, color:'10231C', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 4.66, 6.16, 4.00, 0.54, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Recurrence status', 4.82, 6.28, 1.6);
-    slide.addText(traceOpsPptWrap(traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation; no recurrence confirmed in current window.' : 'Pending confirmation in current validation window.', 96), {x:6.18, y:6.28, w:2.20, h:0.14, fontFace:TRACEOPS_PPT_FONT, fontSize:8.6, color:'10231C', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 4.66, 6.28, 4.00, 0.42, 'FFFFFF');
+    traceOpsPptPanelTitle(slide, 'Recurrence status', 4.82, 6.36, 1.6);
+    slide.addText(traceOpsPptWrap(traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation; no recurrence confirmed in current window.' : 'Pending confirmation in current validation window.', 96), {x:6.18, y:6.36, w:2.20, h:0.10, fontFace:TRACEOPS_PPT_FONT, fontSize:8.2, color:'10231C', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 8.90, 6.16, 4.00, 0.54, '10231C', '10231C');
-    slide.addText(traceOpsPptWrap(traceOpsPptVerificationConclusionText(model, normalized), 150), {x:9.18, y:6.28, w:3.42, h:0.14, fontFace:TRACEOPS_PPT_FONT, fontSize:8.8, color:'D7E7E0', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 8.90, 6.28, 4.00, 0.42, '10231C', '10231C');
+    slide.addText(traceOpsPptWrap(traceOpsPptVerificationConclusionText(model, normalized), 150), {x:9.18, y:6.36, w:3.42, h:0.10, fontFace:TRACEOPS_PPT_FONT, fontSize:8.4, color:'D7E7E0', margin:0, fit:'shrink'});
     return slide;
   }
 
@@ -6878,11 +6894,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:4.48, w:2.0, h:0.18, fontFace:TRACEOPS_PPT_FONT, fontSize:TRACEOPS_PPT_SECTION_SIZE, bold:true, color:'5F766C'});
     var evidenceRows = traceOpsPptEventRows(normalized);
     var tableData = traceOpsPptSafeTable([[{text:'Process Step',options:{bold:true}},{text:'Timestamp',options:{bold:true}},{text:'Result',options:{bold:true}},{text:'Observation',options:{bold:true}},{text:'Source',options:{bold:true}},{text:'Why it matters',options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : []));
-    slide.addTable(tableData, {x:0.42, y:4.72, w:8.80, h:1.30, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:TRACEOPS_PPT_TABLE_SIZE, margin:0.05, rowH:0.25, colW:[1.18,1.04,0.90,2.30,0.88,2.50], fit:'shrink'});
+    slide.addTable(tableData, {x:0.42, y:4.72, w:8.54, h:1.30, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:TRACEOPS_PPT_TABLE_SIZE, margin:0.05, rowH:0.25, colW:[1.14,1.00,0.88,2.22,0.86,2.44], fit:'shrink'});
 
-    traceOpsPptBox(slide, 9.48, 4.72, 3.42, 1.30, 'F8FBF9');
-    traceOpsPptPanelTitle(slide, 'Evidence checklist', 9.64, 4.86, 1.8);
-    traceOpsPptDrawBulletList(slide, ['Customer symptom image / data','Golden reference comparison','Installed-state vs removed-state comparison','Serial / batch trace','Control limitation explanation','Corrective action proof'], 9.66, 5.12, 2.98, 0.72, {fontSize:8.9, lineGap:0.18, maxItems:6});
+    slide.addTable(traceOpsPptFoxconnAppendixChecklistRows(model, normalized), {x:9.18, y:4.72, w:3.72, h:1.30, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:TRACEOPS_PPT_FONT, fontSize:8.0, margin:0.04, rowH:0.18, colW:[1.78,0.58,1.24], fit:'shrink'});
 
     traceOpsPptBox(slide, 0.42, 6.18, 12.48, 0.56, '10231C', '10231C');
     slide.addText(traceOpsPptWrap('Foxconn required checkpoints remain visible in this appendix. Missing source data is marked as Pending or N/D to preserve compliance structure.', 210), {x:0.66, y:6.38, w:11.80, h:0.14, fontFace:TRACEOPS_PPT_FONT, fontSize:TRACEOPS_PPT_META_SIZE, bold:true, color:'D7E7E0', margin:0, fit:'shrink'});
