@@ -4600,8 +4600,7 @@ function traceOpsExportMaterialGapCsvLocal(rows){
   var body = (rows || []).map(function(r){
     return [r.eventId,r.date,r.line,r.station,r.model,r.stageLabel,r.missingStep,r.evidenceStatus,r.owner,r.status,r.summary].map(esc).join(",");
   });
-  var csv = [headers.join(",")].concat(body).join("
-");
+  __PLACEHOLDER__
   var blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
   var url = URL.createObjectURL(blob);
   var a = document.createElement("a");
@@ -8062,7 +8061,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
                   <div className="traceops-material-inline">
                     <span className="traceops-material-pill">Top 2 = {materialGapAnalysis.top2Pct.toFixed(1)}%</span>
                     <span className="traceops-material-subpill">Top 3 = {materialGapAnalysis.top3Pct.toFixed(1)}%</span>
-                    <span className="traceops-material-subpill">80/20 focus = LCR -> checkout -> WO/PN</span>
+                    <span className="traceops-material-subpill">80/20 focus = LCR {'->'} checkout {'->'} WO/PN</span>
                   </div>
                 </div>
                 <div className="traceops-material-card">
@@ -8575,7 +8574,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:10}}>
                     <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Drafts</div><div style={{fontSize:26,fontWeight:800,color:"#1A1714",marginTop:5}}>{eightdList.length}</div></div>
-                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Ready >= 85%</div><div style={{fontSize:26,fontWeight:800,color:"#1E7B58",marginTop:5}}>{eightdList.filter(function(item){return (item.readiness_score||0)>=85;}).length}</div></div>
+                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Ready {'>='} 85%</div><div style={{fontSize:26,fontWeight:800,color:"#1E7B58",marginTop:5}}>{eightdList.filter(function(item){return (item.readiness_score||0)>=85;}).length}</div></div>
                     <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Need review</div><div style={{fontSize:26,fontWeight:800,color:"#B87820",marginTop:5}}>{eightdList.filter(function(item){return (item.readiness_score||0)<85;}).length}</div></div>
                     <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>RCCA source</div><div style={{fontSize:26,fontWeight:800,color:"#6B2DA8",marginTop:5}}>{rccaList.length}</div></div>
                   </div>
