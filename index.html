@@ -6764,6 +6764,15 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       if (norm) existingSet[norm] = true;
     });
 
+    for (var f = 0; f < fileNames.length; f++) {
+      var currentName = fileNames[f];
+      if (!zip.file(currentName)) continue;
+      if (!/\.(xml|rels)$/i.test(currentName)) continue;
+      var currentXml = await zip.file(currentName).async('string');
+      var cleanedXml = traceOpsNormalizeOpenXmlMarkup(currentXml);
+      if (cleanedXml !== currentXml) zip.file(currentName, cleanedXml);
+    }
+
     var slideNames = fileNames.filter(function(name) {
       return /^ppt\/slides\/slide\d+\.xml$/i.test(name);
     });
@@ -6771,14 +6780,14 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     for (var i = 0; i < slideNames.length; i++) {
       var slideName = slideNames[i];
       var slideXml = await zip.file(slideName).async('string');
-      var fixedSlideXml = traceOpsRenumberDuplicateCnvPrIds(slideXml);
+      var fixedSlideXml = traceOpsRenumberDuplicateCnvPrIds(traceOpsNormalizeOpenXmlMarkup(slideXml));
       if (fixedSlideXml !== slideXml) zip.file(slideName, fixedSlideXml);
     }
 
     var contentTypesPath = '[Content_Types].xml';
     if (zip.file(contentTypesPath)) {
       var ctXml = await zip.file(contentTypesPath).async('string');
-      var fixedCtXml = traceOpsRemoveMissingContentTypeOverrides(ctXml, existingSet);
+      var fixedCtXml = traceOpsRemoveMissingContentTypeOverrides(traceOpsNormalizeOpenXmlMarkup(ctXml), existingSet);
       if (fixedCtXml !== ctXml) zip.file(contentTypesPath, fixedCtXml);
     }
 
@@ -6790,7 +6799,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     for (var r = 0; r < relNames.length; r++) {
       var relName = relNames[r];
       var relXml = await zip.file(relName).async('string');
-      var cleaned = traceOpsRemoveMissingInternalRelationships(relXml, relName, existingSet);
+      var cleaned = traceOpsRemoveMissingInternalRelationships(traceOpsNormalizeOpenXmlMarkup(relXml), relName, existingSet);
       relMap[relName] = cleaned.keptIds || [];
       if (cleaned.xml !== relXml) zip.file(relName, cleaned.xml);
     }
@@ -6799,8 +6808,20 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var presXmlPath = 'ppt/presentation.xml';
     if (zip.file(presXmlPath) && relMap[presRelsPath]) {
       var presXml = await zip.file(presXmlPath).async('string');
-      var fixedPresXml = traceOpsRemoveMissingPresentationMasterRefs(presXml, relMap[presRelsPath]);
+      var fixedPresXml = traceOpsRemoveMissingPresentationRelRefs(traceOpsNormalizeOpenXmlMarkup(presXml), relMap[presRelsPath]);
       if (fixedPresXml !== presXml) zip.file(presXmlPath, fixedPresXml);
+    }
+
+    var masterNames = fileNames.filter(function(name) {
+      return /^ppt\/slideMasters\/slideMaster\d+\.xml$/i.test(name);
+    });
+    for (var m = 0; m < masterNames.length; m++) {
+      var masterName = masterNames[m];
+      var relPath = masterName.replace(/^(.*)\/([^/]+)\.xml$/i, '$1/_rels/$2.xml.rels');
+      if (!zip.file(masterName)) continue;
+      var masterXml = await zip.file(masterName).async('string');
+      var fixedMasterXml = traceOpsRemoveMissingSlideMasterLayoutRefs(traceOpsNormalizeOpenXmlMarkup(masterXml), relMap[relPath] || []);
+      if (fixedMasterXml !== masterXml) zip.file(masterName, fixedMasterXml);
     }
 
     return await zip.generateAsync({
@@ -6907,11 +6928,30 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return { xml: cleanedXml, keptIds: keptIds };
   }
 
-  function traceOpsRemoveMissingPresentationMasterRefs(xml, validRelIds) {
+  function traceOpsRemoveMissingPresentationRelRefs(xml, validRelIds) {
     if (!xml) return xml;
     var valid = {};
     (validRelIds || []).forEach(function(id) { valid[String(id)] = true; });
-    return xml.replace(/\s*<p:sldMasterId\b[^>]*r:id="([^"]+)"[^>]*\/?>/g, function(match, rid) {
+    return String(xml)
+      .replace(/\s*<p:sldMasterId\b[^>]*r:id="([^"]+)"[^>]*\/?>/g, function(match, rid) {
+        return valid[rid] ? match : '';
+      })
+      .replace(/\s*<p:sldId\b[^>]*r:id="([^"]+)"[^>]*\/?>/g, function(match, rid) {
+        return valid[rid] ? match : '';
+      })
+      .replace(/\s*<p:notesMasterId\b[^>]*r:id="([^"]+)"[^>]*\/?>/g, function(match, rid) {
+        return valid[rid] ? match : '';
+      })
+      .replace(/\s*<p:handoutMasterId\b[^>]*r:id="([^"]+)"[^>]*\/?>/g, function(match, rid) {
+        return valid[rid] ? match : '';
+      });
+  }
+
+  function traceOpsRemoveMissingSlideMasterLayoutRefs(xml, validRelIds) {
+    if (!xml) return xml;
+    var valid = {};
+    (validRelIds || []).forEach(function(id) { valid[String(id)] = true; });
+    return String(xml).replace(/\s*<p:sldLayoutId\b[^>]*r:id="([^"]+)"[^>]*\/?>/g, function(match, rid) {
       return valid[rid] ? match : '';
     });
   }
