@@ -1796,6 +1796,46 @@ body.traceops-premium-shell .day-btn:not(.active) *{
 }
 /* ==== END MOBILE TOPBAR OVERFLOW FIX V2 ==== */
 
+
+
+.traceops-material-panel{background:#fff;border:1px solid #E3ECE8;border-radius:22px;overflow:hidden;box-shadow:0 2px 12px rgba(20,32,51,.04);margin:0 0 16px}
+.traceops-material-head{padding:16px 18px;border-bottom:1px solid #EAF2EE;background:#F6FBF8;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.traceops-material-note{font-size:10.5px;color:#6A6560;margin-top:6px;line-height:1.45}
+.traceops-material-body{padding:16px 18px;display:flex;flex-direction:column;gap:16px}
+.traceops-material-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.traceops-material-kpi{background:linear-gradient(180deg,#FFFFFF,#F8FBF9);border:1px solid #E3ECE8;border-radius:18px;padding:14px 16px;box-shadow:0 1px 8px rgba(20,32,51,.03)}
+.traceops-material-kpi .lbl{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5F766C}
+.traceops-material-kpi .val{font-size:28px;line-height:1;font-weight:800;color:#10231C;margin-top:6px}
+.traceops-material-kpi .meta{margin-top:6px;font-size:11px;color:#5F766C}
+.traceops-material-grid{display:grid;grid-template-columns:1.25fr .95fr;gap:16px}
+.traceops-material-chart{display:flex;flex-direction:column;gap:12px}
+.traceops-material-bar{border:1px solid #E3ECE8;border-radius:16px;background:#fff;padding:12px 14px}
+.traceops-material-bar-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.traceops-material-bar-title{font-size:11.5px;font-weight:700;color:#10231C}
+.traceops-material-bar-metrics{font-size:10.5px;color:#5F766C;display:flex;gap:10px;flex-wrap:wrap}
+.traceops-material-bar-track{height:10px;background:#ECF2EE;border-radius:999px;overflow:hidden;margin-bottom:7px}
+.traceops-material-bar-fill{height:10px;border-radius:999px;background:linear-gradient(90deg,#1E8A64,#19A76E)}
+.traceops-material-cum{font-size:10px;color:#5F766C}
+.traceops-material-drivers{display:flex;flex-direction:column;gap:10px}
+.traceops-material-driver{border:1px solid #E3ECE8;border-radius:16px;background:#fff;padding:12px 14px}
+.traceops-material-driver h4{font-size:12.5px;font-weight:800;color:#10231C;margin:0 0 4px}
+.traceops-material-driver p{font-size:10.5px;color:#5F766C;line-height:1.45;margin:0 0 8px}
+.traceops-material-chiprow{display:flex;gap:8px;flex-wrap:wrap}
+.traceops-material-chip{border:1px solid #D7E6DE;background:#fff;color:#1A5B45;border-radius:999px;padding:8px 12px;font-size:10.5px;font-weight:700;cursor:pointer}
+.traceops-material-chip.active{background:#1A5B45;color:#fff;border-color:#1A5B45}
+.traceops-material-tablewrap{overflow-x:auto;border:1px solid #E3ECE8;border-radius:18px}
+.traceops-material-table{width:100%;border-collapse:collapse;font-size:11px;background:#fff}
+.traceops-material-table th{background:#F6FBF8;color:#5F766C;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:10px 12px;border-bottom:1px solid #E7EFEA;text-align:left;white-space:nowrap}
+.traceops-material-table td{padding:10px 12px;border-bottom:1px solid #EEF4F0;color:#33463F;vertical-align:top;line-height:1.45}
+.traceops-material-table tr:last-child td{border-bottom:none}
+.traceops-material-empty{padding:18px;border:1px dashed #D7E6DE;border-radius:16px;background:#FBFDFC;font-size:12px;color:#5F766C}
+.traceops-material-badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;letter-spacing:.04em}
+.traceops-material-actions{display:flex;gap:6px;flex-wrap:wrap}
+.traceops-material-btn{border:1px solid #D7D3CC;background:#fff;color:#1A1714;border-radius:10px;padding:7px 10px;font-size:10.5px;font-weight:700;cursor:pointer}
+.traceops-material-btn.primary{background:#1E5C48;border-color:#1E5C48;color:#fff}
+@media(max-width:1180px){.traceops-material-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.traceops-material-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.traceops-material-kpis{grid-template-columns:1fr}.traceops-material-head,.traceops-material-body{padding:14px}.traceops-material-btn{width:100%;justify-content:center}}
+
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -4518,6 +4558,149 @@ function traceOpsAdminTokenCeiling(){
 
 
 
+
+function traceOpsMaterialNorm(text){
+  return String(text||"")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9\/\-\s]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function traceOpsMaterialIncludesAny(text, values){
+  var s=String(text||"");
+  for(var i=0;i<(values||[]).length;i++){
+    if(s.indexOf(values[i])>=0) return true;
+  }
+  return false;
+}
+
+function traceOpsMaterialTraceBlob(ev){
+  return [
+    ev&&ev.tipo_evento||"",
+    ev&&ev.defecto_smt||"",
+    ev&&ev.evento_detectado_full||ev&&ev.evento_detectado||"",
+    ev&&ev.engineer_findings_full||ev&&ev.engineer_findings||"",
+    ev&&ev.accion_requerida||"",
+    ev&&ev.accion_ejecutada_full||ev&&ev.accion_ejecutada||"",
+    ev&&ev.impacto||"",
+    ev&&ev.notas||"",
+    ev&&ev.linea_estacion||"",
+    ev&&ev.modelo||""
+  ].join(" | ");
+}
+
+function traceOpsDeriveMaterialGap(ev){
+  if(!ev) return null;
+  var blob=traceOpsMaterialTraceBlob(ev);
+  var norm=traceOpsMaterialNorm(blob);
+  var eligibleByType=String(ev.tipo_evento||"").toLowerCase()==="material";
+  var materialSignals=["material","reel","feeder","part number","pn "," p n ","wo ","work order","checkout","salida","kitting","traceability","lcr","wrong reel","wrong component","missing material","falta material","material mix","lot","serial","scan out","issue to line"];
+  var eligibleByText=traceOpsMaterialIncludesAny(norm, materialSignals);
+  if(!eligibleByType && !eligibleByText) return null;
+
+  var rules=[
+    {
+      stage:"LCR / QA release missing",
+      missingStep:"Quality release before material movement",
+      ownerHint:"Quality",
+      tokens:[" lcr ","lcr vencido","qa release","release pending","liberacion qa","sin liberacion","material hold","hold por lcr","qa no libero","qa no libero","qa not released","lib release","release missing"]
+    },
+    {
+      stage:"Material checkout / salida missing",
+      missingStep:"Material movement registration before line consumption",
+      ownerHint:"Materiales / Kitting",
+      tokens:["checkout","salida","scan out","issue to line","issue material","material no descargado","sin salida","no checkout","consumo no registrado","kitting out","issue missing","material issue"]
+    },
+    {
+      stage:"WO / PN linkage incorrect",
+      missingStep:"Correct WO-PN-lot-serial validation before use",
+      ownerHint:"Materiales / Kitting",
+      tokens:["wo no coincide","wrong wo","wrong pn","pn mismatch","part number mismatch","wo pn","linkage","serial mismatch","lot mismatch","wrong reel","wrong component","reel equivocado","componente equivocado","material mix","mix de material"]
+    },
+    {
+      stage:"Handoff without trace",
+      missingStep:"Inter-area handoff registration",
+      ownerHint:"Produccion / Materiales",
+      tokens:["handoff","transfer","traspaso","entrega","move to line","paso a linea","paso a linea","sin traza","sin scan","sin registro","no record","moved without trace","line side without trace"]
+    }
+  ];
+
+  var chosen=null;
+  for(var i=0;i<rules.length;i++){
+    var hits=[];
+    for(var j=0;j<rules[i].tokens.length;j++){
+      if(norm.indexOf(rules[i].tokens[j])>=0) hits.push(rules[i].tokens[j]);
+    }
+    if(hits.length){
+      chosen={rule:rules[i],hits:hits};
+      break;
+    }
+  }
+
+  if(!chosen){
+    return {
+      traceability_gap_stage:"No traceability gap identified",
+      traceability_gap_confidence:eligibleByType?"Medium":"Low",
+      traceability_gap_basis:eligibleByType?["tipo_evento=Material"]:["material-text-signal"],
+      traceability_missing_step:"None inferred",
+      traceability_owner_hint:"N/A",
+      traceability_is_derived:true,
+      traceability_rule_version:"v1.0"
+    };
+  }
+
+  var confidence = chosen.hits.length >= 2 ? "High" : (eligibleByType ? "Medium" : "Low");
+  return {
+    traceability_gap_stage:chosen.rule.stage,
+    traceability_gap_confidence:confidence,
+    traceability_gap_basis:chosen.hits,
+    traceability_missing_step:chosen.rule.missingStep,
+    traceability_owner_hint:chosen.rule.ownerHint,
+    traceability_is_derived:true,
+    traceability_rule_version:"v1.0"
+  };
+}
+
+function traceOpsMaterialEvidenceSummary(ev){
+  var txt = String(ev&&(
+    ev.engineer_findings_full || ev.engineer_findings || ev.evento_detectado_full || ev.evento_detectado || ev.accion_requerida || ev.impacto || ""
+  )).replace(/\s+/g," ").trim();
+  if(!txt) return "-";
+  return txt.length>180 ? txt.slice(0,179)+"…" : txt;
+}
+
+function traceOpsMaterialStageTone(stage){
+  var map={
+    "LCR / QA release missing":{bg:"#FDEEEE",border:"#F3D4D4",fg:"#C44141"},
+    "Material checkout / salida missing":{bg:"#FFF7E8",border:"#F2DFC0",fg:"#9A6A16"},
+    "WO / PN linkage incorrect":{bg:"#EEF7F2",border:"#D8EADF",fg:"#1E7B58"},
+    "Handoff without trace":{bg:"#F5F0FE",border:"#DBCDF8",fg:"#6B2DA8"},
+    "No traceability gap identified":{bg:"#F5F7FA",border:"#D9E1E7",fg:"#5F766C"}
+  };
+  return map[stage] || map["No traceability gap identified"];
+}
+
+function traceOpsDownloadCsv(filename, rows){
+  if(!(rows||[]).length) return;
+  var headers=Object.keys(rows[0]||{});
+  var lines=[headers.join(",")].concat(rows.map(function(row){
+    return headers.map(function(h){
+      var v=row[h]==null?"":String(row[h]);
+      if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
+      return v;
+    }).join(",");
+  }));
+  var blob=new Blob([lines.join("\n")],{type:"text/csv;charset=utf-8;"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 const TRACEOPS_NIGHT_OPS_HERO = 'hero-night-ops.jpeg';
 function App() {
   var stateArr = _useState("idle");
@@ -4731,6 +4914,7 @@ function App() {
   }, []);
 
   var pfArr = _useState(""); var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
+  var materialGapArr = _useState("all"); var materialGapFilter = materialGapArr[0]; var setMaterialGapFilter = materialGapArr[1];
   var imgsArr = _useState([]); var zipImgNames = imgsArr[0]; var setZipImgNames = imgsArr[1];
   var mediaNoiseArr = _useState(0); var filteredMediaCount = mediaNoiseArr[0]; var setFilteredMediaCount = mediaNoiseArr[1];
   var mediaRangeArr = _useState(0); var mediaOutOfRangeCount = mediaRangeArr[0]; var setMediaOutOfRangeCount = mediaRangeArr[1];
@@ -6568,56 +6752,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return slide;
   }
 
-
-  async function traceOpsFixPptxDuplicateShapeIds(arrayBuffer) {
-    await window.ensureZipTools();
-    var zip = await JSZip.loadAsync(arrayBuffer);
-    var slideNames = Object.keys(zip.files).filter(function(name) {
-      return /^ppt\/slides\/slide\d+\.xml$/i.test(name);
-    });
-
-    for (var i = 0; i < slideNames.length; i++) {
-      var slideName = slideNames[i];
-      var xmlFile = zip.file(slideName);
-      if (!xmlFile) continue;
-      var xml = await xmlFile.async('string');
-      zip.file(slideName, traceOpsRenumberDuplicateCnvPrIds(xml));
-    }
-
-    return await zip.generateAsync({
-      type: 'arraybuffer',
-      compression: 'DEFLATE'
-    });
-  }
-
-  function traceOpsRenumberDuplicateCnvPrIds(xml) {
-    if (!xml) return xml;
-
-    var allIds = [];
-    xml.replace(/<p:cNvPr\b[^>]*\bid="(\d+)"/g, function(_, id) {
-      allIds.push(parseInt(id, 10) || 0);
-      return _;
-    });
-
-    var maxId = allIds.reduce(function(max, value) {
-      return value > max ? value : max;
-    }, 0);
-    var seen = Object.create(null);
-
-    return xml.replace(/(<p:cNvPr\b[^>]*\bid=")(\d+)(")/g, function(_, start, id, end) {
-      var num = parseInt(id, 10) || 0;
-      if (!seen[num]) {
-        seen[num] = true;
-        return start + num + end;
-      }
-
-      maxId += 1;
-      while (seen[maxId]) maxId += 1;
-      seen[maxId] = true;
-      return start + maxId + end;
-    });
-  }
-
   function exportEightdPpt(draft) {
     if (!draft) return;
     var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
@@ -6652,7 +6786,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
       if (typeof pptx.write === 'function') {
         var arr = await pptx.write({ outputType: 'arraybuffer', compression: true });
-        arr = await traceOpsFixPptxDuplicateShapeIds(arr);
         var blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
@@ -7093,6 +7226,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     setZipImgNames([]);setImgMeta({});setEvImgs({});setLightbox(null);setGalPage(0);
     setFilterMode("quick");setDateFrom("");setDateTo("");setWeekNum("");setWeekYear(new Date().getFullYear());
     setBitacoraSortKey("fecha");setBitacoraSortDir("desc");
+    setMaterialGapFilter("all");
     setViewDateFrom("");setViewDateTo("");setViewHourFrom("");setViewHourTo("");
     setCalendarView("7d");setCalendarAnchorIso("");
     setRccaForm(null);setRccaDetail(null);
@@ -7429,6 +7563,98 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     if((b.missingLine?1:0)!==(a.missingLine?1:0)) return (b.missingLine?1:0)-(a.missingLine?1:0);
     return parseBitacoraDateValue(a)-parseBitacoraDateValue(b);
   }).slice(0,5);
+
+  var materialStagesOrdered=[
+    "LCR / QA release missing",
+    "Material checkout / salida missing",
+    "WO / PN linkage incorrect",
+    "Handoff without trace",
+    "No traceability gap identified"
+  ];
+  var materialVisibleEvents=ev.map(function(item){
+    var derived=traceOpsDeriveMaterialGap(item);
+    if(!derived) return null;
+    return Object.assign({}, item, derived);
+  }).filter(Boolean);
+  var materialGapTagged=materialVisibleEvents.filter(function(item){
+    return item.traceability_gap_stage!=="No traceability gap identified" && item.traceability_gap_confidence!=="Low";
+  });
+  var materialParetoRows=materialStagesOrdered.filter(function(stage){
+    return stage!=="No traceability gap identified";
+  }).map(function(stage){
+    var rows=materialGapTagged.filter(function(item){ return item.traceability_gap_stage===stage; });
+    return {stage:stage,count:rows.length,rows:rows};
+  }).filter(function(row){ return row.count>0; }).sort(function(a,b){ return b.count-a.count; });
+  var materialParetoTotal=materialGapTagged.length;
+  var materialParetoMax=materialParetoRows.reduce(function(acc,row){ return Math.max(acc,row.count||0); }, 1);
+  var cumulativeCount=0;
+  materialParetoRows=materialParetoRows.map(function(row){
+    cumulativeCount += row.count;
+    return Object.assign({}, row, {
+      pct: materialParetoTotal ? Math.round((row.count/materialParetoTotal)*100) : 0,
+      cumPct: materialParetoTotal ? Math.round((cumulativeCount/materialParetoTotal)*100) : 0,
+      widthPct: materialParetoMax ? Math.max(8, Math.round((row.count/materialParetoMax)*100)) : 0,
+      topLine: row.rows.reduce(function(map,item){ var k=(item.linea_estacion||"N/D"); map[k]=(map[k]||0)+1; return map; }, {}),
+      topModel: row.rows.reduce(function(map,item){ var k=(item.modelo||"N/D"); map[k]=(map[k]||0)+1; return map; }, {}),
+      topStation: row.rows.reduce(function(map,item){ var station=(item.linea_estacion||"N/D").split("/").pop().trim()||"N/D"; map[station]=(map[station]||0)+1; return map; }, {})
+    });
+  });
+  function traceOpsTopMapLabelLocal(map){
+    var keys=Object.keys(map||{});
+    if(!keys.length) return "N/D";
+    return keys.sort(function(a,b){ return (map[b]||0)-(map[a]||0); })[0];
+  }
+  var materialTop2Contribution=materialParetoTotal ? Math.round((materialParetoRows.slice(0,2).reduce(function(sum,row){ return sum+row.count; },0)/materialParetoTotal)*100) : 0;
+  var materialTop3Contribution=materialParetoTotal ? Math.round((materialParetoRows.slice(0,3).reduce(function(sum,row){ return sum+row.count; },0)/materialParetoTotal)*100) : 0;
+  var materialDriverCards=materialParetoRows.slice(0,3).map(function(row){
+    return {
+      stage:row.stage,
+      count:row.count,
+      pct:row.pct,
+      topLine:traceOpsTopMapLabelLocal(row.topLine),
+      topStation:traceOpsTopMapLabelLocal(row.topStation),
+      topModel:traceOpsTopMapLabelLocal(row.topModel)
+    };
+  });
+  var materialFilteredRows=(materialGapFilter==="all" ? materialVisibleEvents : materialVisibleEvents.filter(function(item){ return item.traceability_gap_stage===materialGapFilter; }));
+  function traceOpsOpenBitacoraFromMaterial(evId){
+    setTimeout(function(){
+      var row=document.getElementById("bitacora-row-"+evId);
+      if(row && row.scrollIntoView) row.scrollIntoView({behavior:"smooth", block:"center"});
+    }, 80);
+  }
+  function traceOpsStartRccaFromMaterial(item){
+    setRccaForm({
+      event_ids:[item.id],
+      modelo:item.modelo||"",
+      linea:item.linea_estacion||"",
+      fecha:item.fecha||new Date().toISOString().slice(0,10),
+      problema:(item.traceability_gap_stage||"Material gap")+" · "+(item.evento_detectado||"")
+    });
+    setTimeout(function(){
+      var el=document.getElementById("rcca-section");
+      if(el && el.scrollIntoView) el.scrollIntoView({behavior:"smooth", block:"start"});
+    },80);
+  }
+  function traceOpsExportMaterialCsv(){
+    if(!materialFilteredRows.length) return;
+    traceOpsDownloadCsv("TraceOps_Material_Traceability_Pareto_"+new Date().toISOString().slice(0,10)+".csv", materialFilteredRows.map(function(item){
+      return {
+        event_id:item.id||"",
+        fecha:item.fecha||"",
+        linea:item.linea_estacion||"",
+        estacion:(item.linea_estacion||"").split("/").pop().trim(),
+        modelo:item.modelo||"",
+        tipo_evento:item.tipo_evento||"",
+        gap_stage:item.traceability_gap_stage||"",
+        confidence:item.traceability_gap_confidence||"",
+        missing_step:item.traceability_missing_step||"",
+        evidence:traceOpsMaterialEvidenceSummary(item),
+        owner:item.traceability_owner_hint||"",
+        basis:(item.traceability_gap_basis||[]).join(" | ")
+      };
+    }));
+  }
 
   function clearViewFilters(){
     setViewDateFrom("");setViewDateTo("");setViewHourFrom("");setViewHourTo("");
@@ -9035,6 +9261,120 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
           {visibleEventCount===0&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:14,padding:"14px 16px",marginBottom:14,fontSize:12,color:"#8B6A1E"}}>No hay eventos dentro del rango seleccionado. Ajusta las fechas u horas para volver a poblar KPIs, timeline y bitacora.</div>}
 
+          {materialVisibleEvents.length>0&&(
+            <div className="traceops-material-panel">
+              <div className="traceops-material-head">
+                <div>
+                  <h3 style={{fontSize:16,fontWeight:800,color:"#10231C",letterSpacing:"-.02em",margin:0}}>Material Traceability Pareto</h3>
+                  <div className="traceops-material-note">Derived from visible material events in the current window. Classification is inferred from event text and engineer findings; it is not confirmed operational master data.</div>
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                  <span style={{fontSize:9.5,color:"#1A5B45",fontWeight:700,background:"#ECF8F1",border:"1px solid #CFE7DB",borderRadius:999,padding:"6px 10px"}}>Derived classification · v1.0</span>
+                  <button className="traceops-material-btn" onClick={traceOpsExportMaterialCsv}>Export Pareto to CSV</button>
+                </div>
+              </div>
+              <div className="traceops-material-body">
+                <div className="traceops-material-kpis">
+                  <div className="traceops-material-kpi"><div className="lbl">Material events</div><div className="val">{materialVisibleEvents.length}</div><div className="meta">Visible events eligible for material traceability review.</div></div>
+                  <div className="traceops-material-kpi"><div className="lbl">Gap-tagged events</div><div className="val">{materialGapTagged.length}</div><div className="meta">High / medium confidence traceability gaps.</div></div>
+                  <div className="traceops-material-kpi"><div className="lbl">Top 2 contribution</div><div className="val">{materialTop2Contribution}%</div><div className="meta">Accumulated share of the top 2 drivers.</div></div>
+                  <div className="traceops-material-kpi"><div className="lbl">Top 3 contribution</div><div className="val">{materialTop3Contribution}%</div><div className="meta">Accumulated share of the top 3 drivers.</div></div>
+                </div>
+
+                <div className="traceops-material-grid">
+                  <div>
+                    <div style={{fontSize:11,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",color:"#5F766C",marginBottom:10}}>Pareto view</div>
+                    {materialParetoRows.length ? (
+                      <div className="traceops-material-chart">
+                        {materialParetoRows.map(function(row){
+                          return <div key={row.stage} className="traceops-material-bar">
+                            <div className="traceops-material-bar-top">
+                              <div className="traceops-material-bar-title">{row.stage}</div>
+                              <div className="traceops-material-bar-metrics"><span>{row.count} evt</span><span>{row.pct}%</span></div>
+                            </div>
+                            <div className="traceops-material-bar-track"><div className="traceops-material-bar-fill" style={{width:row.widthPct+"%"}}></div></div>
+                            <div className="traceops-material-cum">Cumulative {row.cumPct}%</div>
+                          </div>;
+                        })}
+                      </div>
+                    ) : (
+                      <div className="traceops-material-empty">There are material events in range, but none reached a high / medium confidence traceability-gap classification yet.</div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div style={{fontSize:11,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",color:"#5F766C",marginBottom:10}}>Focus drivers</div>
+                    <div className="traceops-material-drivers">
+                      {materialDriverCards.length ? materialDriverCards.map(function(card){
+                        var tone=traceOpsMaterialStageTone(card.stage);
+                        return <div key={card.stage} className="traceops-material-driver">
+                          <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start",marginBottom:8}}>
+                            <h4>{card.stage}</h4>
+                            <span className="traceops-material-badge" style={{background:tone.bg,border:"1px solid "+tone.border,color:tone.fg}}>{card.count} · {card.pct}%</span>
+                          </div>
+                          <p>Top line <strong style={{color:"#10231C"}}>{card.topLine}</strong> · Top station <strong style={{color:"#10231C"}}>{card.topStation}</strong> · Top model <strong style={{color:"#10231C"}}>{card.topModel}</strong></p>
+                        </div>;
+                      }) : <div className="traceops-material-empty">No Pareto drivers available yet for the current filter.</div>}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{fontSize:11,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",color:"#5F766C",marginBottom:10}}>Gap filters</div>
+                  <div className="traceops-material-chiprow">
+                    {["all"].concat(materialStagesOrdered).map(function(stageKey){
+                      var label=stageKey==="all" ? "All" : stageKey;
+                      return <button key={stageKey} className={"traceops-material-chip"+(materialGapFilter===stageKey?" active":"")} onClick={function(){setMaterialGapFilter(stageKey);}}>{label}</button>;
+                    })}
+                  </div>
+                </div>
+
+                <div className="traceops-material-tablewrap">
+                  <table className="traceops-material-table">
+                    <thead>
+                      <tr>
+                        <th>Evento</th>
+                        <th>Fecha</th>
+                        <th>Línea</th>
+                        <th>Estación</th>
+                        <th>Modelo</th>
+                        <th>Gap stage</th>
+                        <th>Missing step</th>
+                        <th>Evidence</th>
+                        <th>Owner</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {materialFilteredRows.length ? materialFilteredRows.map(function(item){
+                        var tone=traceOpsMaterialStageTone(item.traceability_gap_stage);
+                        return <tr key={item.id+"-material-gap"}>
+                          <td style={{minWidth:180}}><strong>{item.id}</strong><div style={{marginTop:4}}>{item.evento_detectado||"-"}</div></td>
+                          <td style={{whiteSpace:"nowrap"}}>{item.fecha||"-"}</td>
+                          <td>{item.linea_estacion||"N/D"}</td>
+                          <td>{((item.linea_estacion||"").split("/").pop()||"N/D").trim()}</td>
+                          <td>{item.modelo||"N/D"}</td>
+                          <td><span className="traceops-material-badge" style={{background:tone.bg,border:"1px solid "+tone.border,color:tone.fg}}>{item.traceability_gap_stage}</span><div style={{fontSize:9.5,color:"#5F766C",marginTop:5}}>{item.traceability_gap_confidence} confidence</div></td>
+                          <td>{item.traceability_missing_step||"-"}</td>
+                          <td style={{minWidth:190,maxWidth:240}}>{traceOpsMaterialEvidenceSummary(item)}</td>
+                          <td>{item.traceability_owner_hint||"N/A"}</td>
+                          <td style={{minWidth:150}}>
+                            <div className="traceops-material-actions">
+                              <button className="traceops-material-btn" onClick={function(){traceOpsOpenBitacoraFromMaterial(item.id);}}>Open bitácora</button>
+                              <button className="traceops-material-btn primary" onClick={function(){traceOpsStartRccaFromMaterial(item);}}>Create RCCA</button>
+                            </div>
+                          </td>
+                        </tr>;
+                      }) : (
+                        <tr><td colSpan="10"><div className="traceops-material-empty">No material events match the selected gap filter.</div></td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
 
           {kpis.length>0&&<div className="tcard"><div className="tcard-hdr"><h3>KPIs en chat</h3></div><div style={{padding:"10px 14px"}}>{kpis.map(function(k,i){return<div key={i} className="krow"><div className="kval">{k.valor}<span style={{fontSize:9}}>{k.unidad}</span></div><div className="kin"><div className="nm">{k.indicador}</div><div className="ts">{k.fechahora} - {k.fuente}</div></div><div className="kbar"><div className="kbf" style={{width:Math.min(100,k.valor<2?k.valor*100:k.valor)+"%"}}/></div></div>;})} </div></div>}
 
@@ -9295,7 +9635,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
                 </tr></thead>
                 <tbody>
                   {bitacoraEventos.map(function(e,i){return(
-                    <tr key={i}>
+                    <tr key={i} id={"bitacora-row-"+e.id}>
                       <td><strong>{e.id}</strong></td>
                       <td style={{whiteSpace:"nowrap",fontSize:10}}>{e.fecha}</td>
                       <td>{e.turno}</td>
