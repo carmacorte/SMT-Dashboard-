@@ -107,30 +107,6 @@ window.preloadExcelTools = function() {
   }
 };
 
-
-window.traceOpsNormalizeOpenXmlMarkup = window.traceOpsNormalizeOpenXmlMarkup || function(xml) {
-  try {
-    if (xml == null) return xml;
-    xml = String(xml);
-
-    // Remove invalid XML 1.0 control chars but preserve TAB/LF/CR
-    xml = xml.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
-
-    // Escape stray ampersands only
-    xml = xml.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
-
-    // Remove empty text nodes that sometimes break Office repair
-    xml = xml.replace(/<a:t\b[^>]*>\s*<\/a:t>/g, "");
-    xml = xml.replace(/<p:t\b[^>]*>\s*<\/p:t>/g, "");
-
-    return xml;
-  } catch (e) {
-    try { console.warn("[TraceOps] normalize OpenXML markup failed", e); } catch (_) {}
-    return xml;
-  }
-};
-
-
 window.ensurePptxTools = function() {
   if (window.PptxGenJS) return Promise.resolve();
   if (window.__traceopsPptxReady) return window.__traceopsPptxReady;
@@ -6940,6 +6916,161 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     });
   }
 
+  
+  function traceOpsNormalizeOpenXmlMarkup(xml) {
+    try {
+      if (xml == null) return xml;
+      xml = String(xml);
+      xml = xml.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+      xml = xml.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, '&amp;');
+      xml = xml.replace(/<a:t\b[^>]*>\s*<\/a:t>/g, '<a:t xml:space="preserve"> </a:t>');
+      xml = xml.replace(/<p:t\b[^>]*>\s*<\/p:t>/g, '<p:t xml:space="preserve"> </p:t>');
+      return xml;
+    } catch (_) {
+      return xml;
+    }
+  }
+
+  function traceOpsDownloadBlob(filename, blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){
+      try { document.body.removeChild(a); } catch(_) {}
+      try { URL.revokeObjectURL(a.href); } catch(_) {}
+    }, 3000);
+  }
+
+  async function traceOpsFinalizePptxBlob(blob) {
+    await window.ensureZipTools();
+    var zip = await JSZip.loadAsync(blob);
+    var files = Object.keys(zip.files || {});
+    var existing = {};
+    files.forEach(function(name){
+      existing[String(name || '').replace(/^\/+/, '')] = true;
+    });
+
+    function normPart(name){
+      return String(name || '').replace(/^\/+/, '');
+    }
+    function hasPart(name){
+      return !!existing[normPart(name)];
+    }
+    function resolveRelationshipTarget(relPath, target){
+      var rel = normPart(relPath);
+      var base = rel.split('/');
+      base.pop();
+      if (base.length && base[base.length - 1] === '_rels') base.pop();
+      String(target || '').split('/').forEach(function(piece){
+        if (!piece || piece === '.') return;
+        if (piece === '..') base.pop();
+        else base.push(piece);
+      });
+      return normPart(base.join('/'));
+    }
+    async function readText(name){
+      if (!zip.files[name]) return '';
+      return await zip.files[name].async('string');
+    }
+    async function writeText(name, value){
+      zip.file(name, value);
+      existing[normPart(name)] = true;
+    }
+    function removeMissingInternalRelationships(xml, relPath){
+      if (!xml) return { xml: xml, keptIds: [] };
+      var keptIds = [];
+      var cleaned = xml.replace(/\s*<Relationship\b([^>]*)\/?>/g, function(match, attrs){
+        var idMatch = attrs.match(/\bId="([^"]+)"/i);
+        var targetMatch = attrs.match(/\bTarget="([^"]+)"/i);
+        var modeMatch = attrs.match(/\bTargetMode="([^"]+)"/i);
+        var relId = idMatch ? idMatch[1] : '';
+        var target = targetMatch ? targetMatch[1] : '';
+        var isExternal = modeMatch && /external/i.test(modeMatch[1] || '');
+        if (isExternal || !target) {
+          if (relId) keptIds.push(relId);
+          return match;
+        }
+        var resolved = resolveRelationshipTarget(relPath, target);
+        if (resolved && hasPart(resolved)) {
+          if (relId) keptIds.push(relId);
+          return match;
+        }
+        return '';
+      });
+      return { xml: cleaned, keptIds: keptIds };
+    }
+    function removeMissingContentTypeOverrides(xml){
+      if (!xml) return xml;
+      return xml.replace(/\s*<Override\b[^>]*PartName="([^"]+)"[^>]*\/?>/g, function(match, partName){
+        return hasPart(partName) ? match : '';
+      });
+    }
+    function removeMissingPresentationRefs(xml, validRelIds, tagName){
+      if (!xml) return xml;
+      var valid = {};
+      (validRelIds || []).forEach(function(id){ valid[String(id)] = true; });
+      var rgx = new RegExp('\\s*<' + tagName + '\\b[^>]*r:id="([^"]+)"[^>]*/?>', 'g');
+      return xml.replace(rgx, function(match, rid){
+        return valid[rid] ? match : '';
+      });
+    }
+
+    for (var i = 0; i < files.length; i++) {
+      var name = files[i];
+      if (!(/\.xml$/i.test(name) || /\.rels$/i.test(name))) continue;
+      var content = await readText(name);
+      if (!content) continue;
+      content = traceOpsNormalizeOpenXmlMarkup(content);
+      if (/\.rels$/i.test(name)) content = removeMissingInternalRelationships(content, name).xml;
+      await writeText(name, content);
+    }
+
+    if (zip.files['[Content_Types].xml']) {
+      var ct = await readText('[Content_Types].xml');
+      ct = traceOpsNormalizeOpenXmlMarkup(ct);
+      ct = removeMissingContentTypeOverrides(ct);
+      await writeText('[Content_Types].xml', ct);
+    }
+
+    var validMasterIds = [];
+    var validSlideIds = [];
+    if (zip.files['ppt/_rels/presentation.xml.rels']) {
+      var presRels = await readText('ppt/_rels/presentation.xml.rels');
+      presRels = traceOpsNormalizeOpenXmlMarkup(presRels);
+      var relMatches = presRels.match(/<Relationship\b[^>]*Id="[^"]+"[^>]*Target="[^"]+"[^>]*\/?>(?:<\/Relationship>)?/g) || [];
+      relMatches.forEach(function(row){
+        var idMatch = row.match(/\bId="([^"]+)"/i);
+        var targetMatch = row.match(/\bTarget="([^"]+)"/i);
+        var modeMatch = row.match(/\bTargetMode="([^"]+)"/i);
+        if (!idMatch || !targetMatch) return;
+        if (modeMatch && /external/i.test(modeMatch[1] || '')) return;
+        var resolved = resolveRelationshipTarget('ppt/_rels/presentation.xml.rels', targetMatch[1]);
+        if (!hasPart(resolved)) return;
+        if (/^ppt\/slideMasters\//i.test(resolved)) validMasterIds.push(idMatch[1]);
+        if (/^ppt\/slides\//i.test(resolved)) validSlideIds.push(idMatch[1]);
+      });
+      await writeText('ppt/_rels/presentation.xml.rels', removeMissingInternalRelationships(presRels, 'ppt/_rels/presentation.xml.rels').xml);
+    }
+
+    if (zip.files['ppt/presentation.xml']) {
+      var pres = await readText('ppt/presentation.xml');
+      pres = traceOpsNormalizeOpenXmlMarkup(pres);
+      pres = removeMissingPresentationRefs(pres, validMasterIds, 'p:sldMasterId');
+      pres = removeMissingPresentationRefs(pres, validSlideIds, 'p:sldId');
+      await writeText('ppt/presentation.xml', pres);
+    }
+
+    return await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    });
+  }
+
+
   function exportEightdPpt(draft) {
     if (!draft) return;
     var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
@@ -6973,20 +7104,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       traceOpsPptBuildAppendixSlide(pptx, normalized, model, linked);
 
       if (typeof pptx.write === 'function') {
-        var arr = await pptx.write({ outputType: 'arraybuffer', compression: true });
-        arr = await traceOpsFixPptxForDesktopPowerPoint(arr);
-        var blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = String(fileBase || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_') + '.pptx';
-        a.rel = 'noopener';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(function(){
-          try { document.body.removeChild(a); } catch(_) {}
-          try { URL.revokeObjectURL(url); } catch(_) {}
-        }, 3000);
+        var rawBlob = await pptx.write({ outputType: 'blob', compression: true });
+        var fixedBlob = await traceOpsFinalizePptxBlob(rawBlob);
+        traceOpsDownloadBlob(fileBase + '.pptx', fixedBlob);
       } else if (typeof pptx.writeFile === 'function') {
         await pptx.writeFile({ fileName: fileBase + '.pptx', compression: true });
       } else if (typeof pptx.save === 'function') {
