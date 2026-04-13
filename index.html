@@ -6752,6 +6752,170 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return slide;
   }
 
+
+  async function traceOpsFixPptxForDesktopPowerPoint(arrayBuffer) {
+    await window.ensureZipTools();
+    var zip = await JSZip.loadAsync(arrayBuffer);
+    var fileNames = Object.keys(zip.files || {});
+    var existingSet = {};
+
+    fileNames.forEach(function(name) {
+      var norm = traceOpsNormalizeZipPartName(name);
+      if (norm) existingSet[norm] = true;
+    });
+
+    var slideNames = fileNames.filter(function(name) {
+      return /^ppt\/slides\/slide\d+\.xml$/i.test(name);
+    });
+
+    for (var i = 0; i < slideNames.length; i++) {
+      var slideName = slideNames[i];
+      var slideXml = await zip.file(slideName).async('string');
+      var fixedSlideXml = traceOpsRenumberDuplicateCnvPrIds(slideXml);
+      if (fixedSlideXml !== slideXml) zip.file(slideName, fixedSlideXml);
+    }
+
+    var contentTypesPath = '[Content_Types].xml';
+    if (zip.file(contentTypesPath)) {
+      var ctXml = await zip.file(contentTypesPath).async('string');
+      var fixedCtXml = traceOpsRemoveMissingContentTypeOverrides(ctXml, existingSet);
+      if (fixedCtXml !== ctXml) zip.file(contentTypesPath, fixedCtXml);
+    }
+
+    var relNames = fileNames.filter(function(name) {
+      return /_rels\/[^/]+\.rels$/i.test(name);
+    });
+    var relMap = {};
+
+    for (var r = 0; r < relNames.length; r++) {
+      var relName = relNames[r];
+      var relXml = await zip.file(relName).async('string');
+      var cleaned = traceOpsRemoveMissingInternalRelationships(relXml, relName, existingSet);
+      relMap[relName] = cleaned.keptIds || [];
+      if (cleaned.xml !== relXml) zip.file(relName, cleaned.xml);
+    }
+
+    var presRelsPath = 'ppt/_rels/presentation.xml.rels';
+    var presXmlPath = 'ppt/presentation.xml';
+    if (zip.file(presXmlPath) && relMap[presRelsPath]) {
+      var presXml = await zip.file(presXmlPath).async('string');
+      var fixedPresXml = traceOpsRemoveMissingPresentationMasterRefs(presXml, relMap[presRelsPath]);
+      if (fixedPresXml !== presXml) zip.file(presXmlPath, fixedPresXml);
+    }
+
+    return await zip.generateAsync({
+      type: 'arraybuffer',
+      compression: 'DEFLATE'
+    });
+  }
+
+  function traceOpsNormalizeZipPartName(path) {
+    var s = String(path || '').replace(/\\/g, '/').trim();
+    if (!s) return '';
+    if (s.charAt(0) !== '/') s = '/' + s;
+    return s;
+  }
+
+  function traceOpsNormalizeXmlPartName(path) {
+    return traceOpsNormalizeZipPartName(String(path || '').replace(/^\/+/, ''));
+  }
+
+  function traceOpsRelBaseDir(relPath) {
+    var clean = String(relPath || '').replace(/\\/g, '/');
+    clean = clean.replace(/^\/+/, '');
+    var relsIdx = clean.lastIndexOf('/_rels/');
+    if (relsIdx >= 0) return clean.slice(0, relsIdx + 1);
+    var idx = clean.lastIndexOf('/');
+    return idx >= 0 ? clean.slice(0, idx + 1) : '';
+  }
+
+  function traceOpsResolveRelationshipTarget(relPath, target) {
+    var t = String(target || '').replace(/\\/g, '/').trim();
+    if (!t) return '';
+    if (/^[a-z]+:/i.test(t) || /^\//.test(t)) return traceOpsNormalizeXmlPartName(t);
+
+    var baseDir = traceOpsRelBaseDir(relPath);
+    var combined = (baseDir ? (baseDir + t) : t).split('/');
+    var out = [];
+    for (var i = 0; i < combined.length; i++) {
+      var part = combined[i];
+      if (!part || part === '.') continue;
+      if (part === '..') {
+        if (out.length) out.pop();
+        continue;
+      }
+      out.push(part);
+    }
+    return traceOpsNormalizeXmlPartName(out.join('/'));
+  }
+
+  function traceOpsRenumberDuplicateCnvPrIds(xml) {
+    if (!xml) return xml;
+    var seen = Object.create(null);
+    var maxId = 0;
+
+    xml.replace(/<p:cNvPr\b[^>]*\bid="(\d+)"/g, function(_, id) {
+      var n = parseInt(id, 10) || 0;
+      if (n > maxId) maxId = n;
+      return _;
+    });
+
+    return xml.replace(/(<p:cNvPr\b[^>]*\bid=")([0-9]+)(")/g, function(match, start, id, end) {
+      var n = parseInt(id, 10) || 0;
+      if (!seen[n]) {
+        seen[n] = true;
+        return start + n + end;
+      }
+      do { maxId += 1; } while (seen[maxId]);
+      seen[maxId] = true;
+      return start + maxId + end;
+    });
+  }
+
+  function traceOpsRemoveMissingContentTypeOverrides(xml, existingSet) {
+    if (!xml) return xml;
+    return xml.replace(/\s*<Override\b[^>]*PartName="([^"]+)"[^>]*\/?>/g, function(match, partName) {
+      var norm = traceOpsNormalizeXmlPartName(partName);
+      return existingSet && existingSet[norm] ? match : '';
+    });
+  }
+
+  function traceOpsRemoveMissingInternalRelationships(xml, relPath, existingSet) {
+    if (!xml) return { xml: xml, keptIds: [] };
+    var keptIds = [];
+    var cleanedXml = xml.replace(/\s*<Relationship\b([^>]*)\/?>/g, function(match, attrs) {
+      var idMatch = attrs.match(/\bId="([^"]+)"/i);
+      var targetMatch = attrs.match(/\bTarget="([^"]+)"/i);
+      var modeMatch = attrs.match(/\bTargetMode="([^"]+)"/i);
+      var relId = idMatch ? idMatch[1] : '';
+      var target = targetMatch ? targetMatch[1] : '';
+      var isExternal = modeMatch && /external/i.test(modeMatch[1] || '');
+
+      if (isExternal || !target) {
+        if (relId) keptIds.push(relId);
+        return match;
+      }
+
+      var resolved = traceOpsResolveRelationshipTarget(relPath, target);
+      if (resolved && existingSet && existingSet[resolved]) {
+        if (relId) keptIds.push(relId);
+        return match;
+      }
+      return '';
+    });
+
+    return { xml: cleanedXml, keptIds: keptIds };
+  }
+
+  function traceOpsRemoveMissingPresentationMasterRefs(xml, validRelIds) {
+    if (!xml) return xml;
+    var valid = {};
+    (validRelIds || []).forEach(function(id) { valid[String(id)] = true; });
+    return xml.replace(/\s*<p:sldMasterId\b[^>]*r:id="([^"]+)"[^>]*\/?>/g, function(match, rid) {
+      return valid[rid] ? match : '';
+    });
+  }
+
   function exportEightdPpt(draft) {
     if (!draft) return;
     var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
@@ -6786,6 +6950,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
       if (typeof pptx.write === 'function') {
         var arr = await pptx.write({ outputType: 'arraybuffer', compression: true });
+        arr = await traceOpsFixPptxForDesktopPowerPoint(arr);
         var blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
