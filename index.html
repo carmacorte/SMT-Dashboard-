@@ -5819,15 +5819,39 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 </html>`;
   }
 
-  function traceOpsPptSanitizeText(v, limit){
+
+  function traceOpsPptNormalizeUnicodeText(v) {
     var s = String(v == null ? "" : v);
+    try { s = s.normalize('NFKC'); } catch (_) {}
+    var out = [];
+    for (var i = 0; i < s.length; i++) {
+      var code = s.charCodeAt(i);
+      if (code >= 0xD800 && code <= 0xDBFF) {
+        var next = s.charCodeAt(i + 1);
+        if (next >= 0xDC00 && next <= 0xDFFF) {
+          out.push(s.charAt(i), s.charAt(i + 1));
+          i += 1;
+        }
+        continue;
+      }
+      if (code >= 0xDC00 && code <= 0xDFFF) continue;
+      out.push(s.charAt(i));
+    }
+    return out.join('');
+  }
+
+  function traceOpsPptSanitizeText(v, limit){
+    var s = traceOpsPptNormalizeUnicodeText(v);
     s = s
       .replace(/\r/g, "")
-      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
-      .replace(/[\u200B\u200C\u200D\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u202F\uFEFF]/g, "")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
+      .replace(/[\u200B\u200C\u200D\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u202F\u2060\u2066\u2067\u2068\u2069\uFEFF]/g, "")
+      .replace(/[\uFDD0-\uFDEF\uFFFE\uFFFF]/g, "")
+      .replace(/\u2028|\u2029/g, "\n")
       .replace(/[\u2018\u2019]/g, "'")
-      .replace(/[\u201C\u201D]/g, "\"")
+      .replace(/[\u201C\u201D]/g, '"')
       .replace(/[\u2013\u2014]/g, "-")
+      .replace(/[\u2022\u25CF\u25CB\u25A0\u25A1]/g, "•")
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<[^>]+>/g, " ")
       .replace(/&nbsp;/gi, " ")
@@ -5851,18 +5875,75 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return clean.replace(/\n+/g, " ").trim();
   }
 
+  function traceOpsPptSanitizeOptionsDeep(value, depth){
+    if (depth > 8) return value;
+    if (value == null) return value;
+    if (typeof value === "string") return traceOpsPptSanitizeText(value, 0);
+    if (Array.isArray(value)) {
+      return value.map(function(item){ return traceOpsPptSanitizeOptionsDeep(item, depth + 1); });
+    }
+    if (typeof value === "object") {
+      var out = {};
+      Object.keys(value).forEach(function(key){
+        var item = value[key];
+        if (key === "text") out[key] = traceOpsPptSanitizeTextArg(item);
+        else out[key] = traceOpsPptSanitizeOptionsDeep(item, depth + 1);
+      });
+      return out;
+    }
+    return value;
+  }
+
+  function traceOpsPptSanitizeTextArg(text){
+    if (Array.isArray(text)) {
+      return text.map(function(run){
+        if (run == null) return { text: "" };
+        if (typeof run === "string" || typeof run === "number" || typeof run === "boolean") {
+          return { text: traceOpsPptSanitizeText(run, 0) };
+        }
+        if (typeof run === "object") {
+          var out = {};
+          Object.keys(run).forEach(function(key){
+            if (key === "text") out[key] = traceOpsPptSanitizeText(run[key], 0);
+            else out[key] = traceOpsPptSanitizeOptionsDeep(run[key], 0);
+          });
+          if (!("text" in out)) out.text = "";
+          return out;
+        }
+        return { text: traceOpsPptSanitizeText(String(run), 0) };
+      });
+    }
+    if (text && typeof text === "object" && text.text != null) {
+      var obj = {};
+      Object.keys(text).forEach(function(key){
+        if (key === "text") obj[key] = traceOpsPptSanitizeText(text[key], 0);
+        else obj[key] = traceOpsPptSanitizeOptionsDeep(text[key], 0);
+      });
+      return obj;
+    }
+    return traceOpsPptSanitizeText(text, 0);
+  }
+
+  function traceOpsPptSanitizeTableCell(cell){
+    if (cell && typeof cell === "object" && !Array.isArray(cell)) {
+      var out = {};
+      Object.keys(cell).forEach(function(key){
+        if (key === "text") out[key] = traceOpsPptSafeCell(cell[key], 220);
+        else if (key === "options") out[key] = traceOpsPptSanitizeOptionsDeep(cell[key], 0);
+        else out[key] = traceOpsPptSanitizeOptionsDeep(cell[key], 0);
+      });
+      if (!("text" in out) && !("image" in out)) out.text = "";
+      return out;
+    }
+    return traceOpsPptSafeCell(cell, 220);
+  }
+
   function traceOpsPptSafeTable(rows){
     if (!Array.isArray(rows)) return [];
     return rows.map(function(row){
       if (!Array.isArray(row)) row = [row];
       return row.map(function(cell){
-        if (cell && typeof cell === "object" && cell.text != null) {
-          return {
-            text: traceOpsPptSafeCell(cell.text, 220),
-            options: cell.options || {}
-          };
-        }
-        return traceOpsPptSafeCell(cell, 220);
+        return traceOpsPptSanitizeTableCell(cell);
       });
     });
   }
@@ -5874,6 +5955,57 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     if (limit && clean.length > limit) return clean.slice(0, Math.max(0, limit - 3)).trim() + "...";
     return clean;
   }
+
+  function traceOpsPptPatchSlideMethods(slide){
+    if (!slide || slide.__traceopsPatched) return slide;
+    slide.__traceopsPatched = true;
+
+    var originalAddText = typeof slide.addText === "function" ? slide.addText : null;
+    if (originalAddText) {
+      slide.addText = function(text, options){
+        return originalAddText.call(this, traceOpsPptSanitizeTextArg(text), traceOpsPptSanitizeOptionsDeep(options, 0));
+      };
+    }
+
+    var originalAddTable = typeof slide.addTable === "function" ? slide.addTable : null;
+    if (originalAddTable) {
+      slide.addTable = function(rows, options){
+        return originalAddTable.call(this, traceOpsPptSafeTable(rows), traceOpsPptSanitizeOptionsDeep(options, 0));
+      };
+    }
+
+    var originalAddNotes = typeof slide.addNotes === "function" ? slide.addNotes : null;
+    if (originalAddNotes) {
+      slide.addNotes = function(text){
+        return originalAddNotes.call(this, traceOpsPptSanitizeText(text, 0));
+      };
+    }
+
+    return slide;
+  }
+
+  function traceOpsPptHardenDeck(pptx){
+    if (!pptx || pptx.__traceopsDeckPatched) return pptx;
+    pptx.__traceopsDeckPatched = true;
+
+    var originalAddSlide = typeof pptx.addSlide === "function" ? pptx.addSlide : null;
+    if (originalAddSlide) {
+      pptx.addSlide = function(){
+        var slide = originalAddSlide.apply(this, arguments);
+        return traceOpsPptPatchSlideMethods(slide);
+      };
+    }
+
+    if (typeof pptx.defineLayout === "function") {
+      var originalDefineLayout = pptx.defineLayout;
+      pptx.defineLayout = function(layout){
+        return originalDefineLayout.call(this, traceOpsPptSanitizeOptionsDeep(layout, 0));
+      };
+    }
+
+    return pptx;
+  }
+
   function traceOpsGetEightdLinkedEventsForExport(draft){
     var ids = (draft && (draft.linked_event_ids || draft.event_ids)) || [];
     if (typeof traceOpsCollectLinkedEventsByIds !== "function") return [];
@@ -6753,6 +6885,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   }
 
 
+
   async function traceOpsFixPptxForDesktopPowerPoint(arrayBuffer) {
     await window.ensureZipTools();
     var zip = await JSZip.loadAsync(arrayBuffer);
@@ -6764,43 +6897,82 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       if (norm) existingSet[norm] = true;
     });
 
-    var slideNames = fileNames.filter(function(name) {
-      return /^ppt\/slides\/slide\d+\.xml$/i.test(name);
+    function writePart(name, content) {
+      zip.file(name, content);
+      var norm = traceOpsNormalizeZipPartName(name);
+      if (norm) existingSet[norm] = true;
+    }
+
+    function removeMissingPresentationRefsLocal(xml, validRelIds, tagName) {
+      if (!xml) return xml;
+      var valid = {};
+      (validRelIds || []).forEach(function(id) { valid[String(id)] = true; });
+      var rx = new RegExp('\\s*<' + tagName + '\\b[^>]*r:id="([^"]+)"[^>]*\\/?>', 'g');
+      return xml.replace(rx, function(match, rid) {
+        return valid[rid] ? match : '';
+      });
+    }
+
+    var xmlNames = fileNames.filter(function(name) {
+      return /\.xml$/i.test(name);
     });
 
-    for (var i = 0; i < slideNames.length; i++) {
-      var slideName = slideNames[i];
-      var slideXml = await zip.file(slideName).async('string');
-      var fixedSlideXml = traceOpsRenumberDuplicateCnvPrIds(slideXml);
-      if (fixedSlideXml !== slideXml) zip.file(slideName, fixedSlideXml);
+    for (var i = 0; i < xmlNames.length; i++) {
+      var xmlName = xmlNames[i];
+      var xmlContent = await zip.file(xmlName).async('string');
+      var fixedXml = traceOpsNormalizeOpenXmlMarkup(xmlContent);
+      if (/^ppt\/(slides|slideLayouts|slideMasters|notesSlides)\//i.test(xmlName)) {
+        fixedXml = traceOpsRenumberDuplicateCnvPrIds(fixedXml);
+      }
+      if (fixedXml !== xmlContent) writePart(xmlName, fixedXml);
     }
 
     var contentTypesPath = '[Content_Types].xml';
     if (zip.file(contentTypesPath)) {
       var ctXml = await zip.file(contentTypesPath).async('string');
-      var fixedCtXml = traceOpsRemoveMissingContentTypeOverrides(ctXml, existingSet);
-      if (fixedCtXml !== ctXml) zip.file(contentTypesPath, fixedCtXml);
+      var fixedCtXml = traceOpsNormalizeOpenXmlMarkup(ctXml);
+      fixedCtXml = traceOpsRemoveMissingContentTypeOverrides(fixedCtXml, existingSet);
+      if (fixedCtXml !== ctXml) writePart(contentTypesPath, fixedCtXml);
     }
 
     var relNames = fileNames.filter(function(name) {
       return /_rels\/[^/]+\.rels$/i.test(name);
     });
     var relMap = {};
+    var validMasterIds = [];
+    var validSlideIds = [];
 
     for (var r = 0; r < relNames.length; r++) {
       var relName = relNames[r];
       var relXml = await zip.file(relName).async('string');
-      var cleaned = traceOpsRemoveMissingInternalRelationships(relXml, relName, existingSet);
+      var normRelXml = traceOpsNormalizeOpenXmlMarkup(relXml);
+      var cleaned = traceOpsRemoveMissingInternalRelationships(normRelXml, relName, existingSet);
       relMap[relName] = cleaned.keptIds || [];
-      if (cleaned.xml !== relXml) zip.file(relName, cleaned.xml);
+      if (cleaned.xml !== relXml) writePart(relName, cleaned.xml);
+
+      if (relName === 'ppt/_rels/presentation.xml.rels') {
+        var rows = cleaned.xml.match(/<Relationship\b[^>]*Id="[^"]+"[^>]*Target="[^"]+"[^>]*\/?>(?:<\/Relationship>)?/g) || [];
+        rows.forEach(function(row) {
+          var idMatch = row.match(/\bId="([^"]+)"/i);
+          var targetMatch = row.match(/\bTarget="([^"]+)"/i);
+          var modeMatch = row.match(/\bTargetMode="([^"]+)"/i);
+          if (!idMatch || !targetMatch) return;
+          if (modeMatch && /external/i.test(modeMatch[1] || '')) return;
+          var resolved = traceOpsResolveRelationshipTarget(relName, targetMatch[1]);
+          if (!resolved || !(existingSet && existingSet[resolved])) return;
+          if (/^\/ppt\/slideMasters\//i.test(resolved)) validMasterIds.push(idMatch[1]);
+          if (/^\/ppt\/slides\//i.test(resolved)) validSlideIds.push(idMatch[1]);
+        });
+      }
     }
 
-    var presRelsPath = 'ppt/_rels/presentation.xml.rels';
     var presXmlPath = 'ppt/presentation.xml';
-    if (zip.file(presXmlPath) && relMap[presRelsPath]) {
+    if (zip.file(presXmlPath)) {
       var presXml = await zip.file(presXmlPath).async('string');
-      var fixedPresXml = traceOpsRemoveMissingPresentationMasterRefs(presXml, relMap[presRelsPath]);
-      if (fixedPresXml !== presXml) zip.file(presXmlPath, fixedPresXml);
+      var fixedPresXml = traceOpsNormalizeOpenXmlMarkup(presXml);
+      fixedPresXml = traceOpsRemoveMissingPresentationMasterRefs(fixedPresXml, validMasterIds);
+      fixedPresXml = removeMissingPresentationRefsLocal(fixedPresXml, validSlideIds, 'p:sldId');
+      if (fixedPresXml !== presXml) writePart(presXmlPath, fixedPresXml);
     }
 
     return await zip.generateAsync({
@@ -6808,6 +6980,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       compression: 'DEFLATE'
     });
   }
+
 
   function traceOpsNormalizeZipPartName(path) {
     var s = String(path || '').replace(/\\/g, '/').trim();
@@ -7079,12 +7252,13 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     normalized.missing_fields = readinessMeta.missing;
     window.ensurePptxTools().then(async function(){
       var pptx = new PptxGenJS();
+      traceOpsPptHardenDeck(pptx);
       try { if (typeof pptx.layout !== 'undefined') pptx.layout = 'LAYOUT_WIDE'; } catch(_){ }
       try { if (typeof pptx.defineLayout === 'function') { pptx.defineLayout({ name:'TRACEOPS_WIDE', width:13.333, height:7.5 }); pptx.layout = 'TRACEOPS_WIDE'; } } catch(_){ }
       try { if (typeof pptx.setLayout === 'function') pptx.setLayout('LAYOUT_WIDE'); } catch(_){ }
-      pptx.author = 'OpenAI';
-      pptx.company = 'TraceOps by SMTintel';
-      pptx.subject = 'TraceOps 8D Draft';
+      pptx.author = traceOpsPptSafe('OpenAI', 40);
+      pptx.company = traceOpsPptSafe('TraceOps by SMTintel', 80);
+      pptx.subject = traceOpsPptSafe('TraceOps 8D Draft', 80);
       pptx.title = traceOpsPptSafe(normalized.eightd_id || 'TraceOps_8D_Draft', 120);
       try { pptx.lang = 'es-MX'; } catch(_){ }
       try { pptx.theme = { headFontFace:'Segoe UI', bodyFontFace:'Segoe UI', lang:'es-MX' }; } catch(_){ }
@@ -7104,10 +7278,11 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       traceOpsPptBuildAppendixSlide(pptx, normalized, model, linked);
 
       if (typeof pptx.write === 'function') {
-        var rawBlob = await pptx.write({ outputType: 'blob', compression: true });
-        var fixedBlob = await traceOpsFinalizePptxBlob(rawBlob);
-        traceOpsDownloadBlob(fileBase + '.pptx', fixedBlob);
-      } else if (typeof pptx.writeFile === 'function') {
+        var arr = await pptx.write({ outputType: 'arraybuffer', compression: true });
+        arr = await traceOpsFixPptxForDesktopPowerPoint(arr);
+        var blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+        traceOpsDownloadBlob(fileBase + '.pptx', blob);
+      } else if (typeof pptx.writeFile === 'function' && typeof pptx.write !== 'function') {
         await pptx.writeFile({ fileName: fileBase + '.pptx', compression: true });
       } else if (typeof pptx.save === 'function') {
         pptx.save(fileBase + '.pptx');
