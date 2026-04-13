@@ -6568,6 +6568,56 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return slide;
   }
 
+
+  async function traceOpsFixPptxDuplicateShapeIds(arrayBuffer) {
+    await window.ensureZipTools();
+    var zip = await JSZip.loadAsync(arrayBuffer);
+    var slideNames = Object.keys(zip.files).filter(function(name) {
+      return /^ppt\/slides\/slide\d+\.xml$/i.test(name);
+    });
+
+    for (var i = 0; i < slideNames.length; i++) {
+      var slideName = slideNames[i];
+      var xmlFile = zip.file(slideName);
+      if (!xmlFile) continue;
+      var xml = await xmlFile.async('string');
+      zip.file(slideName, traceOpsRenumberDuplicateCnvPrIds(xml));
+    }
+
+    return await zip.generateAsync({
+      type: 'arraybuffer',
+      compression: 'DEFLATE'
+    });
+  }
+
+  function traceOpsRenumberDuplicateCnvPrIds(xml) {
+    if (!xml) return xml;
+
+    var allIds = [];
+    xml.replace(/<p:cNvPr\b[^>]*\bid="(\d+)"/g, function(_, id) {
+      allIds.push(parseInt(id, 10) || 0);
+      return _;
+    });
+
+    var maxId = allIds.reduce(function(max, value) {
+      return value > max ? value : max;
+    }, 0);
+    var seen = Object.create(null);
+
+    return xml.replace(/(<p:cNvPr\b[^>]*\bid=")(\d+)(")/g, function(_, start, id, end) {
+      var num = parseInt(id, 10) || 0;
+      if (!seen[num]) {
+        seen[num] = true;
+        return start + num + end;
+      }
+
+      maxId += 1;
+      while (seen[maxId]) maxId += 1;
+      seen[maxId] = true;
+      return start + maxId + end;
+    });
+  }
+
   function exportEightdPpt(draft) {
     if (!draft) return;
     var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
@@ -6602,6 +6652,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
       if (typeof pptx.write === 'function') {
         var arr = await pptx.write({ outputType: 'arraybuffer', compression: true });
+        arr = await traceOpsFixPptxDuplicateShapeIds(arr);
         var blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
