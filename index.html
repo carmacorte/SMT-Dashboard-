@@ -6148,12 +6148,43 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   }
 
   function traceOpsPptInferOccurrenceAction(normalized, model){
+    function cleanCandidate(v){
+      var raw = String(v || '').trim();
+      if (!raw) return '';
+      var cleaned = raw
+        .replace(/^occurrence\s*[:\-]?\s*/i, '')
+        .replace(/^permanent corrective action\s*[:\-]?\s*/i, '')
+        .replace(/^corrective action\s*[:\-]?\s*/i, '')
+        .replace(/^action\s*[:\-]?\s*/i, '')
+        .replace(/^open\s*$/i, '')
+        .replace(/^pending\s*$/i, '')
+        .trim();
+      if (!cleaned) return '';
+      var lowClean = traceOpsPptNormLow(cleaned);
+      if (!lowClean || /^(pending|open|tbd|n d|na|occurrence)$/i.test(lowClean)) return '';
+      if (cleaned.length < 18) return '';
+      return traceOpsEightdShort(cleaned, 160);
+    }
     var low = traceOpsPptNormLow([normalized && normalized.defecto_smt, model && model.defect, normalized && normalized.complaint_anchor, model && model.complaintAnchor, normalized && normalized.d4_root_cause, model && model.rootCause, model && model.hypothesis].join(' '));
-    var bullets = traceOpsPptSplitBullets((normalized && normalized.d5_pca) || (model && model.pca) || '', 8, 1200);
-    var occ = (bullets || []).find(function(item){ return traceOpsPptNormalizeAxisLabel(item) === 'Occurrence'; });
-    if (occ) return traceOpsEightdShort(occ, 160);
-    if (/wrong component|wrong p n|material mix|wrong part|feeder|reel|laser mark|kitting/.test(low)) return 'Implement positive P/N verification at feeder release, eliminate empty-reel reuse, and block mixed-kitting returns before run start.';
-    if (/short|bridge|solder|micro solder|u518|u519|fine pitch|stencil|paste|reflow/.test(low)) return 'Adjust stencil / print / reflow controls at the occurrence point and verify the solder-bridge signature is removed under controlled build conditions.';
+    var rawPca = (normalized && normalized.d5_pca) || (model && model.pca) || '';
+    var bullets = traceOpsPptSplitBullets(rawPca, 10, 1600);
+    var occ = '';
+    (bullets || []).some(function(item, idx){
+      var label = traceOpsPptNormalizeAxisLabel(item);
+      if (label === 'Occurrence') {
+        occ = cleanCandidate(item);
+        if (!occ && bullets[idx + 1]) occ = cleanCandidate(bullets[idx + 1]);
+        return !!occ;
+      }
+      return false;
+    });
+    if (!occ) {
+      occ = cleanCandidate(rawPca);
+      if (occ && /^specific control gap/i.test(occ)) occ = '';
+    }
+    if (occ) return occ;
+    if (/wrong component|wrong p n|material mix|wrong part|feeder|reel|laser mark|kitting/.test(low)) return 'Implement positive P/N verification at feeder release, eliminate empty-reel reuse, segregate similar packages, and block mixed-kitting returns before run start.';
+    if (/short|bridge|solder|micro solder|u518|u519|fine pitch|stencil|paste|reflow/.test(low)) return 'Adjust stencil, print, and reflow controls at the occurrence point and verify the solder-bridge signature is removed under controlled build conditions.';
     if (/open|lifted|pad|coplanar|pressfit|connector/.test(low)) return 'Correct the occurrence mechanism at setup or assembly level and verify the physical defect signature is no longer created.';
     return 'Block recurrence at the occurrence point with one controlled setup or process action tied to the validated mechanism.';
   }
