@@ -199,7 +199,7 @@ window.addEventListener("unhandledrejection", function(ev) {
   --radius-sm:8px;
 }
 body{
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Arial',sans-serif;
   background:#F4F3F0;color:var(--g900);min-height:100vh;
   -webkit-font-smoothing:antialiased;letter-spacing:-.01em
 }
@@ -4117,8 +4117,8 @@ async function buildXlsx(result) {
 
   function hFill(bg){ return {type:"pattern",pattern:"solid",fgColor:{argb:"FF"+bg}}; }
   function brd(){ return {top:{style:"thin"},left:{style:"thin"},bottom:{style:"thin"},right:{style:"thin"}}; }
-  function hFont(sz){ return {name:"Segoe UI",size:sz||11,bold:true,color:{argb:"FF"+C.hFg}}; }
-  function dFont(){ return {name:"Segoe UI",size:10}; }
+  function hFont(sz){ return {name:"Arial",size:sz||11,bold:true,color:{argb:"FF"+C.hFg}}; }
+  function dFont(){ return {name:"Arial",size:10}; }
   function prioFill(p){ return ({Critica:C.critica,Alta:C.alta,Media:C.media,Baja:C.baja})[p] || "FFFFFF"; }
   function estFill(s){ return ({Abierto:C.abierto,"En proceso":C.enProceso,Cerrado:C.cerrado})[s] || "FFFFFF"; }
 
@@ -4189,7 +4189,7 @@ async function buildXlsx(result) {
   ESTADOS.forEach(function(est, ci) {
     var cell = eRow.getCell(ci+1);
     cell.fill = hFill(eColors[est] || "FFFFFF");
-    cell.font = {name:"Segoe UI",size:10,bold:true};
+    cell.font = {name:"Arial",size:10,bold:true};
     cell.alignment = {horizontal:"center"};
   });
 
@@ -4199,7 +4199,7 @@ async function buildXlsx(result) {
   countRow.height = 14;
   ESTADOS.forEach(function(est, ci) {
     var cell = countRow.getCell(ci+1);
-    cell.font = {name:"Segoe UI",size:11,bold:true};
+    cell.font = {name:"Arial",size:11,bold:true};
     cell.alignment = {horizontal:"center"};
   });
 
@@ -4292,7 +4292,7 @@ async function buildXlsx(result) {
   var rTl = wsDash.addRow(["Timeline de comportamiento - Eventos por hora"]);
   rTl.getCell(1).fill = hFill(C.hBg); rTl.getCell(1).font = hFont();
   var tlHdrRow = wsDash.addRow(["Hora","Total","Calidad","Proceso","Material","Sistema","Produccion","Seguridad"]);
-  tlHdrRow.eachCell({includeEmpty:false},function(c){c.font={name:"Segoe UI",size:10,bold:true};c.fill=hFill("D0EAE4");});
+  tlHdrRow.eachCell({includeEmpty:false},function(c){c.font={name:"Arial",size:10,bold:true};c.fill=hFill("D0EAE4");});
   var horaXls={};var horaTipoXls={};
   ev.forEach(function(e){
     if(!e.hora)return;
@@ -5711,7 +5711,7 @@ function App() {
 <title>${esc(normalized.eightd_id)}</title>
 <style>
 :root{--ink:#10231C;--muted:#5F766C;--soft:#F6FBF8;--line:#DCE9E2;--paper:#FFFFFF;--bg:#EEF4F0;--accent:#1E8A64}
-*{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--ink)}
 .page{width:1280px;min-height:720px;margin:0 auto 18px;background:var(--paper);padding:34px 40px;box-shadow:0 18px 38px rgba(16,35,28,.10);page-break-after:always}
 .page:last-child{page-break-after:auto}
 .hero{background:linear-gradient(135deg,#07100C,#10231C);color:#fff;border-radius:28px;padding:28px 32px;margin-bottom:18px}
@@ -5819,39 +5819,15 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 </html>`;
   }
 
-
-  function traceOpsPptNormalizeUnicodeText(v) {
-    var s = String(v == null ? "" : v);
-    try { s = s.normalize('NFKC'); } catch (_) {}
-    var out = [];
-    for (var i = 0; i < s.length; i++) {
-      var code = s.charCodeAt(i);
-      if (code >= 0xD800 && code <= 0xDBFF) {
-        var next = s.charCodeAt(i + 1);
-        if (next >= 0xDC00 && next <= 0xDFFF) {
-          out.push(s.charAt(i), s.charAt(i + 1));
-          i += 1;
-        }
-        continue;
-      }
-      if (code >= 0xDC00 && code <= 0xDFFF) continue;
-      out.push(s.charAt(i));
-    }
-    return out.join('');
-  }
-
   function traceOpsPptSanitizeText(v, limit){
-    var s = traceOpsPptNormalizeUnicodeText(v);
+    var s = String(v == null ? "" : v);
     s = s
       .replace(/\r/g, "")
-      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
-      .replace(/[\u200B\u200C\u200D\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u202F\u2060\u2066\u2067\u2068\u2069\uFEFF]/g, "")
-      .replace(/[\uFDD0-\uFDEF\uFFFE\uFFFF]/g, "")
-      .replace(/\u2028|\u2029/g, "\n")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+      .replace(/[\u200B\u200C\u200D\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u202F\uFEFF]/g, "")
       .replace(/[\u2018\u2019]/g, "'")
-      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u201C\u201D]/g, "\"")
       .replace(/[\u2013\u2014]/g, "-")
-      .replace(/[\u2022\u25CF\u25CB\u25A0\u25A1]/g, "•")
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<[^>]+>/g, " ")
       .replace(/&nbsp;/gi, " ")
@@ -5875,75 +5851,18 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return clean.replace(/\n+/g, " ").trim();
   }
 
-  function traceOpsPptSanitizeOptionsDeep(value, depth){
-    if (depth > 8) return value;
-    if (value == null) return value;
-    if (typeof value === "string") return traceOpsPptSanitizeText(value, 0);
-    if (Array.isArray(value)) {
-      return value.map(function(item){ return traceOpsPptSanitizeOptionsDeep(item, depth + 1); });
-    }
-    if (typeof value === "object") {
-      var out = {};
-      Object.keys(value).forEach(function(key){
-        var item = value[key];
-        if (key === "text") out[key] = traceOpsPptSanitizeTextArg(item);
-        else out[key] = traceOpsPptSanitizeOptionsDeep(item, depth + 1);
-      });
-      return out;
-    }
-    return value;
-  }
-
-  function traceOpsPptSanitizeTextArg(text){
-    if (Array.isArray(text)) {
-      return text.map(function(run){
-        if (run == null) return { text: "" };
-        if (typeof run === "string" || typeof run === "number" || typeof run === "boolean") {
-          return { text: traceOpsPptSanitizeText(run, 0) };
-        }
-        if (typeof run === "object") {
-          var out = {};
-          Object.keys(run).forEach(function(key){
-            if (key === "text") out[key] = traceOpsPptSanitizeText(run[key], 0);
-            else out[key] = traceOpsPptSanitizeOptionsDeep(run[key], 0);
-          });
-          if (!("text" in out)) out.text = "";
-          return out;
-        }
-        return { text: traceOpsPptSanitizeText(String(run), 0) };
-      });
-    }
-    if (text && typeof text === "object" && text.text != null) {
-      var obj = {};
-      Object.keys(text).forEach(function(key){
-        if (key === "text") obj[key] = traceOpsPptSanitizeText(text[key], 0);
-        else obj[key] = traceOpsPptSanitizeOptionsDeep(text[key], 0);
-      });
-      return obj;
-    }
-    return traceOpsPptSanitizeText(text, 0);
-  }
-
-  function traceOpsPptSanitizeTableCell(cell){
-    if (cell && typeof cell === "object" && !Array.isArray(cell)) {
-      var out = {};
-      Object.keys(cell).forEach(function(key){
-        if (key === "text") out[key] = traceOpsPptSafeCell(cell[key], 220);
-        else if (key === "options") out[key] = traceOpsPptSanitizeOptionsDeep(cell[key], 0);
-        else out[key] = traceOpsPptSanitizeOptionsDeep(cell[key], 0);
-      });
-      if (!("text" in out) && !("image" in out)) out.text = "";
-      return out;
-    }
-    return traceOpsPptSafeCell(cell, 220);
-  }
-
   function traceOpsPptSafeTable(rows){
     if (!Array.isArray(rows)) return [];
     return rows.map(function(row){
       if (!Array.isArray(row)) row = [row];
       return row.map(function(cell){
-        return traceOpsPptSanitizeTableCell(cell);
+        if (cell && typeof cell === "object" && cell.text != null) {
+          return {
+            text: traceOpsPptSafeCell(cell.text, 220),
+            options: cell.options || {}
+          };
+        }
+        return traceOpsPptSafeCell(cell, 220);
       });
     });
   }
@@ -5955,57 +5874,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     if (limit && clean.length > limit) return clean.slice(0, Math.max(0, limit - 3)).trim() + "...";
     return clean;
   }
-
-  function traceOpsPptPatchSlideMethods(slide){
-    if (!slide || slide.__traceopsPatched) return slide;
-    slide.__traceopsPatched = true;
-
-    var originalAddText = typeof slide.addText === "function" ? slide.addText : null;
-    if (originalAddText) {
-      slide.addText = function(text, options){
-        return originalAddText.call(this, traceOpsPptSanitizeTextArg(text), traceOpsPptSanitizeOptionsDeep(options, 0));
-      };
-    }
-
-    var originalAddTable = typeof slide.addTable === "function" ? slide.addTable : null;
-    if (originalAddTable) {
-      slide.addTable = function(rows, options){
-        return originalAddTable.call(this, traceOpsPptSafeTable(rows), traceOpsPptSanitizeOptionsDeep(options, 0));
-      };
-    }
-
-    var originalAddNotes = typeof slide.addNotes === "function" ? slide.addNotes : null;
-    if (originalAddNotes) {
-      slide.addNotes = function(text){
-        return originalAddNotes.call(this, traceOpsPptSanitizeText(text, 0));
-      };
-    }
-
-    return slide;
-  }
-
-  function traceOpsPptHardenDeck(pptx){
-    if (!pptx || pptx.__traceopsDeckPatched) return pptx;
-    pptx.__traceopsDeckPatched = true;
-
-    var originalAddSlide = typeof pptx.addSlide === "function" ? pptx.addSlide : null;
-    if (originalAddSlide) {
-      pptx.addSlide = function(){
-        var slide = originalAddSlide.apply(this, arguments);
-        return traceOpsPptPatchSlideMethods(slide);
-      };
-    }
-
-    if (typeof pptx.defineLayout === "function") {
-      var originalDefineLayout = pptx.defineLayout;
-      pptx.defineLayout = function(layout){
-        return originalDefineLayout.call(this, traceOpsPptSanitizeOptionsDeep(layout, 0));
-      };
-    }
-
-    return pptx;
-  }
-
   function traceOpsGetEightdLinkedEventsForExport(draft){
     var ids = (draft && (draft.linked_event_ids || draft.event_ids)) || [];
     if (typeof traceOpsCollectLinkedEventsByIds !== "function") return [];
@@ -6018,9 +5886,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   function traceOpsPptAddBlock(slide, title, body, x, y, w, h, fill){
     var safeTitle = traceOpsPptSafe(title, 120);
     var safeBody = traceOpsPptWrap(body, 460);
-    if (safeTitle) slide.addText(safeTitle, {x:x, y:y, w:w, h:0.22, fontFace:"Arial", fontSize:10, bold:true, color:"5F766C", breakLine:false, margin:0, fit:'shrink'});
+    if (safeTitle) slide.addText(traceOpsPptSafe(safeTitle, {x:x, y:y, w:w, h:0.22, fontFace:"Arial", fontSize:10, bold:true, color:"5F766C", breakLine:false, margin:0, }));
     slide.addShape("roundRect", {x:x, y:y+0.22, w:w, h:h-0.22, rectRadius:0.08, line:{color:"DCE9E2", pt:1}, fill:{color:fill || "FFFFFF"}});
-    if (safeBody) slide.addText(safeBody, {x:x+0.08, y:y+0.32, w:w-0.16, h:h-0.36, fontFace:"Arial", fontSize:11, color:"10231C", valign:"top", margin:0.02, fit:'shrink'});
+    if (safeBody) slide.addText(traceOpsPptSafe(safeBody, {x:x+0.08, y:y+0.32, w:w-0.16, h:h-0.36, fontFace:"Arial", fontSize:11, color:"10231C", valign:"top", margin:0.02, }));
   }
 
   function traceOpsPptEventRows(draft){
@@ -6064,7 +5932,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var yy = y + (i * lineGap);
       if (yy > y + h - 0.24) break;
       slide.addShape('ellipse', {x:x, y:yy + 0.07, w:0.08, h:0.08, line:{color:'1E7B58', pt:0}, fill:{color:'1E7B58'}});
-      slide.addText(traceOpsPptWrap(items[i], 170), {x:x+0.14, y:yy, w:w-0.16, h:0.22, fontFace:'Arial', fontSize:fontSize, color:'10231C', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptSafe(traceOpsPptWrap(items[i], 170)), {x:x+0.14, y:yy, w:w-0.16, h:0.22, fontFace:'Arial', fontSize:fontSize, color:'10231C', margin:0, });
     }
   }
 
@@ -6075,12 +5943,12 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   function traceOpsPptApplyShell(slide, title, subtitle, activeIdx, badgeText){
     slide.background = { color: 'F2F5F2' };
     slide.addShape('rect', {x:0, y:0, w:13.333, h:1.02, line:{color:'10231C', pt:0}, fill:{color:'10231C'}});
-    slide.addText(traceOpsPptSafe('FOXCONN | TraceOps 8D Draft', 80), {x:0.42, y:0.22, w:3.2, h:0.16, fontFace:'Arial', fontSize:10, bold:true, color:'A8D6C4', margin:0});
-    slide.addText(traceOpsPptSafe(title, 110), {x:0.42, y:0.42, w:7.9, h:0.24, fontFace:'Arial', fontSize:22, bold:true, color:'FFFFFF', margin:0});
-    slide.addText(traceOpsPptSafe(subtitle || 'TraceOps structured 8D deck export', 180), {x:0.42, y:0.72, w:8.8, h:0.14, fontFace:'Arial', fontSize:10.4, color:'D6E3DD', margin:0});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe('FOXCONN | TraceOps 8D Draft', 80)), {x:0.42, y:0.22, w:3.2, h:0.16, fontFace:'Arial', fontSize:10, bold:true, color:'A8D6C4', margin:0});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe(title, 110)), {x:0.42, y:0.42, w:7.9, h:0.24, fontFace:'Arial', fontSize:22, bold:true, color:'FFFFFF', margin:0});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe(subtitle || 'TraceOps structured 8D deck export', 180)), {x:0.42, y:0.72, w:8.8, h:0.14, fontFace:'Arial', fontSize:10.4, color:'D6E3DD', margin:0});
     if (badgeText) {
       slide.addShape('roundRect', {x:11.26, y:0.28, w:1.62, h:0.34, rectRadius:0.08, line:{color:'3D5C50', pt:1}, fill:{color:'173328'}});
-      slide.addText(traceOpsPptSafe(badgeText, 40), {x:11.38, y:0.37, w:1.36, h:0.12, fontFace:'Arial', fontSize:9.2, bold:true, color:'D7E7E0', align:'center', margin:0});
+      slide.addText(traceOpsPptSafe(traceOpsPptSafe(badgeText, 40)), {x:11.38, y:0.37, w:1.36, h:0.12, fontFace:'Arial', fontSize:9.2, bold:true, color:'D7E7E0', align:'center', margin:0});
     }
     var steps = traceOpsPptDeckSteps();
     var totalW = 12.46;
@@ -6090,12 +5958,12 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var x = 0.42 + (i * (itemW + gap));
       var active = i === activeIdx;
       slide.addShape('roundRect', {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '1E7B58' : 'D7E6DE', pt:1}, fill:{color:active ? 'EAF5F0' : 'FFFFFF'}});
-      slide.addText(traceOpsPptSafe(steps[i], 24), {x:x+0.03, y:1.19, w:itemW-0.06, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:active ? '1E7B58' : '5F766C', align:'center', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptSafe(traceOpsPptSafe(steps[i], 24)), {x:x+0.03, y:1.19, w:itemW-0.06, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:active ? '1E7B58' : '5F766C', align:'center', margin:0, });
     }
   }
 
   function traceOpsPptPanelTitle(slide, title, x, y, w){
-    slide.addText(traceOpsPptSafe(title, 80), {x:x, y:y, w:w, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe(title, 80)), {x:x, y:y, w:w, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'5F766C', margin:0, });
   }
 
   function traceOpsPptBox(slide, x, y, w, h, fill, lineColor){
@@ -6104,7 +5972,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
   function traceOpsPptMiniNote(slide, text, x, y, w){
     if (!text) return;
-    slide.addText(traceOpsPptWrap(text, 180), {x:x, y:y, w:w, h:0.16, fontFace:'Arial', fontSize:9.0, color:'5F766C', italic:true, margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(text, 180)), {x:x, y:y, w:w, h:0.16, fontFace:'Arial', fontSize:9.0, color:'5F766C', italic:true, margin:0, });
   }
 
   function traceOpsPptDrawFlowSteps(slide, steps, x, y, w, h){
@@ -6114,8 +5982,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var yy = y + (i * rowH);
       slide.addShape('roundRect', {x:x + 0.06, y:yy + 0.04, w:w - 0.42, h:rowH - 0.08, rectRadius:0.05, line:{color:(i === list.length - 1 ? 'E4A24A' : 'DCE9E2'), pt:1}, fill:{color:(i === list.length - 1 ? 'FFF5E7' : (i % 2 ? 'F8FBF9' : 'FFFFFF'))}});
       slide.addShape('roundRect', {x:x + w - 0.30, y:yy + 0.10, w:0.18, h:rowH - 0.20, rectRadius:0.04, line:{color:(i === list.length - 1 ? 'E4A24A' : '2F5F9A'), pt:1}, fill:{color:(i === list.length - 1 ? 'E4A24A' : '2F5F9A')}});
-      slide.addText(String(i + 1), {x:x + 0.14, y:yy + 0.10, w:0.24, h:0.14, fontFace:'Arial', fontSize:10.5, bold:true, color:'1E7B58', align:'center', margin:0});
-      slide.addText(traceOpsPptWrap(list[i], 95), {x:x + 0.46, y:yy + 0.11, w:w - 0.92, h:rowH - 0.18, fontFace:'Arial', fontSize:10.0, color:'10231C', margin:0, fit:'shrink', valign:'mid'});
+      slide.addText(traceOpsPptSafe(String(i + 1)), {x:x + 0.14, y:yy + 0.10, w:0.24, h:0.14, fontFace:'Arial', fontSize:10.5, bold:true, color:'1E7B58', align:'center', margin:0});
+      slide.addText(traceOpsPptSafe(traceOpsPptWrap(list[i], 95)), {x:x + 0.46, y:yy + 0.11, w:w - 0.92, h:rowH - 0.18, fontFace:'Arial', fontSize:10.0, color:'10231C', margin:0, , valign:'mid'});
     }
   }
 
@@ -6139,15 +6007,15 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       slide.addShape('line', {x:ax, y:centerY, w:-0.68, h:0.64, line:{color:'2F5F9A', pt:1.2}});
 
       slide.addShape('roundRect', {x:ax - 1.14, y:y + 0.12, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
-      slide.addText(traceOpsPptSafe(topItem.label, 26), {x:ax - 1.06, y:y + 0.20, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'1E7B58', align:'center', margin:0, fit:'shrink'});
-      slide.addText(traceOpsPptWrap(((topItem.items && topItem.items[0]) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + 0.46, w:1.42, h:0.34, fontFace:'Arial', fontSize:7.8, color:'10231C', margin:0, fit:'shrink', align:'center'});
+      slide.addText(traceOpsPptSafe(traceOpsPptSafe(topItem.label, 26)), {x:ax - 1.06, y:y + 0.20, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'1E7B58', align:'center', margin:0, });
+      slide.addText(traceOpsPptSafe(traceOpsPptWrap(((topItem.items && topItem.items[0])) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + 0.46, w:1.42, h:0.34, fontFace:'Arial', fontSize:7.8, color:'10231C', margin:0, , align:'center'});
 
       slide.addShape('roundRect', {x:ax - 1.14, y:y + h - 0.42, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'F8FBF9'}});
-      slide.addText(traceOpsPptSafe(bottomItem.label, 26), {x:ax - 1.06, y:y + h - 0.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'1E7B58', align:'center', margin:0, fit:'shrink'});
-      slide.addText(traceOpsPptWrap(((bottomItem.items && bottomItem.items[0]) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + h - 0.78, w:1.42, h:0.26, fontFace:'Arial', fontSize:7.8, color:'10231C', margin:0, fit:'shrink', align:'center'});
+      slide.addText(traceOpsPptSafe(traceOpsPptSafe(bottomItem.label, 26)), {x:ax - 1.06, y:y + h - 0.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'1E7B58', align:'center', margin:0, });
+      slide.addText(traceOpsPptSafe(traceOpsPptWrap(((bottomItem.items && bottomItem.items[0])) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + h - 0.78, w:1.42, h:0.26, fontFace:'Arial', fontSize:7.8, color:'10231C', margin:0, , align:'center'});
     }
 
-    slide.addText('Probable\nCause', {x:x + w - 1.24, y:centerY - 0.30, w:0.54, h:0.40, fontFace:'Arial', fontSize:8.8, bold:true, color:'E4A24A', margin:0, align:'center', valign:'mid'});
+    slide.addText(traceOpsPptSafe('Probable\nCause', {x:x + w - 1.24, y:centerY - 0.30, w:0.54, h:0.40, fontFace:'Arial', fontSize:8.8, bold:true, color:'E4A24A', margin:0, align:'center', valign:'mid'}));
   }
 
   function traceOpsPptDrawWhyCards(slide, whys, x, y, w, h, opts){
@@ -6160,8 +6028,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var yy = y + topPad + (i * (rowH + gap));
       slide.addShape('roundRect', {x:x, y:yy, w:w, h:rowH, rectRadius:0.05, line:{color:'DCE9E2', pt:1}, fill:{color:(i % 2 ? 'F8FBF9' : 'FFFFFF')}});
       slide.addShape('roundRect', {x:x + 0.08, y:yy + 0.07, w:0.52, h:rowH - 0.14, rectRadius:0.04, line:{color:'E6EFEA', pt:1}, fill:{color:'ECF5F1'}});
-      slide.addText(String(i + 1), {x:x + 0.19, y:yy + (rowH/2) - 0.08, w:0.28, h:0.14, fontFace:'Arial', fontSize:10.0, bold:true, color:'1E7B58', align:'center', margin:0});
-      slide.addText(traceOpsPptWrap(items[i], 110), {x:x + 0.72, y:yy + 0.06, w:w - 0.84, h:rowH - 0.12, fontFace:'Arial', fontSize:9.2, color:'10231C', margin:0, fit:'shrink', valign:'mid'});
+      slide.addText(traceOpsPptSafe(String(i + 1)), {x:x + 0.19, y:yy + (rowH/2) - 0.08, w:0.28, h:0.14, fontFace:'Arial', fontSize:10.0, bold:true, color:'1E7B58', align:'center', margin:0});
+      slide.addText(traceOpsPptSafe(traceOpsPptWrap(items[i], 110)), {x:x + 0.72, y:yy + 0.06, w:w - 0.84, h:rowH - 0.12, fontFace:'Arial', fontSize:9.2, color:'10231C', margin:0, , valign:'mid'});
     }
   }
 
@@ -6173,13 +6041,13 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     else if (tone === 'pending') { fill = 'FDF0EE'; line = 'F0C4BE'; text = 'C0392B'; }
     else if (tone === 'ok') { fill = 'EAF5F0'; line = 'B8DECE'; text = '1E7B58'; }
     slide.addShape('roundRect', {x:x, y:y, w:1.28, h:0.24, rectRadius:0.08, line:{color:line, pt:1}, fill:{color:fill}});
-    slide.addText(traceOpsPptSafe(label, 28), {x:x+0.05, y:y+0.07, w:1.18, h:0.10, fontFace:'Arial', fontSize:8.5, bold:true, color:text, align:'center', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe(label, 28)), {x:x+0.05, y:y+0.07, w:1.18, h:0.10, fontFace:'Arial', fontSize:8.5, bold:true, color:text, align:'center', margin:0, });
   }
 
   function traceOpsPptKeyTile(slide, label, value, x, y, w){
     traceOpsPptBox(slide, x, y, w, 0.74, 'FFFFFF');
-    slide.addText(traceOpsPptSafe(label, 40), {x:x+0.12, y:y+0.12, w:w-0.24, h:0.12, fontFace:'Arial', fontSize:8.8, bold:true, color:'5F766C', margin:0});
-    slide.addText(traceOpsPptWrap(value, 48), {x:x+0.12, y:y+0.30, w:w-0.24, h:0.26, fontFace:'Arial', fontSize:11.6, bold:true, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe(label, 40)), {x:x+0.12, y:y+0.12, w:w-0.24, h:0.12, fontFace:'Arial', fontSize:8.8, bold:true, color:'5F766C', margin:0});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(value, 48)), {x:x+0.12, y:y+0.30, w:w-0.24, h:0.26, fontFace:'Arial', fontSize:11.6, bold:true, color:'10231C', margin:0, });
   }
 
   function traceOpsPptNormalizeWhys(source, fallbackLabel){
@@ -6607,15 +6475,15 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
     traceOpsPptBox(slide, 0.42, 3.34, 7.06, 1.34, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Complaint anchor', 0.58, 3.46, 2.0);
-    slide.addText(traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Issue under analysis', 320), {x:0.58, y:3.74, w:6.72, h:0.68, fontFace:'Segoe UI', fontSize:12, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Issue under analysis', 320)), {x:0.58, y:3.74, w:6.72, h:0.68, fontFace:'Arial', fontSize:12, color:'10231C', margin:0, });
 
     traceOpsPptBox(slide, 7.64, 3.34, 5.27, 0.62, 'F8FBF9');
     traceOpsPptPanelTitle(slide, 'Detection window', 7.80, 3.46, 1.6);
-    slide.addText(traceOpsPptWrap(normalized.detection_window || model.detectionWindow || 'N/D', 80), {x:7.80, y:3.68, w:4.80, h:0.18, fontFace:'Segoe UI', fontSize:11.5, bold:true, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(normalized.detection_window || model.detectionWindow || 'N/D', 80)), {x:7.80, y:3.68, w:4.80, h:0.18, fontFace:'Arial', fontSize:11.5, bold:true, color:'10231C', margin:0, });
 
     traceOpsPptBox(slide, 7.64, 4.06, 5.27, 0.62, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Trace events', 7.80, 4.18, 1.6);
-    slide.addText(traceOpsPptWrap(linked.length ? (linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).slice(0,5).join(' → ')) : 'Build → Test → Complaint', 90), {x:7.80, y:4.40, w:4.80, h:0.18, fontFace:'Segoe UI', fontSize:11.2, bold:true, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(linked.length ? (linked.map(function(item)){ return item.id || item.tipo_evento || 'Event'; }).slice(0,5).join(' → ')) : 'Build → Test → Complaint', 90), {x:7.80, y:4.40, w:4.80, h:0.18, fontFace:'Arial', fontSize:11.2, bold:true, color:'10231C', margin:0, });
 
     traceOpsPptBox(slide, 0.42, 4.90, 4.08, 1.12, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Impact / exposure', 0.58, 5.02, 1.8);
@@ -6623,19 +6491,19 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
     traceOpsPptBox(slide, 4.62, 4.90, 4.08, 1.12, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Trace path', 4.78, 5.02, 1.6);
-    slide.addText(traceOpsPptWrap(normalized.trace_path || model.tracePath || 'Event linkage pending; case summary used for traceability.', 150), {x:4.78, y:5.28, w:3.70, h:0.56, fontFace:'Segoe UI', fontSize:10.8, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(normalized.trace_path || model.tracePath || 'Event linkage pending; case summary used for traceability.', 150)), {x:4.78, y:5.28, w:3.70, h:0.56, fontFace:'Arial', fontSize:10.8, color:'10231C', margin:0, });
 
     traceOpsPptBox(slide, 8.82, 4.90, 4.08, 1.12, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Linked RCCA / evidence', 8.98, 5.02, 2.2);
-    slide.addText(traceOpsPptWrap('RCCA ' + (normalized.source_rcca_id || 'N/D') + ' · ' + (model.evidenceRefs.length ? model.evidenceRefs.slice(0,3).join(' | ') : 'Evidence summary available'), 180), {x:8.98, y:5.28, w:3.70, h:0.56, fontFace:'Segoe UI', fontSize:10.5, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap('RCCA ' + (normalized.source_rcca_id || 'N/D')) + ' · ' + (model.evidenceRefs.length ? model.evidenceRefs.slice(0,3).join(' | ') : 'Evidence summary available'), 180), {x:8.98, y:5.28, w:3.70, h:0.56, fontFace:'Arial', fontSize:10.5, color:'10231C', margin:0, });
 
     traceOpsPptBox(slide, 0.42, 6.12, 8.12, 0.82, 'F8FBF9');
     traceOpsPptPanelTitle(slide, 'Readiness basis', 0.58, 6.24, 1.6);
-    slide.addText(traceOpsPptWrap(readinessMeta.basis + (readinessMeta.missing.length ? (' Open gaps: ' + readinessMeta.missing.slice(0,4).join(', ') + '.') : ' All mandatory sections currently populated.'), 220), {x:1.98, y:6.24, w:6.20, h:0.34, fontFace:'Segoe UI', fontSize:9.6, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(readinessMeta.basis + (readinessMeta.missing.length ? (' Open gaps: ' + readinessMeta.missing.slice(0,4)).join(', ') + '.') : ' All mandatory sections currently populated.'), 220), {x:1.98, y:6.24, w:6.20, h:0.34, fontFace:'Arial', fontSize:9.6, color:'10231C', margin:0, });
 
     traceOpsPptBox(slide, 8.76, 6.12, 4.14, 0.82, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Readiness logic', 8.92, 6.24, 1.6);
-    slide.addText(traceOpsPptWrap(readinessMeta.completed + '/8 mandatory sections completed · score auto-calculated by TraceOps.', 110), {x:10.20, y:6.24, w:2.36, h:0.34, fontFace:'Segoe UI', fontSize:9.4, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(readinessMeta.completed + '/8 mandatory sections completed · score auto-calculated by TraceOps.', 110)), {x:10.20, y:6.24, w:2.36, h:0.34, fontFace:'Arial', fontSize:9.4, color:'10231C', margin:0, });
 
     traceOpsPptAddBadge(slide, String(normalized.status || 'Draft'), 11.32, 0.94, 'draft');
     return slide;
@@ -6661,20 +6529,20 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       ['Manufacturing Manager','Pending'],
       ['BU Manager','Pending']
     ];
-    slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(roles)), {x:0.42, y:1.96, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.8, margin:0.05, rowH:0.28, colW:[0.78,1.72,2.40], fit:'shrink'});
-    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.24, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Level',options:{bold:true}},{text:'Owner',options:{bold:true}}]].concat(escalation)), {x:0.42, y:4.52, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.7, margin:0.05, rowH:0.28, colW:[2.34,2.52], fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe('D1 Team', 30)), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(roles)), {x:0.42, y:1.96, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.8, margin:0.05, rowH:0.28, colW:[0.78,1.72,2.40], });
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe('Escalation', 30)), {x:0.42, y:4.24, w:1.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Level',options:{bold:true}},{text:'Owner',options:{bold:true}}]].concat(escalation)), {x:0.42, y:4.52, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.7, margin:0.05, rowH:0.28, colW:[2.34,2.52], });
 
-    slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe('D2 Traceability', 30)), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
     var traceRows = [
       ['Model', normalized.modelo || model.model || 'Pending', 'Revision', normalized.revision || 'Pending'],
       ['Line', normalized.linea || model.line || 'Pending', 'Station', normalized.station || model.station || 'Pending'],
       ['Supplier / Lot', normalized.supplier_lot || 'Pending', 'Serial / Batch', normalized.serial_batch || 'Pending'],
       ['Date code', normalized.date_code || 'Pending', 'Component P/N', normalized.component_pn || 'Pending']
     ];
-    slide.addTable(traceOpsPptSafeTable([[{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(traceRows)), {x:5.74, y:1.96, w:7.16, h:1.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.5, margin:0.05, rowH:0.22, colW:[1.18,2.28,1.18,2.28], fit:'shrink'});
-    slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.50, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(traceRows)), {x:5.74, y:1.96, w:7.16, h:1.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.5, margin:0.05, rowH:0.22, colW:[1.18,2.28,1.18,2.28], });
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe('5W2H problem delimitation', 40)), {x:5.74, y:3.50, w:2.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
     var howMany = (normalized.how_many || ('Total units processed: ' + (normalized.total_units || 'Pending') + ' | Clean units: ' + (normalized.clean_units || 'Pending') + ' | Risk units: ' + (normalized.risk_units || 'Pending') + ' | Clean yield: ' + (normalized.clean_yield || 'Pending') + ' | OJT / touch rate: ' + (normalized.touch_rate || 'Pending')));
     var problemRows = [
       ['Who', normalized.reporta || normalized.owner_name || 'Pending', 'How', normalized.process_path || (normalized.station || model.station || 'Pending')],
@@ -6682,8 +6550,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       ['Where', [normalized.linea || model.line || 'Pending', normalized.station || model.station || 'Pending'].join(' · '), 'Why', normalized.technical_why || 'Pending'],
       ['When', normalized.detection_window || model.detectionWindow || 'Pending', 'Mechanism', traceOpsEightdShort(model.pattern || normalized.technical_interpretation || 'Pending', 100)]
     ];
-    slide.addTable(traceOpsPptSafeTable([[{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(problemRows)), {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.3, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Bad part / situation',options:{bold:true}},{text:'Good part / situation',options:{bold:true}}],[traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Pending', 150), traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 150)]]), {x:5.74, y:5.58, w:7.16, h:1.00, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.8, margin:0.05, rowH:[0.20,0.64], colW:[3.50,3.50], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(problemRows)), {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.3, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], });
+    slide.addTable(traceOpsPptSafeTable([[{text:'Bad part / situation',options:{bold:true}},{text:'Good part / situation',options:{bold:true}}],[traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Pending', 150), traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 150)]]), {x:5.74, y:5.58, w:7.16, h:1.00, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.8, margin:0.05, rowH:[0.20,0.64], colW:[3.50,3.50], });
     return slide;
   }
 
@@ -6701,15 +6569,15 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       ['DF', normalized.qty_suspect_df || 'Pending', normalized.qty_good_df || 'Pending', normalized.qty_bad_df || 'Pending', owner, normalized.clean_date_df || 'Pending', 'Pending'],
       ['Other', normalized.qty_suspect_other || 'Pending', normalized.qty_good_other || 'Pending', normalized.qty_bad_other || 'Pending', owner, normalized.clean_date_other || 'Pending', 'Pending']
     ];
-    slide.addText(traceOpsPptSafe('Containment by location', 36), {x:0.42, y:1.66, w:2.4, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Location',options:{bold:true}},{text:'Qty suspect',options:{bold:true}},{text:'Good part',options:{bold:true}},{text:'Bad part',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Clean date',options:{bold:true}},{text:'Status',options:{bold:true}}]].concat(rows)), {x:0.42, y:1.92, w:12.48, h:2.34, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.3, margin:0.04, rowH:0.26, colW:[1.42,1.04,1.04,1.04,2.10,1.28,1.12], fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Affected material / exposure',options:{bold:true}},{text:'Sort / inspection strategy',options:{bold:true}}],[material, traceOpsPptWrap(traceOpsPptSortStrategyText(model, normalized).join(' • '), 150)]]), {x:0.42, y:4.46, w:12.48, h:0.94, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.7, margin:0.05, rowH:[0.20,0.58], colW:[4.26,8.02], fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe('Containment by location', 36)), {x:0.42, y:1.66, w:2.4, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Location',options:{bold:true}},{text:'Qty suspect',options:{bold:true}},{text:'Good part',options:{bold:true}},{text:'Bad part',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Clean date',options:{bold:true}},{text:'Status',options:{bold:true}}]].concat(rows)), {x:0.42, y:1.92, w:12.48, h:2.34, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.3, margin:0.04, rowH:0.26, colW:[1.42,1.04,1.04,1.04,2.10,1.28,1.12], });
+    slide.addTable(traceOpsPptSafeTable([[{text:'Affected material / exposure',options:{bold:true}},{text:'Sort / inspection strategy',options:{bold:true}}],[material, traceOpsPptWrap(traceOpsPptSortStrategyText(model, normalized).join(' • '), 150)]]), {x:0.42, y:4.46, w:12.48, h:0.94, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.7, margin:0.05, rowH:[0.20,0.58], colW:[4.26,8.02], });
     var acts = traceOpsPptSplitBullets(normalized.d3_containment || traceOpsEightdBuildContainmentText(model), 4, 1000);
     while (acts.length < 4) acts.push('Pending');
-    slide.addText(traceOpsPptSafe('Additional containment actions', 36), {x:0.42, y:5.56, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Action',options:{bold:true}},{text:'Status',options:{bold:true}}],[acts[0],'Implemented'],[acts[1],'Implemented'],[acts[2],'Under validation'],[acts[3],'Pending']]), {x:0.42, y:5.82, w:6.12, h:0.98, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.6, margin:0.04, rowH:0.19, colW:[4.96,1.00], fit:'shrink'});
-    slide.addText(traceOpsPptSafe('Customer notification / shielding', 40), {x:6.78, y:5.56, w:3.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Item',options:{bold:true}},{text:'Value',options:{bold:true}}],['Owner', owner],['Start', start],['Status', traceOpsEightdHasText(normalized.d6_validation) ? 'In validation' : 'Draft containment'],['Shielding', 'Customer protection active within 24h']]), {x:6.78, y:5.82, w:6.12, h:0.98, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.6, margin:0.04, rowH:0.19, colW:[1.48,4.34], fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe('Additional containment actions', 36)), {x:0.42, y:5.56, w:2.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Action',options:{bold:true}},{text:'Status',options:{bold:true}}],[acts[0],'Implemented'],[acts[1],'Implemented'],[acts[2],'Under validation'],[acts[3],'Pending']]), {x:0.42, y:5.82, w:6.12, h:0.98, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.6, margin:0.04, rowH:0.19, colW:[4.96,1.00], });
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe('Customer notification / shielding', 40)), {x:6.78, y:5.56, w:3.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Item',options:{bold:true}},{text:'Value',options:{bold:true}}],['Owner', owner],['Start', start],['Status', traceOpsEightdHasText(normalized.d6_validation) ? 'In validation' : 'Draft containment'],['Shielding', 'Customer protection active within 24h']]), {x:6.78, y:5.82, w:6.12, h:0.98, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.6, margin:0.04, rowH:0.19, colW:[1.48,4.34], });
     return slide;
   }
 
@@ -6724,7 +6592,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
     traceOpsPptBox(slide, 0.42, 1.66, 12.48, 0.72, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Occurrence framing', 0.58, 1.80, 1.8);
-    slide.addText(traceOpsPptWrap(occFrame, 250), {x:0.58, y:2.00, w:11.88, h:0.18, fontFace:'Arial', fontSize:10.4, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(occFrame, 250)), {x:0.58, y:2.00, w:11.88, h:0.18, fontFace:'Arial', fontSize:10.4, color:'10231C', margin:0, });
 
     traceOpsPptBox(slide, 0.42, 2.56, 7.04, 3.72, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Structured cause categories', 0.58, 2.70, 2.1);
@@ -6740,7 +6608,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
     traceOpsPptBox(slide, 0.42, 6.42, 12.48, 0.54, 'F8FBF9');
     traceOpsPptPanelTitle(slide, 'Occurrence conclusion', 0.58, 6.54, 1.8);
-    slide.addText(traceOpsPptWrap(occConclusion, 320), {x:2.16, y:6.54, w:10.20, h:0.14, fontFace:'Arial', fontSize:9.6, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(occConclusion, 320)), {x:2.16, y:6.54, w:10.20, h:0.14, fontFace:'Arial', fontSize:9.6, color:'10231C', margin:0, });
     return slide;
   }
 
@@ -6786,7 +6654,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
     traceOpsPptBox(slide, 0.42, 6.42, 12.48, 0.54, 'F8FBF9');
     traceOpsPptPanelTitle(slide, 'Escape conclusion', 0.58, 6.54, 1.6);
-    slide.addText(traceOpsPptWrap(traceOpsPptEscapeConclusionText(normalized, model), 320), {x:2.00, y:6.54, w:10.46, h:0.14, fontFace:'Arial', fontSize:9.6, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(traceOpsPptEscapeConclusionText(normalized, model)), 320), {x:2.00, y:6.54, w:10.46, h:0.14, fontFace:'Arial', fontSize:9.6, color:'10231C', margin:0, });
     return slide;
   }
 
@@ -6794,8 +6662,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D5 - Permanent Corrective Actions', 'Foxconn standard D5 action matrix', 5, (normalized.status || 'Draft'));
     var actionRows = traceOpsPptComplianceActionRows(normalized, model);
-    slide.addText(traceOpsPptWrap('Visible action matrix by axis: Occurrence, Detection and System. Keep pending rows visible until closure evidence is completed.', 170), {x:0.58, y:1.80, w:12.00, h:0.18, fontFace:'Segoe UI', fontSize:9.4, color:'5F766C', margin:0, fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Axis', options:{bold:true}},{text:'Corrective Actions', options:{bold:true}},{text:'ECD', options:{bold:true}},{text:'Responsible', options:{bold:true}},{text:'Status', options:{bold:true}}]].concat(actionRows)), {x:0.42, y:2.06, w:12.48, h:3.02, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:9.0, margin:0.05, rowH:0.58, colW:[1.34,6.10,1.20,2.02,1.62], fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap('Visible action matrix by axis: Occurrence, Detection and System. Keep pending rows visible until closure evidence is completed.', 170)), {x:0.58, y:1.80, w:12.00, h:0.18, fontFace:'Arial', fontSize:9.4, color:'5F766C', margin:0, });
+    slide.addTable(traceOpsPptSafeTable([[{text:'Axis', options:{bold:true}},{text:'Corrective Actions', options:{bold:true}},{text:'ECD', options:{bold:true}},{text:'Responsible', options:{bold:true}},{text:'Status', options:{bold:true}}]].concat(actionRows)), {x:0.42, y:2.06, w:12.48, h:3.02, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:9.0, margin:0.05, rowH:0.58, colW:[1.34,6.10,1.20,2.02,1.62], });
 
     var cardY = 5.28;
     var cardW = 4.02;
@@ -6809,10 +6677,10 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var status = String(row[4] || 'Pending');
       traceOpsPptBox(slide, x, cardY, cardW, 1.36, idx === 1 ? 'F8FBF9' : 'FFFFFF');
       traceOpsPptPanelTitle(slide, axis, x + 0.16, cardY + 0.14, 1.2);
-      slide.addText(traceOpsPptWrap(action, 92), {x:x + 0.16, y:cardY + 0.36, w:cardW - 0.32, h:0.42, fontFace:'Segoe UI', fontSize:9.1, color:'10231C', margin:0, fit:'shrink'});
-      slide.addText('ECD: ' + traceOpsPptWrap(ecd, 28), {x:x + 0.16, y:cardY + 0.88, w:1.24, h:0.14, fontFace:'Segoe UI', fontSize:8.4, bold:true, color:'1E5C48', margin:0, fit:'shrink'});
-      slide.addText('Owner: ' + traceOpsPptWrap(owner, 28), {x:x + 1.42, y:cardY + 0.88, w:1.54, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'10231C', margin:0, fit:'shrink'});
-      slide.addText('Status: ' + traceOpsPptWrap(status, 24), {x:x + 3.00, y:cardY + 0.88, w:0.76, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'10231C', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptSafe(traceOpsPptWrap(action, 92)), {x:x + 0.16, y:cardY + 0.36, w:cardW - 0.32, h:0.42, fontFace:'Arial', fontSize:9.1, color:'10231C', margin:0, });
+      slide.addText(traceOpsPptSafe('ECD: ' + traceOpsPptWrap(ecd, 28)), {x:x + 0.16, y:cardY + 0.88, w:1.24, h:0.14, fontFace:'Arial', fontSize:8.4, bold:true, color:'1E5C48', margin:0, });
+      slide.addText(traceOpsPptSafe('Owner: ' + traceOpsPptWrap(owner, 28)), {x:x + 1.42, y:cardY + 0.88, w:1.54, h:0.14, fontFace:'Arial', fontSize:8.4, color:'10231C', margin:0, });
+      slide.addText(traceOpsPptSafe('Status: ' + traceOpsPptWrap(status, 24)), {x:x + 3.00, y:cardY + 0.88, w:0.76, h:0.14, fontFace:'Arial', fontSize:8.4, color:'10231C', margin:0, });
     });
     return slide;
   }
@@ -6821,8 +6689,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D6 - Verification of Effectiveness', 'Foxconn standard D6 validation matrix', 6, traceOpsEightdHasText(normalized.d6_validation) ? 'Under Validation' : 'Evidence Pending');
     var rows = traceOpsPptComplianceVerificationRows(normalized, model);
-    slide.addText(traceOpsPptWrap('Verification matrix remains visible by axis so occurrence, detection and system closure can be audited independently.', 170), {x:0.58, y:1.80, w:12.00, h:0.18, fontFace:'Segoe UI', fontSize:9.4, color:'5F766C', margin:0, fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Axis',options:{bold:true}},{text:'Corrective Actions',options:{bold:true}},{text:'Measurement Method',options:{bold:true}},{text:'Validation Efficacy Results',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Completion Date',options:{bold:true}}]].concat(rows)), {x:0.42, y:2.06, w:12.48, h:2.94, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.4, margin:0.04, rowH:0.56, colW:[0.90,2.52,3.06,3.38,1.22,1.40], fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap('Verification matrix remains visible by axis so occurrence, detection and system closure can be audited independently.', 170)), {x:0.58, y:1.80, w:12.00, h:0.18, fontFace:'Arial', fontSize:9.4, color:'5F766C', margin:0, });
+    slide.addTable(traceOpsPptSafeTable([[{text:'Axis',options:{bold:true}},{text:'Corrective Actions',options:{bold:true}},{text:'Measurement Method',options:{bold:true}},{text:'Validation Efficacy Results',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Completion Date',options:{bold:true}}]].concat(rows)), {x:0.42, y:2.06, w:12.48, h:2.94, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.4, margin:0.04, rowH:0.56, colW:[0.90,2.52,3.06,3.38,1.22,1.40], });
 
     var cardY = 5.16;
     var cardW = 4.02;
@@ -6835,12 +6703,12 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var due = String(row[5] || 'Pending');
       traceOpsPptBox(slide, x, cardY, cardW, 1.08, idx === 1 ? 'F8FBF9' : 'FFFFFF');
       traceOpsPptPanelTitle(slide, axis + ' verification', x + 0.16, cardY + 0.12, 1.8);
-      slide.addText(traceOpsPptWrap('Method: ' + method, 90), {x:x + 0.16, y:cardY + 0.34, w:cardW - 0.32, h:0.24, fontFace:'Segoe UI', fontSize:8.5, color:'10231C', margin:0, fit:'shrink'});
-      slide.addText(traceOpsPptWrap('Result: ' + result, 90), {x:x + 0.16, y:cardY + 0.62, w:cardW - 0.32, h:0.22, fontFace:'Segoe UI', fontSize:8.5, color:'10231C', margin:0, fit:'shrink'});
-      slide.addText('Date: ' + traceOpsPptWrap(due, 24), {x:x + 0.16, y:cardY + 0.88, w:1.24, h:0.12, fontFace:'Segoe UI', fontSize:8.2, bold:true, color:'1E5C48', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptSafe(traceOpsPptWrap('Method: ' + method, 90)), {x:x + 0.16, y:cardY + 0.34, w:cardW - 0.32, h:0.24, fontFace:'Arial', fontSize:8.5, color:'10231C', margin:0, });
+      slide.addText(traceOpsPptSafe(traceOpsPptWrap('Result: ' + result, 90)), {x:x + 0.16, y:cardY + 0.62, w:cardW - 0.32, h:0.22, fontFace:'Arial', fontSize:8.5, color:'10231C', margin:0, });
+      slide.addText(traceOpsPptSafe('Date: ' + traceOpsPptWrap(due, 24)), {x:x + 0.16, y:cardY + 0.88, w:1.24, h:0.12, fontFace:'Arial', fontSize:8.2, bold:true, color:'1E5C48', margin:0, });
     });
 
-    slide.addTable(traceOpsPptSafeTable([[{text:'Acceptance criteria',options:{bold:true}},{text:'Recurrence status',options:{bold:true}},{text:'Conclusion',options:{bold:true}}],['No recurrence signature, stable control behavior and traceable closure evidence.', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation; no recurrence confirmed in current window.' : 'Pending validation window.', traceOpsPptWrap(traceOpsEightdHasText(normalized.d6_validation) ? traceOpsEightdShort(normalized.d6_validation, 100) : 'Controlled verification remains open until sustained non-recurrence is demonstrated.', 100)]]), {x:0.42, y:6.34, w:12.48, h:0.42, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.1, margin:0.03, rowH:[0.16,0.20], colW:[3.96,3.00,5.12], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Acceptance criteria',options:{bold:true}},{text:'Recurrence status',options:{bold:true}},{text:'Conclusion',options:{bold:true}}],['No recurrence signature, stable control behavior and traceable closure evidence.', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation; no recurrence confirmed in current window.' : 'Pending validation window.', traceOpsPptWrap(traceOpsEightdHasText(normalized.d6_validation) ? traceOpsEightdShort(normalized.d6_validation, 100) : 'Controlled verification remains open until sustained non-recurrence is demonstrated.', 100)]]), {x:0.42, y:6.34, w:12.48, h:0.42, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.1, margin:0.03, rowH:[0.16,0.20], colW:[3.96,3.00,5.12], });
     return slide;
   }
 
@@ -6853,37 +6721,36 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(normalized.d7_prevention || traceOpsEightdBuildPreventionText(model), 8, 1400), 0.60, 2.08, 5.74, 3.36, {fontSize:10.8, lineGap:0.34, maxItems:8});
     traceOpsPptBox(slide, 0.58, 5.72, 5.86, 0.74, 'F8FBF9');
     traceOpsPptPanelTitle(slide, 'Lesson learned / Yokoten trigger', 0.74, 5.84, 2.4);
-    slide.addText(traceOpsPptWrap(model.lesson || model.pattern || 'Yokoten trigger pending.', 160), {x:0.74, y:6.08, w:5.40, h:0.18, fontFace:'Arial', fontSize:10.4, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap(model.lesson || model.pattern || 'Yokoten trigger pending.', 160)), {x:0.74, y:6.08, w:5.40, h:0.18, fontFace:'Arial', fontSize:10.4, color:'10231C', margin:0, });
 
     traceOpsPptBox(slide, 6.82, 1.66, 6.08, 5.10, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'D8 Closure', 6.98, 1.80, 1.4);
     traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(normalized.d8_closure || traceOpsEightdBuildClosureText(model, normalized.status), 8, 1400), 7.00, 2.08, 5.58, 2.72, {fontSize:10.8, lineGap:0.34, maxItems:8});
     traceOpsPptBox(slide, 6.98, 5.08, 5.56, 1.18, 'F8FBF9');
     traceOpsPptPanelTitle(slide, 'Current status / open items', 7.14, 5.22, 2.4);
-    slide.addText(traceOpsPptWrap('Current status: ' + (normalized.status || 'Draft') + '. Remaining open items should stay visible here if validation, evidence or control gap closure is still pending.', 190), {x:7.14, y:5.50, w:5.08, h:0.46, fontFace:'Arial', fontSize:10.4, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap('Current status: ' + (normalized.status || 'Draft')) + '. Remaining open items should stay visible here if validation, evidence or control gap closure is still pending.', 190), {x:7.14, y:5.50, w:5.08, h:0.46, fontFace:'Arial', fontSize:10.4, color:'10231C', margin:0, });
     return slide;
   }
 
   function traceOpsPptBuildAppendixSlide(pptx, normalized, model, linked){
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'Appendix A - Traceability & Evidence', 'Foxconn-aligned traceability and evidence summary', 8, model.evidenceRefs.length ? 'Under Validation' : 'Draft');
-    slide.addText(traceOpsPptSafe('Event timeline', 40), {x:0.42, y:1.66, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptTimelineTable(normalized, linked, model), {x:0.42, y:1.90, w:12.48, h:0.72, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.8, margin:0.04, rowH:[0.20,0.44], valign:'mid', align:'center', fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:2.82, w:12.48, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.5, margin:0.04, rowH:[0.18,0.54], colW:[6.18,6.18], fit:'shrink'});
-    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:3.84, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:3.86, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe('Event timeline', 40)), {x:0.42, y:1.66, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptTimelineTable(normalized, linked, model), {x:0.42, y:1.90, w:12.48, h:0.72, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.8, margin:0.04, rowH:[0.20,0.44], valign:'mid', align:'center', });
+    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:2.82, w:12.48, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.5, margin:0.04, rowH:[0.18,0.54], colW:[6.18,6.18], });
+    slide.addText(traceOpsPptSafe(traceOpsPptSafe('Traceability mapping', 40)), {x:0.42, y:3.84, w:2.2, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:3.86, w:10.34, h:0.14, fontFace:'Arial', fontSize:8.4, color:'5F766C', margin:0, }));
     var evidenceRows = traceOpsPptDetailedEventRows(normalized, model);
-    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:4.10, w:12.48, h:1.26, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Segoe UI', fontSize:8.0, margin:0.04, rowH:0.20, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:4.10, w:12.48, h:1.26, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'10231C', fontFace:'Arial', fontSize:8.0, margin:0.04, rowH:0.20, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], });
 
     var firstEvidence = (Array.isArray(evidenceRows) && evidenceRows.length ? evidenceRows[0] : ['Pending','Pending','Pending','Pending','Pending','Pending','TraceOps']);
     traceOpsPptBox(slide, 0.42, 5.52, 12.48, 0.52, 'F8FBF9');
     traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 5.64, 1.4);
-    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending') + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:5.64, w:10.70, h:0.14, fontFace:'Segoe UI', fontSize:8.6, color:'10231C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending')) + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:5.64, w:10.70, h:0.14, fontFace:'Arial', fontSize:8.6, color:'10231C', margin:0, });
 
-    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.16, w:12.48, h:0.58, border:{type:'solid', pt:1, color:'10231C'}, fill:'10231C', color:'FFFFFF', fontFace:'Segoe UI', fontSize:8.0, margin:0.03, rowH:0.08, colW:[2.86,1.40,8.22], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.16, w:12.48, h:0.58, border:{type:'solid', pt:1, color:'10231C'}, fill:'10231C', color:'FFFFFF', fontFace:'Arial', fontSize:8.0, margin:0.03, rowH:0.08, colW:[2.86,1.40,8.22], });
     return slide;
   }
-
 
 
   async function traceOpsFixPptxForDesktopPowerPoint(arrayBuffer) {
@@ -6897,82 +6764,43 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       if (norm) existingSet[norm] = true;
     });
 
-    function writePart(name, content) {
-      zip.file(name, content);
-      var norm = traceOpsNormalizeZipPartName(name);
-      if (norm) existingSet[norm] = true;
-    }
-
-    function removeMissingPresentationRefsLocal(xml, validRelIds, tagName) {
-      if (!xml) return xml;
-      var valid = {};
-      (validRelIds || []).forEach(function(id) { valid[String(id)] = true; });
-      var rx = new RegExp('\\s*<' + tagName + '\\b[^>]*r:id="([^"]+)"[^>]*\\/?>', 'g');
-      return xml.replace(rx, function(match, rid) {
-        return valid[rid] ? match : '';
-      });
-    }
-
-    var xmlNames = fileNames.filter(function(name) {
-      return /\.xml$/i.test(name);
+    var slideNames = fileNames.filter(function(name) {
+      return /^ppt\/slides\/slide\d+\.xml$/i.test(name);
     });
 
-    for (var i = 0; i < xmlNames.length; i++) {
-      var xmlName = xmlNames[i];
-      var xmlContent = await zip.file(xmlName).async('string');
-      var fixedXml = traceOpsNormalizeOpenXmlMarkup(xmlContent);
-      if (/^ppt\/(slides|slideLayouts|slideMasters|notesSlides)\//i.test(xmlName)) {
-        fixedXml = traceOpsRenumberDuplicateCnvPrIds(fixedXml);
-      }
-      if (fixedXml !== xmlContent) writePart(xmlName, fixedXml);
+    for (var i = 0; i < slideNames.length; i++) {
+      var slideName = slideNames[i];
+      var slideXml = await zip.file(slideName).async('string');
+      var fixedSlideXml = traceOpsRenumberDuplicateCnvPrIds(slideXml);
+      if (fixedSlideXml !== slideXml) zip.file(slideName, fixedSlideXml);
     }
 
     var contentTypesPath = '[Content_Types].xml';
     if (zip.file(contentTypesPath)) {
       var ctXml = await zip.file(contentTypesPath).async('string');
-      var fixedCtXml = traceOpsNormalizeOpenXmlMarkup(ctXml);
-      fixedCtXml = traceOpsRemoveMissingContentTypeOverrides(fixedCtXml, existingSet);
-      if (fixedCtXml !== ctXml) writePart(contentTypesPath, fixedCtXml);
+      var fixedCtXml = traceOpsRemoveMissingContentTypeOverrides(ctXml, existingSet);
+      if (fixedCtXml !== ctXml) zip.file(contentTypesPath, fixedCtXml);
     }
 
     var relNames = fileNames.filter(function(name) {
       return /_rels\/[^/]+\.rels$/i.test(name);
     });
     var relMap = {};
-    var validMasterIds = [];
-    var validSlideIds = [];
 
     for (var r = 0; r < relNames.length; r++) {
       var relName = relNames[r];
       var relXml = await zip.file(relName).async('string');
-      var normRelXml = traceOpsNormalizeOpenXmlMarkup(relXml);
-      var cleaned = traceOpsRemoveMissingInternalRelationships(normRelXml, relName, existingSet);
+      var cleaned = traceOpsRemoveMissingInternalRelationships(relXml, relName, existingSet);
       relMap[relName] = cleaned.keptIds || [];
-      if (cleaned.xml !== relXml) writePart(relName, cleaned.xml);
-
-      if (relName === 'ppt/_rels/presentation.xml.rels') {
-        var rows = cleaned.xml.match(/<Relationship\b[^>]*Id="[^"]+"[^>]*Target="[^"]+"[^>]*\/?>(?:<\/Relationship>)?/g) || [];
-        rows.forEach(function(row) {
-          var idMatch = row.match(/\bId="([^"]+)"/i);
-          var targetMatch = row.match(/\bTarget="([^"]+)"/i);
-          var modeMatch = row.match(/\bTargetMode="([^"]+)"/i);
-          if (!idMatch || !targetMatch) return;
-          if (modeMatch && /external/i.test(modeMatch[1] || '')) return;
-          var resolved = traceOpsResolveRelationshipTarget(relName, targetMatch[1]);
-          if (!resolved || !(existingSet && existingSet[resolved])) return;
-          if (/^\/ppt\/slideMasters\//i.test(resolved)) validMasterIds.push(idMatch[1]);
-          if (/^\/ppt\/slides\//i.test(resolved)) validSlideIds.push(idMatch[1]);
-        });
-      }
+      if (cleaned.xml !== relXml) zip.file(relName, cleaned.xml);
     }
 
+    var presRelsPath = 'ppt/_rels/presentation.xml.rels';
     var presXmlPath = 'ppt/presentation.xml';
-    if (zip.file(presXmlPath)) {
+    if (zip.file(presXmlPath) && relMap[presRelsPath]) {
       var presXml = await zip.file(presXmlPath).async('string');
-      var fixedPresXml = traceOpsNormalizeOpenXmlMarkup(presXml);
-      fixedPresXml = traceOpsRemoveMissingPresentationMasterRefs(fixedPresXml, validMasterIds);
-      fixedPresXml = removeMissingPresentationRefsLocal(fixedPresXml, validSlideIds, 'p:sldId');
-      if (fixedPresXml !== presXml) writePart(presXmlPath, fixedPresXml);
+      var fixedPresXml = traceOpsRemoveMissingPresentationMasterRefs(presXml, relMap[presRelsPath]);
+      if (fixedPresXml !== presXml) zip.file(presXmlPath, fixedPresXml);
     }
 
     return await zip.generateAsync({
@@ -6980,7 +6808,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       compression: 'DEFLATE'
     });
   }
-
 
   function traceOpsNormalizeZipPartName(path) {
     var s = String(path || '').replace(/\\/g, '/').trim();
@@ -7089,161 +6916,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     });
   }
 
-  
-  function traceOpsNormalizeOpenXmlMarkup(xml) {
-    try {
-      if (xml == null) return xml;
-      xml = String(xml);
-      xml = xml.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-      xml = xml.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, '&amp;');
-      xml = xml.replace(/<a:t\b[^>]*>\s*<\/a:t>/g, '<a:t xml:space="preserve"> </a:t>');
-      xml = xml.replace(/<p:t\b[^>]*>\s*<\/p:t>/g, '<p:t xml:space="preserve"> </p:t>');
-      return xml;
-    } catch (_) {
-      return xml;
-    }
-  }
-
-  function traceOpsDownloadBlob(filename, blob) {
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function(){
-      try { document.body.removeChild(a); } catch(_) {}
-      try { URL.revokeObjectURL(a.href); } catch(_) {}
-    }, 3000);
-  }
-
-  async function traceOpsFinalizePptxBlob(blob) {
-    await window.ensureZipTools();
-    var zip = await JSZip.loadAsync(blob);
-    var files = Object.keys(zip.files || {});
-    var existing = {};
-    files.forEach(function(name){
-      existing[String(name || '').replace(/^\/+/, '')] = true;
-    });
-
-    function normPart(name){
-      return String(name || '').replace(/^\/+/, '');
-    }
-    function hasPart(name){
-      return !!existing[normPart(name)];
-    }
-    function resolveRelationshipTarget(relPath, target){
-      var rel = normPart(relPath);
-      var base = rel.split('/');
-      base.pop();
-      if (base.length && base[base.length - 1] === '_rels') base.pop();
-      String(target || '').split('/').forEach(function(piece){
-        if (!piece || piece === '.') return;
-        if (piece === '..') base.pop();
-        else base.push(piece);
-      });
-      return normPart(base.join('/'));
-    }
-    async function readText(name){
-      if (!zip.files[name]) return '';
-      return await zip.files[name].async('string');
-    }
-    async function writeText(name, value){
-      zip.file(name, value);
-      existing[normPart(name)] = true;
-    }
-    function removeMissingInternalRelationships(xml, relPath){
-      if (!xml) return { xml: xml, keptIds: [] };
-      var keptIds = [];
-      var cleaned = xml.replace(/\s*<Relationship\b([^>]*)\/?>/g, function(match, attrs){
-        var idMatch = attrs.match(/\bId="([^"]+)"/i);
-        var targetMatch = attrs.match(/\bTarget="([^"]+)"/i);
-        var modeMatch = attrs.match(/\bTargetMode="([^"]+)"/i);
-        var relId = idMatch ? idMatch[1] : '';
-        var target = targetMatch ? targetMatch[1] : '';
-        var isExternal = modeMatch && /external/i.test(modeMatch[1] || '');
-        if (isExternal || !target) {
-          if (relId) keptIds.push(relId);
-          return match;
-        }
-        var resolved = resolveRelationshipTarget(relPath, target);
-        if (resolved && hasPart(resolved)) {
-          if (relId) keptIds.push(relId);
-          return match;
-        }
-        return '';
-      });
-      return { xml: cleaned, keptIds: keptIds };
-    }
-    function removeMissingContentTypeOverrides(xml){
-      if (!xml) return xml;
-      return xml.replace(/\s*<Override\b[^>]*PartName="([^"]+)"[^>]*\/?>/g, function(match, partName){
-        return hasPart(partName) ? match : '';
-      });
-    }
-    function removeMissingPresentationRefs(xml, validRelIds, tagName){
-      if (!xml) return xml;
-      var valid = {};
-      (validRelIds || []).forEach(function(id){ valid[String(id)] = true; });
-      var rgx = new RegExp('\\s*<' + tagName + '\\b[^>]*r:id="([^"]+)"[^>]*/?>', 'g');
-      return xml.replace(rgx, function(match, rid){
-        return valid[rid] ? match : '';
-      });
-    }
-
-    for (var i = 0; i < files.length; i++) {
-      var name = files[i];
-      if (!(/\.xml$/i.test(name) || /\.rels$/i.test(name))) continue;
-      var content = await readText(name);
-      if (!content) continue;
-      content = traceOpsNormalizeOpenXmlMarkup(content);
-      if (/\.rels$/i.test(name)) content = removeMissingInternalRelationships(content, name).xml;
-      await writeText(name, content);
-    }
-
-    if (zip.files['[Content_Types].xml']) {
-      var ct = await readText('[Content_Types].xml');
-      ct = traceOpsNormalizeOpenXmlMarkup(ct);
-      ct = removeMissingContentTypeOverrides(ct);
-      await writeText('[Content_Types].xml', ct);
-    }
-
-    var validMasterIds = [];
-    var validSlideIds = [];
-    if (zip.files['ppt/_rels/presentation.xml.rels']) {
-      var presRels = await readText('ppt/_rels/presentation.xml.rels');
-      presRels = traceOpsNormalizeOpenXmlMarkup(presRels);
-      var relMatches = presRels.match(/<Relationship\b[^>]*Id="[^"]+"[^>]*Target="[^"]+"[^>]*\/?>(?:<\/Relationship>)?/g) || [];
-      relMatches.forEach(function(row){
-        var idMatch = row.match(/\bId="([^"]+)"/i);
-        var targetMatch = row.match(/\bTarget="([^"]+)"/i);
-        var modeMatch = row.match(/\bTargetMode="([^"]+)"/i);
-        if (!idMatch || !targetMatch) return;
-        if (modeMatch && /external/i.test(modeMatch[1] || '')) return;
-        var resolved = resolveRelationshipTarget('ppt/_rels/presentation.xml.rels', targetMatch[1]);
-        if (!hasPart(resolved)) return;
-        if (/^ppt\/slideMasters\//i.test(resolved)) validMasterIds.push(idMatch[1]);
-        if (/^ppt\/slides\//i.test(resolved)) validSlideIds.push(idMatch[1]);
-      });
-      await writeText('ppt/_rels/presentation.xml.rels', removeMissingInternalRelationships(presRels, 'ppt/_rels/presentation.xml.rels').xml);
-    }
-
-    if (zip.files['ppt/presentation.xml']) {
-      var pres = await readText('ppt/presentation.xml');
-      pres = traceOpsNormalizeOpenXmlMarkup(pres);
-      pres = removeMissingPresentationRefs(pres, validMasterIds, 'p:sldMasterId');
-      pres = removeMissingPresentationRefs(pres, validSlideIds, 'p:sldId');
-      await writeText('ppt/presentation.xml', pres);
-    }
-
-    return await zip.generateAsync({
-      type: 'blob',
-      compression: 'DEFLATE',
-      mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-    });
-  }
-
-
   function exportEightdPpt(draft) {
     if (!draft) return;
     var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
@@ -7252,16 +6924,15 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     normalized.missing_fields = readinessMeta.missing;
     window.ensurePptxTools().then(async function(){
       var pptx = new PptxGenJS();
-      traceOpsPptHardenDeck(pptx);
       try { if (typeof pptx.layout !== 'undefined') pptx.layout = 'LAYOUT_WIDE'; } catch(_){ }
       try { if (typeof pptx.defineLayout === 'function') { pptx.defineLayout({ name:'TRACEOPS_WIDE', width:13.333, height:7.5 }); pptx.layout = 'TRACEOPS_WIDE'; } } catch(_){ }
       try { if (typeof pptx.setLayout === 'function') pptx.setLayout('LAYOUT_WIDE'); } catch(_){ }
-      pptx.author = traceOpsPptSafe('OpenAI', 40);
-      pptx.company = traceOpsPptSafe('TraceOps by SMTintel', 80);
-      pptx.subject = traceOpsPptSafe('TraceOps 8D Draft', 80);
+      pptx.author = 'OpenAI';
+      pptx.company = 'TraceOps by SMTintel';
+      pptx.subject = 'TraceOps 8D Draft';
       pptx.title = traceOpsPptSafe(normalized.eightd_id || 'TraceOps_8D_Draft', 120);
       try { pptx.lang = 'es-MX'; } catch(_){ }
-      try { pptx.theme = { headFontFace:'Segoe UI', bodyFontFace:'Segoe UI', lang:'es-MX' }; } catch(_){ }
+      try { pptx.theme = { headFontFace:'Arial', bodyFontFace:'Arial', lang:'es-MX' }; } catch(_){ }
 
       var model = traceOpsEightdBuildModel((normalized && normalized.source_snapshot) || normalized || {}, traceOpsGetEightdLinkedEventsForExport(normalized));
       var linked = model.linked;
@@ -7281,8 +6952,18 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
         var arr = await pptx.write({ outputType: 'arraybuffer', compression: true });
         arr = await traceOpsFixPptxForDesktopPowerPoint(arr);
         var blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
-        traceOpsDownloadBlob(fileBase + '.pptx', blob);
-      } else if (typeof pptx.writeFile === 'function' && typeof pptx.write !== 'function') {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = String(fileBase || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_') + '.pptx';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function(){
+          try { document.body.removeChild(a); } catch(_) {}
+          try { URL.revokeObjectURL(url); } catch(_) {}
+        }, 3000);
+      } else if (typeof pptx.writeFile === 'function') {
         await pptx.writeFile({ fileName: fileBase + '.pptx', compression: true });
       } else if (typeof pptx.save === 'function') {
         pptx.save(fileBase + '.pptx');
@@ -7445,7 +7126,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       + traceOpsEsc(title)
       + '</title><style>'
       + ':root{--bg:#F4F1EC;--ink:#1A1714;--muted:#726C66;--line:#DEDAD3;--card:#FFFFFF;--brand:#12342B;--brand2:#1E5C48;--soft:#F8F7F5}'
-      + 'html,body{margin:0;padding:0;background:linear-gradient(180deg,#F4F1EC 0%,#EEE9E1 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}'
+      + 'html,body{margin:0;padding:0;background:linear-gradient(180deg,#F4F1EC 0%,#EEE9E1 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Arial",Arial,sans-serif}'
       + '.to-wrap{max-width:1180px;margin:0 auto;padding:24px 16px 48px}'
       + '.to-hero{background:linear-gradient(160deg,#071A19 0%,#0C2222 55%,#12342B 100%);color:#fff;border-radius:28px;padding:22px 20px;box-shadow:0 18px 44px rgba(7,26,25,.24)}'
       + '.to-over{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#A6CBC2;font-weight:800;margin-bottom:10px}'
