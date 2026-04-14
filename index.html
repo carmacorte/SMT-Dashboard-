@@ -9,7 +9,7 @@ window.TRACEOPS_SUPABASE = {
   anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV"
 };
 </script>
-<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only | blue palette fused | ppt palette fused | ppt grid glow fused | ppt addShape fix | safari pptx guard | pptx ref fix complete | d0-d2 improvement pack -->
+<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only | blue palette fused | ppt palette fused | ppt grid glow fused | ppt addShape fix | safari pptx guard | pptx ref fix complete | d0-d2 improvement pack | smart content upgrade -->
 <script>
 window.__traceopsZipReady = null;
 window.__traceopsExcelReady = null;
@@ -5586,6 +5586,9 @@ function App() {
     var baseDraft = Object.assign({}, existing || {}, {
       eightd_id: existing && existing.eightd_id ? existing.eightd_id : traceOpsBuildEightdId(source && source.rcca_id),
       eightd_title: existing && existing.eightd_title ? existing.eightd_title : (source && (source.titulo_corto || source.problema) ? (source.titulo_corto || source.problema) : ''),
+      bad_part: existing && existing.bad_part ? existing.bad_part : (source && source.bad_part ? source.bad_part : ''),
+      good_part: existing && existing.good_part ? existing.good_part : (source && source.good_part ? source.good_part : ''),
+      risk_statement: existing && existing.risk_statement ? existing.risk_statement : (source && source.risk_statement ? source.risk_statement : ''),
       source_rcca_id: source && source.rcca_id ? source.rcca_id : '',
       source_title: source && (source.titulo_corto || source.problema) ? (source.titulo_corto || source.problema) : '',
       modelo: model.model,
@@ -6208,6 +6211,113 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     slide.addText(traceOpsPptSafe(label, 28), {x:x+0.05, y:y+0.07, w:1.18, h:0.10, fontFace:'Arial', fontSize:8.5, bold:true, color:text, align:'center', margin:0, fit:'shrink'});
   }
 
+
+  function traceOpsPptDetectFailureModeKind(normalized, model){
+    var blob = String(
+      (normalized && normalized.defecto_smt) || '' + ' ' +
+      ((model && model.defect) || '') + ' ' +
+      ((normalized && normalized.complaint_anchor) || '') + ' ' +
+      ((normalized && normalized.source_title) || '')
+    ).toLowerCase();
+    if (/wrong component|wrong part|reel|feeder|mix|dual feeder|laser mark|material/i.test(blob)) return 'wrong_component';
+    if (/short|bridge|solder|micro-solder|open|bga|pad|ict/i.test(blob)) return 'electrical';
+    if (/material|lcr|checkout|lot|pn linkage|handoff/i.test(blob)) return 'material';
+    return 'generic';
+  }
+
+  function traceOpsPptGetGoodPart(normalized, model){
+    if (normalized && normalized.good_part && String(normalized.good_part).trim()) return String(normalized.good_part).trim();
+    var kind = traceOpsPptDetectFailureModeKind(normalized, model);
+    if (kind === 'wrong_component') {
+      return 'Correct component loaded at each assigned feeder position. Independent P/N verification and setup confirmation completed before run start.';
+    }
+    if (kind === 'electrical') {
+      return 'No electrical short present. Component joints meet design and process criteria with no bridging, opens, or abnormal solder condition.';
+    }
+    if (kind === 'material') {
+      return 'Correct material released with full lot, P/N, and transaction traceability confirmed before production use.';
+    }
+    return 'Expected condition confirmed against process definition, traceability record, and release criteria.';
+  }
+
+  function traceOpsPptGetBadPart(normalized, model){
+    if (normalized && normalized.bad_part && String(normalized.bad_part).trim()) return String(normalized.bad_part).trim();
+    var raw = String(
+      (normalized && normalized.complaint_anchor) ||
+      (model && model.complaintAnchor) ||
+      (normalized && normalized.source_title) ||
+      'Observed failure condition under review.'
+    ).trim();
+    return traceOpsEightdShort(raw, 150);
+  }
+
+  function traceOpsPptGuessEmail(name, domainHint){
+    var n = String(name || '').trim();
+    if (!n || /^pending$/i.test(n)) return 'Pending';
+    if (/@/.test(n)) return n;
+    var clean = n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').trim();
+    if (!clean) return 'Pending';
+    var parts = clean.split(/\s+/).filter(Boolean);
+    if (!parts.length) return 'Pending';
+    var local = parts.length === 1 ? parts[0] : (parts[0] + '.' + parts[parts.length - 1]);
+    return local + '@' + (domainHint || 'Pending');
+  }
+
+  function traceOpsPptGetRoleValue(normalized, keys, fallback){
+    var val = '';
+    (keys || []).some(function(k){
+      if (normalized && normalized[k] && String(normalized[k]).trim()) {
+        val = String(normalized[k]).trim();
+        return true;
+      }
+      return false;
+    });
+    return val || fallback || 'Pending';
+  }
+
+  function traceOpsPptDeriveTeamRoles(normalized, model){
+    var ownerName = traceOpsPptGetRoleValue(normalized, ['owner_name','reporta','owner'], 'Pending');
+    var ownerEmail = traceOpsPptGetRoleValue(normalized, ['owner_email'], ((model && model.owners && model.owners[0]) || 'Pending'));
+    var domainHint = /@(.+)$/.test(ownerEmail) ? ownerEmail.split('@')[1] : 'foxconn.com';
+    return [
+      ['PM', traceOpsPptGetRoleValue(normalized, ['pm_name','project_manager','pm'], ownerName !== 'Pending' ? ownerName : 'Pending'), traceOpsPptGetRoleValue(normalized, ['pm_email'], ownerEmail !== 'Pending' ? ownerEmail : 'Pending')],
+      ['QE', ownerName, ownerEmail],
+      ['SQE', traceOpsPptGetRoleValue(normalized, ['sqe_name','supplier_quality_engineer'], 'Pending'), traceOpsPptGetRoleValue(normalized, ['sqe_email'], 'Pending')],
+      ['TE', traceOpsPptGetRoleValue(normalized, ['te_name','test_engineer','te_owner'], 'Pending'), traceOpsPptGetRoleValue(normalized, ['te_email'], 'Pending')],
+      ['PE', traceOpsPptGetRoleValue(normalized, ['pe_name','process_engineer','process_owner'], 'Pending'), traceOpsPptGetRoleValue(normalized, ['pe_email'], 'Pending')],
+      ['PD', traceOpsPptGetRoleValue(normalized, ['pd_name','product_engineer','design_owner'], 'Pending'), traceOpsPptGetRoleValue(normalized, ['pd_email'], 'Pending')]
+    ].map(function(row){
+      if (row[1] !== 'Pending' && row[2] === 'Pending') row[2] = traceOpsPptGuessEmail(row[1], domainHint);
+      return row;
+    });
+  }
+
+  function traceOpsPptDeriveEscalation(normalized, model){
+    var ownerName = traceOpsPptGetRoleValue(normalized, ['owner_name','reporta','owner'], 'Pending');
+    var ownerEmail = traceOpsPptGetRoleValue(normalized, ['owner_email'], ((model && model.owners && model.owners[0]) || 'Pending'));
+    var domainHint = /@(.+)$/.test(ownerEmail) ? ownerEmail.split('@')[1] : 'foxconn.com';
+    var rows = [
+      ['Process Coordinator', traceOpsPptGetRoleValue(normalized, ['process_coordinator','process_owner','pe_name'], ownerName), traceOpsPptGetRoleValue(normalized, ['process_coordinator_email','pe_email'], ownerEmail)],
+      ['Quality Coordinator', traceOpsPptGetRoleValue(normalized, ['quality_coordinator','owner_name','reporta'], ownerName), traceOpsPptGetRoleValue(normalized, ['quality_coordinator_email','owner_email'], ownerEmail)],
+      ['Quality Manager', traceOpsPptGetRoleValue(normalized, ['quality_manager','quality_manager_name'], 'Pending'), traceOpsPptGetRoleValue(normalized, ['quality_manager_email'], 'Pending')],
+      ['TE Manager', traceOpsPptGetRoleValue(normalized, ['te_manager','te_manager_name'], 'Pending'), traceOpsPptGetRoleValue(normalized, ['te_manager_email'], 'Pending')],
+      ['Manufacturing Manager', traceOpsPptGetRoleValue(normalized, ['manufacturing_manager','mfg_manager'], 'Pending'), traceOpsPptGetRoleValue(normalized, ['manufacturing_manager_email','mfg_manager_email'], 'Pending')],
+      ['BU Manager', traceOpsPptGetRoleValue(normalized, ['bu_manager','business_unit_manager'], 'Pending'), traceOpsPptGetRoleValue(normalized, ['bu_manager_email','business_unit_manager_email'], 'Pending')]
+    ];
+    return rows.map(function(row){
+      if (row[1] !== 'Pending' && row[2] === 'Pending') row[2] = traceOpsPptGuessEmail(row[1], domainHint);
+      return row;
+    });
+  }
+
+  function traceOpsPptGetRiskStatement(normalized, model){
+    if (normalized && normalized.risk_statement && String(normalized.risk_statement).trim()) return String(normalized.risk_statement).trim();
+    var defect = (normalized && normalized.defecto_smt) || (model && model.defect) || 'process deviation';
+    var station = (normalized && normalized.station) || (model && model.station) || 'the current control point';
+    return 'Risk: ' + defect + ' remained possible until ' + station + ' or downstream validation, creating exposure to repeat escape if controls are not reinforced.';
+  }
+
+
   function traceOpsPptKeyTile(slide, label, value, x, y, w){
     traceOpsPptBox(slide, x, y, w, 0.74, 'FFFFFF');
     slide.addText(traceOpsPptSafe(label, 40), {x:x+0.12, y:y+0.12, w:w-0.24, h:0.12, fontFace:'Arial', fontSize:8.8, bold:true, color:'5F766C', margin:0});
@@ -6678,6 +6788,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     traceOpsPptApplyShell(slide, 'D1 Team + D2 Problem Description', 'Foxconn standard D1 / D2 required fields', 1, (normalized.status || 'Draft'));
 
     var ownerEmail = normalized.owner_email || (model.owners && model.owners[0]) || 'Pending';
+    var roles = traceOpsPptDeriveTeamRoles(normalized, model);
+    var escalation = traceOpsPptDeriveEscalation(normalized, model);
+    /* fallback template kept below for reference
     var roles = [
       ['PM', normalized.pm_name || 'Pending', normalized.pm_email || 'Pending'],
       ['QE', (normalized.owner_name || normalized.reporta || 'Pending'), ownerEmail],
@@ -6686,14 +6799,14 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       ['PE', normalized.pe_name || 'Pending', normalized.pe_email || 'Pending'],
       ['PD', normalized.pd_name || 'Pending', normalized.pd_email || 'Pending']
     ];
-    var escalation = [
+    var escalation_legacy = [
       ['Process Coordinator', normalized.process_coordinator || 'Pending', normalized.process_coordinator_email || 'Pending'],
       ['Quality Coordinator', normalized.quality_coordinator || normalized.owner_name || 'Pending', normalized.quality_coordinator_email || ownerEmail],
       ['Quality Manager', normalized.quality_manager || 'Pending', normalized.quality_manager_email || 'Pending'],
       ['TE Manager', normalized.te_manager || 'Pending', normalized.te_manager_email || 'Pending'],
       ['Manufacturing Manager', normalized.manufacturing_manager || 'Pending', normalized.manufacturing_manager_email || 'Pending'],
       ['BU Manager', normalized.bu_manager || 'Pending', normalized.bu_manager_email || 'Pending']
-    ];
+    ]; */
 
     slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(
@@ -6738,8 +6851,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     traceOpsPptBox(slide, 5.74, 5.62, 3.42, 1.08, 'FDF0EE', 'F0C4BE');
     traceOpsPptBox(slide, 9.48, 5.62, 3.42, 1.08, 'EEF6FF', 'B8DECE');
 
-    slide.addText(traceOpsPptWrap(normalized.bad_part || normalized.complaint_anchor || model.complaintAnchor || 'Incorrect setup / failure condition.', 118), {x:5.90, y:5.78, w:1.48, h:0.56, fontFace:'Arial', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
-    slide.addText(traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 118), {x:9.64, y:5.78, w:1.48, h:0.56, fontFace:'Arial', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(traceOpsPptGetBadPart(normalized, model), 118), {x:5.90, y:5.78, w:1.48, h:0.56, fontFace:'Arial', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(traceOpsPptGetGoodPart(normalized, model), 118), {x:9.64, y:5.78, w:1.48, h:0.56, fontFace:'Arial', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
 
     traceOpsPptBox(slide, 7.46, 5.78, 1.48, 0.72, 'FFFFFF', 'E5D7D4');
     traceOpsPptBox(slide, 11.20, 5.78, 1.48, 0.72, 'FFFFFF', 'D9E6E0');
