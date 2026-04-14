@@ -9,7 +9,7 @@ window.TRACEOPS_SUPABASE = {
   anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV"
 };
 </script>
-<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only | blue palette fused | ppt palette fused | ppt grid glow fused -->
+<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only | blue palette fused | ppt palette fused | ppt grid glow fused | ppt addShape fix -->
 <script>
 window.__traceopsZipReady = null;
 window.__traceopsExcelReady = null;
@@ -5956,7 +5956,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return clean;
   }
 
-  function traceOpsPptPatchSlideMethods(slide){
+  function traceOpsPptPatchSlideMethods(slide, pptx){
     if (!slide || slide.__traceopsPatched) return slide;
     slide.__traceopsPatched = true;
 
@@ -5971,6 +5971,25 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     if (originalAddTable) {
       slide.addTable = function(rows, options){
         return originalAddTable.call(this, traceOpsPptSafeTable(rows), traceOpsPptSanitizeOptionsDeep(options, 0));
+      };
+    }
+
+    var originalAddShape = typeof slide.addShape === "function" ? slide.addShape : null;
+    if (originalAddShape) {
+      slide.addShape = function(shapeType, options){
+        var resolvedShape = shapeType;
+        if (typeof shapeType === "string") {
+          var st = (pptx && pptx.ShapeType) ? pptx.ShapeType : {};
+          var shapeMap = {
+            roundRect: st.roundRect,
+            rect: st.rect,
+            ellipse: st.ellipse,
+            chevron: st.chevron,
+            line: st.line
+          };
+          resolvedShape = shapeMap[shapeType] || st[shapeType] || shapeType;
+        }
+        return originalAddShape.call(this, resolvedShape, traceOpsPptSanitizeOptionsDeep(options, 0));
       };
     }
 
@@ -5992,7 +6011,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     if (originalAddSlide) {
       pptx.addSlide = function(){
         var slide = originalAddSlide.apply(this, arguments);
-        return traceOpsPptPatchSlideMethods(slide);
+        return traceOpsPptPatchSlideMethods(slide, pptx);
       };
     }
 
@@ -6063,7 +6082,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     for (var i = 0; i < Math.min(items.length, maxItems); i++) {
       var yy = y + (i * lineGap);
       if (yy > y + h - 0.24) break;
-      slide.addShape('ellipse', {x:x, y:yy + 0.07, w:0.08, h:0.08, line:{color:'2F6FB3', pt:0}, fill:{color:'2F6FB3'}});
+      slide.addShape(pptx.ShapeType.ellipse, {x:x, y:yy + 0.07, w:0.08, h:0.08, line:{color:'2F6FB3', pt:0}, fill:{color:'2F6FB3'}});
       slide.addText(traceOpsPptWrap(items[i], 170), {x:x+0.14, y:yy, w:w-0.16, h:0.22, fontFace:'Arial', fontSize:fontSize, color:'102A43', margin:0, fit:'shrink'});
     }
   }
@@ -6074,12 +6093,12 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
   function traceOpsPptApplyShell(slide, title, subtitle, activeIdx, badgeText){
     slide.background = { color: 'F2F5F2' };
-    slide.addShape('rect', {x:0, y:0, w:13.333, h:1.02, line:{color:'102A43', pt:0}, fill:{color:'102A43'}});
+    slide.addShape(pptx.ShapeType.rect, {x:0, y:0, w:13.333, h:1.02, line:{color:'102A43', pt:0}, fill:{color:'102A43'}});
     slide.addText(traceOpsPptSafe('FOXCONN | TraceOps 8D Draft', 80), {x:0.42, y:0.22, w:3.2, h:0.16, fontFace:'Arial', fontSize:10, bold:true, color:'A8D6C4', margin:0});
     slide.addText(traceOpsPptSafe(title, 110), {x:0.42, y:0.42, w:7.9, h:0.24, fontFace:'Arial', fontSize:22, bold:true, color:'FFFFFF', margin:0});
     slide.addText(traceOpsPptSafe(subtitle || 'TraceOps structured 8D deck export', 180), {x:0.42, y:0.72, w:8.8, h:0.14, fontFace:'Arial', fontSize:10.4, color:'D6E3DD', margin:0});
     if (badgeText) {
-      slide.addShape('roundRect', {x:11.26, y:0.28, w:1.62, h:0.34, rectRadius:0.08, line:{color:'3D5C50', pt:1}, fill:{color:'173328'}});
+      slide.addShape(pptx.ShapeType.roundRect, {x:11.26, y:0.28, w:1.62, h:0.34, rectRadius:0.08, line:{color:'3D5C50', pt:1}, fill:{color:'173328'}});
       slide.addText(traceOpsPptSafe(badgeText, 40), {x:11.38, y:0.37, w:1.36, h:0.12, fontFace:'Arial', fontSize:9.2, bold:true, color:'D7E7E0', align:'center', margin:0});
     }
     var steps = traceOpsPptDeckSteps();
@@ -6089,7 +6108,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     for (var i = 0; i < steps.length; i++) {
       var x = 0.42 + (i * (itemW + gap));
       var active = i === activeIdx;
-      slide.addShape('roundRect', {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '2F6FB3' : 'C9DAF5', pt:1}, fill:{color:active ? 'EAF2FF' : 'FFFFFF'}});
+      slide.addShape(pptx.ShapeType.roundRect, {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '2F6FB3' : 'C9DAF5', pt:1}, fill:{color:active ? 'EAF2FF' : 'FFFFFF'}});
       slide.addText(traceOpsPptSafe(steps[i], 24), {x:x+0.03, y:1.19, w:itemW-0.06, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:active ? '2F6FB3' : '5F766C', align:'center', margin:0, fit:'shrink'});
     }
   }
@@ -6099,7 +6118,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   }
 
   function traceOpsPptBox(slide, x, y, w, h, fill, lineColor){
-    slide.addShape('roundRect', {x:x, y:y, w:w, h:h, rectRadius:0.06, line:{color:lineColor || 'DCE9E2', pt:1}, fill:{color:fill || 'FFFFFF'}});
+    slide.addShape(pptx.ShapeType.roundRect, {x:x, y:y, w:w, h:h, rectRadius:0.06, line:{color:lineColor || 'DCE9E2', pt:1}, fill:{color:fill || 'FFFFFF'}});
   }
 
   function traceOpsPptMiniNote(slide, text, x, y, w){
@@ -6112,8 +6131,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var rowH = h / list.length;
     for (var i = 0; i < list.length; i++) {
       var yy = y + (i * rowH);
-      slide.addShape('roundRect', {x:x + 0.06, y:yy + 0.04, w:w - 0.42, h:rowH - 0.08, rectRadius:0.05, line:{color:(i === list.length - 1 ? '4A90E2' : 'DCE9E2'), pt:1}, fill:{color:(i === list.length - 1 ? 'FFF5E7' : (i % 2 ? 'FAFCFF' : 'FFFFFF'))}});
-      slide.addShape('roundRect', {x:x + w - 0.30, y:yy + 0.10, w:0.18, h:rowH - 0.20, rectRadius:0.04, line:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2'), pt:1}, fill:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2')}});
+      slide.addShape(pptx.ShapeType.roundRect, {x:x + 0.06, y:yy + 0.04, w:w - 0.42, h:rowH - 0.08, rectRadius:0.05, line:{color:(i === list.length - 1 ? '4A90E2' : 'DCE9E2'), pt:1}, fill:{color:(i === list.length - 1 ? 'FFF5E7' : (i % 2 ? 'FAFCFF' : 'FFFFFF'))}});
+      slide.addShape(pptx.ShapeType.roundRect, {x:x + w - 0.30, y:yy + 0.10, w:0.18, h:rowH - 0.20, rectRadius:0.04, line:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2'), pt:1}, fill:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2')}});
       slide.addText(String(i + 1), {x:x + 0.14, y:yy + 0.10, w:0.24, h:0.14, fontFace:'Arial', fontSize:10.5, bold:true, color:'2F6FB3', align:'center', margin:0});
       slide.addText(traceOpsPptWrap(list[i], 95), {x:x + 0.46, y:yy + 0.11, w:w - 0.92, h:rowH - 0.18, fontFace:'Arial', fontSize:10.0, color:'102A43', margin:0, fit:'shrink', valign:'mid'});
     }
@@ -6126,8 +6145,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     while (bottom.length < 3) bottom.push({label:'Category', items:['Evidence pending']});
 
     var centerY = y + (h / 2);
-    slide.addShape('line', {x:x + 0.56, y:centerY, w:w - 1.22, h:0, line:{color:'4A90E2', pt:1.8}});
-    slide.addShape('chevron', {x:x + w - 0.72, y:centerY - 0.22, w:0.52, h:0.44, line:{color:'4A90E2', pt:1}, fill:{color:'4A90E2'}});
+    slide.addShape(pptx.ShapeType.line, {x:x + 0.56, y:centerY, w:w - 1.22, h:0, line:{color:'4A90E2', pt:1.8}});
+    slide.addShape(pptx.ShapeType.chevron, {x:x + w - 0.72, y:centerY - 0.22, w:0.52, h:0.44, line:{color:'4A90E2', pt:1}, fill:{color:'4A90E2'}});
 
     var ribs = [1.48, 3.16, 4.84];
     for (var i = 0; i < 3; i++) {
@@ -6135,14 +6154,14 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var bottomItem = bottom[i] || {label:'Category', items:['Evidence pending']};
       var ax = x + ribs[i];
 
-      slide.addShape('line', {x:ax, y:centerY, w:-0.68, h:-0.64, line:{color:'4A90E2', pt:1.2}});
-      slide.addShape('line', {x:ax, y:centerY, w:-0.68, h:0.64, line:{color:'4A90E2', pt:1.2}});
+      slide.addShape(pptx.ShapeType.line, {x:ax, y:centerY, w:-0.68, h:-0.64, line:{color:'4A90E2', pt:1.2}});
+      slide.addShape(pptx.ShapeType.line, {x:ax, y:centerY, w:-0.68, h:0.64, line:{color:'4A90E2', pt:1.2}});
 
-      slide.addShape('roundRect', {x:ax - 1.14, y:y + 0.12, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
+      slide.addShape(pptx.ShapeType.roundRect, {x:ax - 1.14, y:y + 0.12, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
       slide.addText(traceOpsPptSafe(topItem.label, 26), {x:ax - 1.06, y:y + 0.20, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
       slide.addText(traceOpsPptWrap(((topItem.items && topItem.items[0]) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + 0.46, w:1.42, h:0.34, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
 
-      slide.addShape('roundRect', {x:ax - 1.14, y:y + h - 0.42, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FAFCFF'}});
+      slide.addShape(pptx.ShapeType.roundRect, {x:ax - 1.14, y:y + h - 0.42, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FAFCFF'}});
       slide.addText(traceOpsPptSafe(bottomItem.label, 26), {x:ax - 1.06, y:y + h - 0.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
       slide.addText(traceOpsPptWrap(((bottomItem.items && bottomItem.items[0]) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + h - 0.78, w:1.42, h:0.26, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
     }
@@ -6158,8 +6177,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var rowH = (h - topPad - (gap * (maxItems - 1))) / maxItems;
     for (var i = 0; i < maxItems; i++) {
       var yy = y + topPad + (i * (rowH + gap));
-      slide.addShape('roundRect', {x:x, y:yy, w:w, h:rowH, rectRadius:0.05, line:{color:'DCE9E2', pt:1}, fill:{color:(i % 2 ? 'FAFCFF' : 'FFFFFF')}});
-      slide.addShape('roundRect', {x:x + 0.08, y:yy + 0.07, w:0.52, h:rowH - 0.14, rectRadius:0.04, line:{color:'E2EBF9', pt:1}, fill:{color:'ECF5F1'}});
+      slide.addShape(pptx.ShapeType.roundRect, {x:x, y:yy, w:w, h:rowH, rectRadius:0.05, line:{color:'DCE9E2', pt:1}, fill:{color:(i % 2 ? 'FAFCFF' : 'FFFFFF')}});
+      slide.addShape(pptx.ShapeType.roundRect, {x:x + 0.08, y:yy + 0.07, w:0.52, h:rowH - 0.14, rectRadius:0.04, line:{color:'E2EBF9', pt:1}, fill:{color:'ECF5F1'}});
       slide.addText(String(i + 1), {x:x + 0.19, y:yy + (rowH/2) - 0.08, w:0.28, h:0.14, fontFace:'Arial', fontSize:10.0, bold:true, color:'2F6FB3', align:'center', margin:0});
       slide.addText(traceOpsPptWrap(items[i], 110), {x:x + 0.72, y:yy + 0.06, w:w - 0.84, h:rowH - 0.12, fontFace:'Arial', fontSize:9.2, color:'102A43', margin:0, fit:'shrink', valign:'mid'});
     }
@@ -6172,7 +6191,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     if (tone === 'draft') { fill = 'FEF9E8'; line = 'F1DF9E'; text = '9A6A16'; }
     else if (tone === 'pending') { fill = 'FDF0EE'; line = 'F0C4BE'; text = 'C0392B'; }
     else if (tone === 'ok') { fill = 'EAF2FF'; line = 'C7DBF7'; text = '2F6FB3'; }
-    slide.addShape('roundRect', {x:x, y:y, w:1.28, h:0.24, rectRadius:0.08, line:{color:line, pt:1}, fill:{color:fill}});
+    slide.addShape(pptx.ShapeType.roundRect, {x:x, y:y, w:1.28, h:0.24, rectRadius:0.08, line:{color:line, pt:1}, fill:{color:fill}});
     slide.addText(traceOpsPptSafe(label, 28), {x:x+0.05, y:y+0.07, w:1.18, h:0.10, fontFace:'Arial', fontSize:8.5, bold:true, color:text, align:'center', margin:0, fit:'shrink'});
   }
 
@@ -7256,7 +7275,7 @@ function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
   var gridOpacity = opts.gridOpacity == null ? 0.10 : opts.gridOpacity;
   var glowOpacity = opts.glowOpacity == null ? 0.16 : opts.glowOpacity;
 
-  slide.addShape('roundRect', {
+  slide.addShape(pptx.ShapeType.roundRect, {
     x:x, y:y, w:w, h:h,
     rectRadius: radius,
     line:{ color: lineColor, transparency: 55, width: 1.1 },
@@ -7282,25 +7301,25 @@ function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
   var rows = opts.rows || 5;
   for (var i = 1; i < cols; i++) {
     var gx = x + (w / cols) * i;
-    slide.addShape('line', {
+    slide.addShape(pptx.ShapeType.line, {
       x: gx, y: y + 0.02, w: 0, h: h - 0.04,
       line:{ color: lineColor, transparency: 100 - Math.round(gridOpacity * 100), width: 0.8 }
     });
   }
   for (var j = 1; j < rows; j++) {
     var gy = y + (h / rows) * j;
-    slide.addShape('line', {
+    slide.addShape(pptx.ShapeType.line, {
       x: x + 0.02, y: gy, w: w - 0.04, h: 0,
       line:{ color: lineColor, transparency: 100 - Math.round(gridOpacity * 100), width: 0.8 }
     });
   }
 
-  slide.addShape('ellipse', {
+  slide.addShape(pptx.ShapeType.ellipse, {
     x: x + 0.18, y: y + 0.35, w: Math.min(w * 0.42, 2.6), h: Math.min(h * 0.70, 2.4),
     line:{ color: glowColor, transparency: 100, width: 0 },
     fill:{ color: glowColor, transparency: 100 - Math.round(glowOpacity * 100) }
   });
-  slide.addShape('ellipse', {
+  slide.addShape(pptx.ShapeType.ellipse, {
     x: x + w * 0.56, y: y - 0.55, w: Math.min(w * 0.55, 3.4), h: Math.min(h * 1.05, 3.4),
     line:{ color: glowColor, transparency: 88, width: 1.0 },
     fill:{ color: glowColor, transparency: 100 }
