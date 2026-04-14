@@ -169,7 +169,7 @@ window.addEventListener("unhandledrejection", function(ev) {
 });
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TraceOps by SMTintel</title>
+<title>TraceOps by SMTintel</title><!-- ppt xml-safe fix -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230F2A44'/%3E%3Crect x='8' y='8' width='48' height='48' rx='8' fill='%230B1F33'/%3E%3Crect x='18' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='28' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='38' y='2' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='18' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='28' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='38' y='54' width='5' height='8' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='18' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='28' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='2' y='38' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='18' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='28' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Crect x='54' y='38' width='8' height='5' rx='2' fill='%234A7A4E'/%3E%3Cpolyline points='12,32 18,32 21,22 25,32' fill='none' stroke='%237FB3F4' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M25,32 C27,32 29,24 33,21 C37,18 41,20 41,26 C41,32 37,33 33,34 C29,35 27,38 30,42 C33,46 39,45 42,42' fill='none' stroke='%234A90E2' stroke-width='2.5' stroke-linecap='round'/%3E%3Cpolyline points='42,32 46,22 49,38 52,32' fill='none' stroke='%237FB3F4' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='21' cy='22' r='2' fill='%237FB3F4'/%3E%3Ccircle cx='46' cy='22' r='2' fill='%237FB3F4'/%3E%3C/svg%3E"/>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%230F2A44'/%3E%3Crect x='22' y='22' width='136' height='136' rx='22' fill='%230B1F33'/%3E%3Crect x='50' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='78' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='106' y='6' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='50' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='78' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='106' y='156' width='14' height='18' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='50' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='78' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='6' y='106' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='50' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='78' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Crect x='156' y='106' width='18' height='14' rx='4' fill='%234A7A4E'/%3E%3Cpolyline points='34,90 50,90 58,62 70,90' fill='none' stroke='%237FB3F4' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70,90 C76,90 82,68 92,60 C102,52 116,56 116,72 C116,88 104,92 92,95 C80,98 76,108 84,118 C92,128 110,126 118,118' fill='none' stroke='%234A90E2' stroke-width='7' stroke-linecap='round'/%3E%3Cpolyline points='118,90 130,62 140,108 148,90' fill='none' stroke='%237FB3F4' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='58' cy='62' r='5' fill='%237FB3F4'/%3E%3Ccircle cx='130' cy='62' r='5' fill='%237FB3F4'/%3E%3C/svg%3E"/>
 <meta name="theme-color" content="#0F2A44"/>
@@ -5974,6 +5974,25 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       };
     }
 
+    var originalAddShape = typeof slide.addShape === "function" ? slide.addShape : null;
+    if (originalAddShape) {
+      slide.addShape = function(shapeType, options){
+        var resolvedShape = shapeType;
+        if (typeof shapeType === "string") {
+          var st = (typeof PptxGenJS !== "undefined" && PptxGenJS && PptxGenJS.ShapeType) ? PptxGenJS.ShapeType : {};
+          var map = {
+            rect: st.rect,
+            roundRect: st.roundRect,
+            ellipse: st.ellipse,
+            line: st.line,
+            chevron: st.chevron
+          };
+          resolvedShape = map[shapeType] || st[shapeType] || shapeType;
+        }
+        return originalAddShape.call(this, resolvedShape, traceOpsPptSanitizeOptionsDeep(options, 0));
+      };
+    }
+
     var originalAddNotes = typeof slide.addNotes === "function" ? slide.addNotes : null;
     if (originalAddNotes) {
       slide.addNotes = function(text){
@@ -6607,15 +6626,15 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
     traceOpsPptBox(slide, 0.42, 3.34, 7.06, 1.34, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Complaint anchor', 0.58, 3.46, 2.0);
-    slide.addText(traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Issue under analysis', 320), {x:0.58, y:3.74, w:6.72, h:0.68, fontFace:'Segoe UI', fontSize:12, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Issue under analysis', 320), {x:0.58, y:3.74, w:6.72, h:0.68, fontFace:'Arial', fontSize:12, color:'102A43', margin:0, fit:'shrink'});
 
     traceOpsPptBox(slide, 7.64, 3.34, 5.27, 0.62, 'FAFCFF');
     traceOpsPptPanelTitle(slide, 'Detection window', 7.80, 3.46, 1.6);
-    slide.addText(traceOpsPptWrap(normalized.detection_window || model.detectionWindow || 'N/D', 80), {x:7.80, y:3.68, w:4.80, h:0.18, fontFace:'Segoe UI', fontSize:11.5, bold:true, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.detection_window || model.detectionWindow || 'N/D', 80), {x:7.80, y:3.68, w:4.80, h:0.18, fontFace:'Arial', fontSize:11.5, bold:true, color:'102A43', margin:0, fit:'shrink'});
 
     traceOpsPptBox(slide, 7.64, 4.06, 5.27, 0.62, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Trace events', 7.80, 4.18, 1.6);
-    slide.addText(traceOpsPptWrap(linked.length ? (linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).slice(0,5).join(' → ')) : 'Build → Test → Complaint', 90), {x:7.80, y:4.40, w:4.80, h:0.18, fontFace:'Segoe UI', fontSize:11.2, bold:true, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(linked.length ? (linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).slice(0,5).join(' → ')) : 'Build → Test → Complaint', 90), {x:7.80, y:4.40, w:4.80, h:0.18, fontFace:'Arial', fontSize:11.2, bold:true, color:'102A43', margin:0, fit:'shrink'});
 
     traceOpsPptBox(slide, 0.42, 4.90, 4.08, 1.12, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Impact / exposure', 0.58, 5.02, 1.8);
@@ -6623,19 +6642,19 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
     traceOpsPptBox(slide, 4.62, 4.90, 4.08, 1.12, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Trace path', 4.78, 5.02, 1.6);
-    slide.addText(traceOpsPptWrap(normalized.trace_path || model.tracePath || 'Event linkage pending; case summary used for traceability.', 150), {x:4.78, y:5.28, w:3.70, h:0.56, fontFace:'Segoe UI', fontSize:10.8, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.trace_path || model.tracePath || 'Event linkage pending; case summary used for traceability.', 150), {x:4.78, y:5.28, w:3.70, h:0.56, fontFace:'Arial', fontSize:10.8, color:'102A43', margin:0, fit:'shrink'});
 
     traceOpsPptBox(slide, 8.82, 4.90, 4.08, 1.12, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Linked RCCA / evidence', 8.98, 5.02, 2.2);
-    slide.addText(traceOpsPptWrap('RCCA ' + (normalized.source_rcca_id || 'N/D') + ' · ' + (model.evidenceRefs.length ? model.evidenceRefs.slice(0,3).join(' | ') : 'Evidence summary available'), 180), {x:8.98, y:5.28, w:3.70, h:0.56, fontFace:'Segoe UI', fontSize:10.5, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap('RCCA ' + (normalized.source_rcca_id || 'N/D') + ' · ' + (model.evidenceRefs.length ? model.evidenceRefs.slice(0,3).join(' | ') : 'Evidence summary available'), 180), {x:8.98, y:5.28, w:3.70, h:0.56, fontFace:'Arial', fontSize:10.5, color:'102A43', margin:0, fit:'shrink'});
 
     traceOpsPptBox(slide, 0.42, 6.12, 8.12, 0.82, 'FAFCFF');
     traceOpsPptPanelTitle(slide, 'Readiness basis', 0.58, 6.24, 1.6);
-    slide.addText(traceOpsPptWrap(readinessMeta.basis + (readinessMeta.missing.length ? (' Open gaps: ' + readinessMeta.missing.slice(0,4).join(', ') + '.') : ' All mandatory sections currently populated.'), 220), {x:1.98, y:6.24, w:6.20, h:0.34, fontFace:'Segoe UI', fontSize:9.6, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(readinessMeta.basis + (readinessMeta.missing.length ? (' Open gaps: ' + readinessMeta.missing.slice(0,4).join(', ') + '.') : ' All mandatory sections currently populated.'), 220), {x:1.98, y:6.24, w:6.20, h:0.34, fontFace:'Arial', fontSize:9.6, color:'102A43', margin:0, fit:'shrink'});
 
     traceOpsPptBox(slide, 8.76, 6.12, 4.14, 0.82, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Readiness logic', 8.92, 6.24, 1.6);
-    slide.addText(traceOpsPptWrap(readinessMeta.completed + '/8 mandatory sections completed · score auto-calculated by TraceOps.', 110), {x:10.20, y:6.24, w:2.36, h:0.34, fontFace:'Segoe UI', fontSize:9.4, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(readinessMeta.completed + '/8 mandatory sections completed · score auto-calculated by TraceOps.', 110), {x:10.20, y:6.24, w:2.36, h:0.34, fontFace:'Arial', fontSize:9.4, color:'102A43', margin:0, fit:'shrink'});
 
     traceOpsPptAddBadge(slide, String(normalized.status || 'Draft'), 11.32, 0.94, 'draft');
     return slide;
@@ -6661,20 +6680,20 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       ['Manufacturing Manager','Pending'],
       ['BU Manager','Pending']
     ];
-    slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(roles)), {x:0.42, y:1.96, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.8, margin:0.05, rowH:0.28, colW:[0.78,1.72,2.40], fit:'shrink'});
-    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.24, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Level',options:{bold:true}},{text:'Owner',options:{bold:true}}]].concat(escalation)), {x:0.42, y:4.52, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.7, margin:0.05, rowH:0.28, colW:[2.34,2.52], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(roles)), {x:0.42, y:1.96, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.8, margin:0.05, rowH:0.28, colW:[0.78,1.72,2.40], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.24, w:1.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Level',options:{bold:true}},{text:'Owner',options:{bold:true}}]].concat(escalation)), {x:0.42, y:4.52, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.7, margin:0.05, rowH:0.28, colW:[2.34,2.52], fit:'shrink'});
 
-    slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
     var traceRows = [
       ['Model', normalized.modelo || model.model || 'Pending', 'Revision', normalized.revision || 'Pending'],
       ['Line', normalized.linea || model.line || 'Pending', 'Station', normalized.station || model.station || 'Pending'],
       ['Supplier / Lot', normalized.supplier_lot || 'Pending', 'Serial / Batch', normalized.serial_batch || 'Pending'],
       ['Date code', normalized.date_code || 'Pending', 'Component P/N', normalized.component_pn || 'Pending']
     ];
-    slide.addTable(traceOpsPptSafeTable([[{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(traceRows)), {x:5.74, y:1.96, w:7.16, h:1.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.5, margin:0.05, rowH:0.22, colW:[1.18,2.28,1.18,2.28], fit:'shrink'});
-    slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.50, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(traceRows)), {x:5.74, y:1.96, w:7.16, h:1.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.5, margin:0.05, rowH:0.22, colW:[1.18,2.28,1.18,2.28], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.50, w:2.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
     var howMany = (normalized.how_many || ('Total units processed: ' + (normalized.total_units || 'Pending') + ' | Clean units: ' + (normalized.clean_units || 'Pending') + ' | Risk units: ' + (normalized.risk_units || 'Pending') + ' | Clean yield: ' + (normalized.clean_yield || 'Pending') + ' | OJT / touch rate: ' + (normalized.touch_rate || 'Pending')));
     var problemRows = [
       ['Who', normalized.reporta || normalized.owner_name || 'Pending', 'How', normalized.process_path || (normalized.station || model.station || 'Pending')],
@@ -6682,8 +6701,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       ['Where', [normalized.linea || model.line || 'Pending', normalized.station || model.station || 'Pending'].join(' · '), 'Why', normalized.technical_why || 'Pending'],
       ['When', normalized.detection_window || model.detectionWindow || 'Pending', 'Mechanism', traceOpsEightdShort(model.pattern || normalized.technical_interpretation || 'Pending', 100)]
     ];
-    slide.addTable(traceOpsPptSafeTable([[{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(problemRows)), {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.3, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Bad part / situation',options:{bold:true}},{text:'Good part / situation',options:{bold:true}}],[traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Pending', 150), traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 150)]]), {x:5.74, y:5.58, w:7.16, h:1.00, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.8, margin:0.05, rowH:[0.20,0.64], colW:[3.50,3.50], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(problemRows)), {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.3, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Bad part / situation',options:{bold:true}},{text:'Good part / situation',options:{bold:true}}],[traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Pending', 150), traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 150)]]), {x:5.74, y:5.58, w:7.16, h:1.00, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.8, margin:0.05, rowH:[0.20,0.64], colW:[3.50,3.50], fit:'shrink'});
     return slide;
   }
 
@@ -6701,15 +6720,15 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       ['DF', normalized.qty_suspect_df || 'Pending', normalized.qty_good_df || 'Pending', normalized.qty_bad_df || 'Pending', owner, normalized.clean_date_df || 'Pending', 'Pending'],
       ['Other', normalized.qty_suspect_other || 'Pending', normalized.qty_good_other || 'Pending', normalized.qty_bad_other || 'Pending', owner, normalized.clean_date_other || 'Pending', 'Pending']
     ];
-    slide.addText(traceOpsPptSafe('Containment by location', 36), {x:0.42, y:1.66, w:2.4, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Location',options:{bold:true}},{text:'Qty suspect',options:{bold:true}},{text:'Good part',options:{bold:true}},{text:'Bad part',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Clean date',options:{bold:true}},{text:'Status',options:{bold:true}}]].concat(rows)), {x:0.42, y:1.92, w:12.48, h:2.34, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.3, margin:0.04, rowH:0.26, colW:[1.42,1.04,1.04,1.04,2.10,1.28,1.12], fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Affected material / exposure',options:{bold:true}},{text:'Sort / inspection strategy',options:{bold:true}}],[material, traceOpsPptWrap(traceOpsPptSortStrategyText(model, normalized).join(' • '), 150)]]), {x:0.42, y:4.46, w:12.48, h:0.94, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.7, margin:0.05, rowH:[0.20,0.58], colW:[4.26,8.02], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Containment by location', 36), {x:0.42, y:1.66, w:2.4, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Location',options:{bold:true}},{text:'Qty suspect',options:{bold:true}},{text:'Good part',options:{bold:true}},{text:'Bad part',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Clean date',options:{bold:true}},{text:'Status',options:{bold:true}}]].concat(rows)), {x:0.42, y:1.92, w:12.48, h:2.34, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.3, margin:0.04, rowH:0.26, colW:[1.42,1.04,1.04,1.04,2.10,1.28,1.12], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Affected material / exposure',options:{bold:true}},{text:'Sort / inspection strategy',options:{bold:true}}],[material, traceOpsPptWrap(traceOpsPptSortStrategyText(model, normalized).join(' • '), 150)]]), {x:0.42, y:4.46, w:12.48, h:0.94, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.7, margin:0.05, rowH:[0.20,0.58], colW:[4.26,8.02], fit:'shrink'});
     var acts = traceOpsPptSplitBullets(normalized.d3_containment || traceOpsEightdBuildContainmentText(model), 4, 1000);
     while (acts.length < 4) acts.push('Pending');
-    slide.addText(traceOpsPptSafe('Additional containment actions', 36), {x:0.42, y:5.56, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Action',options:{bold:true}},{text:'Status',options:{bold:true}}],[acts[0],'Implemented'],[acts[1],'Implemented'],[acts[2],'Under validation'],[acts[3],'Pending']]), {x:0.42, y:5.82, w:6.12, h:0.98, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.6, margin:0.04, rowH:0.19, colW:[4.96,1.00], fit:'shrink'});
-    slide.addText(traceOpsPptSafe('Customer notification / shielding', 40), {x:6.78, y:5.56, w:3.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Item',options:{bold:true}},{text:'Value',options:{bold:true}}],['Owner', owner],['Start', start],['Status', traceOpsEightdHasText(normalized.d6_validation) ? 'In validation' : 'Draft containment'],['Shielding', 'Customer protection active within 24h']]), {x:6.78, y:5.82, w:6.12, h:0.98, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.6, margin:0.04, rowH:0.19, colW:[1.48,4.34], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Additional containment actions', 36), {x:0.42, y:5.56, w:2.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Action',options:{bold:true}},{text:'Status',options:{bold:true}}],[acts[0],'Implemented'],[acts[1],'Implemented'],[acts[2],'Under validation'],[acts[3],'Pending']]), {x:0.42, y:5.82, w:6.12, h:0.98, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.6, margin:0.04, rowH:0.19, colW:[4.96,1.00], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Customer notification / shielding', 40), {x:6.78, y:5.56, w:3.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Item',options:{bold:true}},{text:'Value',options:{bold:true}}],['Owner', owner],['Start', start],['Status', traceOpsEightdHasText(normalized.d6_validation) ? 'In validation' : 'Draft containment'],['Shielding', 'Customer protection active within 24h']]), {x:6.78, y:5.82, w:6.12, h:0.98, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.6, margin:0.04, rowH:0.19, colW:[1.48,4.34], fit:'shrink'});
     return slide;
   }
 
@@ -6794,8 +6813,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D5 - Permanent Corrective Actions', 'Foxconn standard D5 action matrix', 5, (normalized.status || 'Draft'));
     var actionRows = traceOpsPptComplianceActionRows(normalized, model);
-    slide.addText(traceOpsPptWrap('Visible action matrix by axis: Occurrence, Detection and System. Keep pending rows visible until closure evidence is completed.', 170), {x:0.58, y:1.80, w:12.00, h:0.18, fontFace:'Segoe UI', fontSize:9.4, color:'5F766C', margin:0, fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Axis', options:{bold:true}},{text:'Corrective Actions', options:{bold:true}},{text:'ECD', options:{bold:true}},{text:'Responsible', options:{bold:true}},{text:'Status', options:{bold:true}}]].concat(actionRows)), {x:0.42, y:2.06, w:12.48, h:3.02, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:9.0, margin:0.05, rowH:0.58, colW:[1.34,6.10,1.20,2.02,1.62], fit:'shrink'});
+    slide.addText(traceOpsPptWrap('Visible action matrix by axis: Occurrence, Detection and System. Keep pending rows visible until closure evidence is completed.', 170), {x:0.58, y:1.80, w:12.00, h:0.18, fontFace:'Arial', fontSize:9.4, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Axis', options:{bold:true}},{text:'Corrective Actions', options:{bold:true}},{text:'ECD', options:{bold:true}},{text:'Responsible', options:{bold:true}},{text:'Status', options:{bold:true}}]].concat(actionRows)), {x:0.42, y:2.06, w:12.48, h:3.02, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:9.0, margin:0.05, rowH:0.58, colW:[1.34,6.10,1.20,2.02,1.62], fit:'shrink'});
 
     var cardY = 5.28;
     var cardW = 4.02;
@@ -6809,10 +6828,10 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var status = String(row[4] || 'Pending');
       traceOpsPptBox(slide, x, cardY, cardW, 1.36, idx === 1 ? 'FAFCFF' : 'FFFFFF');
       traceOpsPptPanelTitle(slide, axis, x + 0.16, cardY + 0.14, 1.2);
-      slide.addText(traceOpsPptWrap(action, 92), {x:x + 0.16, y:cardY + 0.36, w:cardW - 0.32, h:0.42, fontFace:'Segoe UI', fontSize:9.1, color:'102A43', margin:0, fit:'shrink'});
-      slide.addText('ECD: ' + traceOpsPptWrap(ecd, 28), {x:x + 0.16, y:cardY + 0.88, w:1.24, h:0.14, fontFace:'Segoe UI', fontSize:8.4, bold:true, color:'1F3A5F', margin:0, fit:'shrink'});
-      slide.addText('Owner: ' + traceOpsPptWrap(owner, 28), {x:x + 1.42, y:cardY + 0.88, w:1.54, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'102A43', margin:0, fit:'shrink'});
-      slide.addText('Status: ' + traceOpsPptWrap(status, 24), {x:x + 3.00, y:cardY + 0.88, w:0.76, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'102A43', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptWrap(action, 92), {x:x + 0.16, y:cardY + 0.36, w:cardW - 0.32, h:0.42, fontFace:'Arial', fontSize:9.1, color:'102A43', margin:0, fit:'shrink'});
+      slide.addText('ECD: ' + traceOpsPptWrap(ecd, 28), {x:x + 0.16, y:cardY + 0.88, w:1.24, h:0.14, fontFace:'Arial', fontSize:8.4, bold:true, color:'1F3A5F', margin:0, fit:'shrink'});
+      slide.addText('Owner: ' + traceOpsPptWrap(owner, 28), {x:x + 1.42, y:cardY + 0.88, w:1.54, h:0.14, fontFace:'Arial', fontSize:8.4, color:'102A43', margin:0, fit:'shrink'});
+      slide.addText('Status: ' + traceOpsPptWrap(status, 24), {x:x + 3.00, y:cardY + 0.88, w:0.76, h:0.14, fontFace:'Arial', fontSize:8.4, color:'102A43', margin:0, fit:'shrink'});
     });
     return slide;
   }
@@ -6821,8 +6840,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D6 - Verification of Effectiveness', 'Foxconn standard D6 validation matrix', 6, traceOpsEightdHasText(normalized.d6_validation) ? 'Under Validation' : 'Evidence Pending');
     var rows = traceOpsPptComplianceVerificationRows(normalized, model);
-    slide.addText(traceOpsPptWrap('Verification matrix remains visible by axis so occurrence, detection and system closure can be audited independently.', 170), {x:0.58, y:1.80, w:12.00, h:0.18, fontFace:'Segoe UI', fontSize:9.4, color:'5F766C', margin:0, fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Axis',options:{bold:true}},{text:'Corrective Actions',options:{bold:true}},{text:'Measurement Method',options:{bold:true}},{text:'Validation Efficacy Results',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Completion Date',options:{bold:true}}]].concat(rows)), {x:0.42, y:2.06, w:12.48, h:2.94, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.4, margin:0.04, rowH:0.56, colW:[0.90,2.52,3.06,3.38,1.22,1.40], fit:'shrink'});
+    slide.addText(traceOpsPptWrap('Verification matrix remains visible by axis so occurrence, detection and system closure can be audited independently.', 170), {x:0.58, y:1.80, w:12.00, h:0.18, fontFace:'Arial', fontSize:9.4, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Axis',options:{bold:true}},{text:'Corrective Actions',options:{bold:true}},{text:'Measurement Method',options:{bold:true}},{text:'Validation Efficacy Results',options:{bold:true}},{text:'Responsible',options:{bold:true}},{text:'Completion Date',options:{bold:true}}]].concat(rows)), {x:0.42, y:2.06, w:12.48, h:2.94, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.4, margin:0.04, rowH:0.56, colW:[0.90,2.52,3.06,3.38,1.22,1.40], fit:'shrink'});
 
     var cardY = 5.16;
     var cardW = 4.02;
@@ -6835,12 +6854,12 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var due = String(row[5] || 'Pending');
       traceOpsPptBox(slide, x, cardY, cardW, 1.08, idx === 1 ? 'FAFCFF' : 'FFFFFF');
       traceOpsPptPanelTitle(slide, axis + ' verification', x + 0.16, cardY + 0.12, 1.8);
-      slide.addText(traceOpsPptWrap('Method: ' + method, 90), {x:x + 0.16, y:cardY + 0.34, w:cardW - 0.32, h:0.24, fontFace:'Segoe UI', fontSize:8.5, color:'102A43', margin:0, fit:'shrink'});
-      slide.addText(traceOpsPptWrap('Result: ' + result, 90), {x:x + 0.16, y:cardY + 0.62, w:cardW - 0.32, h:0.22, fontFace:'Segoe UI', fontSize:8.5, color:'102A43', margin:0, fit:'shrink'});
-      slide.addText('Date: ' + traceOpsPptWrap(due, 24), {x:x + 0.16, y:cardY + 0.88, w:1.24, h:0.12, fontFace:'Segoe UI', fontSize:8.2, bold:true, color:'1F3A5F', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptWrap('Method: ' + method, 90), {x:x + 0.16, y:cardY + 0.34, w:cardW - 0.32, h:0.24, fontFace:'Arial', fontSize:8.5, color:'102A43', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptWrap('Result: ' + result, 90), {x:x + 0.16, y:cardY + 0.62, w:cardW - 0.32, h:0.22, fontFace:'Arial', fontSize:8.5, color:'102A43', margin:0, fit:'shrink'});
+      slide.addText('Date: ' + traceOpsPptWrap(due, 24), {x:x + 0.16, y:cardY + 0.88, w:1.24, h:0.12, fontFace:'Arial', fontSize:8.2, bold:true, color:'1F3A5F', margin:0, fit:'shrink'});
     });
 
-    slide.addTable(traceOpsPptSafeTable([[{text:'Acceptance criteria',options:{bold:true}},{text:'Recurrence status',options:{bold:true}},{text:'Conclusion',options:{bold:true}}],['No recurrence signature, stable control behavior and traceable closure evidence.', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation; no recurrence confirmed in current window.' : 'Pending validation window.', traceOpsPptWrap(traceOpsEightdHasText(normalized.d6_validation) ? traceOpsEightdShort(normalized.d6_validation, 100) : 'Controlled verification remains open until sustained non-recurrence is demonstrated.', 100)]]), {x:0.42, y:6.34, w:12.48, h:0.42, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.1, margin:0.03, rowH:[0.16,0.20], colW:[3.96,3.00,5.12], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Acceptance criteria',options:{bold:true}},{text:'Recurrence status',options:{bold:true}},{text:'Conclusion',options:{bold:true}}],['No recurrence signature, stable control behavior and traceable closure evidence.', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation; no recurrence confirmed in current window.' : 'Pending validation window.', traceOpsPptWrap(traceOpsEightdHasText(normalized.d6_validation) ? traceOpsEightdShort(normalized.d6_validation, 100) : 'Controlled verification remains open until sustained non-recurrence is demonstrated.', 100)]]), {x:0.42, y:6.34, w:12.48, h:0.42, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.1, margin:0.03, rowH:[0.16,0.20], colW:[3.96,3.00,5.12], fit:'shrink'});
     return slide;
   }
 
@@ -6867,20 +6886,20 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   function traceOpsPptBuildAppendixSlide(pptx, normalized, model, linked){
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'Appendix A - Traceability & Evidence', 'Foxconn-aligned traceability and evidence summary', 8, model.evidenceRefs.length ? 'Under Validation' : 'Draft');
-    slide.addText(traceOpsPptSafe('Event timeline', 40), {x:0.42, y:1.66, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(traceOpsPptTimelineTable(normalized, linked, model), {x:0.42, y:1.90, w:12.48, h:0.72, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.8, margin:0.04, rowH:[0.20,0.44], valign:'mid', align:'center', fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:2.82, w:12.48, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.5, margin:0.04, rowH:[0.18,0.54], colW:[6.18,6.18], fit:'shrink'});
-    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:3.84, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:3.86, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Event timeline', 40), {x:0.42, y:1.66, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptTimelineTable(normalized, linked, model), {x:0.42, y:1.90, w:12.48, h:0.72, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.8, margin:0.04, rowH:[0.20,0.44], valign:'mid', align:'center', fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:2.82, w:12.48, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.5, margin:0.04, rowH:[0.18,0.54], colW:[6.18,6.18], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:3.84, w:2.2, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:3.86, w:10.34, h:0.14, fontFace:'Arial', fontSize:8.4, color:'5F766C', margin:0, fit:'shrink'});
     var evidenceRows = traceOpsPptDetailedEventRows(normalized, model);
-    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:4.10, w:12.48, h:1.26, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.0, margin:0.04, rowH:0.20, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:4.10, w:12.48, h:1.26, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.0, margin:0.04, rowH:0.20, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], fit:'shrink'});
 
     var firstEvidence = (Array.isArray(evidenceRows) && evidenceRows.length ? evidenceRows[0] : ['Pending','Pending','Pending','Pending','Pending','Pending','TraceOps']);
     traceOpsPptBox(slide, 0.42, 5.52, 12.48, 0.52, 'FAFCFF');
     traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 5.64, 1.4);
-    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending') + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:5.64, w:10.70, h:0.14, fontFace:'Segoe UI', fontSize:8.6, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending') + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:5.64, w:10.70, h:0.14, fontFace:'Arial', fontSize:8.6, color:'102A43', margin:0, fit:'shrink'});
 
-    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.16, w:12.48, h:0.58, border:{type:'solid', pt:1, color:'102A43'}, fill:'102A43', color:'FFFFFF', fontFace:'Segoe UI', fontSize:8.0, margin:0.03, rowH:0.08, colW:[2.86,1.40,8.22], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.16, w:12.48, h:0.58, border:{type:'solid', pt:1, color:'102A43'}, fill:'102A43', color:'FFFFFF', fontFace:'Arial', fontSize:8.0, margin:0.03, rowH:0.08, colW:[2.86,1.40,8.22], fit:'shrink'});
     return slide;
   }
 
@@ -7265,21 +7284,6 @@ function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
     fill:{ color: dark2 }
   });
 
-  try {
-    slide.addText('', {
-      x:x, y:y, w:w, h:h,
-      margin:0,
-      shape:'roundRect',
-      rectRadius: radius,
-      fill:{
-        color:[{ color: dark1, pos: 0 }, { color: dark2, pos: 58 }, { color: dark3, pos: 100 }],
-        angle: 0,
-        type: 'grad'
-      },
-      line:{ color: lineColor, transparency: 70, width: 1.0 }
-    });
-  } catch(_) {}
-
   var cols = opts.cols || 8;
   var rows = opts.rows || 5;
   for (var i = 1; i < cols; i++) {
@@ -7327,7 +7331,7 @@ function exportEightdPpt(draft) {
       pptx.subject = traceOpsPptSafe('TraceOps 8D Draft', 80);
       pptx.title = traceOpsPptSafe(normalized.eightd_id || 'TraceOps_8D_Draft', 120);
       try { pptx.lang = 'es-MX'; } catch(_){ }
-      try { pptx.theme = { headFontFace:'Segoe UI', bodyFontFace:'Segoe UI', lang:'es-MX', color:'0F2A44' }; } catch(_){ }
+      try { pptx.theme = { headFontFace:'Arial', bodyFontFace:'Arial', lang:'es-MX', color:'0F2A44' }; } catch(_){ }
 
       var model = traceOpsEightdBuildModel((normalized && normalized.source_snapshot) || normalized || {}, traceOpsGetEightdLinkedEventsForExport(normalized));
       var linked = model.linked;
