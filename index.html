@@ -9,7 +9,7 @@ window.TRACEOPS_SUPABASE = {
   anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV"
 };
 </script>
-<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only | blue palette fused | ppt palette fused | ppt grid glow fused | ppt addShape fix -->
+<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only | blue palette fused | ppt palette fused | ppt grid glow fused | ppt addShape fix | safari pptx guard -->
 <script>
 window.__traceopsZipReady = null;
 window.__traceopsExcelReady = null;
@@ -5956,7 +5956,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return clean;
   }
 
-  function traceOpsPptPatchSlideMethods(slide, pptx){
+  function traceOpsPptPatchSlideMethods(slide){
     if (!slide || slide.__traceopsPatched) return slide;
     slide.__traceopsPatched = true;
 
@@ -5979,7 +5979,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       slide.addShape = function(shapeType, options){
         var resolvedShape = shapeType;
         if (typeof shapeType === "string") {
-          var st = (pptx && pptx.ShapeType) ? pptx.ShapeType : {};
+          var st = (typeof PptxGenJS !== "undefined" && PptxGenJS && PptxGenJS.ShapeType)
+            ? PptxGenJS.ShapeType
+            : {};
           var shapeMap = {
             roundRect: st.roundRect,
             rect: st.rect,
@@ -6011,7 +6013,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     if (originalAddSlide) {
       pptx.addSlide = function(){
         var slide = originalAddSlide.apply(this, arguments);
-        return traceOpsPptPatchSlideMethods(slide, pptx);
+        return traceOpsPptPatchSlideMethods(slide);
       };
     }
 
