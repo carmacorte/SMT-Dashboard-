@@ -9,7 +9,7 @@ window.TRACEOPS_SUPABASE = {
   anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV"
 };
 </script>
-<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only | blue palette fused | ppt palette fused | ppt grid glow fused | ppt addShape fix | safari pptx guard | pptx ref fix complete | d0-d2 improvement pack | premium shell css consolidated | ops-hero patch A -->
+<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only | blue palette fused | ppt palette fused | ppt grid glow fused -->
 <script>
 window.__traceopsZipReady = null;
 window.__traceopsExcelReady = null;
@@ -229,17 +229,15 @@ body{touch-action:manipulation}
 .sidebar-toggle{display:none}
 .sidebar-overlay{display:none}
 .main-content{margin-left:280px;max-width:none;padding:96px 28px 80px;transition:margin-left .3s cubic-bezier(.4,0,.2,1),padding .3s cubic-bezier(.4,0,.2,1)}
-.main-content.expanded{margin-left:0}
+.main-content.expanded{margin-left:280px}
 .saas-topbar{position:fixed;top:0;left:280px;right:0;height:76px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 28px;z-index:110;background:rgba(244,243,240,.88);backdrop-filter:blur(18px);border-bottom:1px solid rgba(200,196,190,.65)}
-/* When the sidebar is collapsed on desktop (or in mobile), reset left offset */
-.saas-topbar.expanded{left:0}
 .saas-topbar-left{display:flex;align-items:center;gap:14px;min-width:0}
 .saas-topbar-brand{display:flex;flex-direction:column;min-width:0}
 .saas-topbar-title{font-size:16px;font-weight:800;color:#1A1714;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .saas-topbar-subtitle{font-size:11px;color:#6A6560}
 .saas-topbar-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 .saas-menu-btn,.saas-header-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #D7D3CC;background:#fff;color:#1A1714;border-radius:14px;height:44px;padding:0 16px;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.saas-menu-btn{width:44px;padding:0;display:inline-flex}
+.saas-menu-btn{width:44px;padding:0;display:none}
 .saas-header-btn.primary{background:#1F3A5F;border-color:#1F3A5F;color:#fff;box-shadow:0 6px 18px rgba(30,92,72,.22)}
 .saas-header-btn:hover,.saas-menu-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(0,0,0,.08)}
 .saas-header-btn.primary:hover{background:#16324F;border-color:#16324F}
@@ -878,7 +876,6 @@ body.traceops-premium-shell .ops-hero{
   justify-content:center;
   min-height:560px;
   padding:80px 24px 48px !important;
-  border-radius:28px !important;
 }
 
 body.traceops-premium-shell .ops-hero-bg,
@@ -1470,19 +1467,179 @@ body.traceops-premium-shell .table-reset-btn:active{
   transform:scale(.96) !important;
 }
 
+@media (max-width:900px){
+  body.traceops-premium-shell{
+    background:linear-gradient(180deg,#050505 0 220px,#EEF5FF 220px 100%) !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar{
+    background:rgba(7,10,8,.82) !important;
+  }
+
+  body.traceops-premium-shell .main-content{
+    padding-left:14px !important;
+    padding-right:14px !important;
+  }
+
+  body.traceops-premium-shell .ops-hero-actions{
+    flex-direction:column;
+    width:100%;
+  }
+
+  body.traceops-premium-shell .ops-hero-btn{
+    width:100%;
+    justify-content:center;
+  }
+}
 
 
 
 
+/* ==== START GAP HARD FIX ==== */
+body.traceops-premium-shell,
+body.traceops-premium-shell #root{
+  margin:0 !important;
+  padding:0 !important;
+  min-height:100svh !important;
+}
+
+body.traceops-premium-shell .saas-topbar{
+  top:0 !important;
+}
+
+body.traceops-premium-shell .main-content,
+body.traceops-premium-shell .main-content.expanded{
+  margin-top:0 !important;
+  padding-top:84px !important;
+}
+
+body.traceops-premium-shell .main-content > :first-child,
+body.traceops-premium-shell .main-content > div:first-child,
+body.traceops-premium-shell .main-content > section:first-child{
+  margin-top:0 !important;
+}
+
+body.traceops-premium-shell .main-content > div:first-child:empty{
+  display:none !important;
+}
+
+body.traceops-premium-shell .ops-hero{
+  margin-top:0 !important;
+  transform:none !important;
+}
+
+@media (max-width:900px){
+  body.traceops-premium-shell .saas-topbar{
+    top:0 !important;
+    left:0 !important;
+  }
+
+  body.traceops-premium-shell .main-content,
+  body.traceops-premium-shell .main-content.expanded{
+    padding-top:78px !important;
+  }
+}
+
+@supports (padding: max(0px)) {
+  body.traceops-premium-shell .saas-topbar{
+    padding-top:max(14px, env(safe-area-inset-top)) !important;
+    height:calc(72px + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  body.traceops-premium-shell .main-content,
+  body.traceops-premium-shell .main-content.expanded{
+    padding-top:calc(82px + env(safe-area-inset-top, 0px)) !important;
+  }
+}
+/* ==== END GAP HARD FIX ==== */
+
+
+/* ==== START MOBILE LANGUAGE SELECTOR FIX ==== */
+@media (max-width:900px){
+  body.traceops-premium-shell .saas-topbar{
+    overflow:visible !important;
+    padding-right:max(14px, calc(14px + env(safe-area-inset-right, 0px))) !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-left{
+    flex:0 1 auto !important;
+    min-width:0 !important;
+    gap:10px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-brand{
+    max-width:24vw !important;
+    min-width:0 !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    flex-wrap:nowrap !important;
+    justify-content:flex-end !important;
+    gap:6px !important;
+    overflow:visible !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill{
+    flex:0 0 auto !important;
+    white-space:nowrap !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child{
+    padding:6px 6px !important;
+    gap:4px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child button{
+    padding:4px 6px !important;
+    font-size:10px !important;
+    line-height:1 !important;
+  }
+}
+
+@media (max-width:420px){
+  body.traceops-premium-shell .saas-topbar-brand{
+    max-width:18vw !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions{
+    gap:5px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child{
+    padding:5px 5px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > .saas-header-pill:first-child button{
+    padding:4px 5px !important;
+    font-size:9px !important;
+  }
+}
+/* ==== END MOBILE LANGUAGE SELECTOR FIX ==== */
 
 
 
+/* ==== START MOBILE MENU OFFSET FIX ==== */
+@media (max-width:900px){
+  body.traceops-premium-shell .saas-topbar-left{
+    align-items:flex-start !important;
+  }
 
+  body.traceops-premium-shell .saas-menu-btn{
+    position:relative !important;
+    top:12px !important;
+    z-index:3 !important;
+    flex:0 0 auto !important;
+  }
+}
 
-
-
-
-
+@media (max-width:420px){
+  body.traceops-premium-shell .saas-menu-btn{
+    top:14px !important;
+  }
+}
+/* ==== END MOBILE MENU OFFSET FIX ==== */
 
 
 .traceops-closure-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:0 0 16px}
@@ -1501,7 +1658,45 @@ body.traceops-premium-shell .table-reset-btn:active{
 @media(max-width:560px){.traceops-closure-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.traceops-action-age{min-width:auto}.traceops-flow-summary{padding:10px 12px}}
 
 
+/* ==== START LIGHT BUTTON TEXT FIX ==== */
+body.traceops-premium-shell .ops-hero-btn.ghost,
+body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost{
+  background:#FFFFFF !important;
+  color:#1F3A5F !important;
+  border:1px solid rgba(16,35,28,.10) !important;
+  box-shadow:0 10px 20px rgba(16,35,28,.06) !important;
+}
 
+body.traceops-premium-shell .ops-hero-btn.ghost::before,
+body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost::before{
+  color:#1F3A5F !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.ghost:hover,
+body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost:hover{
+  background:#F7FAFF !important;
+  border-color:rgba(26,91,69,.16) !important;
+}
+
+/* por si algun boton claro reutiliza la misma capa */
+body.traceops-premium-shell .saas-header-pill,
+body.traceops-premium-shell .table-reset-btn,
+body.traceops-premium-shell .traceops-calendar-btn:not(.active),
+body.traceops-premium-shell .traceops-calendar-chip:not(.active),
+body.traceops-premium-shell .day-btn:not(.active){
+  color:#3E5F52 !important;
+}
+
+body.traceops-premium-shell .saas-header-pill *,
+body.traceops-premium-shell .table-reset-btn *,
+body.traceops-premium-shell .traceops-calendar-btn:not(.active) *,
+body.traceops-premium-shell .traceops-calendar-chip:not(.active) *,
+body.traceops-premium-shell .day-btn:not(.active) *{
+  color:inherit !important;
+}
+/* ==== END LIGHT BUTTON TEXT FIX ==== */
 
 
 .traceops-ops-panel .traceops-panel-body{padding:18px}
@@ -1511,7 +1706,95 @@ body.traceops-premium-shell .table-reset-btn:active{
   .traceops-ops-panel .traceops-panel-body{padding:14px}
 }
 
+/* ==== START MOBILE TOPBAR OVERFLOW FIX V2 ==== */
+@media (max-width:900px){
+  body.traceops-premium-shell .saas-topbar{
+    display:grid !important;
+    grid-template-columns:42px minmax(0,1fr) !important;
+    align-items:center !important;
+    column-gap:10px !important;
+    padding:14px 12px !important;
+    overflow:hidden !important;
+  }
 
+  body.traceops-premium-shell .saas-topbar-left{
+    min-width:42px !important;
+    width:42px !important;
+    justify-content:center !important;
+    align-items:center !important;
+    gap:0 !important;
+    flex:0 0 42px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-brand{
+    display:none !important;
+  }
+
+  body.traceops-premium-shell .saas-menu-btn{
+    position:static !important;
+    top:auto !important;
+    margin:0 !important;
+    width:42px !important;
+    height:42px !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions{
+    min-width:0 !important;
+    width:100% !important;
+    flex-wrap:nowrap !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    justify-content:flex-start !important;
+    gap:8px !important;
+    padding:2px 2px 4px !important;
+    scrollbar-width:none !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions::-webkit-scrollbar{
+    display:none !important;
+  }
+
+  body.traceops-premium-shell .saas-topbar-actions > *{
+    flex:0 0 auto !important;
+  }
+
+  body.traceops-premium-shell .saas-header-pill{
+    padding:8px 10px !important;
+  }
+
+  body.traceops-premium-shell .saas-header-btn{
+    height:40px !important;
+    padding:0 12px !important;
+    font-size:11px !important;
+    white-space:nowrap !important;
+  }
+
+  body.traceops-premium-shell .saas-header-btn span{
+    white-space:nowrap !important;
+  }
+
+  body.traceops-premium-shell .saas-header-btn.primary{
+    padding:0 14px !important;
+  }
+}
+
+@media (max-width:420px){
+  body.traceops-premium-shell .saas-topbar{
+    padding:12px 10px !important;
+    column-gap:8px !important;
+  }
+
+  body.traceops-premium-shell .saas-header-pill{
+    padding:7px 8px !important;
+  }
+
+  body.traceops-premium-shell .saas-header-btn{
+    padding:0 10px !important;
+    font-size:10px !important;
+  }
+}
+/* ==== END MOBILE TOPBAR OVERFLOW FIX V2 ==== */
 
 
 
@@ -1552,209 +1835,6 @@ body.traceops-premium-shell .table-reset-btn:active{
 .traceops-material-btn.primary{background:#1F3A5F;border-color:#1F3A5F;color:#fff}
 @media(max-width:1180px){.traceops-material-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.traceops-material-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.traceops-material-kpis{grid-template-columns:1fr}.traceops-material-head,.traceops-material-body{padding:14px}.traceops-material-btn{width:100%;justify-content:center}}
-
-
-
-/* ==== START PREMIUM SHELL CONSOLIDATED OVERRIDES ==== */
-body.traceops-premium-shell,
-body.traceops-premium-shell #root{
-  margin:0 !important;
-  padding:0 !important;
-  min-height:100svh !important;
-}
-
-body.traceops-premium-shell .main-content,
-body.traceops-premium-shell .main-content.expanded{
-  position:relative;
-  z-index:1;
-  background:transparent;
-  color:#102A43;
-  margin-top:0;
-  padding-top:84px;
-}
-
-body.traceops-premium-shell .main-content > :first-child,
-body.traceops-premium-shell .main-content > div:first-child,
-body.traceops-premium-shell .main-content > section:first-child{
-  margin-top:0;
-}
-
-body.traceops-premium-shell .main-content > div:first-child:empty{
-  display:none;
-}
-
-body.traceops-premium-shell .hdr{
-  position:relative;
-  overflow:hidden;
-  margin-top:0;
-  transform:none;
-}
-
-
-body.traceops-premium-shell .ops-hero-btn{
-  min-height:48px;
-  padding:14px 28px;
-  border-radius:999px;
-  font-size:14px;
-  font-weight:600;
-  letter-spacing:0;
-  box-shadow:none;
-}
-
-body.traceops-premium-shell .saas-header-btn.primary{
-  background:linear-gradient(135deg,#1E8A64 0%,#4A90E2 100%);
-  color:#FFFFFF;
-  border:1px solid rgba(25,167,110,.22);
-  box-shadow:0 12px 26px rgba(25,128,90,.22);
-}
-
-body.traceops-premium-shell .ops-hero-btn.ghost,
-body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost{
-  background:#FFFFFF;
-  color:#1F3A5F;
-  border:1px solid rgba(16,35,28,.10);
-  box-shadow:0 10px 20px rgba(16,35,28,.06);
-}
-
-body.traceops-premium-shell .ops-hero-btn.ghost::before,
-body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost::before{
-  color:#1F3A5F;
-  opacity:1;
-  text-shadow:none;
-}
-
-@media (max-width:900px){
-  body.traceops-premium-shell{
-    background:linear-gradient(180deg,#050505 0 220px,#EEF5FF 220px 100%) !important;
-  }
-
-  body.traceops-premium-shell .saas-topbar{
-    top:0;
-    left:0;
-    display:grid;
-    grid-template-columns:42px minmax(0,1fr);
-    align-items:center;
-    column-gap:10px;
-    padding:14px 12px;
-    overflow:hidden;
-    background:rgba(7,10,8,.82);
-  }
-
-  body.traceops-premium-shell .saas-topbar-left{
-    min-width:42px;
-    width:42px;
-    justify-content:center;
-    align-items:center;
-    gap:0;
-    flex:0 0 42px;
-  }
-
-  body.traceops-premium-shell .saas-topbar-brand{
-    display:none;
-    max-width:0;
-    min-width:0;
-  }
-
-  body.traceops-premium-shell .saas-menu-btn{
-    position:static;
-    top:auto;
-    margin:0;
-    width:42px;
-    height:42px;
-    z-index:3;
-    flex:0 0 auto;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions{
-    min-width:0;
-    width:100%;
-    flex:1 1 auto;
-    flex-wrap:nowrap;
-    overflow-x:auto;
-    overflow-y:hidden;
-    justify-content:flex-start;
-    gap:8px;
-    padding:2px 2px 4px;
-    scrollbar-width:none;
-    -webkit-overflow-scrolling:touch;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions::-webkit-scrollbar{
-    display:none;
-  }
-
-  body.traceops-premium-shell .saas-topbar-actions > *{
-    flex:0 0 auto;
-  }
-
-  body.traceops-premium-shell .saas-header-pill{
-    padding:8px 10px;
-  }
-
-  body.traceops-premium-shell .saas-header-btn{
-    height:40px;
-    padding:0 12px;
-    font-size:11px;
-    white-space:nowrap;
-  }
-
-  body.traceops-premium-shell .saas-header-btn.primary{
-    padding:0 14px;
-  }
-
-  body.traceops-premium-shell .main-content,
-  body.traceops-premium-shell .main-content.expanded{
-    padding-top:78px;
-    padding-left:14px;
-    padding-right:14px;
-  }
-
-  body.traceops-premium-shell .ops-hero-actions{
-    flex-direction:column;
-    width:100%;
-  }
-
-  body.traceops-premium-shell .ops-hero-btn{
-    width:100%;
-    justify-content:center;
-  }
-}
-
-@media (max-width:420px){
-  body.traceops-premium-shell .saas-topbar{
-    padding:12px 10px;
-    column-gap:8px;
-  }
-
-  body.traceops-premium-shell .saas-header-pill{
-    padding:7px 8px;
-  }
-
-  body.traceops-premium-shell .saas-header-btn{
-    padding:0 10px;
-    font-size:10px;
-  }
-
-  body.traceops-premium-shell .main-content,
-  body.traceops-premium-shell .main-content.expanded{
-    padding-left:12px;
-    padding-right:12px;
-  }
-}
-
-@supports (padding: max(0px)) {
-  body.traceops-premium-shell .saas-topbar{
-    padding-top:max(14px, env(safe-area-inset-top));
-    padding-right:max(12px, calc(12px + env(safe-area-inset-right, 0px)));
-    height:calc(72px + env(safe-area-inset-top, 0px));
-  }
-
-  body.traceops-premium-shell .main-content,
-  body.traceops-premium-shell .main-content.expanded{
-    padding-top:calc(82px + env(safe-area-inset-top, 0px));
-  }
-}
-/* ==== END PREMIUM SHELL CONSOLIDATED OVERRIDES ==== */
 
 </style>
 
@@ -1810,7 +1890,7 @@ async function initApp(){
   const { data } = await client.auth.getSession();
 
   if (data && data.session) {
-    if (window && window.__TRACEOPS_DEV__) console.log("Sesión activa detectada");
+    console.log("Sesión activa detectada");
 
     // 🔥 AUTO LOAD
     await loadRccasFromCloud();
@@ -1829,16 +1909,16 @@ async function loadRccasFromCloud(){
     .order('updated_at', { ascending: false });
 
   if (error) {
-    if (window && window.__TRACEOPS_DEV__) console.error("Error cargando RCCA:", error);
+    console.error("Error cargando RCCA:", error);
     return;
   }
 
-  if (window && window.__TRACEOPS_DEV__) console.log("RCCA desde nube:", data);
+  console.log("RCCA desde nube:", data);
 
   // 🔥 NORMALIZAR (ESTO ES CLAVE)
   const rccas = (data || []).map(row => row.payload);
 
-  if (window && window.__TRACEOPS_DEV__) console.log("RCCA normalizados:", rccas);
+  console.log("RCCA normalizados:", rccas);
 
   window.__traceops_cloud_rccas = rccas;
   if (typeof renderInvestigationCarousel === "function") {
@@ -5505,7 +5585,6 @@ function App() {
     var model = traceOpsEightdBuildModel(source, linkedEvents);
     var baseDraft = Object.assign({}, existing || {}, {
       eightd_id: existing && existing.eightd_id ? existing.eightd_id : traceOpsBuildEightdId(source && source.rcca_id),
-      eightd_title: existing && existing.eightd_title ? existing.eightd_title : (source && (source.titulo_corto || source.problema) ? (source.titulo_corto || source.problema) : ''),
       source_rcca_id: source && source.rcca_id ? source.rcca_id : '',
       source_title: source && (source.titulo_corto || source.problema) ? (source.titulo_corto || source.problema) : '',
       modelo: model.model,
@@ -5877,8 +5956,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return clean;
   }
 
-  var _traceOpsPptxRef = null;
-
   function traceOpsPptPatchSlideMethods(slide){
     if (!slide || slide.__traceopsPatched) return slide;
     slide.__traceopsPatched = true;
@@ -5897,27 +5974,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       };
     }
 
-    var originalAddShape = typeof slide.addShape === "function" ? slide.addShape : null;
-    if (originalAddShape) {
-      slide.addShape = function(shapeType, options){
-        var resolvedShape = shapeType;
-        if (typeof shapeType === "string") {
-          var st = (typeof PptxGenJS !== "undefined" && PptxGenJS && PptxGenJS.ShapeType)
-            ? PptxGenJS.ShapeType
-            : {};
-          var shapeMap = {
-            roundRect: st.roundRect,
-            rect: st.rect,
-            ellipse: st.ellipse,
-            chevron: st.chevron,
-            line: st.line
-          };
-          resolvedShape = shapeMap[shapeType] || st[shapeType] || shapeType;
-        }
-        return originalAddShape.call(this, resolvedShape, traceOpsPptSanitizeOptionsDeep(options, 0));
-      };
-    }
-
     var originalAddNotes = typeof slide.addNotes === "function" ? slide.addNotes : null;
     if (originalAddNotes) {
       slide.addNotes = function(text){
@@ -5930,7 +5986,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
   function traceOpsPptHardenDeck(pptx){
     if (!pptx || pptx.__traceopsDeckPatched) return pptx;
-    _traceOpsPptxRef = pptx;
     pptx.__traceopsDeckPatched = true;
 
     var originalAddSlide = typeof pptx.addSlide === "function" ? pptx.addSlide : null;
@@ -6001,7 +6056,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   }
 
   function traceOpsPptDrawBulletList(slide, bullets, x, y, w, h, opts){
-    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     var items = Array.isArray(bullets) && bullets.length ? bullets : ['Pending'];
     var fontSize = (opts && opts.fontSize) || 11;
     var lineGap = (opts && opts.lineGap) || 0.34;
@@ -6009,7 +6063,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     for (var i = 0; i < Math.min(items.length, maxItems); i++) {
       var yy = y + (i * lineGap);
       if (yy > y + h - 0.24) break;
-      slide.addShape(_traceOpsPptxRef.ShapeType.ellipse, {x:x, y:yy + 0.07, w:0.08, h:0.08, line:{color:'2F6FB3', pt:0}, fill:{color:'2F6FB3'}});
+      slide.addShape('ellipse', {x:x, y:yy + 0.07, w:0.08, h:0.08, line:{color:'2F6FB3', pt:0}, fill:{color:'2F6FB3'}});
       slide.addText(traceOpsPptWrap(items[i], 170), {x:x+0.14, y:yy, w:w-0.16, h:0.22, fontFace:'Arial', fontSize:fontSize, color:'102A43', margin:0, fit:'shrink'});
     }
   }
@@ -6019,14 +6073,13 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   }
 
   function traceOpsPptApplyShell(slide, title, subtitle, activeIdx, badgeText){
-    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     slide.background = { color: 'F2F5F2' };
-    slide.addShape(_traceOpsPptxRef.ShapeType.rect, {x:0, y:0, w:13.333, h:1.02, line:{color:'102A43', pt:0}, fill:{color:'102A43'}});
+    slide.addShape('rect', {x:0, y:0, w:13.333, h:1.02, line:{color:'102A43', pt:0}, fill:{color:'102A43'}});
     slide.addText(traceOpsPptSafe('FOXCONN | TraceOps 8D Draft', 80), {x:0.42, y:0.22, w:3.2, h:0.16, fontFace:'Arial', fontSize:10, bold:true, color:'A8D6C4', margin:0});
     slide.addText(traceOpsPptSafe(title, 110), {x:0.42, y:0.42, w:7.9, h:0.24, fontFace:'Arial', fontSize:22, bold:true, color:'FFFFFF', margin:0});
     slide.addText(traceOpsPptSafe(subtitle || 'TraceOps structured 8D deck export', 180), {x:0.42, y:0.72, w:8.8, h:0.14, fontFace:'Arial', fontSize:10.4, color:'D6E3DD', margin:0});
     if (badgeText) {
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:11.26, y:0.28, w:1.62, h:0.34, rectRadius:0.08, line:{color:'3D5C50', pt:1}, fill:{color:'173328'}});
+      slide.addShape('roundRect', {x:11.26, y:0.28, w:1.62, h:0.34, rectRadius:0.08, line:{color:'3D5C50', pt:1}, fill:{color:'173328'}});
       slide.addText(traceOpsPptSafe(badgeText, 40), {x:11.38, y:0.37, w:1.36, h:0.12, fontFace:'Arial', fontSize:9.2, bold:true, color:'D7E7E0', align:'center', margin:0});
     }
     var steps = traceOpsPptDeckSteps();
@@ -6036,7 +6089,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     for (var i = 0; i < steps.length; i++) {
       var x = 0.42 + (i * (itemW + gap));
       var active = i === activeIdx;
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '2F6FB3' : 'C9DAF5', pt:1}, fill:{color:active ? 'EAF2FF' : 'FFFFFF'}});
+      slide.addShape('roundRect', {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '2F6FB3' : 'C9DAF5', pt:1}, fill:{color:active ? 'EAF2FF' : 'FFFFFF'}});
       slide.addText(traceOpsPptSafe(steps[i], 24), {x:x+0.03, y:1.19, w:itemW-0.06, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:active ? '2F6FB3' : '5F766C', align:'center', margin:0, fit:'shrink'});
     }
   }
@@ -6046,8 +6099,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   }
 
   function traceOpsPptBox(slide, x, y, w, h, fill, lineColor){
-    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
-    slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x, y:y, w:w, h:h, rectRadius:0.06, line:{color:lineColor || 'DCE9E2', pt:1}, fill:{color:fill || 'FFFFFF'}});
+    slide.addShape('roundRect', {x:x, y:y, w:w, h:h, rectRadius:0.06, line:{color:lineColor || 'DCE9E2', pt:1}, fill:{color:fill || 'FFFFFF'}});
   }
 
   function traceOpsPptMiniNote(slide, text, x, y, w){
@@ -6056,28 +6108,26 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   }
 
   function traceOpsPptDrawFlowSteps(slide, steps, x, y, w, h){
-    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     var list = Array.isArray(steps) && steps.length ? steps.slice(0,4) : ['Contain lot','Inspect targeted positions','Shield customer','Confirm release gate'];
     var rowH = h / list.length;
     for (var i = 0; i < list.length; i++) {
       var yy = y + (i * rowH);
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x + 0.06, y:yy + 0.04, w:w - 0.42, h:rowH - 0.08, rectRadius:0.05, line:{color:(i === list.length - 1 ? '4A90E2' : 'DCE9E2'), pt:1}, fill:{color:(i === list.length - 1 ? 'FFF5E7' : (i % 2 ? 'FAFCFF' : 'FFFFFF'))}});
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x + w - 0.30, y:yy + 0.10, w:0.18, h:rowH - 0.20, rectRadius:0.04, line:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2'), pt:1}, fill:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2')}});
+      slide.addShape('roundRect', {x:x + 0.06, y:yy + 0.04, w:w - 0.42, h:rowH - 0.08, rectRadius:0.05, line:{color:(i === list.length - 1 ? '4A90E2' : 'DCE9E2'), pt:1}, fill:{color:(i === list.length - 1 ? 'FFF5E7' : (i % 2 ? 'FAFCFF' : 'FFFFFF'))}});
+      slide.addShape('roundRect', {x:x + w - 0.30, y:yy + 0.10, w:0.18, h:rowH - 0.20, rectRadius:0.04, line:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2'), pt:1}, fill:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2')}});
       slide.addText(String(i + 1), {x:x + 0.14, y:yy + 0.10, w:0.24, h:0.14, fontFace:'Arial', fontSize:10.5, bold:true, color:'2F6FB3', align:'center', margin:0});
       slide.addText(traceOpsPptWrap(list[i], 95), {x:x + 0.46, y:yy + 0.11, w:w - 0.92, h:rowH - 0.18, fontFace:'Arial', fontSize:10.0, color:'102A43', margin:0, fit:'shrink', valign:'mid'});
     }
   }
 
   function traceOpsPptDrawFishbone(slide, categories, x, y, w, h){
-    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     var top = Array.isArray(categories) ? categories.slice(0, 3) : [];
     var bottom = Array.isArray(categories) ? categories.slice(3, 6) : [];
     while (top.length < 3) top.push({label:'Category', items:['Evidence pending']});
     while (bottom.length < 3) bottom.push({label:'Category', items:['Evidence pending']});
 
     var centerY = y + (h / 2);
-    slide.addShape(_traceOpsPptxRef.ShapeType.line, {x:x + 0.56, y:centerY, w:w - 1.22, h:0, line:{color:'4A90E2', pt:1.8}});
-    slide.addShape(_traceOpsPptxRef.ShapeType.chevron, {x:x + w - 0.72, y:centerY - 0.22, w:0.52, h:0.44, line:{color:'4A90E2', pt:1}, fill:{color:'4A90E2'}});
+    slide.addShape('line', {x:x + 0.56, y:centerY, w:w - 1.22, h:0, line:{color:'4A90E2', pt:1.8}});
+    slide.addShape('chevron', {x:x + w - 0.72, y:centerY - 0.22, w:0.52, h:0.44, line:{color:'4A90E2', pt:1}, fill:{color:'4A90E2'}});
 
     var ribs = [1.48, 3.16, 4.84];
     for (var i = 0; i < 3; i++) {
@@ -6085,14 +6135,14 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       var bottomItem = bottom[i] || {label:'Category', items:['Evidence pending']};
       var ax = x + ribs[i];
 
-      slide.addShape(_traceOpsPptxRef.ShapeType.line, {x:ax, y:centerY, w:-0.68, h:-0.64, line:{color:'4A90E2', pt:1.2}});
-      slide.addShape(_traceOpsPptxRef.ShapeType.line, {x:ax, y:centerY, w:-0.68, h:0.64, line:{color:'4A90E2', pt:1.2}});
+      slide.addShape('line', {x:ax, y:centerY, w:-0.68, h:-0.64, line:{color:'4A90E2', pt:1.2}});
+      slide.addShape('line', {x:ax, y:centerY, w:-0.68, h:0.64, line:{color:'4A90E2', pt:1.2}});
 
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:ax - 1.14, y:y + 0.12, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
+      slide.addShape('roundRect', {x:ax - 1.14, y:y + 0.12, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
       slide.addText(traceOpsPptSafe(topItem.label, 26), {x:ax - 1.06, y:y + 0.20, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
       slide.addText(traceOpsPptWrap(((topItem.items && topItem.items[0]) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + 0.46, w:1.42, h:0.34, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
 
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:ax - 1.14, y:y + h - 0.42, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FAFCFF'}});
+      slide.addShape('roundRect', {x:ax - 1.14, y:y + h - 0.42, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FAFCFF'}});
       slide.addText(traceOpsPptSafe(bottomItem.label, 26), {x:ax - 1.06, y:y + h - 0.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
       slide.addText(traceOpsPptWrap(((bottomItem.items && bottomItem.items[0]) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + h - 0.78, w:1.42, h:0.26, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
     }
@@ -6101,7 +6151,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
   }
 
   function traceOpsPptDrawWhyCards(slide, whys, x, y, w, h, opts){
-    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     var items = Array.isArray(whys) && whys.length ? whys : ['Under validation'];
     var gap = (opts && opts.gap) || 0.10;
     var topPad = (opts && opts.topPad) || 0.10;
@@ -6109,22 +6158,21 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var rowH = (h - topPad - (gap * (maxItems - 1))) / maxItems;
     for (var i = 0; i < maxItems; i++) {
       var yy = y + topPad + (i * (rowH + gap));
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x, y:yy, w:w, h:rowH, rectRadius:0.05, line:{color:'DCE9E2', pt:1}, fill:{color:(i % 2 ? 'FAFCFF' : 'FFFFFF')}});
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x + 0.08, y:yy + 0.07, w:0.52, h:rowH - 0.14, rectRadius:0.04, line:{color:'E2EBF9', pt:1}, fill:{color:'ECF5F1'}});
+      slide.addShape('roundRect', {x:x, y:yy, w:w, h:rowH, rectRadius:0.05, line:{color:'DCE9E2', pt:1}, fill:{color:(i % 2 ? 'FAFCFF' : 'FFFFFF')}});
+      slide.addShape('roundRect', {x:x + 0.08, y:yy + 0.07, w:0.52, h:rowH - 0.14, rectRadius:0.04, line:{color:'E2EBF9', pt:1}, fill:{color:'ECF5F1'}});
       slide.addText(String(i + 1), {x:x + 0.19, y:yy + (rowH/2) - 0.08, w:0.28, h:0.14, fontFace:'Arial', fontSize:10.0, bold:true, color:'2F6FB3', align:'center', margin:0});
       slide.addText(traceOpsPptWrap(items[i], 110), {x:x + 0.72, y:yy + 0.06, w:w - 0.84, h:rowH - 0.12, fontFace:'Arial', fontSize:9.2, color:'102A43', margin:0, fit:'shrink', valign:'mid'});
     }
   }
 
   function traceOpsPptAddBadge(slide, label, x, y, tone){
-    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     var fill = 'F7FAFF';
     var line = 'C9DAF5';
     var text = '1F3A5F';
     if (tone === 'draft') { fill = 'FEF9E8'; line = 'F1DF9E'; text = '9A6A16'; }
     else if (tone === 'pending') { fill = 'FDF0EE'; line = 'F0C4BE'; text = 'C0392B'; }
     else if (tone === 'ok') { fill = 'EAF2FF'; line = 'C7DBF7'; text = '2F6FB3'; }
-    slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x, y:y, w:1.28, h:0.24, rectRadius:0.08, line:{color:line, pt:1}, fill:{color:fill}});
+    slide.addShape('roundRect', {x:x, y:y, w:1.28, h:0.24, rectRadius:0.08, line:{color:line, pt:1}, fill:{color:fill}});
     slide.addText(traceOpsPptSafe(label, 28), {x:x+0.05, y:y+0.07, w:1.18, h:0.10, fontFace:'Arial', fontSize:8.5, bold:true, color:text, align:'center', margin:0, fit:'shrink'});
   }
 
@@ -6543,7 +6591,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var tileW = 3.00;
     var tileGap = 0.16;
     var labels1 = [
-      ['8D title', normalized.eightd_title || normalized.source_title || normalized.complaint_anchor || 'TraceOps 8D Draft'],
+      ['8D title', normalized.eightd_id || 'TraceOps 8D Draft'],
       ['RCCA ID', normalized.source_rcca_id || 'N/D'],
       ['Report status', normalized.status || 'Draft'],
       ['Readiness', String(readinessMeta.score || 0) + '%']
@@ -6597,49 +6645,36 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D1 Team + D2 Problem Description', 'Foxconn standard D1 / D2 required fields', 1, (normalized.status || 'Draft'));
 
-    var ownerEmail = normalized.owner_email || (model.owners && model.owners[0]) || 'Pending';
     var roles = [
-      ['PM', normalized.pm_name || 'Pending', normalized.pm_email || 'Pending'],
-      ['QE', (normalized.owner_name || normalized.reporta || 'Pending'), ownerEmail],
-      ['SQE', normalized.sqe_name || 'Pending', normalized.sqe_email || 'Pending'],
-      ['TE', normalized.te_name || 'Pending', normalized.te_email || 'Pending'],
-      ['PE', normalized.pe_name || 'Pending', normalized.pe_email || 'Pending'],
-      ['PD', normalized.pd_name || 'Pending', normalized.pd_email || 'Pending']
+      ['PM','Pending','Pending'],
+      ['QE', (normalized.owner_name || normalized.reporta || 'Pending'), (normalized.owner_email || model.owners && model.owners[0] || 'Pending')],
+      ['SQE','Pending','Pending'],
+      ['TE','Pending','Pending'],
+      ['PE','Pending','Pending'],
+      ['PD','Pending','Pending']
     ];
     var escalation = [
-      ['Process Coordinator', normalized.process_coordinator || 'Pending', normalized.process_coordinator_email || 'Pending'],
-      ['Quality Coordinator', normalized.quality_coordinator || normalized.owner_name || 'Pending', normalized.quality_coordinator_email || ownerEmail],
-      ['Quality Manager', normalized.quality_manager || 'Pending', normalized.quality_manager_email || 'Pending'],
-      ['TE Manager', normalized.te_manager || 'Pending', normalized.te_manager_email || 'Pending'],
-      ['Manufacturing Manager', normalized.manufacturing_manager || 'Pending', normalized.manufacturing_manager_email || 'Pending'],
-      ['BU Manager', normalized.bu_manager || 'Pending', normalized.bu_manager_email || 'Pending']
+      ['Process Coordinator','Pending'],
+      ['Quality Coordinator', (normalized.owner_email || model.owners && model.owners[0] || 'Pending')],
+      ['Quality Manager','Pending'],
+      ['TE Manager','Pending'],
+      ['Manufacturing Manager','Pending'],
+      ['BU Manager','Pending']
     ];
+    slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(roles)), {x:0.42, y:1.96, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.8, margin:0.05, rowH:0.28, colW:[0.78,1.72,2.40], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.24, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Level',options:{bold:true}},{text:'Owner',options:{bold:true}}]].concat(escalation)), {x:0.42, y:4.52, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.7, margin:0.05, rowH:0.28, colW:[2.34,2.52], fit:'shrink'});
 
-    slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(
-      traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(roles)),
-      {x:0.42, y:1.96, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.6, margin:0.05, rowH:0.28, colW:[0.78,1.62,2.50], fit:'shrink'}
-    );
-
-    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.24, w:1.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(
-      traceOpsPptSafeTable([[{text:'Level',options:{bold:true}},{text:'Owner',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(escalation)),
-      {x:0.42, y:4.52, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.05, margin:0.05, rowH:0.28, colW:[1.78,1.42,1.82], fit:'shrink'}
-    );
-
-    slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     var traceRows = [
-      ['Model', normalized.modelo || model.model || 'Pending', 'SKU Version', normalized.revision || 'Pending'],
+      ['Model', normalized.modelo || model.model || 'Pending', 'Revision', normalized.revision || 'Pending'],
       ['Line', normalized.linea || model.line || 'Pending', 'Station', normalized.station || model.station || 'Pending'],
       ['Supplier / Lot', normalized.supplier_lot || 'Pending', 'Serial / Batch', normalized.serial_batch || 'Pending'],
       ['Date code', normalized.date_code || 'Pending', 'Component P/N', normalized.component_pn || 'Pending']
     ];
-    slide.addTable(
-      traceOpsPptSafeTable([[{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(traceRows)),
-      {x:5.74, y:1.96, w:7.16, h:1.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.4, margin:0.05, rowH:0.22, colW:[1.18,2.28,1.18,2.28], fit:'shrink'}
-    );
-
-    slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.50, w:2.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(traceRows)), {x:5.74, y:1.96, w:7.16, h:1.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.5, margin:0.05, rowH:0.22, colW:[1.18,2.28,1.18,2.28], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.50, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     var howMany = (normalized.how_many || ('Total units processed: ' + (normalized.total_units || 'Pending') + ' | Clean units: ' + (normalized.clean_units || 'Pending') + ' | Risk units: ' + (normalized.risk_units || 'Pending') + ' | Clean yield: ' + (normalized.clean_yield || 'Pending') + ' | OJT / touch rate: ' + (normalized.touch_rate || 'Pending')));
     var problemRows = [
       ['Who', normalized.reporta || normalized.owner_name || 'Pending', 'How', normalized.process_path || (normalized.station || model.station || 'Pending')],
@@ -6647,27 +6682,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       ['Where', [normalized.linea || model.line || 'Pending', normalized.station || model.station || 'Pending'].join(' · '), 'Why', normalized.technical_why || 'Pending'],
       ['When', normalized.detection_window || model.detectionWindow || 'Pending', 'Mechanism', traceOpsEightdShort(model.pattern || normalized.technical_interpretation || 'Pending', 100)]
     ];
-    slide.addTable(
-      traceOpsPptSafeTable([[{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(problemRows)),
-      {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.2, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], fit:'shrink'}
-    );
-
-    slide.addText(traceOpsPptSafe('Bad part / situation', 40), {x:5.74, y:5.42, w:2.1, h:0.16, fontFace:'Arial', fontSize:10.6, bold:true, color:'5F766C'});
-    slide.addText(traceOpsPptSafe('Good part / situation', 40), {x:9.38, y:5.42, w:2.1, h:0.16, fontFace:'Arial', fontSize:10.6, bold:true, color:'5F766C'});
-
-    traceOpsPptBox(slide, 5.74, 5.62, 3.42, 1.08, 'FDF0EE', 'F0C4BE');
-    traceOpsPptBox(slide, 9.48, 5.62, 3.42, 1.08, 'EEF6FF', 'B8DECE');
-
-    slide.addText(traceOpsPptWrap(normalized.bad_part || normalized.complaint_anchor || model.complaintAnchor || 'Incorrect setup / failure condition.', 118), {x:5.90, y:5.78, w:1.48, h:0.56, fontFace:'Arial', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
-    slide.addText(traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 118), {x:9.64, y:5.78, w:1.48, h:0.56, fontFace:'Arial', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
-
-    traceOpsPptBox(slide, 7.46, 5.78, 1.48, 0.72, 'FFFFFF', 'E5D7D4');
-    traceOpsPptBox(slide, 11.20, 5.78, 1.48, 0.72, 'FFFFFF', 'D9E6E0');
-    slide.addText(traceOpsPptSafe('Image area', 20), {x:7.63, y:6.02, w:1.14, h:0.12, fontFace:'Arial', fontSize:8.4, bold:true, color:'8A8580', align:'center', margin:0});
-    slide.addText(traceOpsPptSafe('Image area', 20), {x:11.37, y:6.02, w:1.14, h:0.12, fontFace:'Arial', fontSize:8.4, bold:true, color:'8A8580', align:'center', margin:0});
-    slide.addText(traceOpsPptSafe('Incorrect setup', 24), {x:7.54, y:6.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:7.4, bold:true, color:'C0392B', align:'center', margin:0});
-    slide.addText(traceOpsPptSafe('Ideal condition', 24), {x:11.28, y:6.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:7.4, bold:true, color:'1A7A3C', align:'center', margin:0});
-
+    slide.addTable(traceOpsPptSafeTable([[{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(problemRows)), {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.3, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Bad part / situation',options:{bold:true}},{text:'Good part / situation',options:{bold:true}}],[traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Pending', 150), traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 150)]]), {x:5.74, y:5.58, w:7.16, h:1.00, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.8, margin:0.05, rowH:[0.20,0.64], colW:[3.50,3.50], fit:'shrink'});
     return slide;
   }
 
@@ -6961,7 +6977,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
     return await zip.generateAsync({
       type: 'arraybuffer',
-      compression: 'DEFLATE'
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 },
+      mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
     });
   }
 
@@ -7230,7 +7248,6 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 
   
 function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
-    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
   opts = opts || {};
   var radius = opts.radius || 0.22;
   var lineColor = opts.lineColor || '7FB3F4';
@@ -7241,7 +7258,7 @@ function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
   var gridOpacity = opts.gridOpacity == null ? 0.10 : opts.gridOpacity;
   var glowOpacity = opts.glowOpacity == null ? 0.16 : opts.glowOpacity;
 
-  slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {
+  slide.addShape('roundRect', {
     x:x, y:y, w:w, h:h,
     rectRadius: radius,
     line:{ color: lineColor, transparency: 55, width: 1.1 },
@@ -7267,25 +7284,25 @@ function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
   var rows = opts.rows || 5;
   for (var i = 1; i < cols; i++) {
     var gx = x + (w / cols) * i;
-    slide.addShape(_traceOpsPptxRef.ShapeType.line, {
+    slide.addShape('line', {
       x: gx, y: y + 0.02, w: 0, h: h - 0.04,
       line:{ color: lineColor, transparency: 100 - Math.round(gridOpacity * 100), width: 0.8 }
     });
   }
   for (var j = 1; j < rows; j++) {
     var gy = y + (h / rows) * j;
-    slide.addShape(_traceOpsPptxRef.ShapeType.line, {
+    slide.addShape('line', {
       x: x + 0.02, y: gy, w: w - 0.04, h: 0,
       line:{ color: lineColor, transparency: 100 - Math.round(gridOpacity * 100), width: 0.8 }
     });
   }
 
-  slide.addShape(_traceOpsPptxRef.ShapeType.ellipse, {
+  slide.addShape('ellipse', {
     x: x + 0.18, y: y + 0.35, w: Math.min(w * 0.42, 2.6), h: Math.min(h * 0.70, 2.4),
     line:{ color: glowColor, transparency: 100, width: 0 },
     fill:{ color: glowColor, transparency: 100 - Math.round(glowOpacity * 100) }
   });
-  slide.addShape(_traceOpsPptxRef.ShapeType.ellipse, {
+  slide.addShape('ellipse', {
     x: x + w * 0.56, y: y - 0.55, w: Math.min(w * 0.55, 3.4), h: Math.min(h * 1.05, 3.4),
     line:{ color: glowColor, transparency: 88, width: 1.0 },
     fill:{ color: glowColor, transparency: 100 }
@@ -7327,19 +7344,19 @@ function exportEightdPpt(draft) {
       traceOpsPptBuildAppendixSlide(pptx, normalized, model, linked);
 
       if (typeof pptx.write === 'function') {
-        var arr = await pptx.write({ outputType: 'arraybuffer', compression: true });
+        var arr = await pptx.write({ outputType: 'arraybuffer', compression: false });
         arr = await traceOpsFixPptxForDesktopPowerPoint(arr);
         var blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
         traceOpsDownloadBlob(fileBase + '.pptx', blob);
       } else if (typeof pptx.writeFile === 'function' && typeof pptx.write !== 'function') {
-        await pptx.writeFile({ fileName: fileBase + '.pptx', compression: true });
+        await pptx.writeFile({ fileName: fileBase + '.pptx', compression: false });
       } else if (typeof pptx.save === 'function') {
         pptx.save(fileBase + '.pptx');
       } else {
         throw new Error('PptxGenJS no expone write/writeFile/save en este navegador.');
       }
     }).catch(function(err){
-      if (window && window.__TRACEOPS_DEV__) console.error("[TraceOps PPT]", err);
+      console.error(err);
       alert('No se pudo generar el PPT. ' + (err && (err.message || String(err)) || 'Error desconocido'));
     });
   }
@@ -9176,7 +9193,7 @@ function exportEightdPpt(draft) {
       {/* App header */}
       <div className={"sidebar-overlay"+(sidebarOpen&&isMobile()?" show":"")} onClick={function(){setSidebarOpen(false);}}/>
 
-      <header className={"saas-topbar"+((!sidebarOpen||isMobile())?" expanded":"")}>
+      <header className="saas-topbar">
         <div className="saas-topbar-left">
           <button className="saas-menu-btn" onClick={function(e){e.stopPropagation();setSidebarOpen(!sidebarOpen);}}>
             {sidebarOpen?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>}
