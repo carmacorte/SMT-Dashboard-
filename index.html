@@ -4846,6 +4846,48 @@ function App() {
   function clearRccaDraft(){
     try { localStorage.removeItem(RCCA_DRAFT_KEY); } catch(_) {}
   }
+  var TRACEOPS_RCCA_META_ACCEPT = [".zip",".ppt",".pptx",".jpg",".jpeg",".png"];
+  var TRACEOPS_RCCA_META_MAX_FILES = 6;
+  var TRACEOPS_RCCA_META_MAX_FILE_BYTES = 10 * 1024 * 1024;
+  var TRACEOPS_RCCA_META_MAX_TOTAL_BYTES = 24 * 1024 * 1024;
+  function traceOpsFormatBytes(bytes){
+    var n = Number(bytes || 0);
+    if (!isFinite(n) || n <= 0) return "0 B";
+    var units = ["B","KB","MB","GB"];
+    var idx = 0;
+    while (n >= 1024 && idx < units.length - 1) { n /= 1024; idx += 1; }
+    return (idx === 0 ? String(Math.round(n)) : n.toFixed(n >= 10 ? 1 : 2)) + " " + units[idx];
+  }
+  function traceOpsMetaExt(name){
+    var m = String(name || "").toLowerCase().match(/(\.[a-z0-9]+)$/i);
+    return m ? m[1] : "";
+  }
+  function traceOpsMetaTypeLabel(file){
+    var ext = traceOpsMetaExt(file && file.name);
+    if (ext === '.zip') return 'ZIP';
+    if (ext === '.ppt' || ext === '.pptx') return 'PPT';
+    if (ext === '.jpg' || ext === '.jpeg' || ext === '.png') return 'JPG';
+    return ext ? ext.replace('.', '').toUpperCase() : 'FILE';
+  }
+  function traceOpsMetaIcon(file){
+    var ext = traceOpsMetaExt(file && file.name);
+    if (ext === '.zip') return 'ZIP';
+    if (ext === '.ppt' || ext === '.pptx') return 'PPT';
+    if (ext === '.jpg' || ext === '.jpeg' || ext === '.png') return 'IMG';
+    return 'FILE';
+  }
+  function traceOpsNormalizeMetaFiles(list){
+    return (Array.isArray(list) ? list : []).map(function(item){
+      return {
+        id: item && item.id ? item.id : ('meta_' + Math.random().toString(36).slice(2,10)),
+        name: item && item.name ? item.name : 'file',
+        type: item && item.type ? item.type : '',
+        size: Number(item && item.size || 0),
+        kind: item && item.kind ? item.kind : traceOpsMetaTypeLabel(item || {}),
+        data_url: item && item.data_url ? item.data_url : ''
+      };
+    }).filter(function(item){ return !!item.data_url; });
+  }
   function isFreshRccaDraft(draft){
     var ts = draft && draft.ts ? new Date(draft.ts).getTime() : 0;
     return !!(ts && (Date.now() - ts < 24*60*60*1000));
@@ -8614,6 +8656,7 @@ function exportEightdPpt(draft) {
         validacion:init.validacion||"",
         alcance_exposicion:init.alcance_exposicion||"",
         material_afectado:init.material_afectado||"",
+        meta_files:traceOpsNormalizeMetaFiles(init.meta_files||[]),
         source:init.source||"manual",
         owner_email:init.owner_email||"",
         created_at:init.created_at||"",
@@ -8625,6 +8668,71 @@ function exportEightdPpt(draft) {
     var insightsOpen=insightsOpenArr[0];var setInsightsOpen=insightsOpenArr[1];
     var frontOpenArr=_useState(function(){return typeof init.__draft_front_open === "boolean" ? init.__draft_front_open : !!(init.titulo_corto||init.tipo_caso||init.estatus_rcca||init.severidad||init.recurrencia||init.madurez_analisis||init.estacion_dominante||init.defecto_dominante);});
     var frontOpen=frontOpenArr[0];var setFrontOpen=frontOpenArr[1];
+    var metaInputRef=_useRef(null);
+    function replaceMetaFiles(nextFiles){
+      var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});
+      n.meta_files=traceOpsNormalizeMetaFiles(nextFiles||[]);
+      setForm(n);
+    }
+    function removeMetaFile(fileId){
+      replaceMetaFiles((form.meta_files||[]).filter(function(item){ return item.id !== fileId; }));
+      try { if (metaInputRef.current) metaInputRef.current.value = ""; } catch(_) {}
+    }
+    function downloadMetaFile(item){
+      if (!item || !item.data_url) return;
+      var a=document.createElement('a');
+      a.href=item.data_url;
+      a.download=item.name||'meta-file';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ try { document.body.removeChild(a); } catch(_){} }, 50);
+    }
+    async function addMetaFiles(fileList){
+      var incoming=Array.prototype.slice.call(fileList||[]);
+      if(!incoming.length) return;
+      var current=traceOpsNormalizeMetaFiles(form.meta_files||[]);
+      if(current.length + incoming.length > TRACEOPS_RCCA_META_MAX_FILES){
+        alert('Puedes guardar hasta ' + TRACEOPS_RCCA_META_MAX_FILES + ' archivos meta por RCCA.');
+        return;
+      }
+      var totalBytes=current.reduce(function(sum,item){ return sum + Number(item.size||0); }, 0);
+      var prepared=[];
+      for(var i=0;i<incoming.length;i++){
+        var file=incoming[i];
+        var ext=traceOpsMetaExt(file && file.name);
+        if(TRACEOPS_RCCA_META_ACCEPT.indexOf(ext) < 0){
+          alert('Formato no permitido: ' + (file && file.name ? file.name : 'archivo') + '. Usa ZIP, PPT/PPTX o JPG/PNG.');
+          return;
+        }
+        if(file.size > TRACEOPS_RCCA_META_MAX_FILE_BYTES){
+          alert('El archivo ' + file.name + ' excede el limite de ' + traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_FILE_BYTES) + '.');
+          return;
+        }
+        totalBytes += file.size || 0;
+        if(totalBytes > TRACEOPS_RCCA_META_MAX_TOTAL_BYTES){
+          alert('El total de adjuntos meta excede ' + traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_TOTAL_BYTES) + '.');
+          return;
+        }
+        var dataUrl=await new Promise(function(resolve,reject){
+          try{
+            var reader=new FileReader();
+            reader.onload=function(){ resolve(reader.result); };
+            reader.onerror=function(){ reject(new Error('No se pudo leer ' + file.name)); };
+            reader.readAsDataURL(file);
+          }catch(err){ reject(err); }
+        });
+        prepared.push({
+          id:'meta_' + Date.now().toString(36) + '_' + i + '_' + Math.random().toString(36).slice(2,7),
+          name:file.name,
+          type:file.type || '',
+          size:Number(file.size||0),
+          kind:traceOpsMetaTypeLabel(file),
+          data_url:String(dataUrl||'')
+        });
+      }
+      replaceMetaFiles(current.concat(prepared));
+      try { if (metaInputRef.current) metaInputRef.current.value = ""; } catch(_) {}
+    }
     React.useEffect(function(){
       var payload = {
         ts:new Date().toISOString(),
@@ -8749,6 +8857,40 @@ function exportEightdPpt(draft) {
             <div style={{border:"1px solid #DDDBD7",borderRadius:10,overflow:"hidden"}}>
               <button onClick={function(){setInsightsOpen(!insightsOpen);}} style={{width:"100%",textAlign:"left",padding:"11px 12px",background:insightsOpen?"#EAF2FF":"#F8F7F5",border:"none",borderBottom:insightsOpen?"1px solid #D8E1F7":"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,fontWeight:700,color:"#2F6FB3",textTransform:"uppercase",letterSpacing:".06em"}}>Insights opcionales</span><span style={{fontSize:11,color:"#2F6FB3",fontWeight:700}}>{insightsOpen?"Ocultar":"Mostrar"}</span></button>
               {insightsOpen&&<div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>{insightFields.map(function(f){return(<div key={f.key}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.label}</div><textarea value={form[f.key]} rows={f.rows} onChange={function(e){upd(f.key,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/></div>);})}</div>}
+            </div>
+            <div style={{border:"1px solid #D8E1F7",borderRadius:10,overflow:"hidden",background:"#F7FAFF"}}>
+              <div style={{padding:"11px 12px",borderBottom:"1px solid #D8E1F7",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+                <div>
+                  <div style={{fontSize:11,fontWeight:700,color:"#1F3A5F",textTransform:"uppercase",letterSpacing:".06em"}}>Archivos meta</div>
+                  <div style={{fontSize:10,color:"#6A6560",marginTop:3}}>Guarda evidencia del caso como ZIP, PPT/PPTX y JPG/PNG dentro del RCCA.</div>
+                </div>
+                <button type="button" onClick={function(){ if(metaInputRef.current) metaInputRef.current.click(); }} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:8,padding:"8px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>+ Agregar archivo</button>
+                <input ref={metaInputRef} type="file" multiple accept={TRACEOPS_RCCA_META_ACCEPT.join(',')} style={{display:"none"}} onChange={function(e){ addMetaFiles(e.target.files).catch(function(err){ alert(err && err.message ? err.message : String(err)); }); }}/>
+              </div>
+              <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
+                <div style={{fontSize:10,color:"#6A6560"}}>Límite: {TRACEOPS_RCCA_META_MAX_FILES} archivos · {traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_FILE_BYTES)} por archivo · {traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_TOTAL_BYTES)} total.</div>
+                {form.meta_files&&form.meta_files.length?(
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {form.meta_files.map(function(file){return(
+                      <div key={file.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#fff",border:"1px solid #D8E1F7",borderRadius:8,padding:"9px 10px",flexWrap:"wrap"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
+                          <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:999,padding:"4px 8px",minWidth:42,textAlign:"center"}}>{traceOpsMetaIcon(file)}</div>
+                          <div style={{minWidth:0,flex:1}}>
+                            <div style={{fontSize:11.5,fontWeight:700,color:"#1A1714",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{file.name}</div>
+                            <div style={{fontSize:10,color:"#6A6560",marginTop:2}}>{file.kind} · {traceOpsFormatBytes(file.size)}</div>
+                          </div>
+                        </div>
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                          <button type="button" onClick={function(){downloadMetaFile(file);}} style={{background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#2F6FB3",cursor:"pointer"}}>Descargar</button>
+                          <button type="button" onClick={function(){removeMetaFile(file.id);}} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#6A6560",cursor:"pointer"}}>Quitar</button>
+                        </div>
+                      </div>
+                    );})}
+                  </div>
+                ):(
+                  <div style={{background:"#fff",border:"1px dashed #C7DBF7",borderRadius:8,padding:"14px 12px",fontSize:11,color:"#6A6560"}}>Aún no hay archivos meta cargados para este RCCA.</div>
+                )}
+              </div>
             </div>
             <button onClick={async function(){if(!form.problema||!form.causa_raiz){alert("Completa Problema y Causa Raiz");return;}var ok = await onSave(form);if(ok!==false) onClose();}} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>{isEdit?"Actualizar RCCA":"Guardar RCCA"}</button>
           </div>
@@ -9351,6 +9493,22 @@ function exportEightdPpt(draft) {
                   <div style={{fontSize:12,color:"#1A1714",lineHeight:1.5}}>{f.v}</div>
                 </div>
               );})}
+              {rccaDetail.meta_files&&rccaDetail.meta_files.length>0&&(
+                <div style={{background:"#F7FAFF",border:"1px solid #D8E1F7",borderRadius:10,padding:"12px 14px"}}>
+                  <div style={{fontSize:9.5,fontWeight:700,textTransform:"uppercase",color:"#1F3A5F",marginBottom:8}}>Archivos meta</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {rccaDetail.meta_files.map(function(file){return(
+                      <div key={file.id||file.name} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",background:"#fff",border:"1px solid #D8E1F7",borderRadius:8,padding:"8px 10px"}}>
+                        <div style={{minWidth:0,flex:1}}>
+                          <div style={{fontSize:11.5,fontWeight:700,color:"#1A1714",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{file.name}</div>
+                          <div style={{fontSize:10,color:"#6A6560",marginTop:2}}>{file.kind||traceOpsMetaTypeLabel(file)} · {traceOpsFormatBytes(file.size)}</div>
+                        </div>
+                        <button type="button" onClick={function(){downloadMetaFile(file);}} style={{background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#2F6FB3",cursor:"pointer"}}>Descargar</button>
+                      </div>
+                    );})}
+                  </div>
+                </div>
+              )}
               {rccaDetail.event_ids&&rccaDetail.event_ids.length>0&&(
                 <div><div style={{fontSize:9.5,fontWeight:700,textTransform:"uppercase",color:"#2F6FB3",marginBottom:5}}>Eventos vinculados</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{rccaDetail.event_ids.map(function(id){return<span key={id} style={{fontSize:11,fontFamily:"monospace",background:"#EAF2FF",color:"#2F6FB3",borderRadius:6,padding:"3px 9px",fontWeight:600}}>{id}</span>;})}</div></div>
               )}
