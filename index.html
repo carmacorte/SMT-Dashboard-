@@ -4876,6 +4876,23 @@ function App() {
     if (ext === '.jpg' || ext === '.jpeg' || ext === '.png') return 'IMG';
     return 'FILE';
   }
+  function traceOpsDownloadMetaFile(item){
+    if (!item || !item.data_url) return;
+    var a = document.createElement('a');
+    a.href = item.data_url;
+    a.download = item.name || 'meta-file';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){
+      try {
+        if (a.parentNode) a.parentNode.removeChild(a);
+      } catch(_) {}
+      try {
+        if (a.href && String(a.href).indexOf('blob:') === 0) URL.revokeObjectURL(a.href);
+      } catch(_) {}
+    }, 50);
+  }
   function traceOpsNormalizeMetaFiles(list){
     return (Array.isArray(list) ? list : []).map(function(item){
       return {
@@ -8881,7 +8898,7 @@ function exportEightdPpt(draft) {
                           </div>
                         </div>
                         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                          <button type="button" onClick={function(){downloadMetaFile(file);}} style={{background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#2F6FB3",cursor:"pointer"}}>Descargar</button>
+                          <button type="button" onClick={function(){traceOpsDownloadMetaFile(file);}} style={{background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#2F6FB3",cursor:"pointer"}}>Descargar</button>
                           <button type="button" onClick={function(){removeMetaFile(file.id);}} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#6A6560",cursor:"pointer"}}>Quitar</button>
                         </div>
                       </div>
@@ -9503,7 +9520,7 @@ function exportEightdPpt(draft) {
                           <div style={{fontSize:11.5,fontWeight:700,color:"#1A1714",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{file.name}</div>
                           <div style={{fontSize:10,color:"#6A6560",marginTop:2}}>{file.kind||traceOpsMetaTypeLabel(file)} · {traceOpsFormatBytes(file.size)}</div>
                         </div>
-                        <button type="button" onClick={function(){downloadMetaFile(file);}} style={{background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#2F6FB3",cursor:"pointer"}}>Descargar</button>
+                        <button type="button" onClick={function(){traceOpsDownloadMetaFile(file);}} style={{background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#2F6FB3",cursor:"pointer"}}>Descargar</button>
                       </div>
                     );})}
                   </div>
