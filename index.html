@@ -5190,20 +5190,13 @@ function App() {
   }, []);
 
   async function saveRcca(rcca) {
-    var ownerEmail = "";
-    if (authUser && authUser.email) ownerEmail = authUser.email;
-    else if (rcca && rcca.owner_email) ownerEmail = rcca.owner_email;
-
     var normalized = Object.assign({}, rcca, {
-      source: (rcca && rcca.source) || "manual",
+      source: rcca.source || "manual",
       updated_at: new Date().toISOString(),
-      owner_email: ownerEmail
+      owner_email: authUser && authUser.email ? authUser.email : (rcca.owner_email || "")
     });
-
-    var updated = rccaList.filter(function(item){
-      return item.rcca_id !== normalized.rcca_id;
-    });
-    updated.unshift(normalized);
+    var updated = rccaList.filter(function(item){ return item.rcca_id !== normalized.rcca_id; });
+    updated = [normalized].concat(updated);
     var persistResult = await persistRccaLocal(updated);
     if (!persistResult || !persistResult.ok) {
       var msg = "No se pudo guardar el RCCA localmente. El caso parece exceder el limite de almacenamiento del navegador. Exporta/limpia datos o inicia sesion en nube. Detalle: " + traceOpsSafeStorageError(persistResult && persistResult.error);
@@ -5602,20 +5595,15 @@ function App() {
   }
 
   async function saveEightdDraft(draft) {
-    var ownerEmail = "";
-    if (authUser && authUser.email) ownerEmail = authUser.email;
-    else if (draft && draft.owner_email) ownerEmail = draft.owner_email;
-
     var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft, {
-      owner_email: ownerEmail,
+      owner_email: authUser && authUser.email ? authUser.email : (draft.owner_email || ""),
       updated_at: new Date().toISOString()
     }));
     var readiness = traceOpsComputeEightdReadiness(normalized);
     normalized.readiness_score = readiness.score;
     normalized.missing_fields = readiness.missing;
     var updated = eightdList.filter(function(item){ return item.eightd_id !== normalized.eightd_id; });
-    updated.unshift(normalized);
-    updated.sort(function(a,b){
+    updated = [normalized].concat(updated).sort(function(a,b){
       var ta = a && a.updated_at ? new Date(a.updated_at).getTime() : 0;
       var tb = b && b.updated_at ? new Date(b.updated_at).getTime() : 0;
       return tb - ta;
@@ -9373,7 +9361,7 @@ function exportEightdPpt(draft) {
               {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(cloudStatus+(authReady?"":" · cargando"))}
             </div>
             {!authUser&&window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()&&(
-              <React.Fragment>
+              <>
                 <div style={{display:"flex",gap:6}}>
                   <button className={"sidebar-btn"+(authMode==="signin"?" active":"")} style={{flex:1,justifyContent:"center"}} onClick={function(){setAuthMode("signin");}}>Entrar</button>
                   <button className={"sidebar-btn"+(authMode==="signup"?" active":"")} style={{flex:1,justifyContent:"center"}} onClick={function(){setAuthMode("signup");}}>Crear cuenta</button>
@@ -9383,16 +9371,16 @@ function exportEightdPpt(draft) {
                 <button className="sidebar-btn active" onClick={handleAuthSubmit} disabled={syncBusy} style={{justifyContent:"center",opacity:syncBusy ? .65 : 1}}>
                   {syncBusy?"Procesando...":(authMode==="signup"?"Crear cuenta y sincronizar":"Entrar y sincronizar")}
                 </button>
-              </React.Fragment>
+              </>
             )}
             {authUser&&(
-              <React.Fragment>
+              <>
                 <div style={{display:"flex",gap:6}}>
                   <button className="sidebar-btn active" style={{flex:1,justifyContent:"center"}} onClick={function(){syncAllLocalToCloud();}}>Subir local</button>
                   <button className="sidebar-btn" style={{flex:1,justifyContent:"center"}} onClick={function(){refreshCloudRcca();}}>Traer nube</button>
                 </div>
                 <button className="sidebar-btn" style={{justifyContent:"center"}} onClick={handleSignOut}>Cerrar sesion</button>
-              </React.Fragment>
+              </>
             )}
             {authErrMsg&&<div style={{fontSize:10,lineHeight:1.45,color:"#FFB3B3",background:"rgba(192,57,43,.12)",border:"1px solid rgba(192,57,43,.22)",borderRadius:10,padding:"8px 10px"}}>{authErrMsg}</div>}
           </div>
