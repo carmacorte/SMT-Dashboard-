@@ -161,6 +161,8 @@ window.addEventListener("error", function(ev) {
   } catch (_) {}
 }, true);
 
+
+window.__TRACEOPS_BOOT_OK__ = true;
 window.addEventListener("unhandledrejection", function(ev) {
   try {
     var reason = ev && ev.reason ? (ev.reason.stack || ev.reason.message || String(ev.reason)) : "Unhandled promise rejection";
@@ -9500,9 +9502,7 @@ function exportEightdPpt(draft) {
     var metaInputRef=_useRef(null);
     function replaceMetaFiles(nextFiles){
       var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});
-      var incoming = traceOpsNormalizeMetaFiles(nextFiles||[]);
-      var current = Array.isArray(n.meta_files) ? n.meta_files : [];
-      n.meta_files = traceOpsMergeMetaFiles(current, incoming);
+      n.meta_files=traceOpsNormalizeMetaFiles(nextFiles||[]);
       n.meta = Object.assign({}, n.meta || {}, { evidence: traceOpsBuildEvidenceMetaFromFiles(n.meta_files) });
       setForm(n);
     }
