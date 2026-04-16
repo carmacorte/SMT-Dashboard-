@@ -5500,7 +5500,7 @@ function App() {
       source: rcca.source || "manual",
       updated_at: new Date().toISOString(),
       owner_email: authUser && authUser.email ? authUser.email : (rcca.owner_email || "")
-    });
+    }));
     var updated = rccaList.filter(function(item){ return item.rcca_id !== normalized.rcca_id; });
     updated = [normalized].concat(updated);
     var persistResult = await persistRccaLocal(updated);
