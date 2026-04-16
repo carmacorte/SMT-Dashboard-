@@ -6129,6 +6129,23 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     slide.addText(traceOpsPptSafe(title, 80), {x:x, y:y, w:w, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'5F766C', margin:0, fit:'shrink'});
   }
 
+  function traceOpsPptLine(slide, x1, y1, x2, y2, color, pt){
+    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType || !slide) return;
+    var xx1 = Number(x1 || 0);
+    var yy1 = Number(y1 || 0);
+    var xx2 = Number(x2 || 0);
+    var yy2 = Number(y2 || 0);
+    var width = xx2 - xx1;
+    var height = yy2 - yy1;
+    slide.addShape(_traceOpsPptxRef.ShapeType.line, {
+      x: xx1,
+      y: yy1,
+      w: width,
+      h: height,
+      line: { color: color || 'DCE9E2', pt: pt || 1 }
+    });
+  }
+
   function traceOpsPptBox(slide, x, y, w, h, fill, lineColor){
     if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x, y:y, w:w, h:h, rectRadius:0.06, line:{color:lineColor || 'DCE9E2', pt:1}, fill:{color:fill || 'FFFFFF'}});
