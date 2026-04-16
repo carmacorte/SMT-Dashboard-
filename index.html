@@ -1743,6 +1743,47 @@ body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost::before{
 }
 /* ==== END PREMIUM SHELL CONSOLIDATED OVERRIDES ==== */
 
+
+/* ===== TraceOps Executive Quality Dashboard ===== */
+.toq-dashboard{display:flex;flex-direction:column;gap:16px;margin:0 0 16px}
+.toq-header,.toq-card,.toq-focus-card{background:#fff;border:1px solid #D9E6F7;border-radius:22px;overflow:hidden;box-shadow:0 2px 12px rgba(20,32,51,.04)}
+.toq-header{padding:18px 20px;background:linear-gradient(135deg,#FFFFFF,#F7FAFF)}
+.toq-header-main h2{margin:4px 0 6px;font-size:24px;line-height:1.05;font-weight:800;color:#102A43;letter-spacing:-.03em}
+.toq-header-main p{margin:0;font-size:12px;line-height:1.5;color:#5F766C}
+.toq-kicker{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#5F766C}
+.toq-header-chips{display:flex;gap:8px;row-gap:8px;flex-wrap:wrap;margin-top:12px}
+.toq-header-chips span{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 12px;background:#F7FAFF;border:1px solid #D9E6F7;font-size:10.5px;font-weight:700;color:#1F3A5F;white-space:nowrap}
+.toq-kpi-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.toq-kpi-card{background:#fff;border:1px solid #D9E6F7;border-radius:20px;padding:16px 18px;box-shadow:0 2px 12px rgba(20,32,51,.04);display:flex;flex-direction:column;gap:6px;min-width:0}
+.toq-kpi-label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5F766C}
+.toq-kpi-value{font-size:30px;line-height:1;font-weight:800;color:#102A43;letter-spacing:-.03em}
+.toq-kpi-value.fail{color:#D64545}.toq-kpi-value.pass{color:#2E8B57}.toq-kpi-value.info{color:#2F6FB3}.toq-kpi-value.warn{color:#D9A441}
+.toq-kpi-meta{margin-top:4px;font-size:11px;color:#5F766C;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;line-height:1.4}
+.toq-kpi-meta strong{color:#102A43}
+.toq-grid{display:grid;gap:16px}
+.toq-grid-top{grid-template-columns:1fr 1.7fr 1fr}
+.toq-grid-mid{grid-template-columns:1fr 1.25fr 1fr}
+.toq-card-head,.toq-focus-head{padding:14px 16px;background:#F7FAFF;border-bottom:1px solid #ECF3FF;font-size:15px;font-weight:800;color:#102A43}
+.toq-card-body,.toq-focus-body{padding:16px}
+.toq-info-list,.toq-readiness-list{display:flex;flex-direction:column;gap:10px}
+.toq-info-list div,.toq-readiness-list div{font-size:12px;line-height:1.45;color:#5F766C}
+.toq-info-list strong,.toq-readiness-list strong,.toq-risk-focus strong{color:#102A43}
+.toq-status-table,.toq-mini-table{width:100%;border-collapse:collapse}
+.toq-status-table th,.toq-status-table td,.toq-mini-table th,.toq-mini-table td{padding:8px 10px;border-bottom:1px solid #ECF3FF;text-align:left;font-size:12px;vertical-align:top}
+.toq-status-table th,.toq-mini-table th{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#5F766C;background:#FBFCFE}
+.toq-status-table tr:last-child td,.toq-mini-table tr:last-child td{border-bottom:none}
+.toq-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800}
+.toq-badge.pass{background:#EBF8EE;color:#145A28}.toq-badge.warn{background:#FFF3D8;color:#9A6A16}.toq-badge.fail{background:#FDEEEE;color:#C44141}.toq-badge.info{background:#EEF5FF;color:#2F6FB3}
+.toq-risk-list{display:flex;flex-direction:column;gap:8px}
+.toq-risk-item{padding:10px 12px;border-radius:12px;font-size:12px;font-weight:800}
+.toq-risk-item.high{background:#FDEEEE;color:#C44141}.toq-risk-item.med{background:#FFF3D8;color:#9A6A16}.toq-risk-item.low{background:#EEF6FF;color:#2E8B57}
+.toq-risk-focus{margin-top:2px;font-size:12px;color:#5F766C;line-height:1.45}
+.toq-focus-body{display:flex;flex-direction:column;gap:10px;font-size:13px;font-weight:700;color:#102A43}
+body.traceops-premium-shell .toq-header,body.traceops-premium-shell .toq-card,body.traceops-premium-shell .toq-focus-card,body.traceops-premium-shell .toq-kpi-card{background:#fff !important;border:1px solid rgba(16,35,28,.08)!important;box-shadow:0 1px 2px rgba(16,35,28,.03),0 14px 34px rgba(18,70,51,.06)!important}
+body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focus-head{background:#F7FAFF!important;border-bottom:1px solid rgba(16,35,28,.06)!important}
+@media(max-width:1200px){.toq-grid-top,.toq-grid-mid{grid-template-columns:1fr}.toq-kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.toq-kpi-strip{grid-template-columns:1fr}.toq-header-main h2{font-size:20px}}
+
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -5735,6 +5776,47 @@ function App() {
 table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:1px solid #EAF1ED;font-size:11px;text-align:left;vertical-align:top}th{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:#FBFDFC}
 .note{margin-top:14px;padding:16px 18px;border-radius:18px;background:#F7FBF9;border:1px solid var(--line);font-size:12px;line-height:1.6;color:var(--ink)}
 .badge{display:inline-flex;align-items:center;border-radius:999px;padding:5px 10px;font-size:10px;font-weight:800;background:#EEF5FF;color:#2F6FB3;border:1px solid #D8E6FB;margin-right:6px;margin-top:6px}
+
+/* ===== TraceOps Executive Quality Dashboard ===== */
+.toq-dashboard{display:flex;flex-direction:column;gap:16px;margin:0 0 16px}
+.toq-header,.toq-card,.toq-focus-card{background:#fff;border:1px solid #D9E6F7;border-radius:22px;overflow:hidden;box-shadow:0 2px 12px rgba(20,32,51,.04)}
+.toq-header{padding:18px 20px;background:linear-gradient(135deg,#FFFFFF,#F7FAFF)}
+.toq-header-main h2{margin:4px 0 6px;font-size:24px;line-height:1.05;font-weight:800;color:#102A43;letter-spacing:-.03em}
+.toq-header-main p{margin:0;font-size:12px;line-height:1.5;color:#5F766C}
+.toq-kicker{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#5F766C}
+.toq-header-chips{display:flex;gap:8px;row-gap:8px;flex-wrap:wrap;margin-top:12px}
+.toq-header-chips span{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 12px;background:#F7FAFF;border:1px solid #D9E6F7;font-size:10.5px;font-weight:700;color:#1F3A5F;white-space:nowrap}
+.toq-kpi-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.toq-kpi-card{background:#fff;border:1px solid #D9E6F7;border-radius:20px;padding:16px 18px;box-shadow:0 2px 12px rgba(20,32,51,.04);display:flex;flex-direction:column;gap:6px;min-width:0}
+.toq-kpi-label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5F766C}
+.toq-kpi-value{font-size:30px;line-height:1;font-weight:800;color:#102A43;letter-spacing:-.03em}
+.toq-kpi-value.fail{color:#D64545}.toq-kpi-value.pass{color:#2E8B57}.toq-kpi-value.info{color:#2F6FB3}.toq-kpi-value.warn{color:#D9A441}
+.toq-kpi-meta{margin-top:4px;font-size:11px;color:#5F766C;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;line-height:1.4}
+.toq-kpi-meta strong{color:#102A43}
+.toq-grid{display:grid;gap:16px}
+.toq-grid-top{grid-template-columns:1fr 1.7fr 1fr}
+.toq-grid-mid{grid-template-columns:1fr 1.25fr 1fr}
+.toq-card-head,.toq-focus-head{padding:14px 16px;background:#F7FAFF;border-bottom:1px solid #ECF3FF;font-size:15px;font-weight:800;color:#102A43}
+.toq-card-body,.toq-focus-body{padding:16px}
+.toq-info-list,.toq-readiness-list{display:flex;flex-direction:column;gap:10px}
+.toq-info-list div,.toq-readiness-list div{font-size:12px;line-height:1.45;color:#5F766C}
+.toq-info-list strong,.toq-readiness-list strong,.toq-risk-focus strong{color:#102A43}
+.toq-status-table,.toq-mini-table{width:100%;border-collapse:collapse}
+.toq-status-table th,.toq-status-table td,.toq-mini-table th,.toq-mini-table td{padding:8px 10px;border-bottom:1px solid #ECF3FF;text-align:left;font-size:12px;vertical-align:top}
+.toq-status-table th,.toq-mini-table th{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#5F766C;background:#FBFCFE}
+.toq-status-table tr:last-child td,.toq-mini-table tr:last-child td{border-bottom:none}
+.toq-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800}
+.toq-badge.pass{background:#EBF8EE;color:#145A28}.toq-badge.warn{background:#FFF3D8;color:#9A6A16}.toq-badge.fail{background:#FDEEEE;color:#C44141}.toq-badge.info{background:#EEF5FF;color:#2F6FB3}
+.toq-risk-list{display:flex;flex-direction:column;gap:8px}
+.toq-risk-item{padding:10px 12px;border-radius:12px;font-size:12px;font-weight:800}
+.toq-risk-item.high{background:#FDEEEE;color:#C44141}.toq-risk-item.med{background:#FFF3D8;color:#9A6A16}.toq-risk-item.low{background:#EEF6FF;color:#2E8B57}
+.toq-risk-focus{margin-top:2px;font-size:12px;color:#5F766C;line-height:1.45}
+.toq-focus-body{display:flex;flex-direction:column;gap:10px;font-size:13px;font-weight:700;color:#102A43}
+body.traceops-premium-shell .toq-header,body.traceops-premium-shell .toq-card,body.traceops-premium-shell .toq-focus-card,body.traceops-premium-shell .toq-kpi-card{background:#fff !important;border:1px solid rgba(16,35,28,.08)!important;box-shadow:0 1px 2px rgba(16,35,28,.03),0 14px 34px rgba(18,70,51,.06)!important}
+body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focus-head{background:#F7FAFF!important;border-bottom:1px solid rgba(16,35,28,.06)!important}
+@media(max-width:1200px){.toq-grid-top,.toq-grid-mid{grid-template-columns:1fr}.toq-kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.toq-kpi-strip{grid-template-columns:1fr}.toq-header-main h2{font-size:20px}}
+
 </style>
 </head>
 <body>
@@ -7824,7 +7906,48 @@ function exportEightdPpt(draft) {
       + '.to-chip-muted{background:#F2F1EF;color:#67615B;border-color:#DDD9D3}'
       + '@media print{.to-actions{display:none}.to-wrap{padding:0}.to-hero{box-shadow:none}.to-card{break-inside:avoid;box-shadow:none}}'
       + '@media (max-width:680px){.to-head{font-size:28px}.to-grid{grid-template-columns:1fr}.to-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-      + '</style></head><body><div class="to-wrap"><section class="to-hero"><div class="to-over">TraceOps • RCCA Visual Export</div><h1 class="to-head">'
+      + '
+/* ===== TraceOps Executive Quality Dashboard ===== */
+.toq-dashboard{display:flex;flex-direction:column;gap:16px;margin:0 0 16px}
+.toq-header,.toq-card,.toq-focus-card{background:#fff;border:1px solid #D9E6F7;border-radius:22px;overflow:hidden;box-shadow:0 2px 12px rgba(20,32,51,.04)}
+.toq-header{padding:18px 20px;background:linear-gradient(135deg,#FFFFFF,#F7FAFF)}
+.toq-header-main h2{margin:4px 0 6px;font-size:24px;line-height:1.05;font-weight:800;color:#102A43;letter-spacing:-.03em}
+.toq-header-main p{margin:0;font-size:12px;line-height:1.5;color:#5F766C}
+.toq-kicker{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#5F766C}
+.toq-header-chips{display:flex;gap:8px;row-gap:8px;flex-wrap:wrap;margin-top:12px}
+.toq-header-chips span{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 12px;background:#F7FAFF;border:1px solid #D9E6F7;font-size:10.5px;font-weight:700;color:#1F3A5F;white-space:nowrap}
+.toq-kpi-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.toq-kpi-card{background:#fff;border:1px solid #D9E6F7;border-radius:20px;padding:16px 18px;box-shadow:0 2px 12px rgba(20,32,51,.04);display:flex;flex-direction:column;gap:6px;min-width:0}
+.toq-kpi-label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5F766C}
+.toq-kpi-value{font-size:30px;line-height:1;font-weight:800;color:#102A43;letter-spacing:-.03em}
+.toq-kpi-value.fail{color:#D64545}.toq-kpi-value.pass{color:#2E8B57}.toq-kpi-value.info{color:#2F6FB3}.toq-kpi-value.warn{color:#D9A441}
+.toq-kpi-meta{margin-top:4px;font-size:11px;color:#5F766C;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;line-height:1.4}
+.toq-kpi-meta strong{color:#102A43}
+.toq-grid{display:grid;gap:16px}
+.toq-grid-top{grid-template-columns:1fr 1.7fr 1fr}
+.toq-grid-mid{grid-template-columns:1fr 1.25fr 1fr}
+.toq-card-head,.toq-focus-head{padding:14px 16px;background:#F7FAFF;border-bottom:1px solid #ECF3FF;font-size:15px;font-weight:800;color:#102A43}
+.toq-card-body,.toq-focus-body{padding:16px}
+.toq-info-list,.toq-readiness-list{display:flex;flex-direction:column;gap:10px}
+.toq-info-list div,.toq-readiness-list div{font-size:12px;line-height:1.45;color:#5F766C}
+.toq-info-list strong,.toq-readiness-list strong,.toq-risk-focus strong{color:#102A43}
+.toq-status-table,.toq-mini-table{width:100%;border-collapse:collapse}
+.toq-status-table th,.toq-status-table td,.toq-mini-table th,.toq-mini-table td{padding:8px 10px;border-bottom:1px solid #ECF3FF;text-align:left;font-size:12px;vertical-align:top}
+.toq-status-table th,.toq-mini-table th{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#5F766C;background:#FBFCFE}
+.toq-status-table tr:last-child td,.toq-mini-table tr:last-child td{border-bottom:none}
+.toq-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800}
+.toq-badge.pass{background:#EBF8EE;color:#145A28}.toq-badge.warn{background:#FFF3D8;color:#9A6A16}.toq-badge.fail{background:#FDEEEE;color:#C44141}.toq-badge.info{background:#EEF5FF;color:#2F6FB3}
+.toq-risk-list{display:flex;flex-direction:column;gap:8px}
+.toq-risk-item{padding:10px 12px;border-radius:12px;font-size:12px;font-weight:800}
+.toq-risk-item.high{background:#FDEEEE;color:#C44141}.toq-risk-item.med{background:#FFF3D8;color:#9A6A16}.toq-risk-item.low{background:#EEF6FF;color:#2E8B57}
+.toq-risk-focus{margin-top:2px;font-size:12px;color:#5F766C;line-height:1.45}
+.toq-focus-body{display:flex;flex-direction:column;gap:10px;font-size:13px;font-weight:700;color:#102A43}
+body.traceops-premium-shell .toq-header,body.traceops-premium-shell .toq-card,body.traceops-premium-shell .toq-focus-card,body.traceops-premium-shell .toq-kpi-card{background:#fff !important;border:1px solid rgba(16,35,28,.08)!important;box-shadow:0 1px 2px rgba(16,35,28,.03),0 14px 34px rgba(18,70,51,.06)!important}
+body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focus-head{background:#F7FAFF!important;border-bottom:1px solid rgba(16,35,28,.06)!important}
+@media(max-width:1200px){.toq-grid-top,.toq-grid-mid{grid-template-columns:1fr}.toq-kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.toq-kpi-strip{grid-template-columns:1fr}.toq-header-main h2{font-size:20px}}
+
+</style></head><body><div class="to-wrap"><section class="to-hero"><div class="to-over">TraceOps • RCCA Visual Export</div><h1 class="to-head">'
       + traceOpsEsc(title)
       + '</h1><div class="to-subhead">'
       + traceOpsEsc(subtitle)
@@ -8391,6 +8514,53 @@ function exportEightdPpt(draft) {
     if((b.missingLine?1:0)!==(a.missingLine?1:0)) return (b.missingLine?1:0)-(a.missingLine?1:0);
     return parseBitacoraDateValue(a)-parseBitacoraDateValue(b);
   }).slice(0,5);
+
+
+  var linkedEvidenceCount=Object.values(evImgs).reduce(function(a,b){return a+(Array.isArray(b)?b.length:0);},0);
+  var defectCounts={}; var issueTypeCounts={}; var findingTextCounts={};
+  ev.forEach(function(e){
+    var defectKey=String(e.defecto_smt||"N/A").trim()||"N/A";
+    defectCounts[defectKey]=(defectCounts[defectKey]||0)+1;
+    var issueKey=String(e.tipo_evento||"Proceso").trim()||"Proceso";
+    issueTypeCounts[issueKey]=(issueTypeCounts[issueKey]||0)+1;
+    var findingKey=String(e.engineer_findings||"").trim();
+    if(findingKey){ findingTextCounts[findingKey]=(findingTextCounts[findingKey]||0)+1; }
+  });
+  var topDefectEntry=Object.keys(defectCounts).map(function(k){return {label:k,count:defectCounts[k]};}).sort(function(a,b){return b.count-a.count;})[0]||{label:"N/A",count:0};
+  var topIssueTypeEntry=Object.keys(issueTypeCounts).map(function(k){return {label:k,count:issueTypeCounts[k]};}).sort(function(a,b){return b.count-a.count;})[0]||{label:"N/A",count:0};
+  var topFindingEntry=Object.keys(findingTextCounts).map(function(k){return {label:k,count:findingTextCounts[k]};}).sort(function(a,b){return b.count-a.count;})[0]||{label:"N/A",count:0};
+  var primaryEvent=topAlerts[0] || ev[0] || {};
+  var linkedVisibleRccaCount=rccaList.filter(function(r){
+    var ids=(r&&r.event_ids)||[];
+    return ids.some(function(id){ return ev.some(function(item){ return item.id===id; }); });
+  }).length;
+  var visibleEightdDrafts=eightdList.filter(function(d){
+    var src=String((d&&d.source_rcca_id)||"").trim();
+    if(src && rccaList.some(function(r){ return String(r.rcca_id||"").trim()===src; })) return true;
+    var linkedIds=(d&&d.event_ids)||[];
+    return linkedIds.some(function(id){ return ev.some(function(item){ return item.id===id; }); });
+  }).length;
+  var mandatoryReadyCount=eightdList.filter(function(d){
+    var v=parseInt(String((d&&d.readiness)||"").replace(/[^0-9]/g,""),10)||0;
+    return v>=80;
+  }).length;
+  var evidenceCoverageStatus=linkedEvidenceCount>=Math.max(2,Math.ceil(visibleEventCount*0.4)) ? "Good" : (linkedEvidenceCount>0 ? "Partial" : "Low");
+  var traceCoverageStatus=(topStations.length && topStations[0].name!=="N/D") ? "Good" : "Partial";
+  var qualityDashboardDrivers=[
+    {driver:"Top defect", value:topDefectEntry.label + (topDefectEntry.count?(" · "+topDefectEntry.count):"")},
+    {driver:"Top station", value:(topStations[0]&&topStations[0].name)||"N/D"},
+    {driver:"Top issue type", value:topIssueTypeEntry.label + (topIssueTypeEntry.count?(" · "+topIssueTypeEntry.count):"")},
+    {driver:"Top finding", value:topFindingEntry.label!=="N/A" ? topFindingEntry.label.slice(0,88) : "No finding linked"},
+    {driver:"Repeated signature", value:(primaryEvent.defecto_smt&&primaryEvent.defecto_smt!=="N/A"?primaryEvent.defecto_smt:(primaryEvent.evento_detectado||"No repeated signature"))}
+  ];
+  var qualityDashboardFocus=(actionItems.length?actionItems.slice(0,4).map(function(item){
+    return item.id + " · " + (item.accion_requerida || item.evento_detectado || "Follow-up required");
+  }):[
+    "Validate top open event and confirm owner",
+    "Close pending RCCA follow-up",
+    "Complete missing evidence linkage"
+  ]);
+
 
   var materialStagesOrdered=[
     "LCR / QA release missing",
@@ -9978,6 +10148,151 @@ function exportEightdPpt(draft) {
               </div>
             </div>
           </div>
+
+
+
+          <section className="toq-dashboard" id="quality-dashboard-section">
+            <section className="toq-header">
+              <div className="toq-header-main">
+                <div className="toq-kicker">Executive view</div>
+                <h2>TraceOps Executive Quality Dashboard</h2>
+                <p>
+                  {(primaryEvent.modelo && primaryEvent.modelo!=="N/D" ? primaryEvent.modelo : ((result&&result.resumen&&result.resumen.grupo)||"Model N/D"))}
+                  {" · "}
+                  {(topStations[0]&&topStations[0].name)||"Line / Station N/D"}
+                  {" · "}
+                  {(actualWindowLabel||visibleRangeLabel||"No visible range")}
+                </p>
+              </div>
+              <div className="toq-header-chips">
+                <span>Visible incidents: {visibleEventCount}</span>
+                <span>RCCA linked: {linkedVisibleRccaCount}</span>
+                <span>8D drafts: {visibleEightdDrafts}</span>
+                <span>Primary risk: {criticalEventCount>0?"High":(openEventCount>0?"Medium":"Low")}</span>
+              </div>
+            </section>
+
+            <section className="toq-kpi-strip">
+              <article className="toq-kpi-card">
+                <div className="toq-kpi-label">Total incidents</div>
+                <div className="toq-kpi-value">{visibleEventCount}</div>
+                <div className="toq-kpi-meta"><span>Loaded in analysis</span><strong>{totalEventCount}</strong></div>
+              </article>
+              <article className="toq-kpi-card">
+                <div className="toq-kpi-label">Open items</div>
+                <div className={"toq-kpi-value "+(openEventCount>0?"fail":"pass")}>{openEventCount}</div>
+                <div className="toq-kpi-meta"><span>Need follow-up</span><strong>{criticalEventCount} critical</strong></div>
+              </article>
+              <article className="toq-kpi-card">
+                <div className="toq-kpi-label">Engineer findings</div>
+                <div className={"toq-kpi-value "+(findingsEventCount>0?"info":"warn")}>{findingsEventCount}</div>
+                <div className="toq-kpi-meta"><span>Coverage</span><strong>{visibleEventCount?Math.round((findingsEventCount/visibleEventCount)*100):0}%</strong></div>
+              </article>
+              <article className="toq-kpi-card">
+                <div className="toq-kpi-label">Evidence linked</div>
+                <div className={"toq-kpi-value "+(linkedEvidenceCount>0?"pass":"warn")}>{linkedEvidenceCount}</div>
+                <div className="toq-kpi-meta"><span>Media in visible range</span><strong>{imgNames.length}</strong></div>
+              </article>
+              <article className="toq-kpi-card">
+                <div className="toq-kpi-label">RCCA active</div>
+                <div className={"toq-kpi-value "+(linkedVisibleRccaCount>0?"info":"warn")}>{linkedVisibleRccaCount}</div>
+                <div className="toq-kpi-meta"><span>Total saved</span><strong>{rccaList.length}</strong></div>
+              </article>
+              <article className="toq-kpi-card">
+                <div className="toq-kpi-label">8D readiness</div>
+                <div className={"toq-kpi-value "+(mandatoryReadyCount>0?"pass":"warn")}>{mandatoryReadyCount>0?"Ready":"Draft"}</div>
+                <div className="toq-kpi-meta"><span>Drafts in system</span><strong>{eightdList.length}</strong></div>
+              </article>
+            </section>
+
+            <div className="toq-grid toq-grid-top">
+              <section className="toq-card">
+                <header className="toq-card-head">Analysis Info</header>
+                <div className="toq-card-body toq-info-list">
+                  <div><strong>Model:</strong> {(primaryEvent.modelo&&primaryEvent.modelo!=="N/D")?primaryEvent.modelo:"N/D"}</div>
+                  <div><strong>Line / Station:</strong> {(topStations[0]&&topStations[0].name)||"N/D"}</div>
+                  <div><strong>Window:</strong> {(actualWindowLabel||visibleRangeLabel||"N/D")}</div>
+                  <div><strong>Primary issue:</strong> {(primaryEvent.defecto_smt&&primaryEvent.defecto_smt!=="N/A")?primaryEvent.defecto_smt:(primaryEvent.evento_detectado||"N/D")}</div>
+                  <div><strong>Reported by:</strong> {primaryEvent.reporta||"N/D"}</div>
+                  <div><strong>Status basis:</strong> {openEventCount>0?"Open follow-up remains visible":"No open follow-up in visible range"}</div>
+                </div>
+              </section>
+
+              <section className="toq-card">
+                <header className="toq-card-head">TraceOps Status</header>
+                <div className="toq-card-body">
+                  <table className="toq-status-table">
+                    <thead><tr><th>Item</th><th>Status</th><th>Remark</th></tr></thead>
+                    <tbody>
+                      <tr><td>Incident Detection</td><td><span className="toq-badge pass">Completed</span></td><td>{visibleEventCount} visible events structured</td></tr>
+                      <tr><td>Findings Review</td><td><span className={"toq-badge "+(findingsEventCount>0?"warn":"info")}>{findingsEventCount>0?"In Progress":"Pending"}</span></td><td>{findingsEventCount} events with technical finding</td></tr>
+                      <tr><td>RCCA Maturity</td><td><span className={"toq-badge "+(linkedVisibleRccaCount>0?"warn":"info")}>{linkedVisibleRccaCount>0?"Linked":"Pending"}</span></td><td>{linkedVisibleRccaCount} RCCA records tied to visible events</td></tr>
+                      <tr><td>8D Draft Readiness</td><td><span className={"toq-badge "+(mandatoryReadyCount>0?"pass":"warn")}>{mandatoryReadyCount>0?"Ready":"Draft"}</span></td><td>{visibleEightdDrafts} related drafts in local memory</td></tr>
+                      <tr><td>Evidence Coverage</td><td><span className={"toq-badge "+(evidenceCoverageStatus==="Good"?"pass":(evidenceCoverageStatus==="Partial"?"warn":"fail"))}>{evidenceCoverageStatus}</span></td><td>{linkedEvidenceCount} linked images / files</td></tr>
+                      <tr><td>Traceability Coverage</td><td><span className={"toq-badge "+(traceCoverageStatus==="Good"?"pass":"warn")}>{traceCoverageStatus}</span></td><td>{(topStations[0]&&topStations[0].name)||"N/D"} drives current visible range</td></tr>
+                      <tr><td>Yokoten Availability</td><td><span className="toq-badge info">{rccaList.length>0?"Available":"Pending"}</span></td><td>{rccaList.length>0?"Operational memory can be reused":"Create first RCCA to enable reuse"}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="toq-card">
+                <header className="toq-card-head">Readiness / Closure</header>
+                <div className="toq-card-body toq-readiness-list">
+                  <div><strong>Mandatory sections:</strong> {mandatoryReadyCount>0?(mandatoryReadyCount+" ready drafts"):"No ready draft yet"}</div>
+                  <div><strong>RCCA linked:</strong> {linkedVisibleRccaCount>0?"Yes":"No"}</div>
+                  <div><strong>Evidence linked:</strong> {linkedEvidenceCount>0?"Yes":"No"}</div>
+                  <div><strong>Pending validations:</strong> {Math.max(openEventCount-findingsEventCount,0)}</div>
+                  <div><strong>Current status:</strong> {openEventCount>0?"Open / draft":"Controlled"}</div>
+                  <div><strong>Closure eligibility:</strong> {openEventCount>0?"Pending follow-up":"Eligible for review"}</div>
+                </div>
+              </section>
+            </div>
+
+            <div className="toq-grid toq-grid-mid">
+              <section className="toq-card">
+                <header className="toq-card-head">Risk Overview</header>
+                <div className="toq-card-body toq-risk-list">
+                  <div className="toq-risk-item high">High risk: {ev.filter(function(e){return e.prioridad==="Critica"||e.prioridad==="Alta";}).length}</div>
+                  <div className="toq-risk-item med">Medium risk: {ev.filter(function(e){return e.prioridad==="Media";}).length}</div>
+                  <div className="toq-risk-item low">Low risk: {ev.filter(function(e){return e.prioridad==="Baja";}).length}</div>
+                  <div className="toq-risk-focus"><strong>Focus:</strong> {criticalEventCount>0?"address critical/open items first":"keep closure discipline on visible pending items"}</div>
+                </div>
+              </section>
+
+              <section className="toq-card">
+                <header className="toq-card-head">Top Drivers</header>
+                <div className="toq-card-body">
+                  <table className="toq-mini-table">
+                    <thead><tr><th>Driver</th><th>Value</th></tr></thead>
+                    <tbody>
+                      {qualityDashboardDrivers.map(function(row,idx){
+                        return <tr key={idx}><td>{row.driver}</td><td>{row.value}</td></tr>;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="toq-card">
+                <header className="toq-card-head">Evidence / Trace Coverage</header>
+                <div className="toq-card-body toq-readiness-list">
+                  <div><strong>Events with evidence:</strong> {Object.keys(evImgs).filter(function(id){return (evImgs[id]||[]).length>0 && ev.some(function(item){return item.id===id;});}).length}</div>
+                  <div><strong>Images linked:</strong> {linkedEvidenceCount}</div>
+                  <div><strong>Saved RCCA:</strong> {rccaList.length}</div>
+                  <div><strong>Bad/Good part logic:</strong> {eightdList.length>0?"Available in 8D drafts":"No 8D draft yet"}</div>
+                  <div><strong>Traceability completeness:</strong> {traceCoverageStatus}</div>
+                </div>
+              </section>
+            </div>
+
+            <section className="toq-focus-card">
+              <header className="toq-focus-head">Key Focus Areas</header>
+              <div className="toq-focus-body">
+                {qualityDashboardFocus.map(function(item,idx){ return <div key={idx}>✓ {item}</div>; })}
+              </div>
+            </section>
+          </section>
 
 
           <div className="traceops-calendar">
