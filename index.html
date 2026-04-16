@@ -1743,6 +1743,23 @@ body.traceops-premium-shell .traceops-context .ops-hero-btn.ghost::before{
 }
 /* ==== END PREMIUM SHELL CONSOLIDATED OVERRIDES ==== */
 
+/* ==== MOBILE STABILITY PATCH ==== */
+html,body{min-height:100%;}
+#root{min-height:100svh;}
+body.traceops-premium-shell .main-content,
+body.traceops-premium-shell .main-content.expanded{min-height:calc(100svh - 82px);}
+@supports (height: 100dvh){
+  #root{min-height:100dvh;}
+  body.traceops-premium-shell .main-content,
+  body.traceops-premium-shell .main-content.expanded{min-height:calc(100dvh - 82px);}
+}
+body.traceops-premium-shell .toq-dashboard,
+body.traceops-premium-shell .traceops-calendar,
+body.traceops-premium-shell .traceops-context,
+body.traceops-premium-shell .traceops-kpi-strip{position:relative;z-index:2;}
+/* ==== END MOBILE STABILITY PATCH ==== */
+
+
 
 /* ===== TraceOps Executive Quality Dashboard ===== */
 .toq-dashboard{display:flex;flex-direction:column;gap:16px;margin:0 0 16px}
@@ -7906,48 +7923,7 @@ function exportEightdPpt(draft) {
       + '.to-chip-muted{background:#F2F1EF;color:#67615B;border-color:#DDD9D3}'
       + '@media print{.to-actions{display:none}.to-wrap{padding:0}.to-hero{box-shadow:none}.to-card{break-inside:avoid;box-shadow:none}}'
       + '@media (max-width:680px){.to-head{font-size:28px}.to-grid{grid-template-columns:1fr}.to-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-      + '
-/* ===== TraceOps Executive Quality Dashboard ===== */
-.toq-dashboard{display:flex;flex-direction:column;gap:16px;margin:0 0 16px}
-.toq-header,.toq-card,.toq-focus-card{background:#fff;border:1px solid #D9E6F7;border-radius:22px;overflow:hidden;box-shadow:0 2px 12px rgba(20,32,51,.04)}
-.toq-header{padding:18px 20px;background:linear-gradient(135deg,#FFFFFF,#F7FAFF)}
-.toq-header-main h2{margin:4px 0 6px;font-size:24px;line-height:1.05;font-weight:800;color:#102A43;letter-spacing:-.03em}
-.toq-header-main p{margin:0;font-size:12px;line-height:1.5;color:#5F766C}
-.toq-kicker{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#5F766C}
-.toq-header-chips{display:flex;gap:8px;row-gap:8px;flex-wrap:wrap;margin-top:12px}
-.toq-header-chips span{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 12px;background:#F7FAFF;border:1px solid #D9E6F7;font-size:10.5px;font-weight:700;color:#1F3A5F;white-space:nowrap}
-.toq-kpi-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
-.toq-kpi-card{background:#fff;border:1px solid #D9E6F7;border-radius:20px;padding:16px 18px;box-shadow:0 2px 12px rgba(20,32,51,.04);display:flex;flex-direction:column;gap:6px;min-width:0}
-.toq-kpi-label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5F766C}
-.toq-kpi-value{font-size:30px;line-height:1;font-weight:800;color:#102A43;letter-spacing:-.03em}
-.toq-kpi-value.fail{color:#D64545}.toq-kpi-value.pass{color:#2E8B57}.toq-kpi-value.info{color:#2F6FB3}.toq-kpi-value.warn{color:#D9A441}
-.toq-kpi-meta{margin-top:4px;font-size:11px;color:#5F766C;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;line-height:1.4}
-.toq-kpi-meta strong{color:#102A43}
-.toq-grid{display:grid;gap:16px}
-.toq-grid-top{grid-template-columns:1fr 1.7fr 1fr}
-.toq-grid-mid{grid-template-columns:1fr 1.25fr 1fr}
-.toq-card-head,.toq-focus-head{padding:14px 16px;background:#F7FAFF;border-bottom:1px solid #ECF3FF;font-size:15px;font-weight:800;color:#102A43}
-.toq-card-body,.toq-focus-body{padding:16px}
-.toq-info-list,.toq-readiness-list{display:flex;flex-direction:column;gap:10px}
-.toq-info-list div,.toq-readiness-list div{font-size:12px;line-height:1.45;color:#5F766C}
-.toq-info-list strong,.toq-readiness-list strong,.toq-risk-focus strong{color:#102A43}
-.toq-status-table,.toq-mini-table{width:100%;border-collapse:collapse}
-.toq-status-table th,.toq-status-table td,.toq-mini-table th,.toq-mini-table td{padding:8px 10px;border-bottom:1px solid #ECF3FF;text-align:left;font-size:12px;vertical-align:top}
-.toq-status-table th,.toq-mini-table th{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#5F766C;background:#FBFCFE}
-.toq-status-table tr:last-child td,.toq-mini-table tr:last-child td{border-bottom:none}
-.toq-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800}
-.toq-badge.pass{background:#EBF8EE;color:#145A28}.toq-badge.warn{background:#FFF3D8;color:#9A6A16}.toq-badge.fail{background:#FDEEEE;color:#C44141}.toq-badge.info{background:#EEF5FF;color:#2F6FB3}
-.toq-risk-list{display:flex;flex-direction:column;gap:8px}
-.toq-risk-item{padding:10px 12px;border-radius:12px;font-size:12px;font-weight:800}
-.toq-risk-item.high{background:#FDEEEE;color:#C44141}.toq-risk-item.med{background:#FFF3D8;color:#9A6A16}.toq-risk-item.low{background:#EEF6FF;color:#2E8B57}
-.toq-risk-focus{margin-top:2px;font-size:12px;color:#5F766C;line-height:1.45}
-.toq-focus-body{display:flex;flex-direction:column;gap:10px;font-size:13px;font-weight:700;color:#102A43}
-body.traceops-premium-shell .toq-header,body.traceops-premium-shell .toq-card,body.traceops-premium-shell .toq-focus-card,body.traceops-premium-shell .toq-kpi-card{background:#fff !important;border:1px solid rgba(16,35,28,.08)!important;box-shadow:0 1px 2px rgba(16,35,28,.03),0 14px 34px rgba(18,70,51,.06)!important}
-body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focus-head{background:#F7FAFF!important;border-bottom:1px solid rgba(16,35,28,.06)!important}
-@media(max-width:1200px){.toq-grid-top,.toq-grid-mid{grid-template-columns:1fr}.toq-kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){.toq-kpi-strip{grid-template-columns:1fr}.toq-header-main h2{font-size:20px}}
-
-</style></head><body><div class="to-wrap"><section class="to-hero"><div class="to-over">TraceOps • RCCA Visual Export</div><h1 class="to-head">'
+      + '</style></head><body><div class="to-wrap"><section class="to-hero"><div class="to-over">TraceOps • RCCA Visual Export</div><h1 class="to-head">'
       + traceOpsEsc(title)
       + '</h1><div class="to-subhead">'
       + traceOpsEsc(subtitle)
