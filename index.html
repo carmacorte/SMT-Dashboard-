@@ -2008,19 +2008,32 @@ function traceOpsPptExecutiveStatusToneLocal(statusText) {
 function traceOpsPptExecutiveSummaryLocal(d) {
   var model = d.model || d.product || 'N/D';
   var station = d.station || 'N/D';
-  var defect = d.defect || d.failureMode || 'issue';
+  var defect = d.defect || d.failureMode || d.problem || 'issue';
   var occ = d.occurrenceConclusion || d.occurrence || '';
   var esc = d.escapeConclusion || d.escape || '';
-  var base = d.complaintAnchor || '';
-  if (base) {
-    base = String(base).replace(/\s+/g, ' ').trim();
-    if (base.length > 320) base = base.slice(0, 317) + '...';
-  } else {
+  var base = d.complaintAnchor || d.description || d.problemDescription || '';
+  base = String(base || '').replace(/\s+/g, ' ').trim();
+  if (!base) {
     base = 'Issue identified on model ' + model + ' at station ' + station + ' involving ' + defect + '.';
   }
+  if (base.length > 260) base = base.slice(0, 257) + '...';
+
   var lines = [base];
-  if (occ) lines.push('Occurrence status: ' + String(occ).replace(/\s+/g, ' ').trim().slice(0, 140));
-  if (esc) lines.push('Escape status: ' + String(esc).replace(/\s+/g, ' ').trim().slice(0, 140));
+
+  if (occ) {
+    var occTxt = String(occ).replace(/\s+/g, ' ').trim();
+    if (occTxt.length > 140) occTxt = occTxt.slice(0, 137) + '...';
+    lines.push('Occurrence status: ' + occTxt);
+  }
+
+  if (esc) {
+    var escTxt = String(esc).replace(/\s+/g, ' ').trim();
+    if (escTxt.length > 140) escTxt = escTxt.slice(0, 137) + '...';
+    lines.push('Escape status: ' + escTxt);
+  } else {
+    lines.push('Current control path remains under validation against the actual defect signature.');
+  }
+
   lines.push('Corrective actions are defined and current closure remains linked to validation evidence.');
   return lines.join('\n\n');
 }
@@ -2034,8 +2047,8 @@ function traceOpsPptExecutiveRiskLinesLocal(d) {
 }
 
 function traceOpsPptExecutiveRootCauseLinesLocal(d) {
-  var occ = d.occurrenceConclusion || d.occurrence || 'Under validation';
-  var esc = d.escapeConclusion || d.escape || 'Under validation';
+  var occ = d.occurrenceConclusion || d.occurrence || d.probableCause || 'Under validation';
+  var esc = d.escapeConclusion || d.escape || d.controlGap || 'Under validation';
   var status = d.reportStatus || d.status || 'Draft';
   return 'Occurrence: ' + String(occ).replace(/\s+/g, ' ').trim().slice(0, 150) + '\n' +
          'Escape: ' + String(esc).replace(/\s+/g, ' ').trim().slice(0, 150) + '\n' +
@@ -2133,7 +2146,7 @@ function buildExecutiveDashboardPptModelLocal(src) {
   var hdr = qd.header || {};
   var read = qd.readiness || {};
   var risk = qd.risk || {};
-  var defect = hdr.primaryIssue || obj.defect || obj.failureMode || 'N/D';
+  var defect = hdr.primaryIssue || obj.defect || obj.failureMode || obj.problem || 'N/D';
   var actionsList = [];
   if (Array.isArray(obj.actionsList)) actionsList = obj.actionsList.slice(0,3);
   if (!actionsList.length && Array.isArray(obj.actions)) {
@@ -2144,7 +2157,7 @@ function buildExecutiveDashboardPptModelLocal(src) {
   }
   return {
     title: obj.title || obj.caseTitle || defect,
-    model: hdr.model || obj.model || obj.product || 'N/D',
+    model: obj.model || obj.product || hdr.model || 'N/D',
     line: hdr.line || obj.line || 'N/D',
     station: hdr.station || obj.station || 'N/D',
     window: hdr.window || obj.window || obj.detectionWindow || 'N/D',
@@ -2152,11 +2165,11 @@ function buildExecutiveDashboardPptModelLocal(src) {
     readiness8d: hdr.readiness8d || obj.readiness || obj.readiness8d || '0%',
     evidenceBadge: (obj.badGoodComplete || obj.evidenceComplete || (obj.badPartImage && obj.goodPartImage)) ? 'Complete' : 'Partial',
     reportStatus: obj.reportStatus || obj.status || read.currentStatus || 'Draft',
-    complaintAnchor: obj.complaintAnchor || '',
+    complaintAnchor: obj.complaintAnchor || obj.description || obj.problemDescription || '',
     occurrenceConclusion: obj.occurrenceConclusion || '',
     escapeConclusion: obj.escapeConclusion || '',
-    exposureWindow: obj.exposureWindow || '',
-    estimatedImpact: obj.estimatedImpact || '',
+    exposureWindow: obj.exposureWindow || obj.detectionWindow || obj.window || '',
+    estimatedImpact: obj.estimatedImpact || obj.impact || obj.exposureImpact || '',
     defect: defect,
     traceabilityPartial: !obj.traceabilityComplete,
     pendingValidations: read.pendingValidations || obj.pendingValidations || 0,
@@ -8101,7 +8114,7 @@ function exportEightdPpt(draft) {
       var linked = model.linked;
       var fileBase = String(normalized.eightd_id || normalized.source_rcca_id || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_');
 
-      addExecutiveDashboardSlide(pptx, buildExecutiveDashboardPptModelLocal(Object.assign({}, normalized || {}, { qualityDashboard: (model && model.qualityDashboard) || null })));
+      addExecutiveDashboardSlide(pptx, buildExecutiveDashboardPptModelLocal(Object.assign({}, normalized || {}, model || {}, { qualityDashboard: (model && model.qualityDashboard) || null })));
       traceOpsPptBuildExecutiveOverview(pptx, normalized, model, linked);
       await traceOpsPptBuildTeamProblemSlide(pptx, normalized, model);
       traceOpsPptBuildContainmentSlide(pptx, normalized, model);
