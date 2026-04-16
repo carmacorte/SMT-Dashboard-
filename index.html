@@ -6818,6 +6818,216 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     });
   }
 
+  
+  function traceOpsPptStatusToneLocal(status){
+    var s = String(status || '').toLowerCase();
+    if (/complete|approved|good|available|100|yes|ready|closed/.test(s)) return 'ok';
+    if (/risk|open|high|critical|pending validation|no /.test(s)) return 'pending';
+    return 'draft';
+  }
+
+  function traceOpsPptBuildQualityDashboardData(normalized, model, linked){
+    var readinessMeta = traceOpsPptReadinessMeta(normalized || {});
+    var evList = Array.isArray(linked) ? linked : [];
+    var openItems = evList.filter(function(item){
+      return !/cerrado|closed/i.test(String(item && item.estatus || ''));
+    }).length;
+    var findingsCount = evList.filter(function(item){
+      return !!String((item && (item.engineer_findings_full || item.engineer_findings)) || '').trim();
+    }).length;
+    var evidenceCount = 0;
+    evList.forEach(function(item){
+      if (Array.isArray(item && item.images)) evidenceCount += item.images.length;
+    });
+    var metaEv = traceOpsPptGetEvidenceMeta(normalized || {});
+    evidenceCount += (metaEv.bad || []).length + (metaEv.good || []).length + (metaEv.general || []).length;
+
+    var totalIncidents = evList.length || Number((normalized && normalized.total_eventos) || 0) || 1;
+    var highRisk = evList.filter(function(item){
+      return /critica|critical|alta|high/i.test(String(item && item.prioridad || ''));
+    }).length;
+    var mediumRisk = evList.filter(function(item){
+      return /media|medium/i.test(String(item && item.prioridad || ''));
+    }).length;
+    var lowRisk = Math.max(0, totalIncidents - highRisk - mediumRisk);
+
+    var defectCounts = {};
+    var stationCounts = {};
+    var findingCounts = {};
+    evList.forEach(function(item){
+      var defect = String(item && item.defecto_smt || '').trim();
+      var station = String(item && (item.linea_estacion || item.station) || '').trim();
+      var finding = String(item && (item.engineer_findings_full || item.engineer_findings || item.evento_detectado) || '').trim();
+      if (defect && defect !== 'N/A') defectCounts[defect] = (defectCounts[defect] || 0) + 1;
+      if (station && station !== 'N/D') stationCounts[station] = (stationCounts[station] || 0) + 1;
+      if (finding) {
+        var shortFinding = finding.replace(/\s+/g,' ').trim().slice(0, 64);
+        findingCounts[shortFinding] = (findingCounts[shortFinding] || 0) + 1;
+      }
+    });
+    function topKey(mapObj, fallback){
+      var best = fallback || 'N/D';
+      var bestN = -1;
+      Object.keys(mapObj || {}).forEach(function(k){
+        if ((mapObj[k] || 0) > bestN) { best = k; bestN = mapObj[k] || 0; }
+      });
+      return best;
+    }
+
+    var traceStatus = 'Partial';
+    if (evList.length && evList.every(function(item){
+      return String(item && item.linea_estacion || '').trim() && String(item && item.linea_estacion || '').trim() !== 'N/D';
+    })) traceStatus = 'Good';
+
+    var evidenceStatus = evidenceCount > 1 ? 'Good' : (evidenceCount ? 'Partial' : 'Pending');
+    var linkedRcca = normalized && normalized.source_rcca_id ? 'Yes' : 'No';
+    var closureEligibility = readinessMeta.score === 100 && openItems === 0 ? 'Ready' : 'Pending validation';
+
+    var focusActions = [];
+    if (highRisk > 0) focusActions.push('Close top ' + highRisk + ' high-risk events before customer exposure increases.');
+    if (topKey(stationCounts, '') && topKey(stationCounts, '') !== 'N/D') focusActions.push('Review repeated pattern at ' + topKey(stationCounts, 'N/D') + '.');
+    if (/pending|partial/i.test(traceStatus)) focusActions.push('Complete traceability fields to strengthen Appendix evidence.');
+    if (findingsCount === 0) focusActions.push('Add engineer findings to support technical cause validation.');
+    if (/pending|partial/i.test(evidenceStatus)) focusActions.push('Link additional evidence and validate bad/good part references.');
+    if (!focusActions.length) focusActions.push('Maintain closure evidence and monitor recurrence signatures.');
+    focusActions = focusActions.slice(0, 4);
+
+    return {
+      totalIncidents: totalIncidents,
+      openItems: openItems,
+      findingsCount: findingsCount,
+      evidenceCount: evidenceCount,
+      rccaActive: linkedRcca === 'Yes' ? 1 : 0,
+      draftStatus: normalized.status || 'Draft',
+      header: {
+        model: normalized.modelo || model.model || 'N/D',
+        line: normalized.linea || model.line || 'N/D',
+        station: normalized.station || model.station || 'N/D',
+        window: normalized.detection_window || model.detectionWindow || 'N/D',
+        primaryIssue: normalized.defecto_smt || model.defect || 'N/A',
+        readiness: String(readinessMeta.score || 0) + '%'
+      },
+      statusRows: [
+        ['Incident Detection', evList.length ? 'Completed' : 'Pending', evList.length ? ('Events structured: ' + evList.length) : 'No linked events'],
+        ['Findings Review', findingsCount ? 'In Progress' : 'Pending', findingsCount ? (findingsCount + ' technical findings linked') : 'Engineer findings missing'],
+        ['RCCA Maturity', normalized.status || 'Draft', linkedRcca === 'Yes' ? ('Linked to ' + normalized.source_rcca_id) : 'No RCCA linked'],
+        ['8D Draft Readiness', String(readinessMeta.score || 0) + '%', readinessMeta.completed + '/8 mandatory sections completed'],
+        ['Evidence Coverage', evidenceStatus, evidenceCount ? (String(evidenceCount) + ' evidence refs linked') : 'Evidence pending'],
+        ['Traceability Coverage', traceStatus, traceStatus === 'Good' ? 'Core trace fields available' : 'Appendix still needs stronger trace mapping']
+      ],
+      readinessRows: [
+        ['Mandatory sections', readinessMeta.completed + ' / 8'],
+        ['RCCA linked', linkedRcca],
+        ['Evidence linked', evidenceCount ? 'Yes' : 'No'],
+        ['Pending validations', String(Math.max(0, 8 - readinessMeta.completed + (openItems ? 1 : 0)))],
+        ['Current status', normalized.status || 'Draft'],
+        ['Closure eligibility', closureEligibility]
+      ],
+      riskRows: [
+        ['High risk', String(highRisk)],
+        ['Medium risk', String(mediumRisk)],
+        ['Low risk', String(lowRisk)],
+        ['Focus', highRisk ? ('Close top ' + highRisk + ' risks') : 'Monitor recurrence']
+      ],
+      driverRows: [
+        ['Top defect', topKey(defectCounts, normalized.defecto_smt || model.defect || 'N/A')],
+        ['Top station', topKey(stationCounts, normalized.station || model.station || 'N/D')],
+        ['Top issue type', normalized.defecto_smt || model.defect || 'N/A'],
+        ['Findings signal', topKey(findingCounts, findingsCount ? 'Technical review linked' : 'Pending')],
+        ['Repeated signature', model.pattern || model.complaintAnchor || 'Pending review']
+      ],
+      coverageRows: [
+        ['Events with evidence', String(evList.filter(function(item){ return Array.isArray(item && item.images) && item.images.length; }).length)],
+        ['Images linked', String(evidenceCount)],
+        ['Saved RCCA', linkedRcca === 'Yes' ? '1' : '0'],
+        ['Bad/Good logic', ((metaEv.bad || []).length || (metaEv.good || []).length) ? 'Complete' : 'Pending'],
+        ['Traceability', traceStatus]
+      ],
+      focusActions: focusActions
+    };
+  }
+
+  function traceOpsPptBuildQualityDashboardSlide(pptx, normalized, model, linked){
+    var slide = pptx.addSlide();
+    var data = traceOpsPptBuildQualityDashboardData(normalized, model, linked);
+    traceOpsPptApplyShell(slide, 'Quality Dashboard', 'Executive operational quality snapshot generated by TraceOps', 0, (normalized.status || 'Draft'));
+
+    traceOpsPptBox(slide, 0.42, 1.62, 12.46, 0.64, 'FFFFFF');
+    slide.addText(traceOpsPptSafe('TraceOps Executive Quality Dashboard', 80), {x:0.58, y:1.78, w:5.8, h:0.16, fontFace:'Segoe UI', fontSize:18, bold:true, color:'102A43', margin:0});
+    slide.addText(traceOpsPptWrap([data.header.model, data.header.line, data.header.station, data.header.window].join(' · '), 120), {x:0.58, y:1.98, w:7.8, h:0.12, fontFace:'Segoe UI', fontSize:9.8, color:'5F766C', margin:0, fit:'shrink'});
+    traceOpsPptAddBadge(slide, '8D readiness ' + data.header.readiness, 10.96, 1.82, 'ok');
+
+    var kpis = [
+      ['Total incidents', String(data.totalIncidents), 'Visible in selected window', 'info'],
+      ['Open items', String(data.openItems), 'Require follow-up', data.openItems ? 'pending' : 'ok'],
+      ['Engineer findings', String(data.findingsCount), 'Technical review items', data.findingsCount ? 'draft' : 'pending'],
+      ['Evidence linked', String(data.evidenceCount), 'Images / files / trace', data.evidenceCount ? 'ok' : 'pending'],
+      ['RCCA active', String(data.rccaActive), 'Linked investigation', data.rccaActive ? 'draft' : 'pending'],
+      ['8D status', traceOpsPptSafe(data.draftStatus, 24), 'Current customer-facing state', traceOpsPptStatusToneLocal(data.draftStatus)]
+    ];
+    var kpiY = 2.44, kpiW = 2.03, kpiGap = 0.09;
+    for (var i = 0; i < kpis.length; i++) {
+      var x = 0.42 + (i * (kpiW + kpiGap));
+      traceOpsPptBox(slide, x, kpiY, kpiW, 0.82, 'FFFFFF');
+      slide.addText(kpis[i][0], {x:x+0.10, y:kpiY+0.10, w:kpiW-0.20, h:0.10, fontFace:'Segoe UI', fontSize:8.4, bold:true, color:'5F766C', margin:0});
+      slide.addText(traceOpsPptWrap(kpis[i][1], 20), {x:x+0.10, y:kpiY+0.28, w:kpiW-0.20, h:0.22, fontFace:'Segoe UI', fontSize:(i===5?15.5:19), bold:true, color:'102A43', margin:0, fit:'shrink'});
+      slide.addText(traceOpsPptWrap(kpis[i][2], 32), {x:x+0.10, y:kpiY+0.58, w:kpiW-0.20, h:0.12, fontFace:'Segoe UI', fontSize:8.0, color:'5F766C', margin:0, fit:'shrink'});
+    }
+
+    var topY = 3.46;
+    traceOpsPptPanelTitle(slide, 'Analysis Info', 0.42, topY, 2.86);
+    traceOpsPptBox(slide, 0.42, topY+0.18, 2.86, 1.42, 'FFFFFF');
+    var infoText = [
+      'Model: ' + data.header.model,
+      'Line: ' + data.header.line,
+      'Station focus: ' + data.header.station,
+      'Window: ' + data.header.window,
+      'Primary issue: ' + data.header.primaryIssue
+    ].join('\n');
+    slide.addText(traceOpsPptWrap(infoText, 110), {x:0.56, y:topY+0.34, w:2.58, h:1.10, fontFace:'Segoe UI', fontSize:9.6, color:'102A43', margin:0, breakLine:true, fit:'shrink'});
+
+    traceOpsPptPanelTitle(slide, 'TraceOps Status', 3.46, topY, 6.44);
+    slide.addTable(traceOpsPptSafeTable([
+      [{text:'Item',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Remark',options:{bold:true}}]
+    ].concat(data.statusRows.map(function(r){ return [traceOpsPptSafe(r[0],40), traceOpsPptSafe(r[1],24), traceOpsPptWrap(r[2],70)]; }))), {
+      x:3.46, y:topY+0.18, w:6.44, h:1.42,
+      border:{type:'solid', pt:1, color:'DCE9E2'},
+      fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.4,
+      margin:0.03, rowH:[0.18,0.21,0.21,0.21,0.21,0.21,0.21], colW:[2.16,1.20,3.08], fit:'shrink'
+    });
+
+    traceOpsPptPanelTitle(slide, 'Readiness / Closure', 10.08, topY, 2.80);
+    traceOpsPptBox(slide, 10.08, topY+0.18, 2.80, 1.42, 'FFFFFF');
+    slide.addText(traceOpsPptWrap(data.readinessRows.map(function(r){ return r[0] + ': ' + r[1]; }).join('\n'), 120), {
+      x:10.22, y:topY+0.34, w:2.52, h:1.10, fontFace:'Segoe UI', fontSize:9.4, color:'102A43', margin:0, breakLine:true, fit:'shrink'
+    });
+
+    var midY = 5.10;
+    traceOpsPptPanelTitle(slide, 'Risk Overview', 0.42, midY, 2.86);
+    traceOpsPptBox(slide, 0.42, midY+0.18, 2.86, 1.04, 'FFFFFF');
+    slide.addText(traceOpsPptWrap(data.riskRows.map(function(r){ return r[0] + ': ' + r[1]; }).join('\n'), 100), {x:0.56, y:midY+0.34, w:2.56, h:0.76, fontFace:'Segoe UI', fontSize:9.6, color:'102A43', margin:0, breakLine:true, fit:'shrink'});
+
+    traceOpsPptPanelTitle(slide, 'Top Drivers', 3.46, midY, 6.44);
+    slide.addTable(traceOpsPptSafeTable([
+      [{text:'Driver',options:{bold:true}},{text:'Value',options:{bold:true}}]
+    ].concat(data.driverRows.map(function(r){ return [traceOpsPptSafe(r[0],34), traceOpsPptWrap(r[1],110)]; }))), {
+      x:3.46, y:midY+0.18, w:6.44, h:1.04,
+      border:{type:'solid', pt:1, color:'DCE9E2'},
+      fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.6,
+      margin:0.03, rowH:[0.18,0.17,0.17,0.17,0.17,0.18], colW:[1.62,4.82], fit:'shrink'
+    });
+
+    traceOpsPptPanelTitle(slide, 'Evidence / Trace Coverage', 10.08, midY, 2.80);
+    traceOpsPptBox(slide, 10.08, midY+0.18, 2.80, 1.04, 'FFFFFF');
+    slide.addText(traceOpsPptWrap(data.coverageRows.map(function(r){ return r[0] + ': ' + r[1]; }).join('\n'), 100), {x:10.22, y:midY+0.34, w:2.50, h:0.76, fontFace:'Segoe UI', fontSize:9.2, color:'102A43', margin:0, breakLine:true, fit:'shrink'});
+
+    traceOpsPptPanelTitle(slide, 'Key Focus Areas', 0.42, 6.34, 12.46);
+    traceOpsPptBox(slide, 0.42, 6.52, 12.46, 0.56, 'FFFFFF');
+    slide.addText(traceOpsPptWrap(data.focusActions.map(function(item){ return '• ' + item; }).join('   '), 240), {x:0.60, y:6.70, w:12.08, h:0.20, fontFace:'Segoe UI', fontSize:9.8, bold:true, color:'102A43', margin:0, fit:'shrink'});
+    return slide;
+  }
+
+
   function traceOpsPptBuildExecutiveOverview(pptx, normalized, model, linked){
     var slide = pptx.addSlide();
     var readinessMeta = traceOpsPptReadinessMeta(normalized);
@@ -7710,6 +7920,7 @@ function exportEightdPpt(draft) {
       var linked = model.linked;
       var fileBase = String(normalized.eightd_id || normalized.source_rcca_id || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_');
 
+      traceOpsPptBuildQualityDashboardSlide(pptx, normalized, model, linked);
       traceOpsPptBuildExecutiveOverview(pptx, normalized, model, linked);
       await traceOpsPptBuildTeamProblemSlide(pptx, normalized, model);
       traceOpsPptBuildContainmentSlide(pptx, normalized, model);
