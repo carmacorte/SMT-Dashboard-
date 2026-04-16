@@ -1813,6 +1813,20 @@ window.TRACEOPS_SUPABASE = window.TRACEOPS_SUPABASE || {
   enabled: false
 };
 
+if (typeof window !== "undefined" && !window.global) { window.global = window; }
+
+function traceOpsNormalizeCloudError(err) {
+  var raw = err && err.message ? String(err.message) : String(err || "");
+  var low = raw.toLowerCase();
+  if (low.indexOf("load failed") >= 0 || low.indexOf("failed to fetch") >= 0 || low.indexOf("networkerror") >= 0) {
+    var e = new Error("No se pudo conectar con Supabase desde este navegador. Se mantiene modo local.");
+    e.isNetworkFallback = true;
+    e.originalMessage = raw;
+    return e;
+  }
+  return err instanceof Error ? err : new Error(raw || "Error de nube");
+}
+
 window.TraceOpsCloud = (function(){
   function cfg(){
     var raw = window.TRACEOPS_SUPABASE || {};
@@ -1837,6 +1851,13 @@ window.TraceOpsCloud = (function(){
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true
+        },
+        global: {
+          fetch: function(url, options) {
+            return fetch(url, options).catch(function(err){
+              throw traceOpsNormalizeCloudError(err);
+            });
+          }
         }
       });
     }
@@ -1846,8 +1867,12 @@ window.TraceOpsCloud = (function(){
   async function getUser(){
     var client = getClient();
     if (!client) return null;
-    var out = await client.auth.getUser();
-    return out && out.data ? out.data.user : null;
+    try {
+      var out = await client.auth.getUser();
+      return out && out.data ? out.data.user : null;
+    } catch (err) {
+      throw traceOpsNormalizeCloudError(err);
+    }
   }
 
 async function initApp(){
@@ -1919,7 +1944,7 @@ async function signIn(email, password){
     var client = getClient();
     if (!client) throw new Error("Supabase no configurado.");
     var out = await client.auth.signInWithPassword({ email: email, password: password });
-    if (out.error) throw out.error;
+    if (out.error) throw traceOpsNormalizeCloudError(out.error);
     return out.data;
   }
 
@@ -1927,7 +1952,7 @@ async function signUp(email, password){
     var client = getClient();
     if (!client) throw new Error("Supabase no configurado.");
     var out = await client.auth.signUp({ email: email, password: password });
-    if (out.error) throw out.error;
+    if (out.error) throw traceOpsNormalizeCloudError(out.error);
     return out.data;
   }
 
@@ -1935,7 +1960,7 @@ async function signUp(email, password){
     var client = getClient();
     if (!client) return;
     var out = await client.auth.signOut();
-    if (out.error) throw out.error;
+    if (out.error) throw traceOpsNormalizeCloudError(out.error);
   }
 
   function onAuthChange(handler){
@@ -1951,26 +1976,31 @@ async function signUp(email, password){
     if (!client || !userId || !handler) {
       return { unsubscribe: function(){} };
     }
-    var channelName = 'traceops-rcca-' + String(userId).replace(/[^a-zA-Z0-9_-]/g, '_');
-    var channel = client.channel(channelName);
-    channel.on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'traceops_rcca_cases',
-      filter: 'user_id=eq.' + userId
-    }, function(payload){
-      try { handler(payload || null); } catch(_) {}
-    });
-    channel.subscribe(function(status){
-      try {
-        if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime status:', status);
-      } catch(_) {}
-    });
-    return {
-      unsubscribe: function(){
-        try { client.removeChannel(channel); } catch(_) {}
-      }
-    };
+    try {
+      var channelName = 'traceops-rcca-' + String(userId).replace(/[^a-zA-Z0-9_-]/g, '_');
+      var channel = client.channel(channelName);
+      channel.on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'traceops_rcca_cases',
+        filter: 'user_id=eq.' + userId
+      }, function(payload){
+        try { handler(payload || null); } catch(_) {}
+      });
+      channel.subscribe(function(status){
+        try {
+          if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime status:', status);
+        } catch(_) {}
+      });
+      return {
+        unsubscribe: function(){
+          try { client.removeChannel(channel); } catch(_) {}
+        }
+      };
+    } catch (err) {
+      try { console.warn('[TraceOps] Realtime no disponible en este navegador:', err); } catch(_) {}
+      return { unsubscribe: function(){} };
+    }
   }
 
   async function listRcca(){
@@ -1982,7 +2012,7 @@ async function signUp(email, password){
       .select("rcca_id,payload,updated_at")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
-    if (q.error) throw q.error;
+    if (q.error) throw traceOpsNormalizeCloudError(q.error);
     return (q.data || []).map(function(row){
       var payload = row.payload || {};
       payload.rcca_id = payload.rcca_id || row.rcca_id;
@@ -2005,7 +2035,7 @@ async function signUp(email, password){
       updated_at: new Date().toISOString()
     };
     var q = await client.from("traceops_rcca_cases").upsert(row, { onConflict: "user_id,rcca_id" }).select("updated_at").single();
-    if (q.error) throw q.error;
+    if (q.error) throw traceOpsNormalizeCloudError(q.error);
     return q.data;
   }
 
@@ -2014,7 +2044,7 @@ async function signUp(email, password){
     var user = await getUser();
     if (!client || !user) throw new Error("Sesion no disponible.");
     var q = await client.from("traceops_rcca_cases").delete().eq("user_id", user.id).eq("rcca_id", rccaId);
-    if (q.error) throw q.error;
+    if (q.error) throw traceOpsNormalizeCloudError(q.error);
   }
 
   return {
@@ -5404,7 +5434,9 @@ function App() {
       setCloudStatus(remoteItems.length ? ("Sincronizado · " + remoteItems.length + " RCCA") : "Sesion activa · nube vacia");
       return remoteItems;
     } catch (err) {
-      setCloudStatus("Error nube: " + (err && err.message ? err.message : String(err)));
+      var cloudErr = traceOpsNormalizeCloudError(err);
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
       return [];
     } finally {
       setSyncBusy(false);
@@ -5426,8 +5458,10 @@ function App() {
       }
       setCloudStatus("Sincronizado · " + items.length + " RCCA");
     } catch (err) {
-      setCloudStatus("Pendiente de sincronizacion");
-      throw err;
+      var cloudErr = traceOpsNormalizeCloudError(err);
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · pendiente de sincronizacion" : "Pendiente de sincronizacion");
+      return false;
     } finally {
       setSyncBusy(false);
     }
@@ -5459,8 +5493,9 @@ function App() {
       await refreshCloudRcca({ baseList: rccaList });
       setAuthPassword("");
     } catch (err) {
-      setAuthErrMsg(err && err.message ? err.message : String(err));
-      setCloudStatus("Error de autenticacion");
+      var cloudErr = traceOpsNormalizeCloudError(err);
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : "Error de autenticacion");
     } finally {
       setSyncBusy(false);
     }
@@ -5475,7 +5510,8 @@ function App() {
       setCloudStatus("Modo local");
       setAuthErrMsg("");
     } catch (err) {
-      setAuthErrMsg(err && err.message ? err.message : String(err));
+      var cloudErr = traceOpsNormalizeCloudError(err);
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
     } finally {
       setSyncBusy(false);
     }
@@ -5533,8 +5569,10 @@ function App() {
         setCloudStatus("Listo para iniciar sesion");
       }
     }).catch(function(err){
+      var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthReady(true);
-      setCloudStatus("Error nube: " + (err && err.message ? err.message : String(err)));
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
     });
 
     return function(){
