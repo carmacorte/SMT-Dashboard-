@@ -2016,33 +2016,36 @@ function traceOpsPptExecutiveSummaryLocal(d) {
   if (!base) {
     base = 'Issue identified on model ' + model + ' at station ' + station + ' involving ' + defect + '.';
   }
-  if (base.length > 260) base = base.slice(0, 257) + '...';
+  if (base.length > 185) base = base.slice(0, 182) + '...';
 
   var lines = [base];
 
+  var statusLine = '';
   if (occ) {
     var occTxt = String(occ).replace(/\s+/g, ' ').trim();
-    if (occTxt.length > 140) occTxt = occTxt.slice(0, 137) + '...';
-    lines.push('Occurrence status: ' + occTxt);
+    if (occTxt.length > 95) occTxt = occTxt.slice(0, 92) + '...';
+    statusLine += 'Occurrence: ' + occTxt;
   }
-
   if (esc) {
     var escTxt = String(esc).replace(/\s+/g, ' ').trim();
-    if (escTxt.length > 140) escTxt = escTxt.slice(0, 137) + '...';
-    lines.push('Escape status: ' + escTxt);
+    if (escTxt.length > 95) escTxt = escTxt.slice(0, 92) + '...';
+    statusLine += (statusLine ? ' ' : '') + 'Escape: ' + escTxt;
   } else {
-    lines.push('Current control path remains under validation against the actual defect signature.');
+    statusLine += (statusLine ? ' ' : '') + 'Control path remains under validation.';
   }
+  if (statusLine) lines.push(statusLine);
 
-  lines.push('Corrective actions are defined and current closure remains linked to validation evidence.');
   return lines.join('\n\n');
 }
 
 function traceOpsPptExecutiveRiskLinesLocal(d) {
   var arr = [];
-  if (d.exposureWindow) arr.push('Exposure window: ' + d.exposureWindow);
-  if (d.estimatedImpact) arr.push('Estimated impact: ' + d.estimatedImpact);
-  arr.push('Primary risk: ' + (d.defect || d.failureMode || 'N/D') + ' @ ' + (d.station || 'N/D'));
+  var exposure = String(d.exposureWindow || '').replace(/^Exposure window:\s*/i, '').trim();
+  var impact = String(d.estimatedImpact || '').replace(/^Estimated impact:\s*/i, '').trim();
+
+  if (exposure) arr.push('Exposure window: ' + exposure);
+  if (impact) arr.push('Estimated impact: ' + impact);
+  arr.push('Primary risk: ' + (d.defect || d.failureMode || d.problem || 'N/D') + ' @ ' + (d.station || 'N/D'));
   return arr.join('\n');
 }
 
@@ -2050,8 +2053,12 @@ function traceOpsPptExecutiveRootCauseLinesLocal(d) {
   var occ = d.occurrenceConclusion || d.occurrence || d.probableCause || 'Under validation';
   var esc = d.escapeConclusion || d.escape || d.controlGap || 'Under validation';
   var status = d.reportStatus || d.status || 'Draft';
-  return 'Occurrence: ' + String(occ).replace(/\s+/g, ' ').trim().slice(0, 150) + '\n' +
-         'Escape: ' + String(esc).replace(/\s+/g, ' ').trim().slice(0, 150) + '\n' +
+  occ = String(occ).replace(/\s+/g, ' ').trim();
+  esc = String(esc).replace(/\s+/g, ' ').trim();
+  if (occ.length > 110) occ = occ.slice(0, 107) + '...';
+  if (esc.length > 110) esc = esc.slice(0, 107) + '...';
+  return 'Occurrence: ' + occ + '\n' +
+         'Escape: ' + esc + '\n' +
          'Status: ' + status;
 }
 
@@ -2069,7 +2076,7 @@ function traceOpsPptExecutiveFocusLinesLocal(d) {
   if (d.traceabilityPartial) arr.push('Complete traceability fields to strengthen Appendix evidence.');
   if (d.pendingValidations && Number(d.pendingValidations) > 0) arr.push('Close remaining validation items before status upgrade.');
   if (d.openItems && Number(d.openItems) > 0) arr.push('Maintain follow-up on open items until recurrence risk is reduced.');
-  if (!arr.length) arr.push('Monitor recurrence and maintain closure evidence.');
+  if (!arr.length) arr.push('Validate closure path and maintain recurrence monitoring.');
   return traceOpsPptExecutiveBulletLinesLocal(arr, 'Monitor recurrence and keep closure evidence current.');
 }
 
@@ -2106,7 +2113,7 @@ function addExecutiveDashboardSlide(ppt, d) {
     x:0.62, y:1.46, w:8.4, h:0.14, fontFace:'Segoe UI', fontSize:10.5, bold:true, color:tone.text, breakLine:false, fit:'shrink'
   });
 
-  var kpiY = 1.9, kpiW = 2.05, gap = 0.18;
+  var kpiY = 1.9, kpiW = 2.02, gap = 0.16;
   traceOpsPptDrawExecKpiLocal(slide, 0.45, kpiY, kpiW, 0.92, 'OPEN ITEMS', d.openItems, 'Require follow-up');
   traceOpsPptDrawExecKpiLocal(slide, 0.45 + kpiW + gap, kpiY, kpiW, 0.92, '8D READINESS', d.readiness8d, 'Mandatory sections complete');
   traceOpsPptDrawExecKpiLocal(slide, 0.45 + (kpiW + gap)*2, kpiY, kpiW, 0.92, 'EVIDENCE', d.evidenceBadge, 'Bad / Good logic and files');
@@ -2161,9 +2168,9 @@ function buildExecutiveDashboardPptModelLocal(src) {
     line: hdr.line || obj.line || 'N/D',
     station: hdr.station || obj.station || 'N/D',
     window: hdr.window || obj.window || obj.detectionWindow || 'N/D',
-    openItems: k.openItems || obj.openItems || read.pendingValidations || 0,
-    readiness8d: hdr.readiness8d || obj.readiness || obj.readiness8d || '0%',
-    evidenceBadge: (obj.badGoodComplete || obj.evidenceComplete || (obj.badPartImage && obj.goodPartImage)) ? 'Complete' : 'Partial',
+    openItems: (obj.pendingValidations != null ? obj.pendingValidations : (read.pendingValidations != null ? read.pendingValidations : (k.openItems != null ? k.openItems : (obj.openItems != null ? obj.openItems : 0)))),
+    readiness8d: obj.readiness || obj.readiness8d || hdr.readiness8d || (((obj.readiness_score != null ? Number(obj.readiness_score) : NaN) >= 100) ? '100%' : ((obj.readiness_score != null && !isNaN(Number(obj.readiness_score))) ? (String(Math.round(Number(obj.readiness_score))) + '%') : '100%')),
+    evidenceBadge: (obj.badGoodComplete || obj.evidenceComplete || (obj.badPartImage && obj.goodPartImage) || (obj.bad_part_images && obj.good_part_images) || (obj.meta && obj.meta.evidence && obj.meta.evidence.bad_part && obj.meta.evidence.bad_part.length && obj.meta.evidence.good_part && obj.meta.evidence.good_part.length)) ? 'Complete' : 'Partial',
     reportStatus: obj.reportStatus || obj.status || read.currentStatus || 'Draft',
     complaintAnchor: obj.complaintAnchor || obj.description || obj.problemDescription || '',
     occurrenceConclusion: obj.occurrenceConclusion || '',
@@ -2174,8 +2181,8 @@ function buildExecutiveDashboardPptModelLocal(src) {
     traceabilityPartial: !obj.traceabilityComplete,
     pendingValidations: read.pendingValidations || obj.pendingValidations || 0,
     closureEligibility: read.closureEligibility || obj.closureEligibility || 'Pending',
-    statusBanner: /closed|complete/i.test(obj.reportStatus || '') ? 'CLOSED' : 'UNDER VALIDATION',
-    riskBanner: (Number(risk.high || 0) > 0 ? 'HIGH' : (Number(risk.medium || 0) > 0 ? 'MEDIUM' : 'LOW')) + ' – ' + ((read.closureEligibility || '').toLowerCase().indexOf('pending') >= 0 ? 'CONTAINED, ROOT CAUSE NOT FULLY CONFIRMED' : 'CONTROLLED'),
+    statusBanner: /closed|complete/i.test(obj.reportStatus || '') ? 'CLOSED' : ((obj.pendingValidations != null && Number(obj.pendingValidations) === 0 && (obj.readiness || obj.readiness8d || '') === '100%') ? 'READY FOR REVIEW' : 'UNDER VALIDATION'),
+    riskBanner: (Number(risk.high || 0) > 0 ? 'HIGH' : (Number(risk.medium || 0) > 0 ? 'MEDIUM' : 'LOW')) + ' – ' + (((read.closureEligibility || obj.closureEligibility || '').toLowerCase().indexOf('pending') >= 0 || (obj.pendingValidations != null && Number(obj.pendingValidations) > 0)) ? 'CONTAINED, ROOT CAUSE NOT FULLY CONFIRMED' : 'CONTROLLED'),
     actionsList: actionsList
   };
 }
