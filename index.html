@@ -4893,9 +4893,18 @@ function App() {
       } catch(_) {}
     }, 50);
   }
+  function traceOpsIsImageMetaFile(file){
+    var ext = traceOpsMetaExt(file && file.name);
+    return ext === '.jpg' || ext === '.jpeg' || ext === '.png';
+  }
+  function traceOpsNormalizeEvidenceRole(role){
+    var s = String(role || '').toLowerCase().trim();
+    if (s === 'bad' || s === 'good' || s === 'general') return s;
+    return 'general';
+  }
   function traceOpsNormalizeMetaFiles(list){
     return (Array.isArray(list) ? list : []).map(function(item){
-      return {
+      var normalized = {
         id: item && item.id ? item.id : ('meta_' + Math.random().toString(36).slice(2,10)),
         name: item && item.name ? item.name : 'file',
         type: item && item.type ? item.type : '',
@@ -4903,7 +4912,22 @@ function App() {
         kind: item && item.kind ? item.kind : traceOpsMetaTypeLabel(item || {}),
         data_url: item && item.data_url ? item.data_url : ''
       };
+      if (traceOpsIsImageMetaFile(normalized)) {
+        normalized.evidence_role = traceOpsNormalizeEvidenceRole(item && (item.evidence_role || item.role));
+      }
+      return normalized;
     }).filter(function(item){ return !!item.data_url; });
+  }
+  function traceOpsBuildEvidenceMetaFromFiles(metaFiles){
+    var out = { bad_part: [], good_part: [], general: [] };
+    (Array.isArray(metaFiles) ? metaFiles : []).forEach(function(file){
+      if (!file || !file.data_url || !traceOpsIsImageMetaFile(file)) return;
+      var role = traceOpsNormalizeEvidenceRole(file.evidence_role || file.role);
+      if (role === 'bad') out.bad_part.push(file.data_url);
+      else if (role === 'good') out.good_part.push(file.data_url);
+      else out.general.push(file.data_url);
+    });
+    return out;
   }
   function isFreshRccaDraft(draft){
     var ts = draft && draft.ts ? new Date(draft.ts).getTime() : 0;
@@ -5572,6 +5596,12 @@ function App() {
       status: (existing && existing.status) || 'Draft',
       linked_event_ids: (source && source.event_ids ? source.event_ids.slice() : []),
       source_snapshot: source,
+      meta: Object.assign({}, (source && source.meta) || {}, (existing && existing.meta) || {}, {
+        evidence: (existing && existing.meta && existing.meta.evidence) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || [])
+      }),
+      bad_part_images: (existing && existing.bad_part_images) || (((existing && existing.meta && existing.meta.evidence && existing.meta.evidence.bad_part) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || []).bad_part || []).join('\n')),
+      good_part_images: (existing && existing.good_part_images) || (((existing && existing.meta && existing.meta.evidence && existing.meta.evidence.good_part) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || []).good_part || []).join('\n')),
+      evidence_images: (existing && existing.evidence_images) || (((existing && existing.meta && existing.meta.evidence && existing.meta.evidence.general) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || []).general || []).join('\n')),
       evidence_summary: (existing && existing.evidence_summary) || '',
       correlation_notes: (existing && existing.correlation_notes) || '',
       evidence_checklist: (existing && existing.evidence_checklist) || '',
@@ -5595,10 +5625,18 @@ function App() {
   }
 
   async function saveEightdDraft(draft) {
-    var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft, {
+    var draftToSave = Object.assign({}, draft, {
       owner_email: authUser && authUser.email ? authUser.email : (draft.owner_email || ""),
       updated_at: new Date().toISOString()
-    }));
+    });
+    var currentMeta = Object.assign({}, draftToSave.meta || {});
+    currentMeta.evidence = Object.assign({}, currentMeta.evidence || {}, {
+      bad_part: traceOpsPptExtractEvidenceNames((currentMeta.evidence && currentMeta.evidence.bad_part) || draftToSave.bad_part_images || draftToSave.bad_part_image || draftToSave.bad_part_evidence || []),
+      good_part: traceOpsPptExtractEvidenceNames((currentMeta.evidence && currentMeta.evidence.good_part) || draftToSave.good_part_images || draftToSave.good_part_image || draftToSave.good_part_evidence || []),
+      general: traceOpsPptExtractEvidenceNames((currentMeta.evidence && currentMeta.evidence.general) || draftToSave.evidence_images || draftToSave.installed_removed_images || [])
+    });
+    draftToSave.meta = currentMeta;
+    var normalized = traceOpsEightdHydrateDraftFields(draftToSave);
     var readiness = traceOpsComputeEightdReadiness(normalized);
     normalized.readiness_score = readiness.score;
     normalized.missing_fields = readiness.missing;
@@ -6180,6 +6218,91 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     slide.addText(traceOpsPptWrap(value, 48), {x:x+0.12, y:y+0.30, w:w-0.24, h:0.26, fontFace:'Arial', fontSize:11.6, bold:true, color:'102A43', margin:0, fit:'shrink'});
   }
 
+
+  function traceOpsPptExtractEvidenceNames(value){
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter(Boolean).map(function(item){ return String(item).trim(); }).filter(Boolean);
+    if (typeof value === 'string') {
+      return value.split(/[\n|,;]/).map(function(item){ return String(item || '').trim(); }).filter(Boolean);
+    }
+    return [];
+  }
+
+  async function traceOpsPptResolveImageData(value){
+    if (!value) return null;
+    var src = String(value || '').trim();
+    if (!src) return null;
+    if (/^data:image\//i.test(src)) return src;
+    if (/^https?:\/\//i.test(src)) return src;
+    if (/\.(png|jpe?g|webp)$/i.test(src) && typeof loadImg === 'function') {
+      try { return await loadImg(src); } catch (_) { return null; }
+    }
+    return null;
+  }
+
+  function traceOpsPptGetEvidenceMeta(normalized){
+    var ev = normalized && normalized.meta && normalized.meta.evidence ? normalized.meta.evidence : {};
+    return {
+      bad: traceOpsPptExtractEvidenceNames(ev.bad_part || ev.bad || []),
+      good: traceOpsPptExtractEvidenceNames(ev.good_part || ev.good || []),
+      general: traceOpsPptExtractEvidenceNames(ev.general || [])
+    };
+  }
+
+  async function traceOpsPptPickEvidenceImage(normalized, slot){
+    var metaEv = traceOpsPptGetEvidenceMeta(normalized);
+    var preferred = [];
+    if (slot === 'bad') {
+      preferred = preferred.concat(
+        metaEv.bad,
+        traceOpsPptExtractEvidenceNames(normalized.bad_part_image),
+        traceOpsPptExtractEvidenceNames(normalized.bad_part_images),
+        traceOpsPptExtractEvidenceNames(normalized.bad_part_evidence)
+      );
+    } else if (slot === 'good') {
+      preferred = preferred.concat(
+        metaEv.good,
+        traceOpsPptExtractEvidenceNames(normalized.good_part_image),
+        traceOpsPptExtractEvidenceNames(normalized.good_part_images),
+        traceOpsPptExtractEvidenceNames(normalized.good_part_evidence)
+      );
+    }
+    preferred = preferred.concat(
+      metaEv.general,
+      traceOpsPptExtractEvidenceNames(normalized.installed_removed_images),
+      traceOpsPptExtractEvidenceNames(normalized.evidence_images)
+    );
+    for (var i = 0; i < preferred.length; i++) {
+      var resolved = await traceOpsPptResolveImageData(preferred[i]);
+      if (resolved) return resolved;
+    }
+    return null;
+  }
+
+  async function traceOpsPptRenderEvidencePanel(slide, opts){
+    var x = opts.x, y = opts.y, w = opts.w, h = opts.h;
+    var label = opts.label || 'Evidence';
+    var caption = opts.caption || 'Evidence pending';
+    var tone = opts.tone || 'neutral';
+    var imageData = opts.imageData || null;
+    var fills = { bad:['FDF0EE','F0C4BE','C0392B'], good:['EEF6FF','B8DECE','1A7A3C'], neutral:['FFFFFF','DCE9E2','5F766C'] };
+    var palette = fills[tone] || fills.neutral;
+    traceOpsPptBox(slide, x, y, w, h, palette[0], palette[1]);
+    slide.addText(traceOpsPptSafe(label, 34), {x:x+0.10, y:y+0.08, w:w-0.20, h:0.12, fontFace:'Segoe UI', fontSize:8.8, bold:true, color:'5F766C', align:'center', margin:0, fit:'shrink'});
+    var innerX = x + 0.12, innerY = y + 0.26, innerW = w - 0.24, innerH = h - 0.48;
+    slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:innerX, y:innerY, w:innerW, h:innerH, rectRadius:0.04, line:{color:palette[1], pt:1}, fill:{color:'FFFFFF'}});
+    if (imageData) {
+      try {
+        slide.addImage({data:imageData, x:innerX+0.02, y:innerY+0.02, w:innerW-0.04, h:innerH-0.04, sizing:'contain'});
+      } catch (_) {
+        slide.addText('Image unavailable', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
+      }
+    } else {
+      slide.addText('Evidence pending', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
+    }
+    slide.addText(traceOpsPptSafe(caption, 36), {x:x+0.10, y:y+h-0.16, w:w-0.20, h:0.10, fontFace:'Segoe UI', fontSize:7.2, bold:true, color:palette[2], align:'center', margin:0, fit:'shrink'});
+  }
+
   function traceOpsPptNormalizeWhys(source, fallbackLabel){
     var arr = [];
     if (Array.isArray(source)) arr = source.slice();
@@ -6639,7 +6762,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return slide;
   }
 
-  function traceOpsPptBuildTeamProblemSlide(pptx, normalized, model){
+  async function traceOpsPptBuildTeamProblemSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D1 Team + D2 Problem Description', 'Foxconn standard D1 / D2 required fields', 1, (normalized.status || 'Draft'));
 
@@ -6661,19 +6784,19 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       ['BU Manager', normalized.bu_manager || 'Pending', normalized.bu_manager_email || 'Pending']
     ];
 
-    slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(
       traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(roles)),
-      {x:0.42, y:1.96, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.6, margin:0.05, rowH:0.28, colW:[0.78,1.62,2.50], fit:'shrink'}
+      {x:0.42, y:1.96, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.6, margin:0.05, rowH:0.28, colW:[0.78,1.62,2.50], fit:'shrink'}
     );
 
-    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.24, w:1.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.24, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(
       traceOpsPptSafeTable([[{text:'Level',options:{bold:true}},{text:'Owner',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(escalation)),
-      {x:0.42, y:4.52, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.05, margin:0.05, rowH:0.28, colW:[1.78,1.42,1.82], fit:'shrink'}
+      {x:0.42, y:4.52, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.05, margin:0.05, rowH:0.28, colW:[1.78,1.42,1.82], fit:'shrink'}
     );
 
-    slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     var traceRows = [
       ['Model', normalized.modelo || model.model || 'Pending', 'SKU Version', normalized.revision || 'Pending'],
       ['Line', normalized.linea || model.line || 'Pending', 'Station', normalized.station || model.station || 'Pending'],
@@ -6682,10 +6805,10 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     ];
     slide.addTable(
       traceOpsPptSafeTable([[{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(traceRows)),
-      {x:5.74, y:1.96, w:7.16, h:1.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.4, margin:0.05, rowH:0.22, colW:[1.18,2.28,1.18,2.28], fit:'shrink'}
+      {x:5.74, y:1.96, w:7.16, h:1.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.4, margin:0.05, rowH:0.22, colW:[1.18,2.28,1.18,2.28], fit:'shrink'}
     );
 
-    slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.50, w:2.8, h:0.18, fontFace:'Arial', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.50, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     var howMany = (normalized.how_many || ('Total units processed: ' + (normalized.total_units || 'Pending') + ' | Clean units: ' + (normalized.clean_units || 'Pending') + ' | Risk units: ' + (normalized.risk_units || 'Pending') + ' | Clean yield: ' + (normalized.clean_yield || 'Pending') + ' | OJT / touch rate: ' + (normalized.touch_rate || 'Pending')));
     var problemRows = [
       ['Who', normalized.reporta || normalized.owner_name || 'Pending', 'How', normalized.process_path || (normalized.station || model.station || 'Pending')],
@@ -6695,28 +6818,25 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     ];
     slide.addTable(
       traceOpsPptSafeTable([[{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(problemRows)),
-      {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Arial', fontSize:8.2, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], fit:'shrink'}
+      {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.2, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], fit:'shrink'}
     );
 
-    slide.addText(traceOpsPptSafe('Bad part / situation', 40), {x:5.74, y:5.42, w:2.1, h:0.16, fontFace:'Arial', fontSize:10.6, bold:true, color:'5F766C'});
-    slide.addText(traceOpsPptSafe('Good part / situation', 40), {x:9.38, y:5.42, w:2.1, h:0.16, fontFace:'Arial', fontSize:10.6, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Bad part / situation', 40), {x:5.74, y:5.42, w:2.1, h:0.16, fontFace:'Segoe UI', fontSize:10.6, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Good part / situation', 40), {x:9.38, y:5.42, w:2.1, h:0.16, fontFace:'Segoe UI', fontSize:10.6, bold:true, color:'5F766C'});
 
     traceOpsPptBox(slide, 5.74, 5.62, 3.42, 1.08, 'FDF0EE', 'F0C4BE');
     traceOpsPptBox(slide, 9.48, 5.62, 3.42, 1.08, 'EEF6FF', 'B8DECE');
 
-    slide.addText(traceOpsPptWrap(normalized.bad_part || normalized.complaint_anchor || model.complaintAnchor || 'Incorrect setup / failure condition.', 118), {x:5.90, y:5.78, w:1.48, h:0.56, fontFace:'Arial', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
-    slide.addText(traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 118), {x:9.64, y:5.78, w:1.48, h:0.56, fontFace:'Arial', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.bad_part || normalized.complaint_anchor || model.complaintAnchor || 'Incorrect setup / failure condition.', 118), {x:5.90, y:5.76, w:1.48, h:0.58, fontFace:'Segoe UI', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 118), {x:9.64, y:5.76, w:1.48, h:0.58, fontFace:'Segoe UI', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
 
-    traceOpsPptBox(slide, 7.46, 5.78, 1.48, 0.72, 'FFFFFF', 'E5D7D4');
-    traceOpsPptBox(slide, 11.20, 5.78, 1.48, 0.72, 'FFFFFF', 'D9E6E0');
-    slide.addText(traceOpsPptSafe('Image area', 20), {x:7.63, y:6.02, w:1.14, h:0.12, fontFace:'Arial', fontSize:8.4, bold:true, color:'8A8580', align:'center', margin:0});
-    slide.addText(traceOpsPptSafe('Image area', 20), {x:11.37, y:6.02, w:1.14, h:0.12, fontFace:'Arial', fontSize:8.4, bold:true, color:'8A8580', align:'center', margin:0});
-    slide.addText(traceOpsPptSafe('Incorrect setup', 24), {x:7.54, y:6.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:7.4, bold:true, color:'C0392B', align:'center', margin:0});
-    slide.addText(traceOpsPptSafe('Ideal condition', 24), {x:11.28, y:6.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:7.4, bold:true, color:'1A7A3C', align:'center', margin:0});
+    var badImg = await traceOpsPptPickEvidenceImage(normalized, 'bad');
+    var goodImg = await traceOpsPptPickEvidenceImage(normalized, 'good');
+    await traceOpsPptRenderEvidencePanel(slide, {x:7.46, y:5.74, w:1.48, h:0.82, label:'Bad part', caption:'Incorrect setup', tone:'bad', imageData:badImg});
+    await traceOpsPptRenderEvidencePanel(slide, {x:11.20, y:5.74, w:1.48, h:0.82, label:'Good part', caption:'Ideal condition', tone:'good', imageData:goodImg});
 
     return slide;
   }
-
   function traceOpsPptBuildContainmentSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D3 Containment', 'Foxconn standard D3 containment by location', 2, (normalized.status || 'Draft'));
@@ -6894,12 +7014,18 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     return slide;
   }
 
-  function traceOpsPptBuildAppendixSlide(pptx, normalized, model, linked){
+  async function traceOpsPptBuildAppendixSlide(pptx, normalized, model, linked){
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'Appendix A - Traceability & Evidence', 'Foxconn-aligned traceability and evidence summary', 8, model.evidenceRefs.length ? 'Under Validation' : 'Draft');
     slide.addText(traceOpsPptSafe('Event timeline', 40), {x:0.42, y:1.66, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(traceOpsPptTimelineTable(normalized, linked, model), {x:0.42, y:1.90, w:12.48, h:0.72, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.8, margin:0.04, rowH:[0.20,0.44], valign:'mid', align:'center', fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:2.82, w:12.48, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.5, margin:0.04, rowH:[0.18,0.54], colW:[6.18,6.18], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:2.82, w:8.54, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.5, margin:0.04, rowH:[0.18,0.54], colW:[4.18,4.16], fit:'shrink'});
+
+    var appendixBad = await traceOpsPptPickEvidenceImage(normalized, 'bad');
+    var appendixGood = await traceOpsPptPickEvidenceImage(normalized, 'good');
+    await traceOpsPptRenderEvidencePanel(slide, {x:9.16, y:2.82, w:1.78, h:0.82, label:'Bad part', caption:'Evidence view', tone:'bad', imageData:appendixBad});
+    await traceOpsPptRenderEvidencePanel(slide, {x:11.12, y:2.82, w:1.78, h:0.82, label:'Good part', caption:'Reference view', tone:'good', imageData:appendixGood});
+
     slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:3.84, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:3.86, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'5F766C', margin:0, fit:'shrink'});
     var evidenceRows = traceOpsPptDetailedEventRows(normalized, model);
@@ -6910,7 +7036,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
     traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 5.64, 1.4);
     slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending') + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:5.64, w:10.70, h:0.14, fontFace:'Segoe UI', fontSize:8.6, color:'102A43', margin:0, fit:'shrink'});
 
-    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.16, w:12.48, h:0.58, border:{type:'solid', pt:1, color:'102A43'}, fill:'102A43', color:'FFFFFF', fontFace:'Segoe UI', fontSize:8.0, margin:0.03, rowH:0.08, colW:[2.86,1.40,8.22], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) || !!appendixGood ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) || !!appendixBad ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.16, w:12.48, h:0.58, border:{type:'solid', pt:1, color:'102A43'}, fill:'102A43', color:'FFFFFF', fontFace:'Segoe UI', fontSize:8.0, margin:0.03, rowH:0.08, colW:[2.86,1.40,8.22], fit:'shrink'});
     return slide;
   }
 
@@ -7468,14 +7594,14 @@ function exportEightdPpt(draft) {
       var fileBase = String(normalized.eightd_id || normalized.source_rcca_id || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_');
 
       traceOpsPptBuildExecutiveOverview(pptx, normalized, model, linked);
-      traceOpsPptBuildTeamProblemSlide(pptx, normalized, model);
+      await traceOpsPptBuildTeamProblemSlide(pptx, normalized, model);
       traceOpsPptBuildContainmentSlide(pptx, normalized, model);
       traceOpsPptBuildOccurrenceSlide(pptx, normalized, model);
       traceOpsPptBuildEscapeSlide(pptx, normalized, model);
       traceOpsPptBuildActionsSlide(pptx, normalized, model);
       traceOpsPptBuildVerificationSlide(pptx, normalized, model);
       traceOpsPptBuildPreventionClosureSlide(pptx, normalized, model);
-      traceOpsPptBuildAppendixSlide(pptx, normalized, model, linked);
+      await traceOpsPptBuildAppendixSlide(pptx, normalized, model, linked);
 
       if (typeof pptx.write === 'function') {
         var arr = await pptx.write({ outputType: 'arraybuffer', compression: true });
@@ -8689,7 +8815,17 @@ function exportEightdPpt(draft) {
     function replaceMetaFiles(nextFiles){
       var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});
       n.meta_files=traceOpsNormalizeMetaFiles(nextFiles||[]);
+      n.meta = Object.assign({}, n.meta || {}, { evidence: traceOpsBuildEvidenceMetaFromFiles(n.meta_files) });
       setForm(n);
+    }
+    function setMetaFileRole(fileId, role){
+      var nextFiles = traceOpsNormalizeMetaFiles(form.meta_files || []).map(function(item){
+        if (item.id !== fileId) return item;
+        var next = Object.assign({}, item);
+        next.evidence_role = traceOpsNormalizeEvidenceRole(role);
+        return next;
+      });
+      replaceMetaFiles(nextFiles);
     }
     function removeMetaFile(fileId){
       replaceMetaFiles((form.meta_files||[]).filter(function(item){ return item.id !== fileId; }));
@@ -8744,7 +8880,8 @@ function exportEightdPpt(draft) {
           type:file.type || '',
           size:Number(file.size||0),
           kind:traceOpsMetaTypeLabel(file),
-          data_url:String(dataUrl||'')
+          data_url:String(dataUrl||''),
+          evidence_role: traceOpsIsImageMetaFile(file) ? 'general' : undefined
         });
       }
       replaceMetaFiles(current.concat(prepared));
@@ -8897,7 +9034,13 @@ function exportEightdPpt(draft) {
                             <div style={{fontSize:10,color:"#6A6560",marginTop:2}}>{file.kind} · {traceOpsFormatBytes(file.size)}</div>
                           </div>
                         </div>
-                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                          {traceOpsIsImageMetaFile(file)&&<div style={{display:"inline-flex",gap:4,flexWrap:"wrap",padding:"3px",background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:999}}>
+                            {[["bad","Bad part","#FDF0EE","#C0392B"],["good","Good part","#EEF6FF","#1A7A3C"],["general","General","#EAF2FF","#2F6FB3"]].map(function(opt){
+                              var active=(file.evidence_role||'general')===opt[0];
+                              return <button key={opt[0]} type="button" onClick={function(){setMetaFileRole(file.id,opt[0]);}} style={{background:active?opt[2]:"transparent",color:active?opt[3]:"#6A6560",border:"none",borderRadius:999,padding:"5px 8px",fontSize:9.5,fontWeight:800,cursor:"pointer"}}>{opt[1]}</button>;
+                            })}
+                          </div>}
                           <button type="button" onClick={function(){traceOpsDownloadMetaFile(file);}} style={{background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#2F6FB3",cursor:"pointer"}}>Descargar</button>
                           <button type="button" onClick={function(){removeMetaFile(file.id);}} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#6A6560",cursor:"pointer"}}>Quitar</button>
                         </div>
