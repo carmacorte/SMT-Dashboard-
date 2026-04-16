@@ -1988,6 +1988,16 @@ async function signUp(email, password){
 <script>
 
 
+
+function traceOpsPptShapeRectSafeLocal() {
+  try {
+    if (window.PptxGenJS && window.PptxGenJS.ShapeType) {
+      return window.PptxGenJS.ShapeType.rect;
+    }
+  } catch (_) {}
+  return 'rect';
+}
+
 function traceOpsPptExecutiveStatusToneLocal(statusText) {
   var s = String(statusText || '').toLowerCase();
   if (/closed|complete|validated|complete/.test(s)) return { fill: 'EAF7EE', text: '1B5E20', line: 'B7DEC2' };
@@ -2051,7 +2061,7 @@ function traceOpsPptExecutiveFocusLinesLocal(d) {
 }
 
 function traceOpsPptDrawExecKpiLocal(slide, x, y, w, h, label, value, meta) {
-  slide.addShape(PptxGenJS.ShapeType.roundRect, {
+  slide.addShape(traceOpsPptShapeRectSafeLocal(), {
     x:x, y:y, w:w, h:h, rectRadius:0.08,
     fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1}
   });
@@ -2075,7 +2085,7 @@ function addExecutiveDashboardSlide(ppt, d) {
     x:0.45, y:1.06, w:8.8, h:0.2, fontFace:'Segoe UI', fontSize:10, color:'5F766C', breakLine:false, fit:'shrink'
   });
 
-  slide.addShape(PptxGenJS.ShapeType.roundRect, {
+  slide.addShape(traceOpsPptShapeRectSafeLocal(), {
     x:0.45, y:1.34, w:8.8, h:0.38, rectRadius:0.08,
     fill:{color:tone.fill}, line:{color:tone.line, pt:1}
   });
@@ -2089,12 +2099,12 @@ function addExecutiveDashboardSlide(ppt, d) {
   traceOpsPptDrawExecKpiLocal(slide, 0.45 + (kpiW + gap)*2, kpiY, kpiW, 0.92, 'EVIDENCE', d.evidenceBadge, 'Bad / Good logic and files');
   traceOpsPptDrawExecKpiLocal(slide, 0.45 + (kpiW + gap)*3, kpiY, kpiW, 0.92, 'CURRENT STATUS', d.reportStatus || 'Draft', 'Customer-facing state');
 
-  slide.addShape(PptxGenJS.ShapeType.roundRect, { x:0.45, y:2.98, w:8.8, h:1.14, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
+  slide.addShape(traceOpsPptShapeRectSafeLocal(), { x:0.45, y:2.98, w:8.8, h:1.14, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
   slide.addText('EXECUTIVE SUMMARY', { x:0.58, y:3.08, w:2.0, h:0.14, fontFace:'Segoe UI', fontSize:9, bold:true, color:'1F3A5F', breakLine:false });
   slide.addText(traceOpsPptExecutiveSummaryLocal(d), { x:0.58, y:3.28, w:8.3, h:0.7, fontFace:'Segoe UI', fontSize:9.5, color:'33463F', valign:'top', margin:0.02, fit:'shrink' });
 
-  slide.addShape(PptxGenJS.ShapeType.roundRect, { x:0.45, y:4.28, w:4.28, h:1.1, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
-  slide.addShape(PptxGenJS.ShapeType.roundRect, { x:4.97, y:4.28, w:4.28, h:1.1, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
+  slide.addShape(traceOpsPptShapeRectSafeLocal(), { x:0.45, y:4.28, w:4.28, h:1.1, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
+  slide.addShape(traceOpsPptShapeRectSafeLocal(), { x:4.97, y:4.28, w:4.28, h:1.1, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
 
   slide.addText('RISK & IMPACT', { x:0.58, y:4.4, w:1.8, h:0.14, fontFace:'Segoe UI', fontSize:9, bold:true, color:'1F3A5F', breakLine:false });
   slide.addText(traceOpsPptExecutiveRiskLinesLocal(d), { x:0.58, y:4.62, w:3.9, h:0.56, fontFace:'Segoe UI', fontSize:9.5, color:'33463F', margin:0.02, fit:'shrink' });
@@ -2102,8 +2112,8 @@ function addExecutiveDashboardSlide(ppt, d) {
   slide.addText('ROOT CAUSE STATUS', { x:5.1, y:4.4, w:2.0, h:0.14, fontFace:'Segoe UI', fontSize:9, bold:true, color:'1F3A5F', breakLine:false });
   slide.addText(traceOpsPptExecutiveRootCauseLinesLocal(d), { x:5.1, y:4.62, w:3.9, h:0.56, fontFace:'Segoe UI', fontSize:9.2, color:'33463F', margin:0.02, fit:'shrink' });
 
-  slide.addShape(PptxGenJS.ShapeType.roundRect, { x:0.45, y:5.58, w:4.28, h:0.98, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
-  slide.addShape(PptxGenJS.ShapeType.roundRect, { x:4.97, y:5.58, w:4.28, h:0.98, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
+  slide.addShape(traceOpsPptShapeRectSafeLocal(), { x:0.45, y:5.58, w:4.28, h:0.98, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
+  slide.addShape(traceOpsPptShapeRectSafeLocal(), { x:4.97, y:5.58, w:4.28, h:0.98, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
 
   slide.addText('ACTIONS SNAPSHOT', { x:0.58, y:5.7, w:1.8, h:0.14, fontFace:'Segoe UI', fontSize:9, bold:true, color:'1F3A5F', breakLine:false });
   slide.addText(traceOpsPptExecutiveBulletLinesLocal(d.actionsList, 'Corrective actions defined and under validation.'), { x:0.58, y:5.92, w:3.95, h:0.48, fontFace:'Segoe UI', fontSize:9.2, color:'33463F', margin:0.02, fit:'shrink' });
@@ -6318,7 +6328,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var safeTitle = traceOpsPptSafe(title, 120);
     var safeBody = traceOpsPptWrap(body, 460);
     if (safeTitle) slide.addText(safeTitle, {x:x, y:y, w:w, h:0.22, fontFace:"Arial", fontSize:10, bold:true, color:"5F766C", breakLine:false, margin:0, fit:'shrink'});
-    slide.addShape("roundRect", {x:x, y:y+0.22, w:w, h:h-0.22, rectRadius:0.08, line:{color:"DCE9E2", pt:1}, fill:{color:fill || "FFFFFF"}});
+    slide.addShape('rect', {x:x, y:y+0.22, w:w, h:h-0.22, rectRadius:0.08, line:{color:"DCE9E2", pt:1}, fill:{color:fill || "FFFFFF"}});
     if (safeBody) slide.addText(safeBody, {x:x+0.08, y:y+0.32, w:w-0.16, h:h-0.36, fontFace:"Arial", fontSize:11, color:"102A43", valign:"top", margin:0.02, fit:'shrink'});
   }
 
@@ -6380,7 +6390,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     slide.addText(traceOpsPptSafe(title, 110), {x:0.42, y:0.42, w:7.9, h:0.24, fontFace:'Arial', fontSize:22, bold:true, color:'FFFFFF', margin:0});
     slide.addText(traceOpsPptSafe(subtitle || 'TraceOps structured 8D deck export', 180), {x:0.42, y:0.72, w:8.8, h:0.14, fontFace:'Arial', fontSize:10.4, color:'D6E3DD', margin:0});
     if (badgeText) {
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:11.26, y:0.28, w:1.62, h:0.34, rectRadius:0.08, line:{color:'3D5C50', pt:1}, fill:{color:'173328'}});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:11.26, y:0.28, w:1.62, h:0.34, rectRadius:0.08, line:{color:'3D5C50', pt:1}, fill:{color:'173328'}});
       slide.addText(traceOpsPptSafe(badgeText, 40), {x:11.38, y:0.37, w:1.36, h:0.12, fontFace:'Arial', fontSize:9.2, bold:true, color:'D7E7E0', align:'center', margin:0});
     }
     var steps = traceOpsPptDeckSteps();
@@ -6390,7 +6400,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     for (var i = 0; i < steps.length; i++) {
       var x = 0.42 + (i * (itemW + gap));
       var active = i === activeIdx;
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '2F6FB3' : 'C9DAF5', pt:1}, fill:{color:active ? 'EAF2FF' : 'FFFFFF'}});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '2F6FB3' : 'C9DAF5', pt:1}, fill:{color:active ? 'EAF2FF' : 'FFFFFF'}});
       slide.addText(traceOpsPptSafe(steps[i], 24), {x:x+0.03, y:1.19, w:itemW-0.06, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:active ? '2F6FB3' : '5F766C', align:'center', margin:0, fit:'shrink'});
     }
   }
@@ -6418,7 +6428,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
   function traceOpsPptBox(slide, x, y, w, h, fill, lineColor){
     if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
-    slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x, y:y, w:w, h:h, rectRadius:0.06, line:{color:lineColor || 'DCE9E2', pt:1}, fill:{color:fill || 'FFFFFF'}});
+    slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:x, y:y, w:w, h:h, rectRadius:0.06, line:{color:lineColor || 'DCE9E2', pt:1}, fill:{color:fill || 'FFFFFF'}});
   }
 
   function traceOpsPptMiniNote(slide, text, x, y, w){
@@ -6432,8 +6442,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var rowH = h / list.length;
     for (var i = 0; i < list.length; i++) {
       var yy = y + (i * rowH);
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x + 0.06, y:yy + 0.04, w:w - 0.42, h:rowH - 0.08, rectRadius:0.05, line:{color:(i === list.length - 1 ? '4A90E2' : 'DCE9E2'), pt:1}, fill:{color:(i === list.length - 1 ? 'FFF5E7' : (i % 2 ? 'FAFCFF' : 'FFFFFF'))}});
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x + w - 0.30, y:yy + 0.10, w:0.18, h:rowH - 0.20, rectRadius:0.04, line:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2'), pt:1}, fill:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2')}});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:x + 0.06, y:yy + 0.04, w:w - 0.42, h:rowH - 0.08, rectRadius:0.05, line:{color:(i === list.length - 1 ? '4A90E2' : 'DCE9E2'), pt:1}, fill:{color:(i === list.length - 1 ? 'FFF5E7' : (i % 2 ? 'FAFCFF' : 'FFFFFF'))}});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:x + w - 0.30, y:yy + 0.10, w:0.18, h:rowH - 0.20, rectRadius:0.04, line:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2'), pt:1}, fill:{color:(i === list.length - 1 ? '4A90E2' : '4A90E2')}});
       slide.addText(String(i + 1), {x:x + 0.14, y:yy + 0.10, w:0.24, h:0.14, fontFace:'Arial', fontSize:10.5, bold:true, color:'2F6FB3', align:'center', margin:0});
       slide.addText(traceOpsPptWrap(list[i], 95), {x:x + 0.46, y:yy + 0.11, w:w - 0.92, h:rowH - 0.18, fontFace:'Arial', fontSize:10.0, color:'102A43', margin:0, fit:'shrink', valign:'mid'});
     }
@@ -6459,11 +6469,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       slide.addShape(_traceOpsPptxRef.ShapeType.line, {x:ax, y:centerY, w:-0.68, h:-0.64, line:{color:'4A90E2', pt:1.2}});
       slide.addShape(_traceOpsPptxRef.ShapeType.line, {x:ax, y:centerY, w:-0.68, h:0.64, line:{color:'4A90E2', pt:1.2}});
 
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:ax - 1.14, y:y + 0.12, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:ax - 1.14, y:y + 0.12, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
       slide.addText(traceOpsPptSafe(topItem.label, 26), {x:ax - 1.06, y:y + 0.20, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
       slide.addText(traceOpsPptWrap(((topItem.items && topItem.items[0]) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + 0.46, w:1.42, h:0.34, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
 
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:ax - 1.14, y:y + h - 0.42, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FAFCFF'}});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:ax - 1.14, y:y + h - 0.42, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FAFCFF'}});
       slide.addText(traceOpsPptSafe(bottomItem.label, 26), {x:ax - 1.06, y:y + h - 0.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
       slide.addText(traceOpsPptWrap(((bottomItem.items && bottomItem.items[0]) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + h - 0.78, w:1.42, h:0.26, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
     }
@@ -6480,8 +6490,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var rowH = (h - topPad - (gap * (maxItems - 1))) / maxItems;
     for (var i = 0; i < maxItems; i++) {
       var yy = y + topPad + (i * (rowH + gap));
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x, y:yy, w:w, h:rowH, rectRadius:0.05, line:{color:'DCE9E2', pt:1}, fill:{color:(i % 2 ? 'FAFCFF' : 'FFFFFF')}});
-      slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x + 0.08, y:yy + 0.07, w:0.52, h:rowH - 0.14, rectRadius:0.04, line:{color:'E2EBF9', pt:1}, fill:{color:'ECF5F1'}});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:x, y:yy, w:w, h:rowH, rectRadius:0.05, line:{color:'DCE9E2', pt:1}, fill:{color:(i % 2 ? 'FAFCFF' : 'FFFFFF')}});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:x + 0.08, y:yy + 0.07, w:0.52, h:rowH - 0.14, rectRadius:0.04, line:{color:'E2EBF9', pt:1}, fill:{color:'ECF5F1'}});
       slide.addText(String(i + 1), {x:x + 0.19, y:yy + (rowH/2) - 0.08, w:0.28, h:0.14, fontFace:'Arial', fontSize:10.0, bold:true, color:'2F6FB3', align:'center', margin:0});
       slide.addText(traceOpsPptWrap(items[i], 110), {x:x + 0.72, y:yy + 0.06, w:w - 0.84, h:rowH - 0.12, fontFace:'Arial', fontSize:9.2, color:'102A43', margin:0, fit:'shrink', valign:'mid'});
     }
@@ -6495,7 +6505,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     if (tone === 'draft') { fill = 'FEF9E8'; line = 'F1DF9E'; text = '9A6A16'; }
     else if (tone === 'pending') { fill = 'FDF0EE'; line = 'F0C4BE'; text = 'C0392B'; }
     else if (tone === 'ok') { fill = 'EAF2FF'; line = 'C7DBF7'; text = '2F6FB3'; }
-    slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:x, y:y, w:1.28, h:0.24, rectRadius:0.08, line:{color:line, pt:1}, fill:{color:fill}});
+    slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:x, y:y, w:1.28, h:0.24, rectRadius:0.08, line:{color:line, pt:1}, fill:{color:fill}});
     slide.addText(traceOpsPptSafe(label, 28), {x:x+0.05, y:y+0.07, w:1.18, h:0.10, fontFace:'Arial', fontSize:8.5, bold:true, color:text, align:'center', margin:0, fit:'shrink'});
   }
 
@@ -6577,7 +6587,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     traceOpsPptBox(slide, x, y, w, h, palette[0], palette[1]);
     slide.addText(traceOpsPptSafe(label, 34), {x:x+0.10, y:y+0.08, w:w-0.20, h:0.12, fontFace:'Segoe UI', fontSize:8.8, bold:true, color:'5F766C', align:'center', margin:0, fit:'shrink'});
     var innerX = x + 0.12, innerY = y + 0.26, innerW = w - 0.24, innerH = h - 0.48;
-    slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {x:innerX, y:innerY, w:innerW, h:innerH, rectRadius:0.04, line:{color:palette[1], pt:1}, fill:{color:'FFFFFF'}});
+    slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:innerX, y:innerY, w:innerW, h:innerH, rectRadius:0.04, line:{color:palette[1], pt:1}, fill:{color:'FFFFFF'}});
     if (imageData) {
       try {
         slide.addImage({data:imageData, x:innerX+0.02, y:innerY+0.02, w:innerW-0.04, h:innerH-0.04, sizing:'contain'});
@@ -8016,7 +8026,7 @@ function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
   var gridOpacity = opts.gridOpacity == null ? 0.10 : opts.gridOpacity;
   var glowOpacity = opts.glowOpacity == null ? 0.16 : opts.glowOpacity;
 
-  slide.addShape(_traceOpsPptxRef.ShapeType.roundRect, {
+  slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {
     x:x, y:y, w:w, h:h,
     rectRadius: radius,
     line:{ color: lineColor, transparency: 55, width: 1.1 },
@@ -8027,7 +8037,7 @@ function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
     slide.addText('', {
       x:x, y:y, w:w, h:h,
       margin:0,
-      shape:'roundRect',
+      shape:'rect',
       rectRadius: radius,
       fill:{
         color:[{ color: dark1, pos: 0 }, { color: dark2, pos: 58 }, { color: dark3, pos: 100 }],
