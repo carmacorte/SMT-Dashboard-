@@ -1946,6 +1946,33 @@ async function signUp(email, password){
     });
   }
 
+  function subscribeRccaRealtime(userId, handler){
+    var client = getClient();
+    if (!client || !userId || !handler) {
+      return { unsubscribe: function(){} };
+    }
+    var channelName = 'traceops-rcca-' + String(userId).replace(/[^a-zA-Z0-9_-]/g, '_');
+    var channel = client.channel(channelName);
+    channel.on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'traceops_rcca_cases',
+      filter: 'user_id=eq.' + userId
+    }, function(payload){
+      try { handler(payload || null); } catch(_) {}
+    });
+    channel.subscribe(function(status){
+      try {
+        if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime status:', status);
+      } catch(_) {}
+    });
+    return {
+      unsubscribe: function(){
+        try { client.removeChannel(channel); } catch(_) {}
+      }
+    };
+  }
+
   async function listRcca(){
     var client = getClient();
     var user = await getUser();
@@ -1999,6 +2026,7 @@ async function signUp(email, password){
     signUp: signUp,
     signOut: signOut,
     onAuthChange: onAuthChange,
+    subscribeRccaRealtime: subscribeRccaRealtime,
     listRcca: listRcca,
     upsertRcca: upsertRcca,
     removeRcca: removeRcca
@@ -5459,25 +5487,46 @@ function App() {
       setCloudStatus("Modo local · sin backend");
       return;
     }
+
+    var realtimeSub = null;
+    function stopRealtime(){
+      try {
+        if (realtimeSub && typeof realtimeSub.unsubscribe === "function") realtimeSub.unsubscribe();
+      } catch(_){}
+      realtimeSub = null;
+    }
+    function startRealtime(user){
+      stopRealtime();
+      if (!user || !(window.TraceOpsCloud && window.TraceOpsCloud.subscribeRccaRealtime)) return;
+      realtimeSub = window.TraceOpsCloud.subscribeRccaRealtime(user.id, function(){
+        setCloudStatus("RCCA en nube · actualización en tiempo real");
+        refreshCloudRcca();
+      });
+    }
+
     var unsub = window.TraceOpsCloud.onAuthChange(function(evt, user){
-  window.authUser = user || null;
-  setAuthUser(user || null);
+      window.authUser = user || null;
+      setAuthUser(user || null);
 
-  if (typeof updateAuthUI === "function") updateAuthUI();
+      if (typeof updateAuthUI === "function") updateAuthUI();
 
-  if (user) {
-    setCloudStatus("Sesion activa");
-    refreshCloudRcca();
-  } else {
-    setCloudStatus("Modo local");
-  }
+      if (user) {
+        setCloudStatus("Sesion activa");
+        startRealtime(user);
+        refreshCloudRcca();
+      } else {
+        stopRealtime();
+        setCloudStatus("Modo local");
+      }
 
-  setAuthReady(true);
-});
+      setAuthReady(true);
+    });
+
     window.TraceOpsCloud.getUser().then(function(user){
       setAuthUser(user || null);
       if (user) {
         setCloudStatus("Sesion activa");
+        startRealtime(user);
         refreshCloudRcca();
       } else {
         setAuthReady(true);
@@ -5487,7 +5536,9 @@ function App() {
       setAuthReady(true);
       setCloudStatus("Error nube: " + (err && err.message ? err.message : String(err)));
     });
+
     return function(){
+      stopRealtime();
       try {
         var sub = unsub && unsub.data && unsub.data.subscription;
         if (sub && typeof sub.unsubscribe === "function") sub.unsubscribe();
