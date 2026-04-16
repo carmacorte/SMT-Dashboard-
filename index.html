@@ -6821,19 +6821,20 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
       {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.2, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], fit:'shrink'}
     );
 
-    slide.addText(traceOpsPptSafe('Bad part / situation', 40), {x:5.74, y:5.42, w:2.1, h:0.16, fontFace:'Segoe UI', fontSize:10.6, bold:true, color:'5F766C'});
-    slide.addText(traceOpsPptSafe('Good part / situation', 40), {x:9.38, y:5.42, w:2.1, h:0.16, fontFace:'Segoe UI', fontSize:10.6, bold:true, color:'5F766C'});
+    traceOpsPptLine(slide, 5.74, 5.46, 12.90, 5.46, 'DCE9E2', 1.0);
+    slide.addText(traceOpsPptSafe('Bad part / situation', 40), {x:5.74, y:5.56, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.6, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Good part / situation', 40), {x:9.38, y:5.56, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.6, bold:true, color:'5F766C'});
 
-    traceOpsPptBox(slide, 5.74, 5.62, 3.42, 1.08, 'FDF0EE', 'F0C4BE');
-    traceOpsPptBox(slide, 9.48, 5.62, 3.42, 1.08, 'EEF6FF', 'B8DECE');
+    traceOpsPptBox(slide, 5.74, 5.80, 3.42, 1.34, 'FDF0EE', 'F0C4BE');
+    traceOpsPptBox(slide, 9.48, 5.80, 3.42, 1.34, 'EEF6FF', 'B8DECE');
 
-    slide.addText(traceOpsPptWrap(normalized.bad_part || normalized.complaint_anchor || model.complaintAnchor || 'Incorrect setup / failure condition.', 118), {x:5.90, y:5.76, w:1.48, h:0.58, fontFace:'Segoe UI', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
-    slide.addText(traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 118), {x:9.64, y:5.76, w:1.48, h:0.58, fontFace:'Segoe UI', fontSize:8.2, color:'102A43', margin:0.02, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.bad_part || normalized.complaint_anchor || model.complaintAnchor || 'Incorrect setup / failure condition.', 128), {x:5.90, y:5.98, w:1.18, h:0.86, fontFace:'Segoe UI', fontSize:8.0, color:'102A43', margin:0.03, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 128), {x:9.64, y:5.98, w:1.18, h:0.86, fontFace:'Segoe UI', fontSize:8.0, color:'102A43', margin:0.03, fit:'shrink'});
 
     var badImg = await traceOpsPptPickEvidenceImage(normalized, 'bad');
     var goodImg = await traceOpsPptPickEvidenceImage(normalized, 'good');
-    await traceOpsPptRenderEvidencePanel(slide, {x:7.46, y:5.74, w:1.48, h:0.82, label:'Bad part', caption:'Incorrect setup', tone:'bad', imageData:badImg});
-    await traceOpsPptRenderEvidencePanel(slide, {x:11.20, y:5.74, w:1.48, h:0.82, label:'Good part', caption:'Ideal condition', tone:'good', imageData:goodImg});
+    await traceOpsPptRenderEvidencePanel(slide, {x:7.12, y:5.96, w:1.86, h:1.08, label:'Bad part', caption:'Incorrect setup', tone:'bad', imageData:badImg});
+    await traceOpsPptRenderEvidencePanel(slide, {x:10.86, y:5.96, w:1.86, h:1.08, label:'Good part', caption:'Ideal condition', tone:'good', imageData:goodImg});
 
     return slide;
   }
