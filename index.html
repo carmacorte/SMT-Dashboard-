@@ -1865,52 +1865,55 @@ async function initApp(){
 }
 async function loadRccasFromCloud(){
   var client = getClient();
-  if (!client) {
-    console.warn("No hay cliente Supabase");
-    return;
+  var user = await getUser();
+  if (!client || !user) {
+    console.warn("No hay cliente Supabase o sesion activa");
+    return [];
   }
 
   const { data, error } = await client
     .from('traceops_rcca_cases')
     .select('*')
+    .eq('user_id', user.id)
     .order('updated_at', { ascending: false });
 
   if (error) {
     console.error("Error cargando RCCA:", error);
-    return;
+    return [];
   }
 
   if(window.__TRACEOPS_DEV__){console.log("[TraceOps] RCCA desde nube:", data);}
 
-  // 🔥 NORMALIZAR (ESTO ES CLAVE)
-  const rccas = (data || []).map(row => row.payload);
+  const rccas = (data || []).map(function(row){ return row.payload; }).filter(Boolean);
   try {
     var localRccas = [];
     try { localRccas = JSON.parse(localStorage.getItem("traceops_rcca_cases") || "[]") || []; } catch(_) {}
-    if (Array.isArray(localRccas) && localRccas.length) {
-      var mergedById = {};
+    var mergedById = {};
+    if (Array.isArray(localRccas)) {
       localRccas.forEach(function(item){
         if (item && item.rcca_id) mergedById[item.rcca_id] = traceOpsMergeRccaPayload(mergedById[item.rcca_id], item);
       });
-      rccas.forEach(function(item){
-        if (item && item.rcca_id) mergedById[item.rcca_id] = traceOpsMergeRccaPayload(mergedById[item.rcca_id], item);
-      });
-      var mergedList = Object.keys(mergedById).map(function(k){ return mergedById[k]; });
-      localStorage.setItem("traceops_rcca_cases", JSON.stringify(mergedList));
-      window.__traceops_cloud_rccas = mergedList;
-      if (typeof renderInvestigationCarousel === "function") {
-        renderInvestigationCarousel(mergedList);
-      }
-      return;
     }
+    rccas.forEach(function(item){
+      if (item && item.rcca_id) mergedById[item.rcca_id] = traceOpsMergeRccaPayload(mergedById[item.rcca_id], item);
+    });
+    var mergedList = Object.keys(mergedById).map(function(k){ return mergedById[k]; });
+    localStorage.setItem("traceops_rcca_cases", JSON.stringify(mergedList));
+    window.__traceops_cloud_rccas = mergedList;
+    if (typeof renderInvestigationCarousel === "function") {
+      renderInvestigationCarousel(mergedList);
+    }
+    return mergedList;
   } catch(_) {}
 
   if(window.__TRACEOPS_DEV__){console.log("[TraceOps] RCCA normalizados:", rccas);}
 
+  localStorage.setItem("traceops_rcca_cases", JSON.stringify(rccas));
   window.__traceops_cloud_rccas = rccas;
   if (typeof renderInvestigationCarousel === "function") {
     renderInvestigationCarousel(rccas);
   }
+  return rccas;
 } 
 async function signIn(email, password){
     var client = getClient();
@@ -5458,15 +5461,13 @@ function App() {
     }
     var unsub = window.TraceOpsCloud.onAuthChange(function(evt, user){
   window.authUser = user || null;
+  setAuthUser(user || null);
 
   if (typeof updateAuthUI === "function") updateAuthUI();
 
   if (user) {
     setCloudStatus("Sesion activa");
-
-    // 🔥 ESTO ES LO QUE TE FALTA
     refreshCloudRcca();
-
   } else {
     setCloudStatus("Modo local");
   }
