@@ -1882,6 +1882,26 @@ async function loadRccasFromCloud(){
 
   // 🔥 NORMALIZAR (ESTO ES CLAVE)
   const rccas = (data || []).map(row => row.payload);
+  try {
+    var localRccas = [];
+    try { localRccas = JSON.parse(localStorage.getItem("traceops_rcca_cases") || "[]") || []; } catch(_) {}
+    if (Array.isArray(localRccas) && localRccas.length) {
+      var mergedById = {};
+      localRccas.forEach(function(item){
+        if (item && item.rcca_id) mergedById[item.rcca_id] = traceOpsMergeRccaPayload(mergedById[item.rcca_id], item);
+      });
+      rccas.forEach(function(item){
+        if (item && item.rcca_id) mergedById[item.rcca_id] = traceOpsMergeRccaPayload(mergedById[item.rcca_id], item);
+      });
+      var mergedList = Object.keys(mergedById).map(function(k){ return mergedById[k]; });
+      localStorage.setItem("traceops_rcca_cases", JSON.stringify(mergedList));
+      window.__traceops_cloud_rccas = mergedList;
+      if (typeof renderInvestigationCarousel === "function") {
+        renderInvestigationCarousel(mergedList);
+      }
+      return;
+    }
+  } catch(_) {}
 
   if(window.__TRACEOPS_DEV__){console.log("[TraceOps] RCCA normalizados:", rccas);}
 
@@ -5473,7 +5493,8 @@ function App() {
   }, []);
 
   async function saveRcca(rcca) {
-    var normalized = Object.assign({}, rcca, {
+    var existingLocal = (Array.isArray(rccaList) ? rccaList.find(function(x){ return x && x.rcca_id === rcca.rcca_id; }) : null) || null;
+    var normalized = traceOpsMergeRccaPayload(existingLocal, Object.assign({}, rcca, {
       source: rcca.source || "manual",
       updated_at: new Date().toISOString(),
       owner_email: authUser && authUser.email ? authUser.email : (rcca.owner_email || "")
@@ -8098,6 +8119,95 @@ function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
 }
 
 
+
+function traceOpsMetaFileStableKey(file){
+  var f = file || {};
+  var role = f.evidence_role || f.role || '';
+  var name = String(f.name || '').trim().toLowerCase();
+  var size = String(f.size || '');
+  var type = String(f.type || '').trim().toLowerCase();
+  var kind = String(f.kind || '').trim().toLowerCase();
+  var id = String(f.id || '').trim();
+  var dataUrl = String(f.data_url || '');
+  var head = dataUrl ? dataUrl.slice(0, 96) : '';
+  return [name, size, type, kind, role, id || head].join('|');
+}
+
+function traceOpsNormalizeMetaFileForMerge(file){
+  var f = Object.assign({}, file || {});
+  if (!f.id) f.id = 'meta_' + Math.random().toString(36).slice(2,10);
+  if (!f.kind) {
+    if (/^image\//i.test(String(f.type || ''))) f.kind = 'image';
+    else f.kind = 'file';
+  }
+  return f;
+}
+
+function traceOpsMergeMetaFiles(existingList, incomingList){
+  var out = [];
+  var map = {};
+  function upsert(item){
+    if (!item) return;
+    var normalized = traceOpsNormalizeMetaFileForMerge(item);
+    var key = traceOpsMetaFileStableKey(normalized);
+    var prev = map[key];
+    if (!prev) {
+      map[key] = normalized;
+      out.push(normalized);
+      return;
+    }
+    var merged = Object.assign({}, prev, normalized);
+    if (!merged.data_url) merged.data_url = prev.data_url || normalized.data_url || '';
+    if (!merged.evidence_role) merged.evidence_role = normalized.evidence_role || prev.evidence_role || '';
+    if (!merged.name) merged.name = normalized.name || prev.name || '';
+    if (!merged.type) merged.type = normalized.type || prev.type || '';
+    if (!merged.size) merged.size = normalized.size || prev.size || 0;
+    map[key] = merged;
+    var idx = out.findIndex(function(x){ return traceOpsMetaFileStableKey(x) === key; });
+    if (idx >= 0) out[idx] = merged;
+  }
+  (Array.isArray(existingList) ? existingList : []).forEach(upsert);
+  (Array.isArray(incomingList) ? incomingList : []).forEach(upsert);
+  return out;
+}
+
+function traceOpsBuildEvidenceMetaFromFiles(metaFiles){
+  var evidence = { bad_part: [], good_part: [], general: [] };
+  (Array.isArray(metaFiles) ? metaFiles : []).forEach(function(file){
+    if (!file || file.kind !== 'image') return;
+    var role = String(file.evidence_role || 'general').toLowerCase();
+    var name = file.name || '';
+    if (!name) return;
+    if (role === 'bad') evidence.bad_part.push(name);
+    else if (role === 'good') evidence.good_part.push(name);
+    else evidence.general.push(name);
+  });
+  evidence.bad_part = Array.from(new Set(evidence.bad_part));
+  evidence.good_part = Array.from(new Set(evidence.good_part));
+  evidence.general = Array.from(new Set(evidence.general));
+  return evidence;
+}
+
+function traceOpsMergeRccaPayload(existingRcca, incomingRcca){
+  var base = Object.assign({}, existingRcca || {}, incomingRcca || {});
+  var existingMeta = Array.isArray(existingRcca && existingRcca.meta_files) ? existingRcca.meta_files : [];
+  var incomingMeta = Array.isArray(incomingRcca && incomingRcca.meta_files) ? incomingRcca.meta_files : [];
+  var mergedMeta = traceOpsMergeMetaFiles(existingMeta, incomingMeta);
+  base.meta_files = mergedMeta;
+
+  var existingMetaObj = (existingRcca && existingRcca.meta) || {};
+  var incomingMetaObj = (incomingRcca && incomingRcca.meta) || {};
+  base.meta = Object.assign({}, existingMetaObj, incomingMetaObj);
+  base.meta.evidence = traceOpsBuildEvidenceMetaFromFiles(mergedMeta);
+
+  base.bad_part_images = Array.from(new Set([].concat(base.bad_part_images || [], base.meta.evidence.bad_part || [])));
+  base.good_part_images = Array.from(new Set([].concat(base.good_part_images || [], base.meta.evidence.good_part || [])));
+  base.evidence_images = Array.from(new Set([].concat(base.evidence_images || [], base.meta.evidence.general || [])));
+
+  return base;
+}
+
+
 function exportEightdPpt(draft) {
     if (!draft) return;
     var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
@@ -9390,7 +9500,9 @@ function exportEightdPpt(draft) {
     var metaInputRef=_useRef(null);
     function replaceMetaFiles(nextFiles){
       var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});
-      n.meta_files=traceOpsNormalizeMetaFiles(nextFiles||[]);
+      var incoming = traceOpsNormalizeMetaFiles(nextFiles||[]);
+      var current = Array.isArray(n.meta_files) ? n.meta_files : [];
+      n.meta_files = traceOpsMergeMetaFiles(current, incoming);
       n.meta = Object.assign({}, n.meta || {}, { evidence: traceOpsBuildEvidenceMetaFromFiles(n.meta_files) });
       setForm(n);
     }
