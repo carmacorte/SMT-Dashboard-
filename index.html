@@ -1813,7 +1813,29 @@ window.TRACEOPS_SUPABASE = window.TRACEOPS_SUPABASE || {
   enabled: false
 };
 
+if (typeof window !== "undefined" && !window.global) { window.global = window; }
+
+function traceOpsNormalizeCloudError(err) {
+  var raw = err && err.message ? String(err.message) : String(err || "");
+  var low = raw.toLowerCase();
+  if (low.indexOf("load failed") >= 0 || low.indexOf("failed to fetch") >= 0 || low.indexOf("networkerror") >= 0) {
+    var e = new Error("No se pudo conectar con Supabase desde este navegador. Se mantiene modo local.");
+    e.isNetworkFallback = true;
+    e.originalMessage = raw;
+    return e;
+  }
+  if (low.indexOf('another request stole it') >= 0 || low.indexOf('auth-token') >= 0 && low.indexOf('lock') >= 0) {
+    var e2 = new Error("La sesión en nube está ocupada por otra operación. Reintentando sin bloquear la app.");
+    e2.isTransientAuthLock = true;
+    e2.originalMessage = raw;
+    return e2;
+  }
+  return err instanceof Error ? err : new Error(raw || "Error de nube");
+}
+
 window.TraceOpsCloud = (function(){
+  var __traceops_user_cache = null;
+  var __traceops_user_loading = null;
   function cfg(){
     var raw = window.TRACEOPS_SUPABASE || {};
     return {
@@ -1837,6 +1859,13 @@ window.TraceOpsCloud = (function(){
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true
+        },
+        global: {
+          fetch: function(url, options) {
+            return fetch(url, options).catch(function(err){
+              throw traceOpsNormalizeCloudError(err);
+            });
+          }
         }
       });
     }
@@ -1846,8 +1875,20 @@ window.TraceOpsCloud = (function(){
   async function getUser(){
     var client = getClient();
     if (!client) return null;
-    var out = await client.auth.getUser();
-    return out && out.data ? out.data.user : null;
+    if (__traceops_user_cache) return __traceops_user_cache;
+    if (__traceops_user_loading) return __traceops_user_loading;
+    __traceops_user_loading = (async function(){
+      try {
+        var out = await client.auth.getUser();
+        __traceops_user_cache = out && out.data ? (out.data.user || null) : null;
+        return __traceops_user_cache;
+      } catch (err) {
+        throw traceOpsNormalizeCloudError(err);
+      } finally {
+        __traceops_user_loading = null;
+      }
+    })();
+    return __traceops_user_loading;
   }
 
 async function initApp(){
@@ -1919,7 +1960,9 @@ async function signIn(email, password){
     var client = getClient();
     if (!client) throw new Error("Supabase no configurado.");
     var out = await client.auth.signInWithPassword({ email: email, password: password });
-    if (out.error) throw out.error;
+    if (out.error) throw traceOpsNormalizeCloudError(out.error);
+    __traceops_user_cache = out && out.data && out.data.user ? out.data.user : null;
+    __traceops_user_loading = null;
     return out.data;
   }
 
@@ -1927,7 +1970,9 @@ async function signUp(email, password){
     var client = getClient();
     if (!client) throw new Error("Supabase no configurado.");
     var out = await client.auth.signUp({ email: email, password: password });
-    if (out.error) throw out.error;
+    if (out.error) throw traceOpsNormalizeCloudError(out.error);
+    __traceops_user_cache = out && out.data && out.data.user ? out.data.user : null;
+    __traceops_user_loading = null;
     return out.data;
   }
 
@@ -1935,13 +1980,17 @@ async function signUp(email, password){
     var client = getClient();
     if (!client) return;
     var out = await client.auth.signOut();
-    if (out.error) throw out.error;
+    if (out.error) throw traceOpsNormalizeCloudError(out.error);
+    __traceops_user_cache = null;
+    __traceops_user_loading = null;
   }
 
   function onAuthChange(handler){
     var client = getClient();
     if (!client) return { data: { subscription: { unsubscribe: function(){} } } };
     return client.auth.onAuthStateChange(function(evt, session){
+      __traceops_user_cache = session && session.user ? session.user : null;
+      __traceops_user_loading = null;
       handler(evt, session && session.user ? session.user : null, session);
     });
   }
@@ -1951,26 +2000,31 @@ async function signUp(email, password){
     if (!client || !userId || !handler) {
       return { unsubscribe: function(){} };
     }
-    var channelName = 'traceops-rcca-' + String(userId).replace(/[^a-zA-Z0-9_-]/g, '_');
-    var channel = client.channel(channelName);
-    channel.on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'traceops_rcca_cases',
-      filter: 'user_id=eq.' + userId
-    }, function(payload){
-      try { handler(payload || null); } catch(_) {}
-    });
-    channel.subscribe(function(status){
-      try {
-        if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime status:', status);
-      } catch(_) {}
-    });
-    return {
-      unsubscribe: function(){
-        try { client.removeChannel(channel); } catch(_) {}
-      }
-    };
+    try {
+      var channelName = 'traceops-rcca-' + String(userId).replace(/[^a-zA-Z0-9_-]/g, '_');
+      var channel = client.channel(channelName);
+      channel.on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'traceops_rcca_cases',
+        filter: 'user_id=eq.' + userId
+      }, function(payload){
+        try { handler(payload || null); } catch(_) {}
+      });
+      channel.subscribe(function(status){
+        try {
+          if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime status:', status);
+        } catch(_) {}
+      });
+      return {
+        unsubscribe: function(){
+          try { client.removeChannel(channel); } catch(_) {}
+        }
+      };
+    } catch (err) {
+      try { console.warn('[TraceOps] Realtime no disponible en este navegador:', err); } catch(_) {}
+      return { unsubscribe: function(){} };
+    }
   }
 
   async function listRcca(){
@@ -1982,7 +2036,7 @@ async function signUp(email, password){
       .select("rcca_id,payload,updated_at")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
-    if (q.error) throw q.error;
+    if (q.error) throw traceOpsNormalizeCloudError(q.error);
     return (q.data || []).map(function(row){
       var payload = row.payload || {};
       payload.rcca_id = payload.rcca_id || row.rcca_id;
@@ -2005,7 +2059,7 @@ async function signUp(email, password){
       updated_at: new Date().toISOString()
     };
     var q = await client.from("traceops_rcca_cases").upsert(row, { onConflict: "user_id,rcca_id" }).select("updated_at").single();
-    if (q.error) throw q.error;
+    if (q.error) throw traceOpsNormalizeCloudError(q.error);
     return q.data;
   }
 
@@ -2014,7 +2068,7 @@ async function signUp(email, password){
     var user = await getUser();
     if (!client || !user) throw new Error("Sesion no disponible.");
     var q = await client.from("traceops_rcca_cases").delete().eq("user_id", user.id).eq("rcca_id", rccaId);
-    if (q.error) throw q.error;
+    if (q.error) throw traceOpsNormalizeCloudError(q.error);
   }
 
   return {
@@ -2113,74 +2167,6 @@ function traceOpsPptExecutiveRootCauseLinesLocal(d) {
   return 'Occurrence: ' + occ + '\n' +
          'Escape: ' + esc + '\n' +
          'Status: ' + status;
-}
-
-
-var TRACEOPS_EXPORT_CHECKLIST_BLOCKS = {
-  critical: [
-    'Portada ejecutiva alineada al master final',
-    'Tabs consistentes en todas las slides',
-    'Franjas inferiores persistentes',
-    'Bad part / Good part con logica estable',
-    'Status unificado entre overview y secciones',
-    'Texto sin truncado critico'
-  ],
-  high: [
-    'D4A occurrence con narrativa madura',
-    'D4B escape con control gap claro',
-    'D5 acciones por eje con formato estable',
-    'Appendix con trazabilidad y evidencia util'
-  ],
-  medium: [
-    'D3 containment mas accionable',
-    'D6 verification mas auditable',
-    'D7-D8 con cierre consistente',
-    'Tipografia y espaciado homologados'
-  ]
-};
-
-function traceOpsPptChecklistSummaryLocal() {
-  return [
-    'Critical: ' + TRACEOPS_EXPORT_CHECKLIST_BLOCKS.critical.slice(0, 3).join(' · '),
-    'High: ' + TRACEOPS_EXPORT_CHECKLIST_BLOCKS.high.slice(0, 2).join(' · '),
-    'Medium: ' + TRACEOPS_EXPORT_CHECKLIST_BLOCKS.medium.slice(0, 2).join(' · ')
-  ].join('\n');
-}
-
-function traceOpsPptNormalizeStatusLocal(statusText) {
-  var s = String(statusText || '').toLowerCase();
-  if (/closed|complete|validated/.test(s)) return 'Closed';
-  if (/under validation|validation|pending/.test(s)) return 'Under Validation';
-  if (/draft/.test(s)) return 'Draft';
-  if (/open/.test(s)) return 'Open';
-  return statusText || 'Draft';
-}
-
-function traceOpsPptCountOpenItemsLocal(d) {
-  var n = Number(d.openItems);
-  if (!isNaN(n) && n >= 0) return n;
-  n = Number(d.pendingValidations);
-  if (!isNaN(n) && n >= 0) return n;
-  var arr = [];
-  if (Array.isArray(d.actionsList)) arr = arr.concat(d.actionsList);
-  if (Array.isArray(d.openList)) arr = arr.concat(d.openList);
-  return arr.filter(Boolean).length || 0;
-}
-
-function traceOpsPptEvidenceStatusLocal(d) {
-  if (d.badGoodComplete || d.evidenceComplete) return 'Complete';
-  var bad = Number(d.badCount || 0);
-  var good = Number(d.goodCount || 0);
-  var refs = Number(d.evidenceRefCount || 0);
-  if (bad > 0 && good > 0) return 'Complete';
-  if (bad > 0 || good > 0 || refs > 0) return 'Partial';
-  return 'Pending';
-}
-
-function traceOpsPptApplyFooterBandsLocal(slide) {
-  if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType || !slide) return;
-  slide.addShape(_traceOpsPptxRef.ShapeType.rect, {x:0, y:7.12, w:13.333, h:0.10, line:{color:'102A43', pt:0}, fill:{color:'102A43'}});
-  slide.addShape(_traceOpsPptxRef.ShapeType.rect, {x:0, y:7.22, w:13.333, h:0.28, line:{color:'2F6FB3', pt:0}, fill:{color:'2F6FB3'}});
 }
 
 function traceOpsPptExecutiveBulletLinesLocal(items, fallback) {
@@ -2289,10 +2275,10 @@ function buildExecutiveDashboardPptModelLocal(src) {
     line: hdr.line || obj.line || 'N/D',
     station: hdr.station || obj.station || 'N/D',
     window: hdr.window || obj.window || obj.detectionWindow || 'N/D',
-    openItems: traceOpsPptCountOpenItemsLocal({openItems: obj.openItems, pendingValidations: (obj.pendingValidations != null ? obj.pendingValidations : read.pendingValidations), actionsList: actionsList}),
+    openItems: (obj.pendingValidations != null ? obj.pendingValidations : (read.pendingValidations != null ? read.pendingValidations : (k.openItems != null ? k.openItems : (obj.openItems != null ? obj.openItems : 0)))),
     readiness8d: obj.readiness || obj.readiness8d || hdr.readiness8d || (((obj.readiness_score != null ? Number(obj.readiness_score) : NaN) >= 100) ? '100%' : ((obj.readiness_score != null && !isNaN(Number(obj.readiness_score))) ? (String(Math.round(Number(obj.readiness_score))) + '%') : '100%')),
-    evidenceBadge: traceOpsPptEvidenceStatusLocal({badGoodComplete: obj.badGoodComplete, evidenceComplete: obj.evidenceComplete, badCount: ((obj.meta && obj.meta.evidence && obj.meta.evidence.bad_part && obj.meta.evidence.bad_part.length) || (obj.bad_part_images && obj.bad_part_images.length) || 0), goodCount: ((obj.meta && obj.meta.evidence && obj.meta.evidence.good_part && obj.meta.evidence.good_part.length) || (obj.good_part_images && obj.good_part_images.length) || 0), evidenceRefCount: ((obj.evidenceRefs && obj.evidenceRefs.length) || 0)}),
-    reportStatus: traceOpsPptNormalizeStatusLocal(obj.reportStatus || obj.status || read.currentStatus || 'Draft'),
+    evidenceBadge: (obj.badGoodComplete || obj.evidenceComplete || (obj.badPartImage && obj.goodPartImage) || (obj.bad_part_images && obj.good_part_images) || (obj.meta && obj.meta.evidence && obj.meta.evidence.bad_part && obj.meta.evidence.bad_part.length && obj.meta.evidence.good_part && obj.meta.evidence.good_part.length)) ? 'Complete' : 'Partial',
+    reportStatus: obj.reportStatus || obj.status || read.currentStatus || 'Draft',
     complaintAnchor: obj.complaintAnchor || obj.description || obj.problemDescription || '',
     occurrenceConclusion: obj.occurrenceConclusion || '',
     escapeConclusion: obj.escapeConclusion || '',
@@ -5472,7 +5458,13 @@ function App() {
       setCloudStatus(remoteItems.length ? ("Sincronizado · " + remoteItems.length + " RCCA") : "Sesion activa · nube vacia");
       return remoteItems;
     } catch (err) {
-      setCloudStatus("Error nube: " + (err && err.message ? err.message : String(err)));
+      var cloudErr = traceOpsNormalizeCloudError(err);
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+      if (cloudErr && cloudErr.isTransientAuthLock) {
+        setCloudStatus("Sesion activa · reintentando nube");
+      } else {
+        setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
+      }
       return [];
     } finally {
       setSyncBusy(false);
@@ -5494,8 +5486,10 @@ function App() {
       }
       setCloudStatus("Sincronizado · " + items.length + " RCCA");
     } catch (err) {
-      setCloudStatus("Pendiente de sincronizacion");
-      throw err;
+      var cloudErr = traceOpsNormalizeCloudError(err);
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · pendiente de sincronizacion" : "Pendiente de sincronizacion");
+      return false;
     } finally {
       setSyncBusy(false);
     }
@@ -5527,8 +5521,9 @@ function App() {
       await refreshCloudRcca({ baseList: rccaList });
       setAuthPassword("");
     } catch (err) {
-      setAuthErrMsg(err && err.message ? err.message : String(err));
-      setCloudStatus("Error de autenticacion");
+      var cloudErr = traceOpsNormalizeCloudError(err);
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : "Error de autenticacion");
     } finally {
       setSyncBusy(false);
     }
@@ -5543,7 +5538,8 @@ function App() {
       setCloudStatus("Modo local");
       setAuthErrMsg("");
     } catch (err) {
-      setAuthErrMsg(err && err.message ? err.message : String(err));
+      var cloudErr = traceOpsNormalizeCloudError(err);
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
     } finally {
       setSyncBusy(false);
     }
@@ -5563,6 +5559,8 @@ function App() {
       } catch(_){}
       realtimeSub = null;
     }
+    var authFlowPromise = Promise.resolve();
+
     function startRealtime(user){
       stopRealtime();
       if (!user || !(window.TraceOpsCloud && window.TraceOpsCloud.subscribeRccaRealtime)) return;
@@ -5572,37 +5570,52 @@ function App() {
       });
     }
 
+    function runAuthFlow(user){
+      authFlowPromise = authFlowPromise.then(async function(){
+        window.authUser = user || null;
+        setAuthUser(user || null);
+
+        if (typeof updateAuthUI === "function") updateAuthUI();
+
+        if (user) {
+          setCloudStatus("Sesion activa");
+          await refreshCloudRcca();
+          await new Promise(function(resolve){ setTimeout(resolve, 150); });
+          startRealtime(user);
+        } else {
+          stopRealtime();
+          setCloudStatus("Modo local");
+        }
+
+        setAuthReady(true);
+      }).catch(function(err){
+        var cloudErr = traceOpsNormalizeCloudError(err);
+        setAuthReady(true);
+        setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+        if (cloudErr && cloudErr.isTransientAuthLock) {
+          setCloudStatus("Sesion activa · reintentando nube");
+        } else {
+          setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
+        }
+      });
+      return authFlowPromise;
+    }
+
     var unsub = window.TraceOpsCloud.onAuthChange(function(evt, user){
-      window.authUser = user || null;
-      setAuthUser(user || null);
-
-      if (typeof updateAuthUI === "function") updateAuthUI();
-
-      if (user) {
-        setCloudStatus("Sesion activa");
-        startRealtime(user);
-        refreshCloudRcca();
-      } else {
-        stopRealtime();
-        setCloudStatus("Modo local");
-      }
-
-      setAuthReady(true);
+      runAuthFlow(user);
     });
 
     window.TraceOpsCloud.getUser().then(function(user){
-      setAuthUser(user || null);
-      if (user) {
-        setCloudStatus("Sesion activa");
-        startRealtime(user);
-        refreshCloudRcca();
-      } else {
-        setAuthReady(true);
-        setCloudStatus("Listo para iniciar sesion");
-      }
+      return runAuthFlow(user);
     }).catch(function(err){
+      var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthReady(true);
-      setCloudStatus("Error nube: " + (err && err.message ? err.message : String(err)));
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+      if (cloudErr && cloudErr.isTransientAuthLock) {
+        setCloudStatus("Sesion activa · reintentando nube");
+      } else {
+        setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
+      }
     });
 
     return function(){
@@ -6405,22 +6418,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   }
 
   var _traceOpsPptxRef = null;
-  var __traceOpsPptxRef = null;
-
-  function traceOpsGetPptxCtor(){
-    try { if (typeof window !== 'undefined' && window.PptxGenJS) return window.PptxGenJS; } catch(_) {}
-    try { if (typeof globalThis !== 'undefined' && globalThis.PptxGenJS) return globalThis.PptxGenJS; } catch(_) {}
-    try { if (typeof PptxGenJS !== 'undefined') return PptxGenJS; } catch(_) {}
-    return null;
-  }
-
-  function traceOpsSyncPptxRefs(ref){
-    _traceOpsPptxRef = ref || null;
-    try { __traceOpsPptxRef = ref || null; } catch(_) {}
-    try { if (typeof window !== 'undefined') window.__traceOpsPptxRef = ref || null; } catch(_) {}
-    try { if (typeof globalThis !== 'undefined') globalThis.__traceOpsPptxRef = ref || null; } catch(_) {}
-    return _traceOpsPptxRef;
-  }
 
   function traceOpsPptPatchSlideMethods(slide){
     if (!slide || slide.__traceopsPatched) return slide;
@@ -6445,9 +6442,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       slide.addShape = function(shapeType, options){
         var resolvedShape = shapeType;
         if (typeof shapeType === "string") {
-          var pptxCtor = traceOpsGetPptxCtor();
-          var st = (pptxCtor && pptxCtor.ShapeType)
-            ? pptxCtor.ShapeType
+          var st = (typeof PptxGenJS !== "undefined" && PptxGenJS && PptxGenJS.ShapeType)
+            ? PptxGenJS.ShapeType
             : {};
           var shapeMap = {
             roundRect: st.roundRect,
@@ -6474,7 +6470,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
   function traceOpsPptHardenDeck(pptx){
     if (!pptx || pptx.__traceopsDeckPatched) return pptx;
-    traceOpsSyncPptxRefs(pptx);
+    _traceOpsPptxRef = pptx;
     pptx.__traceopsDeckPatched = true;
 
     var originalAddSlide = typeof pptx.addSlide === "function" ? pptx.addSlide : null;
@@ -6566,17 +6562,12 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     slide.background = { color: 'F2F5F2' };
     slide.addShape(_traceOpsPptxRef.ShapeType.rect, {x:0, y:0, w:13.333, h:1.02, line:{color:'102A43', pt:0}, fill:{color:'102A43'}});
-    slide.addText(traceOpsPptSafe('FOXCONN | TraceOps 8D Draft', 80), {x:0.42, y:0.22, w:3.2, h:0.16, fontFace:'Segoe UI', fontSize:10, bold:true, color:'A8D6C4', margin:0});
-    slide.addText(traceOpsPptSafe(title, 110), {x:0.42, y:0.42, w:7.9, h:0.24, fontFace:'Segoe UI', fontSize:22, bold:true, color:'FFFFFF', margin:0});
-    slide.addText(traceOpsPptSafe(subtitle || 'TraceOps structured 8D deck export', 180), {x:0.42, y:0.72, w:8.8, h:0.14, fontFace:'Segoe UI', fontSize:10.4, color:'D6E3DD', margin:0});
+    slide.addText(traceOpsPptSafe('FOXCONN | TraceOps 8D Draft', 80), {x:0.42, y:0.22, w:3.2, h:0.16, fontFace:'Arial', fontSize:10, bold:true, color:'A8D6C4', margin:0});
+    slide.addText(traceOpsPptSafe(title, 110), {x:0.42, y:0.42, w:7.9, h:0.24, fontFace:'Arial', fontSize:22, bold:true, color:'FFFFFF', margin:0});
+    slide.addText(traceOpsPptSafe(subtitle || 'TraceOps structured 8D deck export', 180), {x:0.42, y:0.72, w:8.8, h:0.14, fontFace:'Arial', fontSize:10.4, color:'D6E3DD', margin:0});
     if (badgeText) {
-      var normalizedBadge = traceOpsPptNormalizeStatusLocal(badgeText);
-      var badgeTone = traceOpsPptStatusToneLocal(normalizedBadge);
-      var badgeFill = badgeTone === 'ok' ? 'EAF7EE' : (badgeTone === 'pending' ? 'FFF4E5' : 'EEF5FF');
-      var badgeLine = badgeTone === 'ok' ? 'B7DEC2' : (badgeTone === 'pending' ? 'F3D19C' : 'C9DAF5');
-      var badgeTextColor = badgeTone === 'ok' ? '1B5E20' : (badgeTone === 'pending' ? '9A6700' : '1F3A5F');
-      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {x:10.88, y:0.26, w:2.00, h:0.38, rectRadius:0.08, line:{color:badgeLine, pt:1}, fill:{color:badgeFill}});
-      slide.addText(traceOpsPptSafe(normalizedBadge, 44), {x:11.02, y:0.37, w:1.72, h:0.12, fontFace:'Segoe UI', fontSize:9.0, bold:true, color:badgeTextColor, align:'center', margin:0, fit:'shrink'});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:11.26, y:0.28, w:1.62, h:0.34, rectRadius:0.08, line:{color:'3D5C50', pt:1}, fill:{color:'173328'}});
+      slide.addText(traceOpsPptSafe(badgeText, 40), {x:11.38, y:0.37, w:1.36, h:0.12, fontFace:'Arial', fontSize:9.2, bold:true, color:'D7E7E0', align:'center', margin:0});
     }
     var steps = traceOpsPptDeckSteps();
     var totalW = 12.46;
@@ -6585,10 +6576,9 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     for (var i = 0; i < steps.length; i++) {
       var x = 0.42 + (i * (itemW + gap));
       var active = i === activeIdx;
-      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '2F6FB3' : 'C9DAF5', pt:1}, fill:{color:active ? 'EAF2FF' : 'FFFFFF'}});
-      slide.addText(traceOpsPptSafe(steps[i], 24), {x:x+0.03, y:1.19, w:itemW-0.06, h:0.10, fontFace:'Segoe UI', fontSize:8.8, bold:true, color:active ? '2F6FB3' : '5F766C', align:'center', margin:0, fit:'shrink'});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '2F6FB3' : 'C9DAF5', pt:1}, fill:{color:active ? 'EAF2FF' : 'FFFFFF'}});
+      slide.addText(traceOpsPptSafe(steps[i], 24), {x:x+0.03, y:1.19, w:itemW-0.06, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:active ? '2F6FB3' : '5F766C', align:'center', margin:0, fit:'shrink'});
     }
-    traceOpsPptApplyFooterBandsLocal(slide);
   }
 
   function traceOpsPptPanelTitle(slide, title, x, y, w){
@@ -7390,10 +7380,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
     traceOpsPptPanelTitle(slide, 'Key Focus Areas', 0.42, 6.34, 12.46);
     traceOpsPptBox(slide, 0.42, 6.52, 12.46, 0.56, 'FFFFFF');
-    slide.addText(traceOpsPptWrap(data.focusActions.map(function(item){ return '• ' + item; }).join('   '), 240), {x:0.60, y:6.70, w:8.18, h:0.20, fontFace:'Segoe UI', fontSize:9.8, bold:true, color:'102A43', margin:0, fit:'shrink'});
-    traceOpsPptBox(slide, 8.92, 6.52, 3.96, 0.56, 'FFFFFF');
-    slide.addText('Export checklist', {x:9.08, y:6.64, w:1.5, h:0.12, fontFace:'Segoe UI', fontSize:8.8, bold:true, color:'1F3A5F', margin:0});
-    slide.addText(traceOpsPptWrap(traceOpsPptChecklistSummaryLocal(), 150), {x:10.30, y:6.60, w:2.34, h:0.16, fontFace:'Segoe UI', fontSize:7.2, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(data.focusActions.map(function(item){ return '• ' + item; }).join('   '), 240), {x:0.60, y:6.70, w:12.08, h:0.20, fontFace:'Segoe UI', fontSize:9.8, bold:true, color:'102A43', margin:0, fit:'shrink'});
     return slide;
   }
 
@@ -7401,7 +7388,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   function traceOpsPptBuildExecutiveOverview(pptx, normalized, model, linked){
     var slide = pptx.addSlide();
     var readinessMeta = traceOpsPptReadinessMeta(normalized);
-    traceOpsPptApplyShell(slide, 'Executive Overview', 'Executive case summary', 0, traceOpsPptNormalizeStatusLocal(normalized.status || 'Draft'));
+    traceOpsPptApplyShell(slide, 'Executive Overview', 'Executive case summary', 0, (normalized.status || 'Draft'));
 
     var topY1 = 1.66;
     var topY2 = 2.48;
@@ -7562,7 +7549,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
   function traceOpsPptBuildOccurrenceSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
-    traceOpsPptApplyShell(slide, 'D4A - Occurrence Analysis', 'Foxconn occurrence analysis and root cause summary', 3, traceOpsEightdHasText(normalized.d4_occurrence_conclusion || normalized.d4_occurrence || normalized.occurrenceConclusion) ? 'Under Validation' : 'Evidence Pending');
+    traceOpsPptApplyShell(slide, 'D4A - Occurrence Analysis', 'Foxconn occurrence analysis and root cause summary', 3, 'Under Validation');
 
     var fish = traceOpsPptBuildIshikawa(normalized, model);
     var occWhys = traceOpsPptNormalizeWhys(normalized && normalized.d4_occurrence_5whys || normalized && normalized.d4_root_cause || model.occurrenceSummary, 'Occurrence why');
@@ -7593,7 +7580,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
   function traceOpsPptBuildEscapeSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
-    traceOpsPptApplyShell(slide, 'D4B - Escape Analysis', 'Foxconn detection 5 Whys and escape confirmation', 4, traceOpsEightdHasText(normalized.d4_escape_conclusion || normalized.d4_escape_point || normalized.escapeConclusion) ? 'Under Validation' : 'Evidence Pending');
+    traceOpsPptApplyShell(slide, 'D4B - Escape Analysis', 'Foxconn detection 5 Whys and escape confirmation', 4, 'Evidence Pending');
 
     traceOpsPptKeyTile(slide, 'Escape point', normalized.d4_escape_point || model.escapeSummary || 'Escape point under analysis', 0.42, 1.66, 4.02);
     traceOpsPptKeyTile(slide, 'Expected detection control', model.station || normalized.station || 'AOI / ICT / control stage', 4.66, 1.66, 4.02);
@@ -7693,7 +7680,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
   function traceOpsPptBuildPreventionClosureSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
-    traceOpsPptApplyShell(slide, 'D7 Prevention / Yokoten + D8 Closure', 'Preventive replication and closure status', 7, traceOpsPptNormalizeStatusLocal(normalized.status || 'Draft'));
+    traceOpsPptApplyShell(slide, 'D7 Prevention / Yokoten + D8 Closure', 'Preventive replication and closure status', 7, (normalized.status || 'Draft'));
 
     traceOpsPptBox(slide, 0.42, 1.66, 6.18, 5.10, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'D7 Prevention / Yokoten', 0.58, 1.80, 2.0);
@@ -8363,11 +8350,7 @@ function exportEightdPpt(draft) {
     normalized.readiness_score = readinessMeta.score;
     normalized.missing_fields = readinessMeta.missing;
     window.ensurePptxTools().then(async function(){
-      var PptxCtor = traceOpsGetPptxCtor();
-      if (!PptxCtor) throw new Error('PptxGenJS no cargo correctamente en este navegador.');
-      traceOpsSyncPptxRefs(null);
-      var pptx = new PptxCtor();
-      traceOpsSyncPptxRefs(pptx);
+      var pptx = new PptxGenJS();
       traceOpsPptHardenDeck(pptx);
       try { if (typeof pptx.layout !== 'undefined') pptx.layout = 'LAYOUT_WIDE'; } catch(_){ }
       try { if (typeof pptx.defineLayout === 'function') { pptx.defineLayout({ name:'TRACEOPS_WIDE', width:13.333, height:7.5 }); pptx.layout = 'TRACEOPS_WIDE'; } } catch(_){ }
@@ -8399,18 +8382,14 @@ function exportEightdPpt(draft) {
         arr = await traceOpsFixPptxForDesktopPowerPoint(arr);
         var blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
         traceOpsDownloadBlob(fileBase + '.pptx', blob);
-        traceOpsSyncPptxRefs(null);
       } else if (typeof pptx.writeFile === 'function' && typeof pptx.write !== 'function') {
         await pptx.writeFile({ fileName: fileBase + '.pptx', compression: true });
-        traceOpsSyncPptxRefs(null);
       } else if (typeof pptx.save === 'function') {
         pptx.save(fileBase + '.pptx');
-        traceOpsSyncPptxRefs(null);
       } else {
         throw new Error('PptxGenJS no expone write/writeFile/save en este navegador.');
       }
     }).catch(function(err){
-      traceOpsSyncPptxRefs(null);
       console.error('[TraceOps PPT]', err);
       alert('No se pudo generar el PPT. ' + (err && (err.message || String(err)) || 'Error desconocido'));
     });
