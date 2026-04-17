@@ -6405,6 +6405,35 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   }
 
   var _traceOpsPptxRef = null;
+  window.__traceOpsPptxRef = window.__traceOpsPptxRef || null;
+
+  function traceOpsResolvePptShapeTypeRef(){
+    return _traceOpsPptxRef || window.__traceOpsPptxRef || window.PptxGenJS || null;
+  }
+
+  function traceOpsSetPptxRef(ref){
+    _traceOpsPptxRef = ref || null;
+    try { window.__traceOpsPptxRef = ref || null; } catch(_) {}
+    return _traceOpsPptxRef;
+  }
+
+  function traceOpsGetPptxRef(){
+    return traceOpsResolvePptShapeTypeRef();
+  }
+
+  function traceOpsGetShapeTypeSafe(name, fallback){
+    var ref = traceOpsEnsurePptRef();
+    if (ref && ref.ShapeType && ref.ShapeType[name]) return ref.ShapeType[name];
+    return fallback || name || 'rect';
+  }
+
+  function traceOpsEnsurePptRef(){
+    var ref = traceOpsGetPptxRef();
+    if (ref) return ref;
+    if (window && window.__traceOpsPptxRef) return traceOpsSetPptxRef(window.__traceOpsPptxRef);
+    if (window && window.PptxGenJS) return window.PptxGenJS;
+    return null;
+  }
 
   function traceOpsPptPatchSlideMethods(slide){
     if (!slide || slide.__traceopsPatched) return slide;
@@ -6456,8 +6485,9 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   }
 
   function traceOpsPptHardenDeck(pptx){
-    if (!pptx || pptx.__traceopsDeckPatched) return pptx;
-    _traceOpsPptxRef = pptx;
+    if (!pptx) return pptx;
+    traceOpsSetPptxRef(pptx);
+    if (pptx.__traceopsDeckPatched) return pptx;
     pptx.__traceopsDeckPatched = true;
 
     var originalAddSlide = typeof pptx.addSlide === "function" ? pptx.addSlide : null;
@@ -8346,7 +8376,10 @@ function exportEightdPpt(draft) {
     normalized.readiness_score = readinessMeta.score;
     normalized.missing_fields = readinessMeta.missing;
     window.ensurePptxTools().then(async function(){
-      var pptx = new PptxGenJS();
+      var PptxCtor = (window && window.PptxGenJS) ? window.PptxGenJS : (typeof PptxGenJS !== 'undefined' ? PptxGenJS : null);
+      if (!PptxCtor) throw new Error('PptxGenJS no cargo correctamente en este navegador.');
+      var pptx = new PptxCtor();
+      traceOpsSetPptxRef(pptx);
       traceOpsPptHardenDeck(pptx);
       try { if (typeof pptx.layout !== 'undefined') pptx.layout = 'LAYOUT_WIDE'; } catch(_){ }
       try { if (typeof pptx.defineLayout === 'function') { pptx.defineLayout({ name:'TRACEOPS_WIDE', width:13.333, height:7.5 }); pptx.layout = 'TRACEOPS_WIDE'; } } catch(_){ }
@@ -8361,6 +8394,10 @@ function exportEightdPpt(draft) {
       var model = traceOpsEightdBuildModel((normalized && normalized.source_snapshot) || normalized || {}, traceOpsGetEightdLinkedEventsForExport(normalized));
       var linked = model.linked;
       var fileBase = String(normalized.eightd_id || normalized.source_rcca_id || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_');
+
+      if (!traceOpsGetPptxRef()) {
+        traceOpsSetPptxRef(pptx);
+      }
 
       addExecutiveDashboardSlide(pptx, buildExecutiveDashboardPptModelLocal(Object.assign({}, normalized || {}, model || {}, { qualityDashboard: (model && model.qualityDashboard) || null })));
       traceOpsPptBuildExecutiveOverview(pptx, normalized, model, linked);
@@ -8387,7 +8424,11 @@ function exportEightdPpt(draft) {
       }
     }).catch(function(err){
       console.error('[TraceOps PPT]', err);
-      alert('No se pudo generar el PPT. ' + (err && (err.message || String(err)) || 'Error desconocido'));
+      var detail = (err && (err.message || String(err)) || 'Error desconocido');
+      if (/traceOpsPptxRef/i.test(detail)) {
+        detail = 'Fallo la inicializacion interna del motor PPT. Recarga la pagina e intenta de nuevo. Detalle: ' + detail;
+      }
+      alert('No se pudo generar el PPT. ' + detail);
     });
   }
 
