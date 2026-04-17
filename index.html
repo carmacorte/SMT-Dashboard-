@@ -1997,23 +1997,28 @@ async function signUp(email, password){
 
   function subscribeRccaRealtime(userId, handler){
     var client = getClient();
-    if (!client || !userId || !handler) {
+    var normalizedUserId = String(userId || '').trim();
+    if (!client || !normalizedUserId || !handler) {
       return { unsubscribe: function(){} };
     }
     try {
-      var channelName = 'traceops-rcca-' + String(userId).replace(/[^a-zA-Z0-9_-]/g, '_');
+      var channelName = 'traceops-rcca-' + normalizedUserId.replace(/[^a-zA-Z0-9_-]/g, '_');
+      var realtimeFilter = 'user_id=eq.' + normalizedUserId;
+      try {
+        if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime filter:', realtimeFilter);
+      } catch(_) {}
       var channel = client.channel(channelName);
       channel.on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'traceops_rcca_cases',
-        filter: 'user_id=eq.' + userId
+        filter: realtimeFilter
       }, function(payload){
         try { handler(payload || null); } catch(_) {}
       });
       channel.subscribe(function(status){
         try {
-          if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime status:', status);
+          if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime status:', status, 'user_id:', normalizedUserId);
         } catch(_) {}
       });
       return {
@@ -2022,7 +2027,7 @@ async function signUp(email, password){
         }
       };
     } catch (err) {
-      try { console.warn('[TraceOps] Realtime no disponible en este navegador:', err); } catch(_) {}
+      console.warn('[TraceOps] Realtime RCCA unavailable:', err);
       return { unsubscribe: function(){} };
     }
   }
@@ -2169,68 +2174,6 @@ function traceOpsPptExecutiveRootCauseLinesLocal(d) {
          'Status: ' + status;
 }
 
-
-var TRACEOPS_EXPORT_CHECKLIST_BLOCKS = {
-  critical: [
-    'Portada ejecutiva alineada al master final',
-    'Tabs consistentes en todas las slides',
-    'Franjas inferiores persistentes',
-    'Bad part / Good part con logica estable',
-    'Status unificado entre overview y secciones',
-    'Texto sin truncado critico'
-  ],
-  high: [
-    'D4A occurrence con narrativa madura',
-    'D4B escape con control gap claro',
-    'D5 acciones por eje con formato estable',
-    'Appendix con trazabilidad y evidencia util'
-  ],
-  medium: [
-    'D3 containment mas accionable',
-    'D6 verification mas auditable',
-    'D7-D8 con cierre consistente',
-    'Tipografia y espaciado homologados'
-  ]
-};
-
-function traceOpsPptChecklistSummaryLocal() {
-  return [
-    'Critical: ' + TRACEOPS_EXPORT_CHECKLIST_BLOCKS.critical.slice(0, 3).join(' · '),
-    'High: ' + TRACEOPS_EXPORT_CHECKLIST_BLOCKS.high.slice(0, 2).join(' · '),
-    'Medium: ' + TRACEOPS_EXPORT_CHECKLIST_BLOCKS.medium.slice(0, 2).join(' · ')
-  ].join('\n');
-}
-
-function traceOpsPptNormalizeStatusLocal(statusText) {
-  var s = String(statusText || '').toLowerCase();
-  if (/closed|complete|validated/.test(s)) return 'Closed';
-  if (/under validation|validation|pending/.test(s)) return 'Under Validation';
-  if (/draft/.test(s)) return 'Draft';
-  if (/open/.test(s)) return 'Open';
-  return statusText || 'Draft';
-}
-
-function traceOpsPptCountOpenItemsLocal(d) {
-  var n = Number(d && d.openItems);
-  if (!isNaN(n) && n >= 0) return n;
-  n = Number(d && d.pendingValidations);
-  if (!isNaN(n) && n >= 0) return n;
-  var arr = [];
-  if (d && Array.isArray(d.actionsList)) arr = arr.concat(d.actionsList);
-  if (d && Array.isArray(d.openList)) arr = arr.concat(d.openList);
-  return arr.filter(Boolean).length || 0;
-}
-
-function traceOpsPptEvidenceStatusLocal(d) {
-  if (d && (d.badGoodComplete || d.evidenceComplete)) return 'Complete';
-  var bad = Number((d && d.badCount) || 0);
-  var good = Number((d && d.goodCount) || 0);
-  var refs = Number((d && d.evidenceRefCount) || 0);
-  if (bad > 0 && good > 0) return 'Complete';
-  if (bad > 0 || good > 0 || refs > 0) return 'Partial';
-  return 'Pending';
-}
-
 function traceOpsPptExecutiveBulletLinesLocal(items, fallback) {
   var arr = Array.isArray(items) ? items.slice(0, 3) : [];
   arr = arr.filter(Boolean).map(function(x){
@@ -2337,10 +2280,10 @@ function buildExecutiveDashboardPptModelLocal(src) {
     line: hdr.line || obj.line || 'N/D',
     station: hdr.station || obj.station || 'N/D',
     window: hdr.window || obj.window || obj.detectionWindow || 'N/D',
-    openItems: traceOpsPptCountOpenItemsLocal({openItems: obj.openItems, pendingValidations: (obj.pendingValidations != null ? obj.pendingValidations : read.pendingValidations), actionsList: actionsList}),
+    openItems: (obj.pendingValidations != null ? obj.pendingValidations : (read.pendingValidations != null ? read.pendingValidations : (k.openItems != null ? k.openItems : (obj.openItems != null ? obj.openItems : 0)))),
     readiness8d: obj.readiness || obj.readiness8d || hdr.readiness8d || (((obj.readiness_score != null ? Number(obj.readiness_score) : NaN) >= 100) ? '100%' : ((obj.readiness_score != null && !isNaN(Number(obj.readiness_score))) ? (String(Math.round(Number(obj.readiness_score))) + '%') : '100%')),
-    evidenceBadge: traceOpsPptEvidenceStatusLocal({badGoodComplete: obj.badGoodComplete, evidenceComplete: obj.evidenceComplete, badCount: ((obj.meta && obj.meta.evidence && obj.meta.evidence.bad_part && obj.meta.evidence.bad_part.length) || (obj.bad_part_images && obj.bad_part_images.length) || 0), goodCount: ((obj.meta && obj.meta.evidence && obj.meta.evidence.good_part && obj.meta.evidence.good_part.length) || (obj.good_part_images && obj.good_part_images.length) || 0), evidenceRefCount: ((obj.evidenceRefs && obj.evidenceRefs.length) || 0)}),
-    reportStatus: traceOpsPptNormalizeStatusLocal(obj.reportStatus || obj.status || read.currentStatus || 'Draft'),
+    evidenceBadge: (obj.badGoodComplete || obj.evidenceComplete || (obj.badPartImage && obj.goodPartImage) || (obj.bad_part_images && obj.good_part_images) || (obj.meta && obj.meta.evidence && obj.meta.evidence.bad_part && obj.meta.evidence.bad_part.length && obj.meta.evidence.good_part && obj.meta.evidence.good_part.length)) ? 'Complete' : 'Partial',
+    reportStatus: obj.reportStatus || obj.status || read.currentStatus || 'Draft',
     complaintAnchor: obj.complaintAnchor || obj.description || obj.problemDescription || '',
     occurrenceConclusion: obj.occurrenceConclusion || '',
     escapeConclusion: obj.escapeConclusion || '',
@@ -5625,8 +5568,9 @@ function App() {
 
     function startRealtime(user){
       stopRealtime();
-      if (!user || !(window.TraceOpsCloud && window.TraceOpsCloud.subscribeRccaRealtime)) return;
-      realtimeSub = window.TraceOpsCloud.subscribeRccaRealtime(user.id, function(){
+      var realtimeUserId = String(user && user.id ? user.id : "").trim();
+      if (!realtimeUserId || !(window.TraceOpsCloud && window.TraceOpsCloud.subscribeRccaRealtime)) return;
+      realtimeSub = window.TraceOpsCloud.subscribeRccaRealtime(realtimeUserId, function(){
         setCloudStatus("RCCA en nube · actualización en tiempo real");
         refreshCloudRcca();
       });
@@ -6620,12 +6564,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     return ['Overview','D1-D2','D3','D4A','D4B','D5','D6','D7-D8','Appendix'];
   }
 
-  function traceOpsPptApplyFooterBandsLocal(slide) {
-    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType || !slide) return;
-    slide.addShape(_traceOpsPptxRef.ShapeType.rect, {x:0, y:7.12, w:13.333, h:0.10, line:{color:'102A43', pt:0}, fill:{color:'102A43'}});
-    slide.addShape(_traceOpsPptxRef.ShapeType.rect, {x:0, y:7.22, w:13.333, h:0.28, line:{color:'2F6FB3', pt:0}, fill:{color:'2F6FB3'}});
-  }
-
   function traceOpsPptApplyShell(slide, title, subtitle, activeIdx, badgeText){
     if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     slide.background = { color: 'F2F5F2' };
@@ -6634,13 +6572,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     slide.addText(traceOpsPptSafe(title, 110), {x:0.42, y:0.42, w:7.9, h:0.24, fontFace:'Arial', fontSize:22, bold:true, color:'FFFFFF', margin:0});
     slide.addText(traceOpsPptSafe(subtitle || 'TraceOps structured 8D deck export', 180), {x:0.42, y:0.72, w:8.8, h:0.14, fontFace:'Arial', fontSize:10.4, color:'D6E3DD', margin:0});
     if (badgeText) {
-      var normalizedBadge = traceOpsPptNormalizeStatusLocal(badgeText);
-      var badgeTone = /closed/i.test(normalizedBadge) ? 'ok' : (/validation|draft|pending|open/i.test(normalizedBadge) ? 'pending' : 'info');
-      var badgeFill = badgeTone === 'ok' ? 'EAF7EE' : (badgeTone === 'pending' ? 'FFF4E5' : 'EEF5FF');
-      var badgeLine = badgeTone === 'ok' ? 'B7DEC2' : (badgeTone === 'pending' ? 'F3D19C' : 'C9DAF5');
-      var badgeTextColor = badgeTone === 'ok' ? '1B5E20' : (badgeTone === 'pending' ? '9A6700' : '1F3A5F');
-      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {x:10.88, y:0.26, w:2.00, h:0.38, rectRadius:0.08, line:{color:badgeLine, pt:1}, fill:{color:badgeFill}});
-      slide.addText(traceOpsPptSafe(normalizedBadge, 44), {x:11.02, y:0.37, w:1.72, h:0.12, fontFace:'Arial', fontSize:9.0, bold:true, color:badgeTextColor, align:'center', margin:0, fit:'shrink'});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:11.26, y:0.28, w:1.62, h:0.34, rectRadius:0.08, line:{color:'3D5C50', pt:1}, fill:{color:'173328'}});
+      slide.addText(traceOpsPptSafe(badgeText, 40), {x:11.38, y:0.37, w:1.36, h:0.12, fontFace:'Arial', fontSize:9.2, bold:true, color:'D7E7E0', align:'center', margin:0});
     }
     var steps = traceOpsPptDeckSteps();
     var totalW = 12.46;
@@ -6649,10 +6582,9 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     for (var i = 0; i < steps.length; i++) {
       var x = 0.42 + (i * (itemW + gap));
       var active = i === activeIdx;
-      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '2F6FB3' : 'C9DAF5', pt:1}, fill:{color:active ? 'EAF2FF' : 'FFFFFF'}});
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:x, y:1.10, w:itemW, h:0.30, rectRadius:0.06, line:{color:active ? '2F6FB3' : 'C9DAF5', pt:1}, fill:{color:active ? 'EAF2FF' : 'FFFFFF'}});
       slide.addText(traceOpsPptSafe(steps[i], 24), {x:x+0.03, y:1.19, w:itemW-0.06, h:0.10, fontFace:'Arial', fontSize:8.8, bold:true, color:active ? '2F6FB3' : '5F766C', align:'center', margin:0, fit:'shrink'});
     }
-    traceOpsPptApplyFooterBandsLocal(slide);
   }
 
   function traceOpsPptPanelTitle(slide, title, x, y, w){
@@ -7454,10 +7386,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
     traceOpsPptPanelTitle(slide, 'Key Focus Areas', 0.42, 6.34, 12.46);
     traceOpsPptBox(slide, 0.42, 6.52, 12.46, 0.56, 'FFFFFF');
-    slide.addText(traceOpsPptWrap(data.focusActions.map(function(item){ return '• ' + item; }).join('   '), 240), {x:0.60, y:6.70, w:8.18, h:0.20, fontFace:'Segoe UI', fontSize:9.8, bold:true, color:'102A43', margin:0, fit:'shrink'});
-    traceOpsPptBox(slide, 8.92, 6.52, 3.96, 0.56, 'FFFFFF');
-    slide.addText('Export checklist', {x:9.08, y:6.64, w:1.5, h:0.12, fontFace:'Segoe UI', fontSize:8.8, bold:true, color:'1F3A5F', margin:0});
-    slide.addText(traceOpsPptWrap(traceOpsPptChecklistSummaryLocal(), 150), {x:10.30, y:6.60, w:2.34, h:0.16, fontFace:'Segoe UI', fontSize:7.2, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(data.focusActions.map(function(item){ return '• ' + item; }).join('   '), 240), {x:0.60, y:6.70, w:12.08, h:0.20, fontFace:'Segoe UI', fontSize:9.8, bold:true, color:'102A43', margin:0, fit:'shrink'});
     return slide;
   }
 
@@ -7465,7 +7394,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   function traceOpsPptBuildExecutiveOverview(pptx, normalized, model, linked){
     var slide = pptx.addSlide();
     var readinessMeta = traceOpsPptReadinessMeta(normalized);
-    traceOpsPptApplyShell(slide, 'Executive Overview', 'Executive case summary', 0, traceOpsPptNormalizeStatusLocal(normalized.status || 'Draft'));
+    traceOpsPptApplyShell(slide, 'Executive Overview', 'Executive case summary', 0, (normalized.status || 'Draft'));
 
     var topY1 = 1.66;
     var topY2 = 2.48;
