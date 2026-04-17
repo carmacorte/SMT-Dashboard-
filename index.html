@@ -6590,11 +6590,13 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var fontSize = (opts && opts.fontSize) || 11;
     var lineGap = (opts && opts.lineGap) || 0.34;
     var maxItems = (opts && opts.maxItems) || items.length;
+    var textColor = (opts && opts.color) || '102A43';
+    var bulletColor = (opts && opts.bulletColor) || (textColor === 'FFFFFF' ? 'E5F0EC' : '2F6FB3');
     for (var i = 0; i < Math.min(items.length, maxItems); i++) {
       var yy = y + (i * lineGap);
       if (yy > y + h - 0.24) break;
-      slide.addShape(_traceOpsPptxRef.ShapeType.ellipse, {x:x, y:yy + 0.07, w:0.08, h:0.08, line:{color:'2F6FB3', pt:0}, fill:{color:'2F6FB3'}});
-      slide.addText(traceOpsPptWrap(items[i], 170), {x:x+0.14, y:yy, w:w-0.16, h:0.22, fontFace:'Arial', fontSize:fontSize, color:'102A43', margin:0, fit:'shrink'});
+      slide.addShape(_traceOpsPptxRef.ShapeType.ellipse, {x:x, y:yy + 0.07, w:0.08, h:0.08, line:{color:bulletColor, pt:0}, fill:{color:bulletColor}});
+      slide.addText(traceOpsPptWrap(items[i], 170), {x:x+0.14, y:yy, w:w-0.16, h:0.22, fontFace:'Arial', fontSize:fontSize, color:textColor, margin:0, fit:'shrink'});
     }
   }
 
@@ -6805,6 +6807,26 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     traceOpsPptBox(slide, x, y, w, 0.74, 'FFFFFF');
     slide.addText(traceOpsPptSafe(label, 40), {x:x+0.12, y:y+0.12, w:w-0.24, h:0.12, fontFace:'Arial', fontSize:8.8, bold:true, color:'5F766C', margin:0});
     slide.addText(traceOpsPptWrap(value, 48), {x:x+0.12, y:y+0.30, w:w-0.24, h:0.26, fontFace:'Arial', fontSize:11.6, bold:true, color:'102A43', margin:0, fit:'shrink'});
+  }
+
+  function traceOpsPptGlassBox(slide, x, y, w, h, options){
+    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
+    var opts = options || {};
+    var fillColor = opts.fillColor || 'FFFFFF';
+    var transparency = (typeof opts.transparency === 'number' ? opts.transparency : 68);
+    var lineColor = opts.lineColor || 'E6F0EB';
+    var linePt = (typeof opts.linePt === 'number' ? opts.linePt : 1);
+    slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {
+      x:x, y:y, w:w, h:h, rectRadius:(typeof opts.radius === 'number' ? opts.radius : 0.06),
+      line:{color:lineColor, pt:linePt, transparency:(typeof opts.lineTransparency === 'number' ? opts.lineTransparency : 18)},
+      fill:{color:fillColor, transparency:transparency}
+    });
+  }
+
+  function traceOpsPptGlassKeyTile(slide, label, value, x, y, w){
+    traceOpsPptGlassBox(slide, x, y, w, 0.74, {fillColor:'FFFFFF', transparency:74, lineColor:'DDEAE3', linePt:0.8, lineTransparency:28, radius:0.06});
+    slide.addText(traceOpsPptSafe(label, 40), {x:x+0.12, y:y+0.12, w:w-0.24, h:0.12, fontFace:'Arial', fontSize:8.8, bold:true, color:'E5F0EC', margin:0});
+    slide.addText(traceOpsPptWrap(value, 48), {x:x+0.12, y:y+0.30, w:w-0.24, h:0.26, fontFace:'Arial', fontSize:11.4, bold:true, color:'FFFFFF', margin:0, fit:'shrink'});
   }
 
 
@@ -7522,40 +7544,40 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       ['Station', normalized.station || model.station || 'N/D'],
       ['Defect / failure mode', normalized.defecto_smt || model.defect || 'N/A']
     ];
-    for (var i = 0; i < labels1.length; i++) traceOpsPptKeyTile(slide, labels1[i][0], labels1[i][1], 0.42 + (i * (tileW + tileGap)), topY1, tileW);
-    for (var j = 0; j < labels2.length; j++) traceOpsPptKeyTile(slide, labels2[j][0], labels2[j][1], 0.42 + (j * (tileW + tileGap)), topY2, tileW);
+    for (var i = 0; i < labels1.length; i++) traceOpsPptGlassKeyTile(slide, labels1[i][0], labels1[i][1], 0.42 + (i * (tileW + tileGap)), topY1, tileW);
+    for (var j = 0; j < labels2.length; j++) traceOpsPptGlassKeyTile(slide, labels2[j][0], labels2[j][1], 0.42 + (j * (tileW + tileGap)), topY2, tileW);
 
-    traceOpsPptBox(slide, 0.42, 3.34, 7.06, 1.34, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Complaint anchor', 0.58, 3.46, 2.0);
-    slide.addText(traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Issue under analysis', 320), {x:0.58, y:3.74, w:6.72, h:0.68, fontFace:'Segoe UI', fontSize:12, color:'102A43', margin:0, fit:'shrink'});
+    traceOpsPptGlassBox(slide, 0.42, 3.34, 7.06, 1.34, {fillColor:'FFFFFF', transparency:74, lineColor:'DDEAE3', linePt:0.8, lineTransparency:28});
+    slide.addText(traceOpsPptSafe('Complaint anchor', 80), {x:0.58, y:3.46, w:2.0, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'E5F0EC', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Issue under analysis', 320), {x:0.58, y:3.74, w:6.72, h:0.68, fontFace:'Segoe UI', fontSize:12, color:'FFFFFF', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 7.64, 3.34, 5.27, 0.62, 'FAFCFF');
-    traceOpsPptPanelTitle(slide, 'Detection window', 7.80, 3.46, 1.6);
-    slide.addText(traceOpsPptWrap(normalized.detection_window || model.detectionWindow || 'N/D', 80), {x:7.80, y:3.68, w:4.80, h:0.18, fontFace:'Segoe UI', fontSize:11.5, bold:true, color:'102A43', margin:0, fit:'shrink'});
+    traceOpsPptGlassBox(slide, 7.64, 3.34, 5.27, 0.62, {fillColor:'FFFFFF', transparency:78, lineColor:'DDEAE3', linePt:0.8, lineTransparency:30});
+    slide.addText(traceOpsPptSafe('Detection window', 80), {x:7.80, y:3.46, w:1.6, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'E5F0EC', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.detection_window || model.detectionWindow || 'N/D', 80), {x:7.80, y:3.68, w:4.80, h:0.18, fontFace:'Segoe UI', fontSize:11.5, bold:true, color:'FFFFFF', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 7.64, 4.06, 5.27, 0.62, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Trace events', 7.80, 4.18, 1.6);
-    slide.addText(traceOpsPptWrap(linked.length ? (linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).slice(0,5).join(' → ')) : 'Build → Test → Complaint', 90), {x:7.80, y:4.40, w:4.80, h:0.18, fontFace:'Segoe UI', fontSize:11.2, bold:true, color:'102A43', margin:0, fit:'shrink'});
+    traceOpsPptGlassBox(slide, 7.64, 4.06, 5.27, 0.62, {fillColor:'FFFFFF', transparency:78, lineColor:'DDEAE3', linePt:0.8, lineTransparency:30});
+    slide.addText(traceOpsPptSafe('Trace events', 80), {x:7.80, y:4.18, w:1.6, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'E5F0EC', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(linked.length ? (linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).slice(0,5).join(' → ')) : 'Build → Test → Complaint', 90), {x:7.80, y:4.40, w:4.80, h:0.18, fontFace:'Segoe UI', fontSize:11.2, bold:true, color:'FFFFFF', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 0.42, 4.90, 4.08, 1.12, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Impact / exposure', 0.58, 5.02, 1.8);
-    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(normalized.impact_summary || model.exposure || model.impact || 'Exposure under analysis', 4, 500), 0.60, 5.28, 3.70, 0.62, {fontSize:10.3, lineGap:0.24, maxItems:4});
+    traceOpsPptGlassBox(slide, 0.42, 4.90, 4.08, 1.12, {fillColor:'FFFFFF', transparency:74, lineColor:'DDEAE3', linePt:0.8, lineTransparency:28});
+    slide.addText(traceOpsPptSafe('Impact / exposure', 80), {x:0.58, y:5.02, w:1.8, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'E5F0EC', margin:0, fit:'shrink'});
+    traceOpsPptDrawBulletList(slide, traceOpsPptSplitBullets(normalized.impact_summary || model.exposure || model.impact || 'Exposure under analysis', 4, 500), 0.60, 5.28, 3.70, 0.62, {fontSize:10.3, lineGap:0.24, maxItems:4, color:'FFFFFF'});
 
-    traceOpsPptBox(slide, 4.62, 4.90, 4.08, 1.12, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Trace path', 4.78, 5.02, 1.6);
-    slide.addText(traceOpsPptWrap(normalized.trace_path || model.tracePath || 'Event linkage pending; case summary used for traceability.', 150), {x:4.78, y:5.28, w:3.70, h:0.56, fontFace:'Segoe UI', fontSize:10.8, color:'102A43', margin:0, fit:'shrink'});
+    traceOpsPptGlassBox(slide, 4.62, 4.90, 4.08, 1.12, {fillColor:'FFFFFF', transparency:74, lineColor:'DDEAE3', linePt:0.8, lineTransparency:28});
+    slide.addText(traceOpsPptSafe('Trace path', 80), {x:4.78, y:5.02, w:1.6, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'E5F0EC', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.trace_path || model.tracePath || 'Event linkage pending; case summary used for traceability.', 150), {x:4.78, y:5.28, w:3.70, h:0.56, fontFace:'Segoe UI', fontSize:10.8, color:'FFFFFF', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 8.82, 4.90, 4.08, 1.12, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Linked RCCA / evidence', 8.98, 5.02, 2.2);
-    slide.addText(traceOpsPptWrap('RCCA ' + (normalized.source_rcca_id || 'N/D') + ' · ' + (model.evidenceRefs.length ? model.evidenceRefs.slice(0,3).join(' | ') : 'Evidence summary available'), 180), {x:8.98, y:5.28, w:3.70, h:0.56, fontFace:'Segoe UI', fontSize:10.5, color:'102A43', margin:0, fit:'shrink'});
+    traceOpsPptGlassBox(slide, 8.82, 4.90, 4.08, 1.12, {fillColor:'FFFFFF', transparency:74, lineColor:'DDEAE3', linePt:0.8, lineTransparency:28});
+    slide.addText(traceOpsPptSafe('Linked RCCA / evidence', 80), {x:8.98, y:5.02, w:2.2, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'E5F0EC', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap('RCCA ' + (normalized.source_rcca_id || 'N/D') + ' · ' + (model.evidenceRefs.length ? model.evidenceRefs.slice(0,3).join(' | ') : 'Evidence summary available'), 180), {x:8.98, y:5.28, w:3.70, h:0.56, fontFace:'Segoe UI', fontSize:10.5, color:'FFFFFF', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 0.42, 6.12, 8.12, 0.82, 'FAFCFF');
-    traceOpsPptPanelTitle(slide, 'Readiness basis', 0.58, 6.24, 1.6);
-    slide.addText(traceOpsPptWrap(readinessMeta.basis + (readinessMeta.missing.length ? (' Open gaps: ' + readinessMeta.missing.slice(0,4).join(', ') + '.') : ' All mandatory sections currently populated.'), 220), {x:1.98, y:6.24, w:6.20, h:0.34, fontFace:'Segoe UI', fontSize:9.6, color:'102A43', margin:0, fit:'shrink'});
+    traceOpsPptGlassBox(slide, 0.42, 6.12, 8.12, 0.82, {fillColor:'FFFFFF', transparency:76, lineColor:'DDEAE3', linePt:0.8, lineTransparency:30});
+    slide.addText(traceOpsPptSafe('Readiness basis', 80), {x:0.58, y:6.24, w:1.6, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'E5F0EC', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(readinessMeta.basis + (readinessMeta.missing.length ? (' Open gaps: ' + readinessMeta.missing.slice(0,4).join(', ') + '.') : ' All mandatory sections currently populated.'), 220), {x:1.98, y:6.24, w:6.20, h:0.34, fontFace:'Segoe UI', fontSize:9.6, color:'FFFFFF', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 8.76, 6.12, 4.14, 0.82, 'FFFFFF');
-    traceOpsPptPanelTitle(slide, 'Readiness logic', 8.92, 6.24, 1.6);
-    slide.addText(traceOpsPptWrap(readinessMeta.completed + '/8 mandatory sections completed · score auto-calculated by TraceOps.', 110), {x:10.20, y:6.24, w:2.36, h:0.34, fontFace:'Segoe UI', fontSize:9.4, color:'102A43', margin:0, fit:'shrink'});
+    traceOpsPptGlassBox(slide, 8.76, 6.12, 4.14, 0.82, {fillColor:'FFFFFF', transparency:76, lineColor:'DDEAE3', linePt:0.8, lineTransparency:30});
+    slide.addText(traceOpsPptSafe('Readiness logic', 80), {x:8.92, y:6.24, w:1.6, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'E5F0EC', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(readinessMeta.completed + '/8 mandatory sections completed · score auto-calculated by TraceOps.', 110), {x:10.20, y:6.24, w:2.36, h:0.34, fontFace:'Segoe UI', fontSize:9.4, color:'FFFFFF', margin:0, fit:'shrink'});
 
     traceOpsPptAddBadge(slide, String(normalized.status || 'Draft'), 11.32, 0.94, 'draft');
     return slide;
