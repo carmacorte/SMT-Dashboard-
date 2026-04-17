@@ -1995,43 +1995,34 @@ async function signUp(email, password){
     });
   }
 
-  function subscribeRccaRealtime(userId, handler, onStatus){
+  function subscribeRccaRealtime(userId, handler){
     var client = getClient();
-    var normalizedUserId = String(userId || '').trim();
-    if (!client || !normalizedUserId || !handler) {
-      try { if (onStatus) onStatus('CLOSED'); } catch(_) {}
+    if (!client || !userId || !handler) {
       return { unsubscribe: function(){} };
     }
     try {
-      var channelName = 'traceops-rcca-' + normalizedUserId.replace(/[^a-zA-Z0-9_-]/g, '_');
-      var realtimeFilter = 'user_id=eq.' + normalizedUserId;
-      try {
-        if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime filter:', realtimeFilter);
-      } catch(_) {}
+      var channelName = 'traceops-rcca-' + String(userId).replace(/[^a-zA-Z0-9_-]/g, '_');
       var channel = client.channel(channelName);
       channel.on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'traceops_rcca_cases',
-        filter: realtimeFilter
+        filter: 'user_id=eq.' + userId
       }, function(payload){
         try { handler(payload || null); } catch(_) {}
       });
       channel.subscribe(function(status){
         try {
-          if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime status:', status, 'user_id:', normalizedUserId);
+          if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime status:', status);
         } catch(_) {}
-        try { if (onStatus) onStatus(status || 'UNKNOWN'); } catch(_) {}
       });
       return {
         unsubscribe: function(){
-          try { if (onStatus) onStatus('CLOSED'); } catch(_) {}
           try { client.removeChannel(channel); } catch(_) {}
         }
       };
     } catch (err) {
-      console.warn('[TraceOps] Realtime RCCA unavailable:', err);
-      try { if (onStatus) onStatus('CHANNEL_ERROR'); } catch(_) {}
+      try { console.warn('[TraceOps] Realtime no disponible en este navegador:', err); } catch(_) {}
       return { unsubscribe: function(){} };
     }
   }
@@ -2114,6 +2105,72 @@ function traceOpsPptShapeRectSafeLocal() {
   return 'rect';
 }
 
+function traceOpsNormalizeStatusLocal(s) {
+  var v = String(s || '').toLowerCase();
+  if (/closed|complete|validated/.test(v)) return 'Closed';
+  if (/under validation|validation|progress|draft|open|pending/.test(v)) return 'Under Validation';
+  return 'Draft';
+}
+
+function traceOpsSafeTextLocal(val, fallback) {
+  var t = String(val || '').replace(/\s+/g, ' ').trim();
+  return t || String(fallback || 'Pending');
+}
+
+function traceOpsCleanTextLocal(txt, max) {
+  var t = String(txt || '').replace(/\s+/g, ' ').replace(/\.\.\.+/g, '.').trim();
+  if (!t) return 'No description available.';
+  max = Number(max || 260);
+  if (t.length <= max) return t;
+  var cut = t.slice(0, max);
+  cut = cut.replace(/[,:;\-\/ ]+[^,:;\-\/ ]*$/, '').trim();
+  return cut.replace(/[.,;:!\- ]+$/, '') + '.';
+}
+
+function traceOpsOpenItemsLocal(d) {
+  if (d && d.openItems != null && !isNaN(Number(d.openItems))) return Math.max(0, Number(d.openItems));
+  if (d && d.pendingValidations != null && !isNaN(Number(d.pendingValidations))) return Math.max(0, Number(d.pendingValidations));
+  var count = 0;
+  if (!d || !d.traceabilityComplete) count += 1;
+  if (!d || !d.evidenceComplete) count += 1;
+  return count;
+}
+
+function traceOpsEvidenceStatusLocal(d) {
+  var bad = !!(d && (d.badPartImage || (d.bad_part_images && d.bad_part_images.length) || (d.meta && d.meta.evidence && d.meta.evidence.bad_part && d.meta.evidence.bad_part.length)));
+  var good = !!(d && (d.goodPartImage || (d.good_part_images && d.good_part_images.length) || (d.meta && d.meta.evidence && d.meta.evidence.good_part && d.meta.evidence.good_part.length)));
+  var refs = !!(d && d.evidenceRefs && d.evidenceRefs.length);
+  if (bad && good && refs) return 'Complete';
+  if (bad || good || refs) return 'Partial';
+  return 'Pending';
+}
+
+function traceOpsStatusBannerLocal(d) {
+  var normalized = traceOpsNormalizeStatusLocal((d && (d.reportStatus || d.status)) || 'Draft');
+  if (normalized === 'Closed') return 'CLOSED';
+  return traceOpsOpenItemsLocal(d) === 0 && String((d && d.readiness8d) || '').replace(/\s+/g,'') === '100%' ? 'READY FOR REVIEW' : 'UNDER VALIDATION';
+}
+
+function traceOpsRiskBannerLocal(d) {
+  var raw = String((d && d.riskBanner) || '').trim();
+  if (raw) return raw;
+  var level = 'LOW';
+  var txt = String(d && (d.reportStatus || d.status || '') || '').toLowerCase();
+  if (/high|crit/.test(txt)) level = 'HIGH';
+  else if (/med/.test(txt)) level = 'MEDIUM';
+  return level + ' - CONTROLLED';
+}
+
+function traceOpsOccurrenceCleanLocal(text) {
+  var t = traceOpsCleanTextLocal(text || 'Pending validation.', 180);
+  return t.replace(/probable occurrence mechanism supported by current evidence:\s*/ig, '').replace(/additionally,?\s*/ig, '').trim();
+}
+
+function traceOpsEscapeCleanLocal(text) {
+  var t = traceOpsCleanTextLocal(text || 'Escape under validation.', 180);
+  return t.replace(/escape point not yet confirmed\.?\s*/ig, '').replace(/current trace suggests\s*/ig, '').trim();
+}
+
 function traceOpsPptExecutiveStatusToneLocal(statusText) {
   var s = String(statusText || '').toLowerCase();
   if (/closed|complete|validated|complete/.test(s)) return { fill: 'EAF7EE', text: '1B5E20', line: 'B7DEC2' };
@@ -2122,60 +2179,30 @@ function traceOpsPptExecutiveStatusToneLocal(statusText) {
 }
 
 function traceOpsPptExecutiveSummaryLocal(d) {
-  var model = d.model || d.product || 'N/D';
-  var station = d.station || 'N/D';
+  var model = d.model || d.product || 'Pending';
+  var station = d.station || 'Pending';
   var defect = d.defect || d.failureMode || d.problem || 'issue';
-  var occ = d.occurrenceConclusion || d.occurrence || '';
-  var esc = d.escapeConclusion || d.escape || '';
-  var base = d.complaintAnchor || d.description || d.problemDescription || '';
-  base = String(base || '').replace(/\s+/g, ' ').trim();
-  if (!base) {
-    base = 'Issue identified on model ' + model + ' at station ' + station + ' involving ' + defect + '.';
-  }
-  if (base.length > 185) base = base.slice(0, 182) + '...';
-
+  var occ = traceOpsOccurrenceCleanLocal(d.occurrenceConclusion || d.occurrence || '');
+  var esc = traceOpsEscapeCleanLocal(d.escapeConclusion || d.escape || '');
+  var base = traceOpsCleanTextLocal(d.complaintAnchor || d.description || d.problemDescription || ('Issue identified on model ' + model + ' at station ' + station + ' involving ' + defect + '.'), 220);
   var lines = [base];
-
-  var statusLine = '';
-  if (occ) {
-    var occTxt = String(occ).replace(/\s+/g, ' ').trim();
-    if (occTxt.length > 95) occTxt = occTxt.slice(0, 92) + '...';
-    statusLine += 'Occurrence: ' + occTxt;
-  }
-  if (esc) {
-    var escTxt = String(esc).replace(/\s+/g, ' ').trim();
-    if (escTxt.length > 95) escTxt = escTxt.slice(0, 92) + '...';
-    statusLine += (statusLine ? ' ' : '') + 'Escape: ' + escTxt;
-  } else {
-    statusLine += (statusLine ? ' ' : '') + 'Control path remains under validation.';
-  }
-  if (statusLine) lines.push(statusLine);
-
+  if (occ) lines.push('Occurrence: ' + traceOpsCleanTextLocal(occ, 95));
+  if (esc) lines.push('Escape: ' + traceOpsCleanTextLocal(esc, 95));
+  if (!occ && !esc) lines.push('Control path remains under validation.');
   return lines.join('\n\n');
 }
 
 function traceOpsPptExecutiveRiskLinesLocal(d) {
-  var arr = [];
-  var exposure = String(d.exposureWindow || '').replace(/^Exposure window:\s*/i, '').trim();
-  var impact = String(d.estimatedImpact || '').replace(/^Estimated impact:\s*/i, '').trim();
-
-  if (exposure) arr.push('Exposure window: ' + exposure);
-  if (impact) arr.push('Estimated impact: ' + impact);
-  arr.push('Primary risk: ' + (d.defect || d.failureMode || d.problem || 'N/D') + ' @ ' + (d.station || 'N/D'));
-  return arr.join('\n');
+  var exposure = traceOpsSafeTextLocal(String(d.exposureWindow || '').replace(/^Exposure window:\s*/i, '').trim(), 'N/A');
+  var impact = traceOpsSafeTextLocal(String(d.estimatedImpact || '').replace(/^Estimated impact:\s*/i, '').trim(), 'N/A');
+  return ['Exposure window: ' + exposure, 'Estimated impact: ' + impact, 'Primary risk: ' + traceOpsSafeTextLocal(d.defect || d.failureMode || d.problem, 'N/A') + ' @ ' + traceOpsSafeTextLocal(d.station, 'N/A')].join('\n');
 }
 
 function traceOpsPptExecutiveRootCauseLinesLocal(d) {
-  var occ = d.occurrenceConclusion || d.occurrence || d.probableCause || 'Under validation';
-  var esc = d.escapeConclusion || d.escape || d.controlGap || 'Under validation';
-  var status = d.reportStatus || d.status || 'Draft';
-  occ = String(occ).replace(/\s+/g, ' ').trim();
-  esc = String(esc).replace(/\s+/g, ' ').trim();
-  if (occ.length > 110) occ = occ.slice(0, 107) + '...';
-  if (esc.length > 110) esc = esc.slice(0, 107) + '...';
-  return 'Occurrence: ' + occ + '\n' +
-         'Escape: ' + esc + '\n' +
-         'Status: ' + status;
+  var occ = traceOpsCleanTextLocal(traceOpsOccurrenceCleanLocal(d.occurrenceConclusion || d.occurrence || d.probableCause || 'Under validation'), 105);
+  var esc = traceOpsCleanTextLocal(traceOpsEscapeCleanLocal(d.escapeConclusion || d.escape || d.controlGap || 'Under validation'), 105);
+  var status = traceOpsNormalizeStatusLocal(d.reportStatus || d.status || 'Draft');
+  return 'Occurrence: ' + occ + '\n' + 'Escape: ' + esc + '\n' + 'Status: ' + status;
 }
 
 function traceOpsPptExecutiveBulletLinesLocal(items, fallback) {
@@ -2202,7 +2229,7 @@ function traceOpsPptDrawExecKpiLocal(slide, x, y, w, h, label, value, meta) {
     fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1}
   });
   slide.addText(label, { x:x+0.12, y:y+0.08, w:w-0.24, h:0.18, fontFace:'Segoe UI', fontSize:9, bold:true, color:'5F766C', breakLine:false });
-  slide.addText(String(value || 'N/D'), { x:x+0.12, y:y+0.28, w:w-0.24, h:0.34, fontFace:'Segoe UI', fontSize:18, bold:true, color:'102A43', breakLine:false, fit:'shrink' });
+  slide.addText(String((value == null || value === '' || String(value).toUpperCase() === 'N/D') ? '0' : value), { x:x+0.12, y:y+0.28, w:w-0.24, h:0.34, fontFace:'Segoe UI', fontSize:18, bold:true, color:'102A43', breakLine:false, fit:'shrink' });
   slide.addText(meta || '', { x:x+0.12, y:y+h-0.24, w:w-0.24, h:0.16, fontFace:'Segoe UI', fontSize:7.5, color:'5F766C', breakLine:false, fit:'shrink' });
 }
 
@@ -2225,7 +2252,7 @@ function addExecutiveDashboardSlide(ppt, d) {
     x:0.45, y:1.34, w:8.8, h:0.38, rectRadius:0.08,
     fill:{color:tone.fill}, line:{color:tone.line, pt:1}
   });
-  slide.addText('STATUS: ' + (d.statusBanner || 'UNDER VALIDATION') + '    |    RISK: ' + (d.riskBanner || 'MEDIUM – CONTAINED, ROOT CAUSE NOT FULLY CONFIRMED'), {
+  slide.addText('STATUS: ' + (traceOpsStatusBannerLocal(d)) + '    |    RISK: ' + (traceOpsRiskBannerLocal(d)), {
     x:0.62, y:1.46, w:8.4, h:0.14, fontFace:'Segoe UI', fontSize:10.5, bold:true, color:tone.text, breakLine:false, fit:'shrink'
   });
 
@@ -2233,7 +2260,7 @@ function addExecutiveDashboardSlide(ppt, d) {
   traceOpsPptDrawExecKpiLocal(slide, 0.45, kpiY, kpiW, 0.92, 'OPEN ITEMS', d.openItems, 'Require follow-up');
   traceOpsPptDrawExecKpiLocal(slide, 0.45 + kpiW + gap, kpiY, kpiW, 0.92, '8D READINESS', d.readiness8d, 'Mandatory sections complete');
   traceOpsPptDrawExecKpiLocal(slide, 0.45 + (kpiW + gap)*2, kpiY, kpiW, 0.92, 'EVIDENCE', d.evidenceBadge, 'Bad / Good logic and files');
-  traceOpsPptDrawExecKpiLocal(slide, 0.45 + (kpiW + gap)*3, kpiY, kpiW, 0.92, 'CURRENT STATUS', d.reportStatus || 'Draft', 'Customer-facing state');
+  traceOpsPptDrawExecKpiLocal(slide, 0.45 + (kpiW + gap)*3, kpiY, kpiW, 0.92, 'CURRENT STATUS', traceOpsNormalizeStatusLocal(d.reportStatus || d.status || 'Draft'), 'Customer-facing state');
 
   slide.addShape(traceOpsPptShapeRectSafeLocal(), { x:0.45, y:2.98, w:8.8, h:1.14, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1} });
   slide.addText('EXECUTIVE SUMMARY', { x:0.58, y:3.08, w:2.0, h:0.14, fontFace:'Segoe UI', fontSize:9, bold:true, color:'1F3A5F', breakLine:false });
@@ -2262,43 +2289,244 @@ function addExecutiveDashboardSlide(ppt, d) {
 
 
 
+
+function traceOpsNormVal(v) {
+  return String(v || '').replace(/\s+/g, ' ').trim();
+}
+
+function traceOpsIsWeakVal(v) {
+  var s = traceOpsNormVal(v).toLowerCase();
+  return !s || s === 'n/d' || s === 'n/a' || s === 'na' || s === 'null' || s === 'undefined' || s === 'pending';
+}
+
+function traceOpsCleanSentence(v, maxLen) {
+  var s = traceOpsNormVal(v)
+    .replace(/\.\.\.+/g, '.')
+    .replace(/\s+\./g, '.')
+    .replace(/\s+,/g, ',');
+  if (!s) return '';
+  if (maxLen && s.length > maxLen) s = s.slice(0, maxLen).trim() + '...';
+  return s;
+}
+
+function traceOpsLooksConversationalTitle(v) {
+  var s = traceOpsNormVal(v).toLowerCase();
+  return /^(buen(os|as)?|hola|oye|favor|gracias|ya se le comentó|ya se comento|buenas noches|buen día|buen dia)/.test(s);
+}
+
+function traceOpsInferModelFromText(text) {
+  var raw = traceOpsNormVal(text);
+  var m = raw.match(/\b(?:N\/P|P\/N|MODEL|MODELO|PART)\s*[:# ]?\s*([A-Z0-9][A-Z0-9-]{4,})/i);
+  if (m && m[1]) return traceOpsNormVal(m[1]).toUpperCase();
+  var m2 = raw.match(/\b([A-Z]{2,}[0-9]{3,}[A-Z0-9-]*)\b/);
+  if (m2 && m2[1]) return traceOpsNormVal(m2[1]).toUpperCase();
+  return '';
+}
+
+function traceOpsInferLineFromText(text) {
+  var raw = traceOpsNormVal(text);
+  var m = raw.match(/\b(?:L\s*\d+|BB\s*\d+|LINEA\s*\d+|LINE\s*\d+)\b/i);
+  return m ? traceOpsNormVal(m[0]).replace(/\s+/g, '').toUpperCase() : '';
+}
+
+function traceOpsInferStationFromText(text) {
+  var raw = traceOpsNormVal(text);
+  if (/P21SIAH2|ICT|AOI|SPI|SMT|PTH/i.test(raw)) {
+    var m = raw.match(/\b(P[0-9A-Z]{4,}|ICT|AOI|SPI|SMT|PTH)\b/i);
+    if (m && m[1]) return traceOpsNormVal(m[1]).toUpperCase();
+  }
+  return '';
+}
+
+function traceOpsInferFailureMode(text) {
+  var raw = traceOpsNormVal(text).toLowerCase();
+  if (/wrong component|wrong part|material mix|mezcla de material/.test(raw)) return 'Wrong Component';
+  if (/missing material|faltante|falta material/.test(raw)) return 'Missing Material';
+  if (/short|bridge|corto|puente/.test(raw)) return 'Short / Bridge';
+  if (/open|abierto/.test(raw)) return 'Open';
+  if (/misalign|desalinead/.test(raw)) return 'Misaligned Component';
+  if (/material/.test(raw)) return 'Material Issue';
+  return '';
+}
+
+function traceOpsBuildClean8DTitle(caseData) {
+  var fm = traceOpsNormVal(caseData.failureModeFinal || '');
+  var model = traceOpsNormVal(caseData.modelFinal || '');
+  var line = traceOpsNormVal(caseData.lineFinal || '');
+  var station = traceOpsNormVal(caseData.stationFinal || '');
+  if (!traceOpsIsWeakVal(fm) && (!traceOpsIsWeakVal(model) || !traceOpsIsWeakVal(station))) {
+    return fm +
+      (traceOpsIsWeakVal(model) ? '' : ' - ' + model) +
+      (traceOpsIsWeakVal(line) ? '' : ' / ' + line) +
+      (traceOpsIsWeakVal(station) ? '' : ' / ' + station);
+  }
+  return 'Issue Under Validation';
+}
+
+function traceOpsBuildComplaintAnchor(caseData) {
+  var base = traceOpsCleanSentence(
+    caseData.complaintAnchor ||
+    caseData.description ||
+    caseData.problemDescription ||
+    caseData.title ||
+    '',
+    260
+  );
+  if (!base || traceOpsLooksConversationalTitle(base)) {
+    var model = traceOpsIsWeakVal(caseData.modelFinal) ? 'pending model identification' : caseData.modelFinal;
+    var station = traceOpsIsWeakVal(caseData.stationFinal) ? 'pending station identification' : caseData.stationFinal;
+    var fm = traceOpsIsWeakVal(caseData.failureModeFinal) ? 'issue under validation' : caseData.failureModeFinal;
+    return 'Case under review involving ' + fm + ' at ' + station + ' for ' + model + '. Technical confirmation remains under validation.';
+  }
+  return base;
+}
+
+function traceOpsNormalizeCaseForPpt(src) {
+  var d = Object.assign({}, src || {});
+  var textPool = [
+    d.title, d.caseTitle, d.description, d.problemDescription, d.complaintAnchor,
+    d.defect, d.failureMode, d.occurrenceConclusion, d.escapeConclusion,
+    d.problema, d.titulo_corto, d.d4_root_cause, d.d4_escape_point, d.causa_raiz, d.hipotesis
+  ].join(' ');
+  var model = !traceOpsIsWeakVal(d.model) ? traceOpsNormVal(d.model) :
+              !traceOpsIsWeakVal(d.product) ? traceOpsNormVal(d.product) :
+              !traceOpsIsWeakVal(d.modelo) ? traceOpsNormVal(d.modelo) :
+              traceOpsInferModelFromText(textPool);
+  var line = !traceOpsIsWeakVal(d.line) ? traceOpsNormVal(d.line) :
+             !traceOpsIsWeakVal(d.linea) ? traceOpsNormVal(d.linea) :
+             traceOpsInferLineFromText(textPool);
+  var station = !traceOpsIsWeakVal(d.station) ? traceOpsNormVal(d.station) :
+                !traceOpsIsWeakVal(d.estacion_dominante) ? traceOpsNormVal(d.estacion_dominante) :
+                traceOpsInferStationFromText(textPool);
+  var failureMode = !traceOpsIsWeakVal(d.defect) ? traceOpsNormVal(d.defect) :
+                    !traceOpsIsWeakVal(d.failureMode) ? traceOpsNormVal(d.failureMode) :
+                    !traceOpsIsWeakVal(d.defecto_smt) ? traceOpsNormVal(d.defecto_smt) :
+                    traceOpsInferFailureMode(textPool);
+  d.modelFinal = model || 'Pending identification';
+  d.lineFinal = line || 'Pending identification';
+  d.stationFinal = station || 'Pending identification';
+  d.failureModeFinal = failureMode || 'Pending technical validation';
+  var rawTitle = traceOpsCleanSentence(d.title || d.caseTitle || d.titulo_corto || '', 120);
+  d.titleFinal = (!rawTitle || traceOpsLooksConversationalTitle(rawTitle)) ? traceOpsBuildClean8DTitle(d) : rawTitle;
+  d.complaintAnchorFinal = traceOpsBuildComplaintAnchor(d);
+  return d;
+}
+
+function traceOpsResolveMasterStatus(d) {
+  var openItems = Number(d && d.openItems != null ? d.openItems : 0);
+  var explicit = String(d && (d.reportStatus || d.status) || '').toLowerCase();
+  if (/closed|complete|validated/.test(explicit) && openItems === 0) return 'Closed';
+  if (openItems > 0) return 'Under Validation';
+  if (/draft/.test(explicit)) return 'Under Validation';
+  return 'Under Validation';
+}
+
+function traceOpsSafeOccurrencePoint(v) {
+  return traceOpsIsWeakVal(v) ? 'Occurrence point pending confirmation' : traceOpsNormVal(v);
+}
+
+function traceOpsSafeDetectionControl(v) {
+  return traceOpsIsWeakVal(v) ? 'Detection control pending confirmation' : traceOpsNormVal(v);
+}
+
+function traceOpsSafeFailureMode(v) {
+  return traceOpsIsWeakVal(v) ? 'Failure mode pending technical validation' : traceOpsNormVal(v);
+}
+
+function traceOpsSafeGapNarrative(station, failureMode) {
+  return 'Current trace suggests a control gap around ' +
+    traceOpsSafeOccurrencePoint(station) +
+    ' and requires validation against ' +
+    traceOpsSafeFailureMode(failureMode) + '.';
+}
+
+function traceOpsDisplayValue(v, fallback) {
+  return traceOpsIsWeakVal(v) ? (fallback || 'Pending confirmation') : traceOpsNormVal(v);
+}
+
+function traceOpsBuildOccurrenceFraming(d) {
+  var norm = traceOpsNormalizeCaseForPpt(d);
+  var occ = traceOpsCleanSentence(d.occurrenceConclusion || d.d4_root_cause || '', 220);
+  if (!occ) {
+    occ = 'Occurrence mechanism remains under validation. Current evidence suggests relation to ' + norm.failureModeFinal.toLowerCase() + '.';
+  }
+  return occ;
+}
+
+function traceOpsBuildOccurrenceCategoryValue(d, categoryName) {
+  var norm = traceOpsNormalizeCaseForPpt(d);
+  var raw = '';
+  if (categoryName === 'Method') raw = traceOpsSafeGapNarrative(norm.stationFinal, norm.failureModeFinal);
+  else if (categoryName === 'Measurement') raw = 'Detection window: ' + (d.detectionWindow || d.detection_window || 'Pending confirmation');
+  else if (categoryName === 'Material' && /material/i.test(norm.failureModeFinal)) raw = 'Material condition under technical validation.';
+  return traceOpsCleanSentence(raw || 'Evidence pending.', 120);
+}
+
+function traceOpsBuildEscapePoint(d) {
+  var norm = traceOpsNormalizeCaseForPpt(d);
+  return 'Escape point pending confirmation. Current trace requires review at ' + traceOpsSafeOccurrencePoint(norm.stationFinal) + '.';
+}
+
+function traceOpsBuildExpectedDetectionControl(d) {
+  var norm = traceOpsNormalizeCaseForPpt(d);
+  return traceOpsSafeDetectionControl(norm.stationFinal);
+}
+
+function traceOpsBuildControlGap(d) {
+  var norm = traceOpsNormalizeCaseForPpt(d);
+  return 'Challenge the expected detection control against ' + traceOpsSafeFailureMode(norm.failureModeFinal) + ' and confirm the real missed trigger.';
+}
+
+function traceOpsBuildEscapeConclusion(d) {
+  var norm = traceOpsNormalizeCaseForPpt(d);
+  return 'Escape remains under validation. Current evidence suggests review around ' + traceOpsSafeOccurrencePoint(norm.stationFinal) + ' for ' + traceOpsSafeFailureMode(norm.failureModeFinal).toLowerCase() + '.';
+}
+
+
 function buildExecutiveDashboardPptModelLocal(src) {
-  var obj = src || {};
-  var qd = obj.qualityDashboard || obj.dashboard || {};
+  var base = traceOpsNormalizeCaseForPpt(src || {});
+  var qd = base.qualityDashboard || base.dashboard || {};
   var k = qd.kpis || {};
   var hdr = qd.header || {};
   var read = qd.readiness || {};
   var risk = qd.risk || {};
-  var defect = hdr.primaryIssue || obj.defect || obj.failureMode || obj.problem || 'N/D';
   var actionsList = [];
-  if (Array.isArray(obj.actionsList)) actionsList = obj.actionsList.slice(0,3);
-  if (!actionsList.length && Array.isArray(obj.actions)) {
-    actionsList = obj.actions.map(function(a){ return (a && (a.action || a.title || a.name)) || ''; }).filter(Boolean).slice(0,3);
+  if (Array.isArray(base.actionsList)) actionsList = base.actionsList.slice(0,3);
+  if (!actionsList.length && Array.isArray(base.actions)) {
+    actionsList = base.actions.map(function(a){ return (a && (a.action || a.title || a.name)) || ''; }).filter(Boolean).slice(0,3);
   }
-  if (!actionsList.length && obj.d5ActionsText) {
-    actionsList = String(obj.d5ActionsText).split(/\n+/).filter(Boolean).slice(0,3);
+  if (!actionsList.length && base.d5ActionsText) {
+    actionsList = String(base.d5ActionsText).split(/\n+/).filter(Boolean).slice(0,3);
   }
+  var openItems = (base.pendingValidations != null)
+    ? Number(base.pendingValidations || 0)
+    : (k.openItems != null ? Number(k.openItems || 0) : 0);
+  openItems = traceOpsOpenItemsLocal({openItems:openItems, pendingValidations:openItems, evidenceComplete: base.evidenceComplete, traceabilityComplete: base.traceabilityComplete});
+  var masterStatus = traceOpsResolveMasterStatus({
+    reportStatus: base.reportStatus || base.status || read.currentStatus || 'Draft',
+    openItems: openItems
+  });
   return {
-    title: obj.title || obj.caseTitle || defect,
-    model: obj.model || obj.product || hdr.model || 'N/D',
-    line: hdr.line || obj.line || 'N/D',
-    station: hdr.station || obj.station || 'N/D',
-    window: hdr.window || obj.window || obj.detectionWindow || 'N/D',
-    openItems: (obj.pendingValidations != null ? obj.pendingValidations : (read.pendingValidations != null ? read.pendingValidations : (k.openItems != null ? k.openItems : (obj.openItems != null ? obj.openItems : 0)))),
-    readiness8d: obj.readiness || obj.readiness8d || hdr.readiness8d || (((obj.readiness_score != null ? Number(obj.readiness_score) : NaN) >= 100) ? '100%' : ((obj.readiness_score != null && !isNaN(Number(obj.readiness_score))) ? (String(Math.round(Number(obj.readiness_score))) + '%') : '100%')),
-    evidenceBadge: (obj.badGoodComplete || obj.evidenceComplete || (obj.badPartImage && obj.goodPartImage) || (obj.bad_part_images && obj.good_part_images) || (obj.meta && obj.meta.evidence && obj.meta.evidence.bad_part && obj.meta.evidence.bad_part.length && obj.meta.evidence.good_part && obj.meta.evidence.good_part.length)) ? 'Complete' : 'Partial',
-    reportStatus: obj.reportStatus || obj.status || read.currentStatus || 'Draft',
-    complaintAnchor: obj.complaintAnchor || obj.description || obj.problemDescription || '',
-    occurrenceConclusion: obj.occurrenceConclusion || '',
-    escapeConclusion: obj.escapeConclusion || '',
-    exposureWindow: obj.exposureWindow || obj.detectionWindow || obj.window || '',
-    estimatedImpact: obj.estimatedImpact || obj.impact || obj.exposureImpact || '',
-    defect: defect,
-    traceabilityPartial: !obj.traceabilityComplete,
-    pendingValidations: read.pendingValidations || obj.pendingValidations || 0,
-    closureEligibility: read.closureEligibility || obj.closureEligibility || 'Pending',
-    statusBanner: /closed|complete/i.test(obj.reportStatus || '') ? 'CLOSED' : ((obj.pendingValidations != null && Number(obj.pendingValidations) === 0 && (obj.readiness || obj.readiness8d || '') === '100%') ? 'READY FOR REVIEW' : 'UNDER VALIDATION'),
-    riskBanner: (Number(risk.high || 0) > 0 ? 'HIGH' : (Number(risk.medium || 0) > 0 ? 'MEDIUM' : 'LOW')) + ' – ' + (((read.closureEligibility || obj.closureEligibility || '').toLowerCase().indexOf('pending') >= 0 || (obj.pendingValidations != null && Number(obj.pendingValidations) > 0)) ? 'CONTAINED, ROOT CAUSE NOT FULLY CONFIRMED' : 'CONTROLLED'),
+    title: base.titleFinal,
+    model: base.modelFinal,
+    line: base.lineFinal,
+    station: base.stationFinal,
+    window: hdr.window || base.window || base.detectionWindow || base.detection_window || 'Pending window confirmation',
+    openItems: openItems,
+    readiness8d: base.readiness || base.readiness8d || hdr.readiness8d || (((base.readiness_score != null ? Number(base.readiness_score) : NaN) >= 100) ? '100%' : ((base.readiness_score != null && !isNaN(Number(base.readiness_score))) ? (String(Math.round(Number(base.readiness_score))) + '%') : '100%')),
+    evidenceBadge: traceOpsEvidenceStatusLocal(Object.assign({}, base, {evidenceRefs: base.evidenceRefs || []})),
+    reportStatus: masterStatus,
+    complaintAnchor: base.complaintAnchorFinal,
+    occurrenceConclusion: base.occurrenceConclusion || base.d4_root_cause || 'Pending validation.',
+    escapeConclusion: base.escapeConclusion || base.d4_escape_point || 'Escape under validation.',
+    exposureWindow: base.exposureWindow || base.detectionWindow || base.detection_window || base.window || 'Pending confirmation',
+    estimatedImpact: base.estimatedImpact || base.impact || base.exposureImpact || 'Impact under validation',
+    defect: base.failureModeFinal,
+    traceabilityPartial: !base.traceabilityComplete,
+    pendingValidations: openItems,
+    closureEligibility: read.closureEligibility || base.closureEligibility || 'Pending',
+    statusBanner: masterStatus.toUpperCase(),
+    riskBanner: (Number(risk.high || 0) > 0 ? 'HIGH' : (Number(risk.medium || 0) > 0 ? 'MEDIUM' : 'LOW')) + ' - CONTROLLED',
     actionsList: actionsList
   };
 }
@@ -5334,8 +5562,6 @@ function App() {
   var authReady = authReadyArr[0]; var setAuthReady = authReadyArr[1];
   var cloudStatusArr = _useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "Configurando nube..." : "Modo local");
   var cloudStatus = cloudStatusArr[0]; var setCloudStatus = cloudStatusArr[1];
-  var realtimeStatusArr = _useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "CONNECTING" : "LOCAL_ONLY");
-  var realtimeStatus = realtimeStatusArr[0]; var setRealtimeStatus = realtimeStatusArr[1];
   var syncBusyArr = _useState(false);
   var syncBusy = syncBusyArr[0]; var setSyncBusy = syncBusyArr[1];
   var authErrArr = _useState("");
@@ -5344,21 +5570,6 @@ function App() {
   var adminOverride = adminOverrideArr[0]; var setAdminOverride = adminOverrideArr[1];
   var storageErrArr = _useState("");
   var storageErrMsg = storageErrArr[0]; var setStorageErrMsg = storageErrArr[1];
-
-  var realtimeUi = (function(){
-    var map = {
-      CONNECTED: { label: "Realtime activo", color: "#1A7A3C", bg: "#EEF8F1" },
-      SUBSCRIBED: { label: "Realtime activo", color: "#1A7A3C", bg: "#EEF8F1" },
-      CONNECTING: { label: "Realtime conectando", color: "#B87820", bg: "#FBF5E6" },
-      CHANNEL_ERROR: { label: "Realtime con error", color: "#C0392B", bg: "#FDF0EE" },
-      TIMED_OUT: { label: "Realtime en espera", color: "#B87820", bg: "#FBF5E6" },
-      ERROR: { label: "Realtime con error", color: "#C0392B", bg: "#FDF0EE" },
-      DISCONNECTED: { label: "Realtime desconectado", color: "#6A6560", bg: "#F3F1EE" },
-      CLOSED: { label: "Realtime desconectado", color: "#6A6560", bg: "#F3F1EE" },
-      LOCAL_ONLY: { label: "Modo local", color: "#6A6560", bg: "#F3F1EE" }
-    };
-    return map[realtimeStatus] || { label: "Realtime " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
-  })();
 
   React.useEffect(function(){
     try {
@@ -5575,7 +5786,6 @@ function App() {
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
       setAuthReady(true);
       setCloudStatus("Modo local · sin backend");
-      setRealtimeStatus("LOCAL_ONLY");
       return;
     }
 
@@ -5585,28 +5795,15 @@ function App() {
         if (realtimeSub && typeof realtimeSub.unsubscribe === "function") realtimeSub.unsubscribe();
       } catch(_){}
       realtimeSub = null;
-      setRealtimeStatus(authUser ? "DISCONNECTED" : "LOCAL_ONLY");
     }
     var authFlowPromise = Promise.resolve();
 
     function startRealtime(user){
       stopRealtime();
-      var realtimeUserId = String(user && user.id ? user.id : "").trim();
-      if (!realtimeUserId || !(window.TraceOpsCloud && window.TraceOpsCloud.subscribeRccaRealtime)) {
-        setRealtimeStatus("DISCONNECTED");
-        return;
-      }
-      setRealtimeStatus("CONNECTING");
-      realtimeSub = window.TraceOpsCloud.subscribeRccaRealtime(realtimeUserId, function(){
+      if (!user || !(window.TraceOpsCloud && window.TraceOpsCloud.subscribeRccaRealtime)) return;
+      realtimeSub = window.TraceOpsCloud.subscribeRccaRealtime(user.id, function(){
         setCloudStatus("RCCA en nube · actualización en tiempo real");
         refreshCloudRcca();
-      }, function(status){
-        var next = String(status || "UNKNOWN").toUpperCase();
-        if (next === "SUBSCRIBED") setRealtimeStatus("CONNECTED");
-        else if (next === "CHANNEL_ERROR" || next === "TIMED_OUT") setRealtimeStatus("ERROR");
-        else if (next === "CLOSED") setRealtimeStatus(authUser ? "DISCONNECTED" : "LOCAL_ONLY");
-        else if (next === "UNKNOWN") setRealtimeStatus("CONNECTING");
-        else setRealtimeStatus(next);
       });
     }
 
@@ -5619,14 +5816,12 @@ function App() {
 
         if (user) {
           setCloudStatus("Sesion activa");
-          setRealtimeStatus("CONNECTING");
           await refreshCloudRcca();
           await new Promise(function(resolve){ setTimeout(resolve, 150); });
           startRealtime(user);
         } else {
           stopRealtime();
           setCloudStatus("Modo local");
-          setRealtimeStatus("LOCAL_ONLY");
         }
 
         setAuthReady(true);
@@ -5636,10 +5831,8 @@ function App() {
         setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
         if (cloudErr && cloudErr.isTransientAuthLock) {
           setCloudStatus("Sesion activa · reintentando nube");
-          setRealtimeStatus("CONNECTING");
         } else {
           setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
-          setRealtimeStatus(cloudErr && cloudErr.isNetworkFallback ? "LOCAL_ONLY" : "ERROR");
         }
       });
       return authFlowPromise;
@@ -6799,7 +6992,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   async function traceOpsPptRenderEvidencePanel(slide, opts){
     var x = opts.x, y = opts.y, w = opts.w, h = opts.h;
     var label = opts.label || 'Evidence';
-    var caption = opts.caption || 'Evidence pending';
+    var caption = opts.caption || 'No evidence available';
     var tone = opts.tone || 'neutral';
     var imageData = opts.imageData || null;
     var fills = { bad:['FDF0EE','F0C4BE','C0392B'], good:['EEF6FF','B8DECE','1A7A3C'], neutral:['FFFFFF','DCE9E2','5F766C'] };
@@ -6815,7 +7008,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         slide.addText('Image unavailable', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
       }
     } else {
-      slide.addText('Evidence pending', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
+      slide.addText('No evidence available', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
     }
     slide.addText(traceOpsPptSafe(caption, 36), {x:x+0.10, y:y+h-0.16, w:w-0.20, h:0.10, fontFace:'Segoe UI', fontSize:7.2, bold:true, color:palette[2], align:'center', margin:0, fit:'shrink'});
   }
@@ -6918,8 +7111,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
   function traceOpsPptEscapeConclusionText(normalized, model){
     var base = traceOpsEightdHasText(normalized && normalized.d4_escape_point) ? normalized.d4_escape_point : model.escapeSummary;
-    var station = model.station || normalized.station || 'the expected detection stage';
-    var defect = normalized.defecto_smt || model.defect || 'the failure mode';
+    var station = traceOpsBuildExpectedDetectionControl(Object.assign({}, normalized, model || {}));
+    var defect = traceOpsSafeFailureMode((normalized.defecto_smt || model.defect || ''));
     var parts = [];
     if (traceOpsEightdHasText(base)) parts.push(traceOpsEightdShort(base, 150));
     parts.push('Current evidence indicates the missed trigger is associated with ' + station + '.');
@@ -7280,7 +7473,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       return String(item && item.linea_estacion || '').trim() && String(item && item.linea_estacion || '').trim() !== 'N/D';
     })) traceStatus = 'Good';
 
-    var evidenceStatus = evidenceCount > 1 ? 'Good' : (evidenceCount ? 'Partial' : 'Pending');
+    var evidenceStatus = traceOpsEvidenceStatusLocal({bad_part_images:(metaEv.bad||[]), good_part_images:(metaEv.good||[]), evidenceRefs:(metaEv.general||[])});
     var linkedRcca = normalized && normalized.source_rcca_id ? 'Yes' : 'No';
     var closureEligibility = readinessMeta.score === 100 && openItems === 0 ? 'Ready' : 'Pending validation';
 
@@ -7320,8 +7513,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         ['Mandatory sections', readinessMeta.completed + ' / 8'],
         ['RCCA linked', linkedRcca],
         ['Evidence linked', evidenceCount ? 'Yes' : 'No'],
-        ['Pending validations', String(Math.max(0, 8 - readinessMeta.completed + (openItems ? 1 : 0)))],
-        ['Current status', normalized.status || 'Draft'],
+        ['Pending validations', String(Math.max(0, openItems))],
+        ['Current status', traceOpsNormalizeStatusLocal(normalized.status || 'Draft')],
         ['Closure eligibility', closureEligibility]
       ],
       riskRows: [
@@ -7439,23 +7632,23 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var tileW = 3.00;
     var tileGap = 0.16;
     var labels1 = [
-      ['8D title', normalized.eightd_title || normalized.source_title || normalized.complaint_anchor || 'TraceOps 8D Draft'],
+      ['8D title', traceOpsNormalizeCaseForPpt(normalized).titleFinal],
       ['RCCA ID', normalized.source_rcca_id || 'N/D'],
-      ['Report status', normalized.status || 'Draft'],
+      ['Report status', traceOpsResolveMasterStatus({reportStatus:(normalized.status || 'Draft'), openItems:traceOpsOpenItemsLocal({openItems:(normalized.open_items || null), pendingValidations:(normalized.pending_validations || null), evidenceComplete: normalized.evidenceComplete, traceabilityComplete: normalized.traceabilityComplete})})],
       ['Readiness', String(readinessMeta.score || 0) + '%']
     ];
     var labels2 = [
-      ['Model', normalized.modelo || model.model || 'N/D'],
-      ['Line', normalized.linea || model.line || 'N/D'],
-      ['Station', normalized.station || model.station || 'N/D'],
-      ['Defect / failure mode', normalized.defecto_smt || model.defect || 'N/A']
+      ['Model', traceOpsNormalizeCaseForPpt(normalized).modelFinal],
+      ['Line', traceOpsNormalizeCaseForPpt(normalized).lineFinal],
+      ['Station', traceOpsNormalizeCaseForPpt(normalized).stationFinal],
+      ['Defect / failure mode', traceOpsNormalizeCaseForPpt(normalized).failureModeFinal]
     ];
     for (var i = 0; i < labels1.length; i++) traceOpsPptKeyTile(slide, labels1[i][0], labels1[i][1], 0.42 + (i * (tileW + tileGap)), topY1, tileW);
     for (var j = 0; j < labels2.length; j++) traceOpsPptKeyTile(slide, labels2[j][0], labels2[j][1], 0.42 + (j * (tileW + tileGap)), topY2, tileW);
 
     traceOpsPptBox(slide, 0.42, 3.34, 7.06, 1.34, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Complaint anchor', 0.58, 3.46, 2.0);
-    slide.addText(traceOpsPptWrap(normalized.complaint_anchor || model.complaintAnchor || 'Issue under analysis', 320), {x:0.58, y:3.74, w:6.72, h:0.68, fontFace:'Segoe UI', fontSize:12, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(traceOpsNormalizeCaseForPpt(normalized).complaintAnchorFinal || model.complaintAnchor || 'Issue under analysis', 320), {x:0.58, y:3.74, w:6.72, h:0.68, fontFace:'Segoe UI', fontSize:12, color:'102A43', margin:0, fit:'shrink'});
 
     traceOpsPptBox(slide, 7.64, 3.34, 5.27, 0.62, 'FAFCFF');
     traceOpsPptPanelTitle(slide, 'Detection window', 7.80, 3.46, 1.6);
@@ -7485,7 +7678,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     traceOpsPptPanelTitle(slide, 'Readiness logic', 8.92, 6.24, 1.6);
     slide.addText(traceOpsPptWrap(readinessMeta.completed + '/8 mandatory sections completed · score auto-calculated by TraceOps.', 110), {x:10.20, y:6.24, w:2.36, h:0.34, fontFace:'Segoe UI', fontSize:9.4, color:'102A43', margin:0, fit:'shrink'});
 
-    traceOpsPptAddBadge(slide, String(normalized.status || 'Draft'), 11.32, 0.94, 'draft');
+    traceOpsPptAddBadge(slide, String(traceOpsResolveMasterStatus({reportStatus:(normalized.status || 'Draft'), openItems:traceOpsOpenItemsLocal({openItems:(normalized.open_items || null), pendingValidations:(normalized.pending_validations || null), evidenceComplete: normalized.evidenceComplete, traceabilityComplete: normalized.traceabilityComplete})})), 11.32, 0.94, 'draft');
     return slide;
   }
 
@@ -7593,12 +7786,14 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
   function traceOpsPptBuildOccurrenceSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
-    traceOpsPptApplyShell(slide, 'D4A - Occurrence Analysis', 'Foxconn occurrence analysis and root cause summary', 3, 'Under Validation');
+    traceOpsPptApplyShell(slide, 'D4A - Occurrence Analysis', 'Foxconn occurrence analysis and root cause summary', 3, traceOpsNormalizeStatusLocal(normalized.status || 'Under Validation'));
 
     var fish = traceOpsPptBuildIshikawa(normalized, model);
+    ['Method','Measurement','Material'].forEach(function(cat){ if (fish && fish[cat]) fish[cat] = traceOpsBuildOccurrenceCategoryValue(Object.assign({}, normalized, model || {}), cat); });
+    var pptNormCase = traceOpsNormalizeCaseForPpt(Object.assign({}, normalized, model || {}));
     var occWhys = traceOpsPptNormalizeWhys(normalized && normalized.d4_occurrence_5whys || normalized && normalized.d4_root_cause || model.occurrenceSummary, 'Occurrence why');
-    var occFrame = traceOpsEightdHasText(normalized && normalized.d4_root_cause) ? normalized.d4_root_cause : (model.occurrenceSummary || 'Probable occurrence mechanism under validation.');
-    var occConclusion = traceOpsEightdHasText(model.rootCause) ? ('Probable mechanism: ' + traceOpsEightdShort(model.rootCause, 210) + '. Final confirmation remains under validation.') : 'Probable occurrence mechanism supported by current evidence. Do not present as confirmed root cause until effectiveness closes the gap.';
+    var occFrame = traceOpsBuildOccurrenceFraming(Object.assign({}, normalized, model || {}));
+    var occConclusion = traceOpsEightdHasText(model.rootCause) ? ('Probable mechanism: ' + traceOpsEightdShort(model.rootCause, 210) + '. Final confirmation remains under validation.') : ('Probable mechanism: ' + pptNormCase.failureModeFinal + '. Final confirmation remains under validation.');
 
     traceOpsPptBox(slide, 0.42, 1.66, 12.48, 0.72, 'FFFFFF');
     traceOpsPptPanelTitle(slide, 'Occurrence framing', 0.58, 1.80, 1.8);
@@ -7618,22 +7813,22 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
     traceOpsPptBox(slide, 0.42, 6.42, 12.48, 0.54, 'FAFCFF');
     traceOpsPptPanelTitle(slide, 'Occurrence conclusion', 0.58, 6.54, 1.8);
-    slide.addText(traceOpsPptWrap(occConclusion, 320), {x:2.16, y:6.54, w:10.20, h:0.14, fontFace:'Arial', fontSize:9.6, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(traceOpsOccurrenceCleanLocal(traceOpsCleanSentence(occConclusion, 320)), 320), {x:2.16, y:6.54, w:10.20, h:0.14, fontFace:'Arial', fontSize:9.6, color:'102A43', margin:0, fit:'shrink'});
     return slide;
   }
 
   function traceOpsPptBuildEscapeSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
-    traceOpsPptApplyShell(slide, 'D4B - Escape Analysis', 'Foxconn detection 5 Whys and escape confirmation', 4, 'Evidence Pending');
+    traceOpsPptApplyShell(slide, 'D4B - Escape Analysis', 'Foxconn detection 5 Whys and escape confirmation', 4, traceOpsNormalizeStatusLocal(normalized.status || 'Under Validation'));
 
-    traceOpsPptKeyTile(slide, 'Escape point', normalized.d4_escape_point || model.escapeSummary || 'Escape point under analysis', 0.42, 1.66, 4.02);
-    traceOpsPptKeyTile(slide, 'Expected detection control', model.station || normalized.station || 'AOI / ICT / control stage', 4.66, 1.66, 4.02);
-    traceOpsPptKeyTile(slide, 'Control limitation / gap', model.defect || 'Detection gap under review', 8.90, 1.66, 4.00);
+    traceOpsPptKeyTile(slide, 'Escape point', traceOpsBuildEscapePoint(Object.assign({}, normalized, model || {})), 0.42, 1.66, 4.02);
+    traceOpsPptKeyTile(slide, 'Expected detection control', traceOpsBuildExpectedDetectionControl(Object.assign({}, normalized, model || {})), 4.66, 1.66, 4.02);
+    traceOpsPptKeyTile(slide, 'Control limitation / gap', traceOpsBuildControlGap(Object.assign({}, normalized, model || {})), 8.90, 1.66, 4.00);
 
     var escBase = traceOpsEightdHasText(normalized && normalized.d4_escape_5whys) ? normalized.d4_escape_5whys : '';
     var finding = (model && model.findings && model.findings.length) ? model.findings[0] : '';
-    var station = model.station || normalized.station || 'the expected detection stage';
-    var defect = normalized.defecto_smt || model.defect || 'the failure mode';
+    var station = traceOpsBuildExpectedDetectionControl(Object.assign({}, normalized, model || {}));
+    var defect = traceOpsSafeFailureMode((normalized.defecto_smt || model.defect || ''));
     var controlGap = traceOpsPptInferDetectionAction(normalized, model);
     var escWhys = traceOpsEightdHasText(escBase) ? traceOpsPptNormalizeWhys(escBase, 'Escape why') : [
       'The defect reached downstream detection because the expected control at ' + station + ' did not stop the actual ' + defect + ' signature.',
@@ -7651,7 +7846,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     traceOpsPptDrawBulletList(slide, [
       traceOpsEightdShort('Expected control stage: ' + station + '.', 110),
       traceOpsEightdShort('Failure mode under review: ' + defect + '.', 110),
-      traceOpsEightdShort(controlGap, 120)
+      traceOpsEightdShort(traceOpsBuildControlGap(Object.assign({}, normalized, model || {})), 120)
     ], 6.72, 3.14, 5.82, 0.64, {fontSize:9.7, lineGap:0.20, maxItems:3});
 
     traceOpsPptBox(slide, 6.54, 4.28, 6.36, 1.96, 'FAFCFF');
@@ -7662,9 +7857,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       'Do not close escape until one specific missed trigger is confirmed and linked to the control limitation.'
     ], 6.72, 4.70, 5.82, 1.12, {fontSize:9.7, lineGap:0.22, maxItems:4});
 
+    var escConclusion = traceOpsBuildEscapeConclusion(Object.assign({}, normalized, model || {}));
+
     traceOpsPptBox(slide, 0.42, 6.42, 12.48, 0.54, 'FAFCFF');
     traceOpsPptPanelTitle(slide, 'Escape conclusion', 0.58, 6.54, 1.6);
-    slide.addText(traceOpsPptWrap(traceOpsPptEscapeConclusionText(normalized, model), 320), {x:2.00, y:6.54, w:10.46, h:0.14, fontFace:'Arial', fontSize:9.6, color:'102A43', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(traceOpsCleanSentence(escConclusion, 320), 320), {x:2.00, y:6.54, w:10.46, h:0.14, fontFace:'Arial', fontSize:9.6, color:'102A43', margin:0, fit:'shrink'});
     return slide;
   }
 
@@ -10443,10 +10640,6 @@ function replaceMetaFiles(nextFiles){
             <div style={{fontSize:10,lineHeight:1.4,color:syncBusy?"#CDE7C5":"rgba(255,255,255,.5)",padding:"8px 10px",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,background:"rgba(255,255,255,.03)"}}>
               {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(cloudStatus+(authReady?"":" · cargando"))}
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:8,fontSize:10,fontWeight:700,color:realtimeUi.color,background:realtimeUi.bg,border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:"8px 10px"}}>
-              <span style={{display:"inline-block",width:8,height:8,borderRadius:99,background:realtimeUi.color}}></span>
-              <span>{realtimeUi.label}</span>
-            </div>
             {!authUser&&window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()&&(
               <>
                 <div style={{display:"flex",gap:6}}>
@@ -10534,10 +10727,6 @@ function replaceMetaFiles(nextFiles){
           <div className="saas-header-pill" title={cloudStatus}>
             <span style={{display:"inline-block",width:8,height:8,borderRadius:99,background:authUser?"#2F6FB3":"#B87820"}}></span>
             <span className="hide-mobile">{authUser?t("cloudRcca"):t("localRcca")}</span>
-          </div>
-          <div className="saas-header-pill" title={realtimeUi.label}>
-            <span style={{display:"inline-block",width:8,height:8,borderRadius:99,background:realtimeUi.color}}></span>
-            <span className="hide-mobile">{realtimeUi.label}</span>
           </div>
           {state==="done"&&<button className="saas-header-btn" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg><span className="hide-mobile">{t("newAnalysis")}</span></button>}
           <button className="saas-header-btn primary" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>{isMobile()?t("startExportShort"):t("startExport")}</span></button>
