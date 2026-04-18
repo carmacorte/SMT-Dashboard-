@@ -5332,6 +5332,23 @@ function App() {
     });
     return out;
   }
+  function traceOpsMetaFilesFingerprint(metaFiles){
+    return (Array.isArray(metaFiles) ? metaFiles : []).map(function(file){
+      if (!file) return '';
+      var normalized = traceOpsNormalizeMetaFileForMerge ? traceOpsNormalizeMetaFileForMerge(file) : file;
+      var key = traceOpsMetaFileStableKey ? traceOpsMetaFileStableKey(normalized) : (String((file && file.name) || '') + '|' + String((file && file.size) || 0));
+      var role = traceOpsNormalizeEvidenceRole(file && (file.evidence_role || file.role));
+      return [key, role, traceOpsIsImageMetaFile(file) ? 'image' : 'file'].join('|');
+    }).filter(Boolean).sort().join('||');
+  }
+  function traceOpsRccaFingerprint(rcca){
+    var metaFiles = (rcca && rcca.meta_files) || [];
+    return [
+      String((rcca && rcca.rcca_id) || ''),
+      String((rcca && rcca.updated_at) || ''),
+      traceOpsMetaFilesFingerprint(metaFiles)
+    ].join('@@');
+  }
   function isFreshRccaDraft(draft){
     var ts = draft && draft.ts ? new Date(draft.ts).getTime() : 0;
     return !!(ts && (Date.now() - ts < 24*60*60*1000));
@@ -6151,7 +6168,9 @@ function App() {
       owner_email: (existing && existing.owner_email) || (source && source.owner_email) || (authUser && authUser.email) || '',
       status: (existing && existing.status) || 'Draft',
       linked_event_ids: (source && source.event_ids ? source.event_ids.slice() : []),
-      source_snapshot: source,
+      source_snapshot: Object.assign({}, source, { meta_files: traceOpsNormalizeMetaFiles((source && source.meta_files) || []) }),
+      source_rcca_updated_at: (source && source.updated_at) || '',
+      source_evidence_fingerprint: traceOpsRccaFingerprint(source),
       meta: Object.assign({}, (source && source.meta) || {}, (existing && existing.meta) || {}, {
         evidence: (existing && existing.meta && existing.meta.evidence) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || [])
       }),
@@ -6199,6 +6218,11 @@ function App() {
       general: traceOpsMergeEvidenceLists(existingEvidence.general || [], draftToSave.evidence_images || [], draftToSave.installed_removed_images || [])
     };
     draftToSave.meta = currentMeta;
+    if (draftToSave.source_snapshot) {
+      draftToSave.source_snapshot = Object.assign({}, draftToSave.source_snapshot, { meta_files: traceOpsNormalizeMetaFiles((draftToSave.source_snapshot && draftToSave.source_snapshot.meta_files) || []) });
+      draftToSave.source_rcca_updated_at = (draftToSave.source_snapshot && draftToSave.source_snapshot.updated_at) || draftToSave.source_rcca_updated_at || '';
+      draftToSave.source_evidence_fingerprint = traceOpsRccaFingerprint(draftToSave.source_snapshot);
+    }
     var normalized = traceOpsEightdHydrateDraftFields(draftToSave);
     var readiness = traceOpsComputeEightdReadiness(normalized);
     normalized.readiness_score = readiness.overallScore;
@@ -6237,7 +6261,9 @@ function App() {
   function openEightdDraftFromRcca(rcca, forceRefresh) {
     if (!rcca || !rcca.rcca_id) return;
     var existing = eightdList.find(function(item){ return item.source_rcca_id === rcca.rcca_id; });
-    if (existing && !forceRefresh) {
+    var currentFingerprint = traceOpsRccaFingerprint(rcca);
+    var needsRefresh = !!(existing && existing.source_evidence_fingerprint !== currentFingerprint);
+    if (existing && !forceRefresh && !needsRefresh) {
       setEightdDetail(existing);
       return;
     }
@@ -8602,6 +8628,12 @@ function traceOpsMergeRccaPayload(existingRcca, incomingRcca){
 function exportEightdPpt(draft) {
     if (!draft) return;
     var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
+    if (normalized && normalized.source_snapshot) {
+      normalized.source_evidence_fingerprint = traceOpsRccaFingerprint(normalized.source_snapshot);
+      if ((!normalized.meta || !normalized.meta.evidence || (!((normalized.meta.evidence.bad_part||[]).length) && !((normalized.meta.evidence.good_part||[]).length) && !((normalized.meta.evidence.general||[]).length))) && normalized.source_snapshot.meta_files) {
+        normalized.meta = Object.assign({}, normalized.meta || {}, { evidence: traceOpsBuildEvidenceMetaFromFiles(normalized.source_snapshot.meta_files) });
+      }
+    }
     var readinessMeta = traceOpsPptReadinessMeta(normalized);
     normalized.readiness_score = readinessMeta.score;
     normalized.missing_fields = readinessMeta.missing;
@@ -10232,6 +10264,15 @@ function replaceMetaFiles(nextFiles){
       window.addEventListener('resize', onResize);
       return function(){ window.removeEventListener('resize', onResize); };
     }, []);
+    React.useEffect(function(){
+      if (!sourceRcca || !sourceRcca.rcca_id) return;
+      var sourceFingerprint = traceOpsRccaFingerprint(sourceRcca);
+      var currentFingerprint = form && form.source_snapshot ? traceOpsRccaFingerprint(form.source_snapshot) : '';
+      if (sourceFingerprint && sourceFingerprint !== currentFingerprint) {
+        var refreshed = traceOpsBuildEightdDraftFromRcca(sourceRcca, form || {});
+        setForm(refreshed);
+      }
+    }, [sourceRcca && sourceRcca.rcca_id, sourceRcca && sourceRcca.updated_at, traceOpsMetaFilesFingerprint(sourceRcca && sourceRcca.meta_files)]);
     function upd(k,v){ var next = Object.assign({}, form); next[k] = v; var ready = traceOpsComputeEightdReadiness(next); next.readiness_score = ready.overallScore; next.structure_readiness_score = ready.structureScore; next.evidence_readiness_score = ready.evidenceScore; next.case_maturity_score = ready.overallScore; next.missing_fields = ready.structureMissing; next.escalation_blockers = ready.blockers; next.can_promote = ready.canPromote; next.draft_stage = ready.stage; setForm(next); }
     function togglePanel(key){ var next = Object.assign({}, collapsed); next[key] = !next[key]; setCollapsed(next); }
     var readiness = traceOpsComputeEightdReadiness(form);
