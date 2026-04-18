@@ -5279,6 +5279,32 @@ function App() {
     if (s === 'bad' || s === 'good' || s === 'general') return s;
     return 'general';
   }
+  function traceOpsInferEvidenceRoleFromName(name){
+    var s = String(name || '').toLowerCase();
+    if (!s) return '';
+    if (/(^|[^a-z])(bad|ng|nok|defect|failed?|fail|issue|wrong|reject|removed|as[-_ ]?found)([^a-z]|$)/i.test(s)) return 'bad';
+    if (/(^|[^a-z])(good|ok|golden|reference|ref|ideal|control|nominal|baseline|after|fixed)([^a-z]|$)/i.test(s)) return 'good';
+    return '';
+  }
+  function traceOpsCountEvidenceRoles(metaFiles){
+    return (Array.isArray(metaFiles) ? metaFiles : []).reduce(function(acc, file){
+      if (!file || !traceOpsIsImageMetaFile(file)) return acc;
+      var role = traceOpsNormalizeEvidenceRole(file.evidence_role || file.role);
+      if (role === 'bad') acc.bad += 1;
+      else if (role === 'good') acc.good += 1;
+      else acc.general += 1;
+      return acc;
+    }, { bad:0, good:0, general:0 });
+  }
+  function traceOpsSuggestEvidenceRole(file, currentMetaFiles){
+    if (!traceOpsIsImageMetaFile(file)) return undefined;
+    var inferred = traceOpsInferEvidenceRoleFromName(file && file.name);
+    if (inferred) return inferred;
+    var counts = traceOpsCountEvidenceRoles(currentMetaFiles);
+    if (!counts.bad) return 'bad';
+    if (!counts.good) return 'good';
+    return 'general';
+  }
   function traceOpsNormalizeMetaFiles(list){
     return (Array.isArray(list) ? list : []).map(function(item){
       var normalized = {
@@ -6129,9 +6155,9 @@ function App() {
       meta: Object.assign({}, (source && source.meta) || {}, (existing && existing.meta) || {}, {
         evidence: (existing && existing.meta && existing.meta.evidence) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || [])
       }),
-      bad_part_images: (existing && existing.bad_part_images) || (((existing && existing.meta && existing.meta.evidence && existing.meta.evidence.bad_part) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || []).bad_part || []).join('\n')),
-      good_part_images: (existing && existing.good_part_images) || (((existing && existing.meta && existing.meta.evidence && existing.meta.evidence.good_part) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || []).good_part || []).join('\n')),
-      evidence_images: (existing && existing.evidence_images) || (((existing && existing.meta && existing.meta.evidence && existing.meta.evidence.general) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || []).general || []).join('\n')),
+      bad_part_images: (existing && existing.bad_part_images) || (traceOpsBuildEvidenceDisplayMetaFromFiles((source && source.meta_files) || []).bad_part || []).join('\n'),
+      good_part_images: (existing && existing.good_part_images) || (traceOpsBuildEvidenceDisplayMetaFromFiles((source && source.meta_files) || []).good_part || []).join('\n'),
+      evidence_images: (existing && existing.evidence_images) || (traceOpsBuildEvidenceDisplayMetaFromFiles((source && source.meta_files) || []).general || []).join('\n'),
       evidence_summary: (existing && existing.evidence_summary) || '',
       correlation_notes: (existing && existing.correlation_notes) || '',
       evidence_checklist: (existing && existing.evidence_checklist) || '',
@@ -6166,11 +6192,12 @@ function App() {
       updated_at: new Date().toISOString()
     });
     var currentMeta = Object.assign({}, draftToSave.meta || {});
-    currentMeta.evidence = Object.assign({}, currentMeta.evidence || {}, {
-      bad_part: traceOpsPptExtractEvidenceNames((currentMeta.evidence && currentMeta.evidence.bad_part) || draftToSave.bad_part_images || draftToSave.bad_part_image || draftToSave.bad_part_evidence || []),
-      good_part: traceOpsPptExtractEvidenceNames((currentMeta.evidence && currentMeta.evidence.good_part) || draftToSave.good_part_images || draftToSave.good_part_image || draftToSave.good_part_evidence || []),
-      general: traceOpsPptExtractEvidenceNames((currentMeta.evidence && currentMeta.evidence.general) || draftToSave.evidence_images || draftToSave.installed_removed_images || [])
-    });
+    var existingEvidence = Object.assign({}, currentMeta.evidence || {});
+    currentMeta.evidence = {
+      bad_part: traceOpsMergeEvidenceLists(existingEvidence.bad_part || [], draftToSave.bad_part_images || [], draftToSave.bad_part_image || [], draftToSave.bad_part_evidence || []),
+      good_part: traceOpsMergeEvidenceLists(existingEvidence.good_part || [], draftToSave.good_part_images || [], draftToSave.good_part_image || [], draftToSave.good_part_evidence || []),
+      general: traceOpsMergeEvidenceLists(existingEvidence.general || [], draftToSave.evidence_images || [], draftToSave.installed_removed_images || [])
+    };
     draftToSave.meta = currentMeta;
     var normalized = traceOpsEightdHydrateDraftFields(draftToSave);
     var readiness = traceOpsComputeEightdReadiness(normalized);
@@ -8472,15 +8499,15 @@ function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
 
 function traceOpsMetaFileStableKey(file){
   var f = file || {};
-  var role = f.evidence_role || f.role || '';
+  var id = String(f.id || '').trim();
+  if (id) return id;
   var name = String(f.name || '').trim().toLowerCase();
   var size = String(f.size || '');
   var type = String(f.type || '').trim().toLowerCase();
   var kind = String(f.kind || '').trim().toLowerCase();
-  var id = String(f.id || '').trim();
   var dataUrl = String(f.data_url || '');
   var head = dataUrl ? dataUrl.slice(0, 96) : '';
-  return [name, size, type, kind, role, id || head].join('|');
+  return [name, size, type, kind, head].join('|');
 }
 
 function traceOpsNormalizeMetaFileForMerge(file){
@@ -8508,7 +8535,7 @@ function traceOpsMergeMetaFiles(existingList, incomingList){
     }
     var merged = Object.assign({}, prev, normalized);
     if (!merged.data_url) merged.data_url = prev.data_url || normalized.data_url || '';
-    if (!merged.evidence_role) merged.evidence_role = normalized.evidence_role || prev.evidence_role || '';
+    merged.evidence_role = traceOpsNormalizeEvidenceRole(normalized.evidence_role || prev.evidence_role || 'general');
     if (!merged.name) merged.name = normalized.name || prev.name || '';
     if (!merged.type) merged.type = normalized.type || prev.type || '';
     if (!merged.size) merged.size = normalized.size || prev.size || 0;
@@ -8521,7 +8548,7 @@ function traceOpsMergeMetaFiles(existingList, incomingList){
   return out;
 }
 
-function traceOpsBuildEvidenceMetaFromFiles(metaFiles){
+function traceOpsBuildEvidenceDisplayMetaFromFiles(metaFiles){
   var evidence = { bad_part: [], good_part: [], general: [] };
   (Array.isArray(metaFiles) ? metaFiles : []).forEach(function(file){
     if (!file || file.kind !== 'image') return;
@@ -8538,6 +8565,19 @@ function traceOpsBuildEvidenceMetaFromFiles(metaFiles){
   return evidence;
 }
 
+function traceOpsMergeEvidenceLists(){
+  var merged = [];
+  for (var i = 0; i < arguments.length; i++) {
+    var part = arguments[i];
+    var list = Array.isArray(part) ? part : traceOpsPptExtractEvidenceNames(part || []);
+    for (var j = 0; j < list.length; j++) {
+      var item = String(list[j] || '').trim();
+      if (item && merged.indexOf(item) < 0) merged.push(item);
+    }
+  }
+  return merged;
+}
+
 function traceOpsMergeRccaPayload(existingRcca, incomingRcca){
   var base = Object.assign({}, existingRcca || {}, incomingRcca || {});
   var existingMeta = Array.isArray(existingRcca && existingRcca.meta_files) ? existingRcca.meta_files : [];
@@ -8550,9 +8590,10 @@ function traceOpsMergeRccaPayload(existingRcca, incomingRcca){
   base.meta = Object.assign({}, existingMetaObj, incomingMetaObj);
   base.meta.evidence = traceOpsBuildEvidenceMetaFromFiles(mergedMeta);
 
-  base.bad_part_images = Array.from(new Set([].concat(base.bad_part_images || [], base.meta.evidence.bad_part || [])));
-  base.good_part_images = Array.from(new Set([].concat(base.good_part_images || [], base.meta.evidence.good_part || [])));
-  base.evidence_images = Array.from(new Set([].concat(base.evidence_images || [], base.meta.evidence.general || [])));
+  var mergedDisplayEvidence = traceOpsBuildEvidenceDisplayMetaFromFiles(mergedMeta);
+  base.bad_part_images = Array.from(new Set([].concat(base.bad_part_images || [], mergedDisplayEvidence.bad_part || [])));
+    base.good_part_images = Array.from(new Set([].concat(base.good_part_images || [], mergedDisplayEvidence.good_part || [])));
+    base.evidence_images = Array.from(new Set([].concat(base.evidence_images || [], mergedDisplayEvidence.general || [])));
 
   return base;
 }
@@ -9987,6 +10028,7 @@ function replaceMetaFiles(nextFiles){
             reader.readAsDataURL(file);
           }catch(err){ reject(err); }
         });
+        var suggestedRole = traceOpsSuggestEvidenceRole(file, current.concat(prepared));
         prepared.push({
           id:'meta_' + Date.now().toString(36) + '_' + i + '_' + Math.random().toString(36).slice(2,7),
           name:file.name,
@@ -9994,7 +10036,7 @@ function replaceMetaFiles(nextFiles){
           size:Number(file.size||0),
           kind:traceOpsMetaTypeLabel(file),
           data_url:String(dataUrl||''),
-          evidence_role: traceOpsIsImageMetaFile(file) ? 'general' : undefined
+          evidence_role: traceOpsIsImageMetaFile(file) ? suggestedRole : undefined
         });
       }
       replaceMetaFiles(current.concat(prepared));
@@ -10129,7 +10171,7 @@ function replaceMetaFiles(nextFiles){
               <div style={{padding:"11px 12px",borderBottom:"1px solid #D8E1F7",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
                 <div>
                   <div style={{fontSize:11,fontWeight:700,color:"#1F3A5F",textTransform:"uppercase",letterSpacing:".06em"}}>Archivos meta</div>
-                  <div style={{fontSize:10,color:"#6A6560",marginTop:3}}>Guarda evidencia del caso como ZIP, PPT/PPTX y JPG/PNG dentro del RCCA.</div>
+                  <div style={{fontSize:10,color:"#6A6560",marginTop:3}}>Guarda evidencia del caso como ZIP, PPT/PPTX y JPG/PNG dentro del RCCA. Las imagenes intentan asignarse automaticamente a Bad / Good part y puedes corregirlo manualmente.</div>
                 </div>
                 <button type="button" onClick={function(){ if(metaInputRef.current) metaInputRef.current.click(); }} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:8,padding:"8px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>+ Agregar archivo</button>
                 <input ref={metaInputRef} type="file" multiple accept={TRACEOPS_RCCA_META_ACCEPT.join(',')} style={{display:"none"}} onChange={function(e){ addMetaFiles(e.target.files).catch(function(err){ alert(err && err.message ? err.message : String(err)); }); }}/>
