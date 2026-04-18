@@ -6638,7 +6638,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     for (var i = 0; i < steps.length; i++) {
       var x = startX + (i * (itemW + gap));
       var active = i === activeIdx;
-      var link = traceOpsPptNavLinkFor(i);
+      var link = active ? null : traceOpsPptNavLinkFor(i);
       var shapeOpts = {
         x:x, y:y, w:itemW, h:h, rectRadius:0.06,
         line:{color:active ? activeLine : idleLine, pt:1},
@@ -6651,7 +6651,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         fontFace:'Arial', fontSize:8.8, bold:true,
         color:active ? activeText : idleText, align:'center', margin:0, fit:'shrink'
       };
-      if (link) textOpts.hyperlink = link;
       slide.addText(traceOpsPptSafe(steps[i], 24), textOpts);
     }
   }
@@ -6661,9 +6660,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     slide.background = { color: 'F2F5F2' };
     if (TRACEOPS_PPT_FOXCONN_OVERVIEW_BG) {
       try { slide.addImage({data:TRACEOPS_PPT_FOXCONN_OVERVIEW_BG, x:0, y:0, w:13.333, h:7.5}); } catch(_) {}
-    }
-    if (TRACEOPS_PPT_FOXCONN_OVERVIEW_OVERLAY) {
-      try { slide.addImage({data:TRACEOPS_PPT_FOXCONN_OVERVIEW_OVERLAY, x:0, y:0, w:13.333, h:7.5}); } catch(_) {}
     }
     slide.addText('FOXCONN', {x:0.42, y:0.22, w:2.1, h:0.16, fontFace:'Arial', fontSize:10, bold:true, color:'A8D6C4', margin:0});
     slide.addText(traceOpsPptSafe(title, 110), {x:0.42, y:0.42, w:7.9, h:0.24, fontFace:'Arial', fontSize:22, bold:true, color:'FFFFFF', margin:0});
