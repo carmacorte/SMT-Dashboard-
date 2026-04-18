@@ -2278,27 +2278,28 @@ function buildExecutiveDashboardPptModelLocal(src) {
   if (!actionsList.length && obj.d5ActionsText) {
     actionsList = String(obj.d5ActionsText).split(/\n+/).filter(Boolean).slice(0,3);
   }
+  var maturity = traceOpsComputeEightdReadiness(obj);
   return {
     title: obj.title || obj.caseTitle || defect,
-    model: obj.model || obj.product || hdr.model || 'N/D',
-    line: hdr.line || obj.line || 'N/D',
-    station: hdr.station || obj.station || 'N/D',
-    window: hdr.window || obj.window || obj.detectionWindow || 'N/D',
+    model: obj.model || obj.product || hdr.model || obj.modelo || 'N/D',
+    line: hdr.line || obj.line || obj.linea || 'N/D',
+    station: hdr.station || obj.station || obj.estacion_dominante || 'N/D',
+    window: hdr.window || obj.window || obj.detectionWindow || obj.fecha || 'N/D',
     openItems: (obj.pendingValidations != null ? obj.pendingValidations : (read.pendingValidations != null ? read.pendingValidations : (k.openItems != null ? k.openItems : (obj.openItems != null ? obj.openItems : 0)))),
-    readiness8d: obj.readiness || obj.readiness8d || hdr.readiness8d || (((obj.readiness_score != null ? Number(obj.readiness_score) : NaN) >= 100) ? '100%' : ((obj.readiness_score != null && !isNaN(Number(obj.readiness_score))) ? (String(Math.round(Number(obj.readiness_score))) + '%') : '100%')),
-    evidenceBadge: (obj.badGoodComplete || obj.evidenceComplete || (obj.badPartImage && obj.goodPartImage) || (obj.bad_part_images && obj.good_part_images) || (obj.meta && obj.meta.evidence && obj.meta.evidence.bad_part && obj.meta.evidence.bad_part.length && obj.meta.evidence.good_part && obj.meta.evidence.good_part.length)) ? 'Complete' : 'Partial',
-    reportStatus: obj.reportStatus || obj.status || read.currentStatus || 'Draft',
-    complaintAnchor: obj.complaintAnchor || obj.description || obj.problemDescription || '',
-    occurrenceConclusion: obj.occurrenceConclusion || '',
-    escapeConclusion: obj.escapeConclusion || '',
-    exposureWindow: obj.exposureWindow || obj.detectionWindow || obj.window || '',
+    readiness8d: String(maturity.overallScore) + '%',
+    evidenceBadge: maturity.evidenceScore >= 85 ? 'Complete' : (maturity.evidenceScore >= 60 ? 'Partial' : 'Weak'),
+    reportStatus: obj.reportStatus || obj.status || read.currentStatus || maturity.stage || 'Draft',
+    complaintAnchor: obj.complaintAnchor || obj.description || obj.problemDescription || obj.d2_problem || '',
+    occurrenceConclusion: obj.occurrenceConclusion || obj.d4_root_cause || '',
+    escapeConclusion: obj.escapeConclusion || obj.d4_escape_point || '',
+    exposureWindow: obj.exposureWindow || obj.detectionWindow || obj.window || obj.fecha || '',
     estimatedImpact: obj.estimatedImpact || obj.impact || obj.exposureImpact || '',
     defect: defect,
-    traceabilityPartial: !obj.traceabilityComplete,
+    traceabilityPartial: maturity.evidence.traceabilityCoverage < 60,
     pendingValidations: read.pendingValidations || obj.pendingValidations || 0,
-    closureEligibility: read.closureEligibility || obj.closureEligibility || 'Pending',
-    statusBanner: /closed|complete/i.test(obj.reportStatus || '') ? 'CLOSED' : ((obj.pendingValidations != null && Number(obj.pendingValidations) === 0 && (obj.readiness || obj.readiness8d || '') === '100%') ? 'READY FOR REVIEW' : 'UNDER VALIDATION'),
-    riskBanner: (Number(risk.high || 0) > 0 ? 'HIGH' : (Number(risk.medium || 0) > 0 ? 'MEDIUM' : 'LOW')) + ' – ' + (((read.closureEligibility || obj.closureEligibility || '').toLowerCase().indexOf('pending') >= 0 || (obj.pendingValidations != null && Number(obj.pendingValidations) > 0)) ? 'CONTAINED, ROOT CAUSE NOT FULLY CONFIRMED' : 'CONTROLLED'),
+    closureEligibility: read.closureEligibility || obj.closureEligibility || (maturity.canPromote ? 'Ready for review' : 'Pending'),
+    statusBanner: /closed|complete/i.test(obj.reportStatus || '') ? 'CLOSED' : (maturity.canPromote ? 'READY FOR REVIEW' : 'UNDER VALIDATION'),
+    riskBanner: (Number(risk.high || 0) > 0 ? 'HIGH' : (Number(risk.medium || 0) > 0 ? 'MEDIUM' : 'LOW')) + ' – ' + (maturity.canPromote ? 'CONTROLLED' : 'EVIDENCE / CONTROL GAP OPEN'),
     actionsList: actionsList
   };
 }
@@ -5748,15 +5749,81 @@ function App() {
     return (ids || []).map(function(id){ return map[id]; }).filter(Boolean);
   }
 
+  function traceOpsEightdEvidenceMeta(draft) {
+    var src = draft || {};
+    var meta = (src.meta && src.meta.evidence) || {};
+    var bad = typeof traceOpsPptExtractEvidenceNames === 'function' ? traceOpsPptExtractEvidenceNames(meta.bad_part || src.bad_part_images || src.bad_part_image || src.bad_part_evidence || []) : [];
+    var good = typeof traceOpsPptExtractEvidenceNames === 'function' ? traceOpsPptExtractEvidenceNames(meta.good_part || src.good_part_images || src.good_part_image || src.good_part_evidence || []) : [];
+    var general = typeof traceOpsPptExtractEvidenceNames === 'function' ? traceOpsPptExtractEvidenceNames(meta.general || src.evidence_images || src.installed_removed_images || []) : [];
+    var linkedIds = Array.isArray(src.linked_event_ids) ? src.linked_event_ids.filter(Boolean) : (Array.isArray(src.event_ids) ? src.event_ids.filter(Boolean) : []);
+    var traceFields = [src.modelo, src.linea, src.station || src.estacion_dominante, src.serial_range, src.lot_batch, src.build_window, src.trace_path, src.fecha];
+    var traceabilityCount = traceFields.filter(function(v){ return traceOpsTextFilled(v); }).length;
+    return {
+      bad: bad,
+      good: good,
+      general: general,
+      linkedCount: linkedIds.length,
+      totalCount: bad.length + good.length + general.length,
+      hasBadGood: bad.length > 0 && good.length > 0,
+      traceabilityCount: traceabilityCount,
+      traceabilityCoverage: Math.min(100, Math.round((traceabilityCount / 5) * 100))
+    };
+  }
+
+  function traceOpsEightdStageLabel(draft, structureScore, evidenceScore, blockers) {
+    var src = draft || {};
+    if (/closed|complete/i.test(String(src.status || src.reportStatus || ''))) return 'Closed';
+    if (traceOpsTextFilled(src.d8_closure) && blockers.length === 0 && structureScore >= 90 && evidenceScore >= 75) return 'Ready for 8D';
+    if (traceOpsTextFilled(src.d6_validation)) return blockers.length ? 'Validated with gaps' : 'Validated';
+    if (traceOpsTextFilled(src.d4_root_cause) || traceOpsTextFilled(src.d5_pca)) return 'RCCA in progress';
+    if (traceOpsTextFilled(src.d3_containment)) return 'Contained';
+    if (traceOpsTextFilled(src.d2_problem) || traceOpsTextFilled(src.complaint_anchor)) return 'Triaged';
+    return 'Detected';
+  }
+
   function traceOpsComputeEightdReadiness(draft) {
     var weights = { d1_team:5, d2_problem:20, d3_containment:15, d4_root_cause:20, d4_escape_point:10, d5_pca:15, d6_validation:10, d7_prevention:5, d8_closure:0 };
-    var score = 0;
-    var missing = [];
+    var structureScore = 0;
+    var structureMissing = [];
     Object.keys(weights).forEach(function(key){
-      if (traceOpsTextFilled(draft && draft[key])) score += weights[key];
-      else if (weights[key] > 0) missing.push(key);
+      if (traceOpsTextFilled(draft && draft[key])) structureScore += weights[key];
+      else if (weights[key] > 0) structureMissing.push(key);
     });
-    return { score: score, missing: missing };
+    var evidence = traceOpsEightdEvidenceMeta(draft);
+    var evidenceScore = 0;
+    if (evidence.linkedCount > 0) evidenceScore += 20;
+    if (evidence.hasBadGood) evidenceScore += 35;
+    if (evidence.totalCount > 0) evidenceScore += 15;
+    evidenceScore += Math.round(Math.min(20, (evidence.traceabilityCoverage / 100) * 20));
+    if (traceOpsTextFilled(draft && draft.d6_validation)) evidenceScore += 10;
+    if (evidenceScore > 100) evidenceScore = 100;
+
+    var blockers = [];
+    if (!traceOpsTextFilled(draft && (draft.modelo || draft.product || draft.model))) blockers.push('Complete model / part number');
+    if (!traceOpsTextFilled(draft && draft.linea)) blockers.push('Complete line / station');
+    if (evidence.linkedCount === 0) blockers.push('Link at least 1 trace event');
+    if (!traceOpsTextFilled(draft && (draft.d2_problem || draft.complaint_anchor))) blockers.push('Define complaint anchor / D2');
+    if (!evidence.hasBadGood) blockers.push('Classify bad / good evidence');
+    if (evidence.totalCount === 0) blockers.push('Attach visual or file evidence');
+    if (!(traceOpsTextFilled(draft && draft.d4_root_cause) && traceOpsTextFilled(draft && draft.d4_escape_point))) blockers.push('Complete occurrence + escape');
+    if (!traceOpsTextFilled(draft && draft.d6_validation)) blockers.push('Define verification / D6');
+    blockers = Array.from(new Set(blockers));
+
+    var overallScore = Math.round((structureScore * 0.6) + (evidenceScore * 0.4));
+    var stage = traceOpsEightdStageLabel(draft, structureScore, evidenceScore, blockers);
+    return {
+      score: overallScore,
+      overallScore: overallScore,
+      structureScore: structureScore,
+      evidenceScore: evidenceScore,
+      missing: structureMissing,
+      structureMissing: structureMissing,
+      blockers: blockers,
+      canPromote: blockers.length === 0,
+      completed: 8 - structureMissing.length,
+      stage: stage,
+      evidence: evidence
+    };
   }
 
 
@@ -6078,8 +6145,14 @@ function App() {
     });
     var draft = traceOpsEightdHydrateDraftFields(baseDraft);
     var readiness = traceOpsComputeEightdReadiness(draft);
-    draft.readiness_score = readiness.score;
-    draft.missing_fields = readiness.missing;
+    draft.readiness_score = readiness.overallScore;
+    draft.structure_readiness_score = readiness.structureScore;
+    draft.evidence_readiness_score = readiness.evidenceScore;
+    draft.case_maturity_score = readiness.overallScore;
+    draft.missing_fields = readiness.structureMissing;
+    draft.escalation_blockers = readiness.blockers;
+    draft.can_promote = readiness.canPromote;
+    draft.draft_stage = readiness.stage;
     return draft;
   }
 
@@ -6097,8 +6170,14 @@ function App() {
     draftToSave.meta = currentMeta;
     var normalized = traceOpsEightdHydrateDraftFields(draftToSave);
     var readiness = traceOpsComputeEightdReadiness(normalized);
-    normalized.readiness_score = readiness.score;
-    normalized.missing_fields = readiness.missing;
+    normalized.readiness_score = readiness.overallScore;
+    normalized.structure_readiness_score = readiness.structureScore;
+    normalized.evidence_readiness_score = readiness.evidenceScore;
+    normalized.case_maturity_score = readiness.overallScore;
+    normalized.missing_fields = readiness.structureMissing;
+    normalized.escalation_blockers = readiness.blockers;
+    normalized.can_promote = readiness.canPromote;
+    normalized.draft_stage = readiness.stage;
     var updated = eightdList.filter(function(item){ return item.eightd_id !== normalized.eightd_id; });
     updated = [normalized].concat(updated).sort(function(a,b){
       var ta = a && a.updated_at ? new Date(a.updated_at).getTime() : 0;
@@ -6242,9 +6321,9 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     <div class="hero">
       <div class="eyebrow">FOXCONN | TraceOps 8D Draft</div>
       <div class="title">8D RCCA Draft</div>
-      <div class="sub">${esc(normalized.eightd_id)} · RCCA ${esc(normalized.source_rcca_id)} · ${esc(normalized.status || 'Draft')} · Use actual source evidence only</div>
+      <div class="sub">${esc(normalized.eightd_id)} · RCCA ${esc(normalized.source_rcca_id)} · ${esc(normalized.draft_stage || normalized.status || 'Draft')} · Use actual source evidence only</div>
       <div class="kpi-grid">
-        <div class="kpi"><span>Readiness</span><b>${esc(normalized.readiness_score || 0)}%</b></div>
+        <div class="kpi"><span>Maturity</span><b>${esc(normalized.case_maturity_score || normalized.readiness_score || 0)}%</b></div>
         <div class="kpi"><span>Model</span><b>${esc(normalized.modelo || 'Product / Part No.')}</b></div>
         <div class="kpi"><span>Line</span><b>${esc(normalized.linea || 'SMT / Assembly line')}</b></div>
         <div class="kpi"><span>Trace Events</span><b>${esc(linkedEvents.length ? linkedEvents.length + ' linked' : 'Build → Test → Complaint')}</b></div>
@@ -6257,7 +6336,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       <div class="meta-card"><span>Detection Window</span><b>${esc(normalized.detection_window || model.detectionWindow || 'N/D')}</b></div>
       <div class="meta-card"><span>Impact</span><b>${esc(normalized.impact_summary || model.impact || 'Pending')}</b></div>
       <div class="meta-card"><span>Pattern</span><b>${esc(normalized.pattern_detected || model.pattern || 'Pending')}</b></div>
-      <div class="meta-card"><span>Evidence</span><b>${esc(model.evidenceRefs.length ? model.evidenceRefs.length + ' refs' : 'No refs')}</b></div>
+      <div class="meta-card"><span>Evidence</span><b>${esc((normalized.evidence_readiness_score != null ? ('Score ' + normalized.evidence_readiness_score + '%') : (model.evidenceRefs.length ? model.evidenceRefs.length + ' refs' : 'No refs')))}</b></div>
     </div>
 
     <div class="grid-top">
@@ -7108,35 +7187,21 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
 
   function traceOpsPptReadinessMeta(normalized){
-    function nonPlaceholder(v){
-      var s = String(v || '').replace(/\s+/g, ' ').trim();
-      if (!s) return false;
-      if (/^(pending|n\/d|tbd|under validation|evidence pending|draft|open)$/i.test(s)) return false;
-      if (/^(issue under analysis|exposure under analysis|pending validation window|yokoten trigger pending\.?|customer protection active)$/i.test(s)) return false;
-      if (/auto-calculated by traceops/i.test(s)) return false;
-      return true;
-    }
-    var required = [
-      { label:'D1 Team', ok:function(n){ return nonPlaceholder(n.d1_team) || nonPlaceholder(n.owner_email); } },
-      { label:'D2 Problem', ok:function(n){ return nonPlaceholder(n.d2_problem) || nonPlaceholder(n.complaint_anchor); } },
-      { label:'D3 Containment', ok:function(n){ return nonPlaceholder(n.d3_containment); } },
-      { label:'D4 Occurrence', ok:function(n){ return nonPlaceholder(n.d4_root_cause); } },
-      { label:'D4 Escape', ok:function(n){ return nonPlaceholder(n.d4_escape_point); } },
-      { label:'D5 Actions', ok:function(n){ return nonPlaceholder(n.d5_pca); } },
-      { label:'D6 Validation', ok:function(n){ return nonPlaceholder(n.d6_validation); } },
-      { label:'D7 Prevention', ok:function(n){ return nonPlaceholder(n.d7_prevention); } }
-    ];
-    var missing = [];
-    var completed = 0;
-    required.forEach(function(item){
-      if (item.ok(normalized || {})) completed += 1;
-      else missing.push(item.label);
-    });
+    var computed = traceOpsComputeEightdReadiness(normalized || {});
+    var labelMap = {
+      d1_team:'D1 Team', d2_problem:'D2 Problem', d3_containment:'D3 Containment', d4_root_cause:'D4 Occurrence',
+      d4_escape_point:'D4 Escape', d5_pca:'D5 Actions', d6_validation:'D6 Validation', d7_prevention:'D7 Prevention'
+    };
     return {
-      score: Math.round((completed / 8) * 100),
-      missing: missing,
-      completed: completed,
-      basis: completed + '/8 mandatory sections completed · auto-calculated by TraceOps.'
+      score: computed.overallScore,
+      structureScore: computed.structureScore,
+      evidenceScore: computed.evidenceScore,
+      missing: (computed.structureMissing || []).map(function(key){ return labelMap[key] || key; }),
+      blockers: computed.blockers || [],
+      completed: computed.completed,
+      basis: 'Structure ' + computed.completed + '/8 · Evidence ' + computed.evidenceScore + '% · Overall ' + computed.overallScore + '%.',
+      stage: computed.stage,
+      canPromote: computed.canPromote
     };
   }
 
@@ -10113,7 +10178,7 @@ function replaceMetaFiles(nextFiles){
       window.addEventListener('resize', onResize);
       return function(){ window.removeEventListener('resize', onResize); };
     }, []);
-    function upd(k,v){ var next = Object.assign({}, form); next[k] = v; var ready = traceOpsComputeEightdReadiness(next); next.readiness_score = ready.score; next.missing_fields = ready.missing; setForm(next); }
+    function upd(k,v){ var next = Object.assign({}, form); next[k] = v; var ready = traceOpsComputeEightdReadiness(next); next.readiness_score = ready.overallScore; next.structure_readiness_score = ready.structureScore; next.evidence_readiness_score = ready.evidenceScore; next.case_maturity_score = ready.overallScore; next.missing_fields = ready.structureMissing; next.escalation_blockers = ready.blockers; next.can_promote = ready.canPromote; next.draft_stage = ready.stage; setForm(next); }
     function togglePanel(key){ var next = Object.assign({}, collapsed); next[key] = !next[key]; setCollapsed(next); }
     var readiness = traceOpsComputeEightdReadiness(form);
     var linkedEvents = traceOpsCollectLinkedEventsByIds(form.linked_event_ids || []);
@@ -10159,9 +10224,16 @@ function replaceMetaFiles(nextFiles){
         <div style={{fontSize:10.5,color:"#6A6560"}}>Fecha base: {form.fecha || "N/D"}</div>
       </div>
     );
-    var missingPanel = renderPanel("Missing fields","Campos que todavia requieren decision humana.","missing",
-      <div style={{padding:mobile?12:14}}>
-        {readiness.missing.length===0 ? <div style={{fontSize:11.5,color:"#2F6FB3",fontWeight:700}}>Draft listo para revision.</div> : <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.missing.map(function(key){return <span key={key} style={{fontSize:9.5,fontWeight:700,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"4px 8px"}}>{missingPretty[key] || key}</span>;})}</div>}
+    var missingPanel = renderPanel("Maturity gates","Bloqueos para promocion y campos que aun requieren decision humana.","missing",
+      <div style={{padding:mobile?12:14,display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {badge("#EAF2FF","#1F3A5F","Overall " + readiness.overallScore + "%")}
+          {badge("#EEF6FF","#145A28","Structure " + readiness.structureScore + "%")}
+          {badge(readiness.evidenceScore>=70?"#EAF2FF":"#FEF9E8",readiness.evidenceScore>=70?"#2F6FB3":"#B87820","Evidence " + readiness.evidenceScore + "%")}
+          {badge(readiness.canPromote?"#EEF6FF":"#FDF0EE",readiness.canPromote?"#145A28":"#C0392B",readiness.stage)}
+        </div>
+        {readiness.blockers.length===0 ? <div style={{fontSize:11.5,color:"#145A28",fontWeight:700}}>Draft listo para review tecnico. No hay bloqueos de promocion.</div> : <div><div style={{fontSize:9.5,fontWeight:800,color:"#C0392B",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Promotion blockers</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.blockers.map(function(label){return <span key={label} style={{fontSize:9.5,fontWeight:700,background:"#FDF0EE",color:"#C0392B",borderRadius:999,padding:"4px 8px"}}>{label}</span>;})}</div></div>}
+        {readiness.structureMissing.length>0 && <div><div style={{fontSize:9.5,fontWeight:800,color:"#B87820",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Missing sections</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.structureMissing.map(function(key){return <span key={key} style={{fontSize:9.5,fontWeight:700,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"4px 8px"}}>{missingPretty[key] || key}</span>;})}</div></div>}
       </div>
     );
     var eventsPanel = renderPanel("Linked events", linkedEvents.length + " evento" + (linkedEvents.length!==1?"s":"") + " usados para construir el draft.", "events",
@@ -10193,10 +10265,15 @@ function replaceMetaFiles(nextFiles){
               </div>}
             </div>
             <div style={{display:"grid",gridTemplateColumns:mobile?"repeat(2,minmax(0,1fr))":"repeat(" + (sourceRcca?"5":"4") + ",auto)",gap:8,justifyContent:mobile?"stretch":"flex-end",width:mobile?"100%":"auto",alignItems:"stretch"}}>
-              <span style={{gridColumn:mobile?"1 / -1":"auto",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.score>=85?"#EAF2FF":readiness.score>=60?"#FEF9E8":"#FDF0EE",color:readiness.score>=85?"#1F3A5F":readiness.score>=60?"#B87820":"#C0392B",border:"1px solid "+(readiness.score>=85?"#C7DBF7":readiness.score>=60?"#F5E4A0":"#F0C4BE"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Readiness {readiness.score}%</span>
-              <button onClick={function(){ props.onSave(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"Guardar":"Guardar Draft"}</button>
-              <button onClick={function(){ exportEightdPpt(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#FEF9E8",border:"1px solid #F5E4A0",color:"#B87820",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"PPT":"Exportar PPT"}</button>
-              <button onClick={function(){ exportEightdHtml(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#EAF2FF",border:"1px solid #C8D7F8",color:"#2F6FB3",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"HTML":"Exportar HTML"}</button>
+              <div style={{gridColumn:mobile?"1 / -1":"auto",display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",justifyContent:mobile?"flex-start":"flex-end"}}>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.overallScore>=85?"#EAF2FF":readiness.overallScore>=60?"#FEF9E8":"#FDF0EE",color:readiness.overallScore>=85?"#1F3A5F":readiness.overallScore>=60?"#B87820":"#C0392B",border:"1px solid "+(readiness.overallScore>=85?"#C7DBF7":readiness.overallScore>=60?"#F5E4A0":"#F0C4BE"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Maturity {readiness.overallScore}%</span>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:"#EEF6FF",color:"#145A28",border:"1px solid #A0DEB4",borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Structure {readiness.structureScore}%</span>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.evidenceScore>=70?"#EAF2FF":"#FEF9E8",color:readiness.evidenceScore>=70?"#2F6FB3":"#B87820",border:"1px solid "+(readiness.evidenceScore>=70?"#C7DBF7":"#F5E4A0"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Evidence {readiness.evidenceScore}%</span>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.canPromote?"#EEF6FF":"#FDF0EE",color:readiness.canPromote?"#145A28":"#C0392B",border:"1px solid "+(readiness.canPromote?"#A0DEB4":"#F0C4BE"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>{readiness.stage}</span>
+              </div>
+              <button onClick={function(){ props.onSave(Object.assign({}, form, { readiness_score: readiness.overallScore, structure_readiness_score: readiness.structureScore, evidence_readiness_score: readiness.evidenceScore, case_maturity_score: readiness.overallScore, missing_fields: readiness.structureMissing, escalation_blockers: readiness.blockers, can_promote: readiness.canPromote, draft_stage: readiness.stage })); }} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"Guardar":"Guardar Draft"}</button>
+              <button onClick={function(){ exportEightdPpt(Object.assign({}, form, { readiness_score: readiness.overallScore, structure_readiness_score: readiness.structureScore, evidence_readiness_score: readiness.evidenceScore, case_maturity_score: readiness.overallScore, missing_fields: readiness.structureMissing, escalation_blockers: readiness.blockers, can_promote: readiness.canPromote, draft_stage: readiness.stage })); }} style={{background:"#FEF9E8",border:"1px solid #F5E4A0",color:"#B87820",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"PPT":"Exportar PPT"}</button>
+              <button onClick={function(){ exportEightdHtml(Object.assign({}, form, { readiness_score: readiness.overallScore, structure_readiness_score: readiness.structureScore, evidence_readiness_score: readiness.evidenceScore, case_maturity_score: readiness.overallScore, missing_fields: readiness.structureMissing, escalation_blockers: readiness.blockers, can_promote: readiness.canPromote, draft_stage: readiness.stage })); }} style={{background:"#EAF2FF",border:"1px solid #C8D7F8",color:"#2F6FB3",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"HTML":"Exportar HTML"}</button>
               {sourceRcca&&<button onClick={function(){ props.onRefresh(sourceRcca); }} style={{background:"#F5F0FE",border:"1px solid #DBCDF8",color:"#6B2DA8",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"Refresh":"Refresh from RCCA"}</button>}
               <button onClick={props.onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",color:"#6A6560",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%",gridColumn:mobile&&(!sourceRcca)?"1 / -1":"auto"}}>{mobile?"Cerrar":"Cerrar"}</button>
             </div>
@@ -11689,8 +11766,8 @@ function replaceMetaFiles(nextFiles){
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:10}}>
                     <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Drafts</div><div style={{fontSize:26,fontWeight:800,color:"#1A1714",marginTop:5}}>{eightdList.length}</div></div>
-                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Ready >= 85%</div><div style={{fontSize:26,fontWeight:800,color:"#2F6FB3",marginTop:5}}>{eightdList.filter(function(item){return (item.readiness_score||0)>=85;}).length}</div></div>
-                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Need review</div><div style={{fontSize:26,fontWeight:800,color:"#B87820",marginTop:5}}>{eightdList.filter(function(item){return (item.readiness_score||0)<85;}).length}</div></div>
+                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Ready for review</div><div style={{fontSize:26,fontWeight:800,color:"#2F6FB3",marginTop:5}}>{eightdList.filter(function(item){return traceOpsComputeEightdReadiness(item).canPromote;}).length}</div></div>
+                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Blocked</div><div style={{fontSize:26,fontWeight:800,color:"#B87820",marginTop:5}}>{eightdList.filter(function(item){return !traceOpsComputeEightdReadiness(item).canPromote;}).length}</div></div>
                     <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>RCCA source</div><div style={{fontSize:26,fontWeight:800,color:"#6B2DA8",marginTop:5}}>{rccaList.length}</div></div>
                   </div>
                   <input aria-label="Buscar drafts 8D por RCCA, modelo, línea o título" placeholder="Buscar draft por RCCA, modelo, linea o titulo..." value={eightdFilter} onChange={function(e){setEightdFilter(e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#1A1714",outline:"none"}}/>
@@ -11704,13 +11781,15 @@ function replaceMetaFiles(nextFiles){
                         return (item.eightd_id||"").toLowerCase().indexOf(q)>=0 || (item.source_rcca_id||"").toLowerCase().indexOf(q)>=0 || (item.source_title||"").toLowerCase().indexOf(q)>=0 || (item.modelo||"").toLowerCase().indexOf(q)>=0 || (item.linea||"").toLowerCase().indexOf(q)>=0;
                       }).map(function(item){
                         var source = rccaList.find(function(r){ return r.rcca_id === item.source_rcca_id; }) || item.source_snapshot || null;
+                        var maturity = traceOpsComputeEightdReadiness(item);
                         return <div key={item.eightd_id} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
                           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
                             <div style={{minWidth:0,flex:1}}>
                               <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                                 <span style={{fontSize:9.5,fontFamily:"monospace",fontWeight:700,color:"#6B2DA8"}}>{item.eightd_id}</span>
-                                <span style={{fontSize:8.8,fontWeight:800,background:(item.readiness_score||0)>=85?"#EAF2FF":(item.readiness_score||0)>=60?"#FEF9E8":"#FDF0EE",color:(item.readiness_score||0)>=85?"#1F3A5F":(item.readiness_score||0)>=60?"#B87820":"#C0392B",borderRadius:999,padding:"3px 8px"}}>{item.readiness_score||0}%</span>
-                                <span style={{fontSize:8.8,fontWeight:800,background:"#EAF2FF",color:"#2F6FB3",borderRadius:999,padding:"3px 8px"}}>{item.status||"Draft"}</span>
+                                <span style={{fontSize:8.8,fontWeight:800,background:maturity.overallScore>=85?"#EAF2FF":maturity.overallScore>=60?"#FEF9E8":"#FDF0EE",color:maturity.overallScore>=85?"#1F3A5F":maturity.overallScore>=60?"#B87820":"#C0392B",borderRadius:999,padding:"3px 8px"}}>Overall {maturity.overallScore}%</span>
+                                <span style={{fontSize:8.8,fontWeight:800,background:maturity.evidenceScore>=70?"#EAF2FF":"#FEF9E8",color:maturity.evidenceScore>=70?"#2F6FB3":"#B87820",borderRadius:999,padding:"3px 8px"}}>Evidence {maturity.evidenceScore}%</span>
+                                <span style={{fontSize:8.8,fontWeight:800,background:maturity.canPromote?"#EEF6FF":"#FDF0EE",color:maturity.canPromote?"#145A28":"#C0392B",borderRadius:999,padding:"3px 8px"}}>{item.draft_stage || maturity.stage}</span>
                               </div>
                               <div style={{fontSize:13,fontWeight:800,color:"#1A1714",marginTop:6,lineHeight:1.32}}>{item.source_title || item.source_rcca_id}</div>
                               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
@@ -11719,6 +11798,7 @@ function replaceMetaFiles(nextFiles){
                                 {item.linea&&<span style={{fontSize:9,background:"#EAF2FF",color:"#1F3A5F",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.linea}</span>}
                                 <span style={{fontSize:9,color:"#8A8580"}}>{item.linked_event_ids && item.linked_event_ids.length ? item.linked_event_ids.length : 0} eventos</span>
                               </div>
+                              {item.escalation_blockers&&item.escalation_blockers.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:8}}>{item.escalation_blockers.slice(0,3).map(function(label){return <span key={label} style={{fontSize:8.5,background:"#FDF0EE",color:"#C0392B",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{label}</span>;})}</div>}
                               {item.missing_fields&&item.missing_fields.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:8}}>{item.missing_fields.slice(0,4).map(function(key){return <span key={key} style={{fontSize:8.5,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{({d1_team:"D1",d2_problem:"D2",d3_containment:"D3",d4_root_cause:"D4",d4_escape_point:"Escape",d5_pca:"D5",d6_validation:"D6",d7_prevention:"D7"}[key]||key)}</span>;})}</div>}
                             </div>
                             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
