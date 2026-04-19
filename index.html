@@ -7444,6 +7444,102 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   }
 
   
+
+  function traceOpsPptFlowPalette(tone){
+    var key = String(tone || 'blue').toLowerCase();
+    if (key === 'navy') return {accent:'102A43', pill:'EAF2FF', pillText:'17365D', line:'9CB6D4'};
+    if (key === 'red') return {accent:'C93B2E', pill:'FDEDEA', pillText:'8F241B', line:'E5A29B'};
+    if (key === 'green') return {accent:'1E7C56', pill:'EAF7F1', pillText:'15563C', line:'A7D3C2'};
+    if (key === 'cyan') return {accent:'2F6FB3', pill:'EEF5FF', pillText:'1F4E79', line:'B9D2EF'};
+    return {accent:'4A90E2', pill:'F0F6FF', pillText:'1F4E79', line:'BDD4F1'};
+  }
+
+  function traceOpsPptBuildFlowNodes(draft, model){
+    var rows = traceOpsPptDetailedEventRows(draft, model);
+    var nodes = [];
+    function addNode(stage, station, date, tone){
+      nodes.push({
+        stage: traceOpsPptSafe(stage || 'Stage', 34),
+        station: traceOpsPptSafe(station || 'Pending', 42),
+        date: traceOpsPptSafe(date || 'Pending', 28),
+        tone: tone || 'blue'
+      });
+    }
+
+    var buildDate = (draft && draft.build_window) || (model && model.buildWindow) || (draft && draft.detection_window) || (model && model.detectionWindow) || 'Pending';
+    addNode('Build', (draft && draft.linea) || (model && model.line) || 'Line pending', buildDate, 'navy');
+
+    if (Array.isArray(rows) && rows.length) {
+      var seen = {};
+      rows.forEach(function(row, idx){
+        if (nodes.length >= 4) return;
+        var stage = String(row[0] || 'Event').trim() || 'Event';
+        var station = String(row[2] || row[3] || (draft && draft.station) || (model && model.station) || 'Pending').trim() || 'Pending';
+        var date = String(row[4] || buildDate || 'Pending').trim() || 'Pending';
+        var key = [stage, station, date].join('|');
+        if (seen[key]) return;
+        seen[key] = true;
+        addNode(stage, station, date, idx === 0 ? 'cyan' : 'blue');
+      });
+    } else {
+      addNode('Station', (draft && draft.station) || (model && model.station) || 'Pending', (draft && draft.detection_window) || (model && model.detectionWindow) || buildDate, 'blue');
+    }
+
+    addNode('Complaint', (draft && draft.station) || (model && model.station) || 'Complaint anchor', (draft && draft.detection_window) || (model && model.detectionWindow) || buildDate, 'red');
+    addNode('RCCA', (draft && draft.source_rcca_id) ? ('ID ' + draft.source_rcca_id) : 'Actions defined', traceOpsPptExtractDateDdMmYyyy((draft && draft.updated_at) || (draft && draft.created_at) || '') || ((draft && draft.detection_window) || (model && model.detectionWindow) || buildDate), 'green');
+
+    if (nodes.length > 5) {
+      nodes = [nodes[0]].concat(nodes.slice(1, 4)).concat([nodes[nodes.length - 1]]);
+    }
+    return nodes;
+  }
+
+  function traceOpsPptDrawTraceFlow(slide, nodes, x, y, w, h){
+    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType || !slide) return;
+    var list = Array.isArray(nodes) && nodes.length ? nodes : [{stage:'Build', station:'Pending', date:'Pending', tone:'navy'},{stage:'Complaint', station:'Pending', date:'Pending', tone:'red'}];
+    var count = list.length;
+    var gap = count > 1 ? 0.18 : 0;
+    var nodeW = (w - gap * Math.max(0, count - 1)) / count;
+    var nodeH = h;
+    for (var i = 0; i < count; i++) {
+      var node = list[i] || {};
+      var px = x + i * (nodeW + gap);
+      var pal = traceOpsPptFlowPalette(node.tone);
+
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {
+        x:px, y:y + 0.02, w:nodeW, h:nodeH - 0.04, rectRadius:0.08,
+        line:{color:'D7E2EE', pt:1}, fill:{color:'FFFFFF'}
+      });
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {
+        x:px, y:y + 0.02, w:nodeW, h:0.11, rectRadius:0.08,
+        line:{color:pal.accent, pt:0}, fill:{color:pal.accent}
+      });
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {
+        x:px + 0.10, y:y + 0.18, w:nodeW - 0.20, h:0.20, rectRadius:0.07,
+        line:{color:pal.line, pt:0.8}, fill:{color:pal.pill}
+      });
+      slide.addText(traceOpsPptSafe(node.date, 26), {
+        x:px + 0.14, y:y + 0.23, w:nodeW - 0.28, h:0.08,
+        fontFace:'Segoe UI', fontSize:7.7, bold:true, color:pal.pillText, margin:0, align:'center', fit:'shrink'
+      });
+      slide.addText(traceOpsPptSafe(node.stage, 28), {
+        x:px + 0.12, y:y + 0.47, w:nodeW - 0.24, h:0.16,
+        fontFace:'Segoe UI', fontSize:9.2, bold:true, color:'102A43', margin:0, align:'center', fit:'shrink'
+      });
+      slide.addText(traceOpsPptWrap('Station: ' + (node.station || 'Pending'), 52), {
+        x:px + 0.12, y:y + 0.67, w:nodeW - 0.24, h:0.22,
+        fontFace:'Segoe UI', fontSize:7.8, color:'4F6478', margin:0, align:'center', fit:'shrink', valign:'mid'
+      });
+
+      if (i < count - 1) {
+        var arrowX = px + nodeW;
+        var midY = y + (nodeH / 2);
+        slide.addShape(_traceOpsPptxRef.ShapeType.line, {x:arrowX + 0.02, y:midY, w:gap - 0.06, h:0, line:{color:'8FB0D6', pt:1.4}});
+        slide.addShape(_traceOpsPptxRef.ShapeType.chevron, {x:arrowX + gap - 0.10, y:midY - 0.08, w:0.10, h:0.16, line:{color:'8FB0D6', pt:0.8}, fill:{color:'8FB0D6'}});
+      }
+    }
+  }
+
   function traceOpsPptStatusToneLocal(status){
     var s = String(status || '').toLowerCase();
     if (/complete|approved|good|available|100|yes|ready|closed/.test(s)) return 'ok';
@@ -7971,24 +8067,29 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     traceOpsPptApplyShell(slide, 'Appendix A - Traceability & Evidence', 'Foxconn-aligned traceability and evidence summary', 8, model.evidenceRefs.length ? 'Under Validation' : 'Draft');
     slide.addText(traceOpsPptSafe('Event timeline', 40), {x:0.42, y:1.66, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(traceOpsPptTimelineTable(normalized, linked, model), {x:0.42, y:1.90, w:12.48, h:0.72, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.8, margin:0.04, rowH:[0.20,0.44], valign:'mid', align:'center', fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:2.82, w:8.54, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.5, margin:0.04, rowH:[0.18,0.54], colW:[4.18,4.16], fit:'shrink'});
+
+    slide.addText(traceOpsPptSafe('Flow by station & date', 40), {x:0.42, y:2.74, w:2.6, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText('Visual path of the case using the detected station and date references.', {x:2.46, y:2.76, w:10.44, h:0.14, fontFace:'Segoe UI', fontSize:8.3, color:'5F766C', margin:0, fit:'shrink'});
+    traceOpsPptDrawTraceFlow(slide, traceOpsPptBuildFlowNodes(normalized, model), 0.42, 2.96, 12.48, 0.98);
+
+    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:4.10, w:8.54, h:0.74, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.4, margin:0.04, rowH:[0.18,0.48], colW:[4.18,4.16], fit:'shrink'});
 
     var appendixBad = await traceOpsPptPickEvidenceImage(normalized, 'bad');
     var appendixGood = await traceOpsPptPickEvidenceImage(normalized, 'good');
-    await traceOpsPptRenderEvidencePanel(slide, {x:9.16, y:2.82, w:1.78, h:0.82, label:'Bad part', caption:'Evidence view', tone:'bad', imageData:appendixBad});
-    await traceOpsPptRenderEvidencePanel(slide, {x:11.12, y:2.82, w:1.78, h:0.82, label:'Good part', caption:'Reference view', tone:'good', imageData:appendixGood});
+    await traceOpsPptRenderEvidencePanel(slide, {x:9.16, y:4.10, w:1.78, h:0.74, label:'Bad part', caption:'Evidence view', tone:'bad', imageData:appendixBad});
+    await traceOpsPptRenderEvidencePanel(slide, {x:11.12, y:4.10, w:1.78, h:0.74, label:'Good part', caption:'Reference view', tone:'good', imageData:appendixGood});
 
-    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:3.84, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:3.86, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:4.98, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:5.00, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'5F766C', margin:0, fit:'shrink'});
     var evidenceRows = traceOpsPptDetailedEventRows(normalized, model);
-    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:4.10, w:12.48, h:1.26, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.0, margin:0.04, rowH:0.20, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:5.24, w:12.48, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:7.8, margin:0.04, rowH:0.20, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], fit:'shrink'});
 
     var firstEvidence = (Array.isArray(evidenceRows) && evidenceRows.length ? evidenceRows[0] : ['Pending','Pending','Pending','Pending','Pending','Pending','TraceOps']);
-    traceOpsPptBox(slide, 0.42, 5.52, 12.48, 0.52, 'FAFCFF');
-    traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 5.64, 1.4);
-    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending') + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:5.64, w:10.70, h:0.14, fontFace:'Segoe UI', fontSize:8.6, color:'102A43', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 0.42, 6.14, 12.48, 0.42, 'FAFCFF');
+    traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 6.23, 1.4);
+    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending') + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:6.24, w:10.70, h:0.12, fontFace:'Segoe UI', fontSize:8.4, color:'102A43', margin:0, fit:'shrink'});
 
-    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) || !!appendixGood ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) || !!appendixBad ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.16, w:12.48, h:0.58, border:{type:'solid', pt:1, color:'102A43'}, fill:'102A43', color:'FFFFFF', fontFace:'Segoe UI', fontSize:8.0, margin:0.03, rowH:0.08, colW:[2.86,1.40,8.22], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) || !!appendixGood ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) || !!appendixBad ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.62, w:12.48, h:0.44, border:{type:'solid', pt:1, color:'102A43'}, fill:'102A43', color:'FFFFFF', fontFace:'Segoe UI', fontSize:7.8, margin:0.03, rowH:0.065, colW:[2.86,1.40,8.22], fit:'shrink'});
     return slide;
   }
 
