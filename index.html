@@ -10313,9 +10313,9 @@ function exportEightdPpt(draft) {
     }
 
     return(
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9998,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={function(){onClose();}}>
-        <div style={{background:"#F8FAFC",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:920,maxHeight:"90vh",overflow:"auto",paddingBottom:24}} onClick={function(e){e.stopPropagation();}}>
-          <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #E6ECF5",padding:compact?"12px 14px":"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,zIndex:2}}>
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9998,display:"flex",alignItems:"stretch",justifyContent:"center",paddingTop:"max(12px, env(safe-area-inset-top, 0px))",paddingBottom:"max(12px, env(safe-area-inset-bottom, 0px))"}} onClick={function(){onClose();}}>
+        <div style={{background:"#F8FAFC",borderRadius:compact?16:"20px",width:"100%",maxWidth:920,height:compact?"calc(100svh - max(24px, env(safe-area-inset-top, 0px)) - max(12px, env(safe-area-inset-bottom, 0px)))":"min(92vh, 920px)",maxHeight:"92svh",overflow:"hidden",display:"flex",flexDirection:"column",marginTop:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.24)"}} onClick={function(e){e.stopPropagation();}}>
+          <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #E6ECF5",padding:compact?"12px 14px":"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,zIndex:2,flexWrap:compact?"wrap":"nowrap",flexShrink:0}}>
             <div style={{minWidth:0}}>
               <div style={{fontSize:13,fontWeight:800,color:"#102A43"}}>{isEdit?"Edit RCCA":"New RCCA"}</div>
               <div style={{fontSize:10.5,color:"#5F766C",marginTop:2}}>Simple capture for 8D essentials</div>
@@ -10326,7 +10326,7 @@ function exportEightdPpt(draft) {
             </div>
           </div>
 
-          <div style={{padding:compact?14:20,display:"flex",flexDirection:"column",gap:14}}>
+          <div style={{padding:compact?14:20,display:"flex",flexDirection:"column",gap:14,overflowY:"auto",WebkitOverflowScrolling:"touch",flex:1,minHeight:0,paddingBottom:compact?24:28}}>
             {restoredDraft&&<div style={{background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:10,padding:"10px 12px",fontSize:11,color:"#1F3A5F"}}>A local draft was restored so you can continue without losing text.</div>}
             {isEdit&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:10,padding:"10px 12px",fontSize:11,color:"#8B6A1E"}}>Edit mode active. The RCCA ID will remain unchanged.</div>}
 
