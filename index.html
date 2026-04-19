@@ -1824,7 +1824,8 @@ function traceOpsNormalizeCloudError(err) {
   if (
     low.indexOf("load failed") >= 0 ||
     low.indexOf("failed to fetch") >= 0 ||
-    low.indexOf("networkerror") >= 0
+    low.indexOf("networkerror") >= 0 ||
+    low.indexOf("timeout") >= 0
   ) {
     var e = new Error("No se pudo conectar con Supabase desde este navegador. Se mantiene modo local.");
     e.isNetworkFallback = true;
@@ -1845,12 +1846,37 @@ function traceOpsNormalizeCloudError(err) {
   return err instanceof Error ? err : new Error(raw || "Error de nube");
 }
 
+function traceOpsFetchWithTimeout(url, options, timeoutMs) {
+  timeoutMs = Number(timeoutMs || 6500);
+  return new Promise(function(resolve, reject) {
+    var done = false;
+    var timer = setTimeout(function() {
+      if (done) return;
+      done = true;
+      reject(new Error("timeout"));
+    }, timeoutMs);
+
+    fetch(url, options).then(function(res) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(res);
+    }).catch(function(err) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
 window.TraceOpsCloud = (function () {
   var __traceops_user_cache = null;
   var __traceops_session_cache = null;
   var __traceops_user_loading = null;
   var __traceops_session_loading = null;
   var __traceops_refresh_loading = null;
+  var __traceops_refresh_block_until = 0;
 
   function cfg() {
     var raw = window.TRACEOPS_SUPABASE || {};
@@ -1872,6 +1898,23 @@ window.TraceOpsCloud = (function () {
     );
   }
 
+  function isIosLike() {
+    try {
+      var ua = navigator.userAgent || "";
+      return /iPhone|iPad|iPod/i.test(ua);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function shouldThrottleRefresh() {
+    return Date.now() < __traceops_refresh_block_until;
+  }
+
+  function blockRefresh(ms) {
+    __traceops_refresh_block_until = Date.now() + Number(ms || 8000);
+  }
+
   function getClient() {
     if (!isConfigured()) return null;
 
@@ -1885,7 +1928,8 @@ window.TraceOpsCloud = (function () {
         },
         global: {
           fetch: function (url, options) {
-            return fetch(url, options).catch(function (err) {
+            var timeoutMs = isIosLike() ? 5000 : 6500;
+            return traceOpsFetchWithTimeout(url, options, timeoutMs).catch(function (err) {
               throw traceOpsNormalizeCloudError(err);
             });
           }
@@ -1931,6 +1975,10 @@ window.TraceOpsCloud = (function () {
     var client = getClient();
     if (!client) return null;
     if (__traceops_refresh_loading) return __traceops_refresh_loading;
+    if (shouldThrottleRefresh()) return null;
+    try {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
+    } catch (_) {}
 
     __traceops_refresh_loading = (async function () {
       try {
@@ -1940,6 +1988,7 @@ window.TraceOpsCloud = (function () {
         setSessionCache(session);
         return session;
       } catch (err) {
+        blockRefresh(isIosLike() ? 12000 : 8000);
         throw traceOpsNormalizeCloudError(err);
       } finally {
         __traceops_refresh_loading = null;
@@ -1952,6 +2001,8 @@ window.TraceOpsCloud = (function () {
   async function ensureSession() {
     var session = await getSession();
     if (session) return session;
+
+    if (shouldThrottleRefresh()) return null;
 
     try {
       session = await refreshSession();
@@ -2113,6 +2164,7 @@ window.TraceOpsCloud = (function () {
     __traceops_user_loading = null;
     __traceops_session_loading = null;
     __traceops_refresh_loading = null;
+    __traceops_refresh_block_until = 0;
   }
 
   function onAuthChange(handler) {
@@ -2132,6 +2184,7 @@ window.TraceOpsCloud = (function () {
       __traceops_user_loading = null;
       __traceops_session_loading = null;
       __traceops_refresh_loading = null;
+      if (session) __traceops_refresh_block_until = 0;
       handler(evt, session && session.user ? session.user : null, session || null);
     });
   }
@@ -2280,7 +2333,6 @@ window.TraceOpsCloud = (function () {
   };
 })();
 </script>
-
 
 </head>
 <body>
