@@ -543,6 +543,34 @@ tr:hover td{background:var(--g50)}
 }
 
 
+/* RCCA Builder form control normalization */
+.traceops-rcca-builder,
+.traceops-rcca-builder *{
+  -webkit-text-size-adjust:100%;
+}
+.traceops-rcca-builder input,
+.traceops-rcca-builder select,
+.traceops-rcca-builder textarea{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif !important;
+  font-size:15px !important;
+  line-height:1.35 !important;
+}
+.traceops-rcca-builder textarea{
+  line-height:1.45 !important;
+}
+.traceops-rcca-builder option{
+  font-size:15px !important;
+}
+@media (max-width:1180px){
+  .traceops-rcca-builder input,
+  .traceops-rcca-builder select,
+  .traceops-rcca-builder textarea,
+  .traceops-rcca-builder option{
+    font-size:16px !important;
+  }
+}
+
+
 /* ---- TraceOps embedded UI fix: ensure classes actually render ---- */
 .traceops-context{background:linear-gradient(135deg,#FFFFFF,#F7FAFF);border:1px solid #D9E6F7;border-radius:24px;padding:18px 20px;margin:0 0 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;box-shadow:0 10px 24px rgba(20,32,51,.05)}
 .traceops-context-main{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1}
@@ -5379,7 +5407,7 @@ function App() {
   var authReady = authReadyArr[0]; var setAuthReady = authReadyArr[1];
   var cloudStatusArr = _useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "Configurando nube..." : "Modo local");
   var cloudStatus = cloudStatusArr[0]; var setCloudStatus = cloudStatusArr[1];
-  var realtimeStatusArr = _useState("LOCAL_ONLY");
+  var realtimeStatusArr = _useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "CONNECTING" : "LOCAL_ONLY");
   var realtimeStatus = realtimeStatusArr[0]; var setRealtimeStatus = realtimeStatusArr[1];
   var syncBusyArr = _useState(false);
   var syncBusy = syncBusyArr[0]; var setSyncBusy = syncBusyArr[1];
@@ -5390,76 +5418,19 @@ function App() {
   var storageErrArr = _useState("");
   var storageErrMsg = storageErrArr[0]; var setStorageErrMsg = storageErrArr[1];
 
-  var cloudModeRef = React.useRef("OK");
-  var cloudCooldownRef = React.useRef(false);
-  var cloudCooldownTimerRef = React.useRef(null);
-
-  function traceOpsClearCloudCooldown() {
-    try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
-    cloudCooldownTimerRef.current = null;
-    cloudCooldownRef.current = false;
-    cloudModeRef.current = "OK";
-  }
-
-  function traceOpsTriggerCloudCooldown(reasonLabel) {
-    try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
-    cloudCooldownRef.current = true;
-    cloudModeRef.current = "DEGRADED";
-    setCloudStatus(reasonLabel || "Nube saturada · trabajando local");
-    setRealtimeStatus("LOCAL_ONLY");
-    cloudCooldownTimerRef.current = setTimeout(function(){
-      cloudCooldownRef.current = false;
-      cloudModeRef.current = "OK";
-      setCloudStatus(function(prev){
-        var low = String(prev || "").toLowerCase();
-        if (low.indexOf("sesion") >= 0) return prev;
-        return "Reintentando conexion...";
-      });
-    }, 30000);
-  }
-
-  async function traceOpsSafeCloudCall(promiseFactory, timeoutMs) {
-    if (cloudCooldownRef.current) {
-      var cooldownErr = new Error("cloud_cooldown");
-      cooldownErr.isCloudCooldown = true;
-      throw cooldownErr;
-    }
-    var ms = Math.max(1500, Number(timeoutMs || 5000));
-    try {
-      return await Promise.race([
-        Promise.resolve().then(promiseFactory),
-        new Promise(function(_, reject){
-          setTimeout(function(){
-            var timeoutErr = new Error("cloud_timeout");
-            timeoutErr.isCloudTimeout = true;
-            reject(timeoutErr);
-          }, ms);
-        })
-      ]);
-    } catch (err) {
-      var cloudErr = traceOpsNormalizeCloudError(err);
-      var raw = String((cloudErr && (cloudErr.originalMessage || cloudErr.message)) || err || "").toLowerCase();
-      var shouldCooldown = !!(cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) || raw.indexOf("timeout") >= 0 || raw.indexOf("504") >= 0 || raw.indexOf("connection terminated") >= 0 || raw.indexOf("failed to fetch") >= 0 || raw.indexOf("networkerror") >= 0 || raw.indexOf("too many concurrent requests") >= 0;
-      if (shouldCooldown) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
-      }
-      throw cloudErr;
-    }
-  }
-
   var realtimeUi = (function(){
     var map = {
       CONNECTED: { label: "Realtime activo", color: "#1A7A3C", bg: "#EEF8F1" },
       SUBSCRIBED: { label: "Realtime activo", color: "#1A7A3C", bg: "#EEF8F1" },
-      CONNECTING: { label: "Conectando realtime...", color: "#B87820", bg: "#FBF5E6" },
+      CONNECTING: { label: "Realtime conectando", color: "#B87820", bg: "#FBF5E6" },
       CHANNEL_ERROR: { label: "Realtime con error", color: "#C0392B", bg: "#FDF0EE" },
       TIMED_OUT: { label: "Realtime en espera", color: "#B87820", bg: "#FBF5E6" },
       ERROR: { label: "Realtime con error", color: "#C0392B", bg: "#FDF0EE" },
-      DISCONNECTED: { label: "Sesion sin realtime", color: "#6A6560", bg: "#F3F1EE" },
-      CLOSED: { label: "Realtime detenido", color: "#6A6560", bg: "#F3F1EE" },
+      DISCONNECTED: { label: "Realtime desconectado", color: "#6A6560", bg: "#F3F1EE" },
+      CLOSED: { label: "Realtime desconectado", color: "#6A6560", bg: "#F3F1EE" },
       LOCAL_ONLY: { label: "Modo local", color: "#6A6560", bg: "#F3F1EE" }
     };
-    return map[realtimeStatus] || { label: "Estado realtime: " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
+    return map[realtimeStatus] || { label: "Realtime " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
   })();
 
   React.useEffect(function(){
@@ -5589,11 +5560,9 @@ function App() {
       var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
       if (cloudErr && cloudErr.isTransientAuthLock) {
-        setCloudStatus("Sesion ocupada · reintentando");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || cloudErr.isCloudCooldown)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+        setCloudStatus("Sesion activa · reintentando nube");
       } else {
-        setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
+        setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
       }
       return [];
     } finally {
@@ -5627,77 +5596,33 @@ function App() {
 
   async function handleAuthSubmit() {
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
-      setAuthErrMsg("Backend no configurado. Se mantiene modo local.");
-      setCloudStatus("Modo local · sin backend");
-      setRealtimeStatus("LOCAL_ONLY");
+      setAuthErrMsg("Configura TRACEOPS_SUPABASE.url y anonKey para habilitar nube.");
       return;
     }
-    var email = String(authEmail || "").trim();
-    var password = String(authPassword || "");
-    if (!email || !password) {
-      setAuthErrMsg("Ingresa correo y contrasena.");
-      setCloudStatus("Credenciales incompletas");
-      setRealtimeStatus("LOCAL_ONLY");
+    if (!authEmail.trim() || !authPassword.trim()) {
+      setAuthErrMsg("Completa correo y contrasena.");
       return;
     }
     setAuthErrMsg("");
     setSyncBusy(true);
-    setRealtimeStatus("LOCAL_ONLY");
     try {
-      localStorage.setItem("traceops_auth_email", email);
-    } catch(_) {}
-    try {
-      setCloudStatus(authMode === "signup" ? "Creando cuenta..." : "Conectando...");
+      localStorage.setItem("traceops_auth_email", authEmail.trim());
       if (authMode === "signup") {
-        await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signUp(email, password); }, 7000);
-        setCloudStatus("Cuenta creada · revisa confirmacion");
-        setAuthErrMsg("Si el proyecto requiere confirmacion por correo, valida tu email antes de sincronizar.");
-        setRealtimeStatus("LOCAL_ONLY");
-        return;
+        await window.TraceOpsCloud.signUp(authEmail.trim(), authPassword);
+        setCloudStatus("Cuenta creada. Revisa tu correo si Supabase pide confirmacion.");
+      } else {
+        await window.TraceOpsCloud.signIn(authEmail.trim(), authPassword);
+        setCloudStatus("Sesion iniciada.");
       }
-      await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signIn(email, password); }, 7000);
-      var currentUser = await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 5000);
-      traceOpsClearCloudCooldown();
-      setAuthUser(currentUser || null);
-      setCloudStatus("Sesion activa");
-      setRealtimeStatus(currentUser && currentUser.id ? "DISCONNECTED" : "LOCAL_ONLY");
-      try { await syncAllLocalToCloud(rccaList); } catch(_) {}
-      try { await refreshCloudRcca({ baseList: rccaList }); } catch(_) {}
+      var currentUser = await window.TraceOpsCloud.getUser();
+      setAuthUser(currentUser);
+      await syncAllLocalToCloud(rccaList);
+      await refreshCloudRcca({ baseList: rccaList });
       setAuthPassword("");
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
-      var msg = cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr || "");
-      var low = String(msg || "").toLowerCase();
-      setAuthErrMsg(msg);
-      if (cloudErr && cloudErr.isCloudCooldown) {
-        setCloudStatus("Nube saturada · trabajando local");
-        setRealtimeStatus("LOCAL_ONLY");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || low.indexOf("cloud_timeout") >= 0 || low.indexOf("504") >= 0 || low.indexOf("connection terminated") >= 0 || low.indexOf("too many concurrent requests") >= 0)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
-      } else if (cloudErr && cloudErr.isTransientAuthLock) {
-        setCloudStatus("Sesion ocupada · reintentando");
-        setRealtimeStatus("DISCONNECTED");
-      } else if (low.indexOf("invalid login credentials") >= 0 || low.indexOf("invalid credentials") >= 0 || low.indexOf("credenciales") >= 0) {
-        setCloudStatus("Credenciales invalidas");
-        setRealtimeStatus("LOCAL_ONLY");
-      } else if (low.indexOf("email not confirmed") >= 0 || low.indexOf("correo no confirmado") >= 0) {
-        setCloudStatus("Correo pendiente de confirmacion");
-        setRealtimeStatus("LOCAL_ONLY");
-      } else {
-        setCloudStatus("Error de autenticacion");
-        setRealtimeStatus("LOCAL_ONLY");
-      }
-      try {
-        console.warn("[TraceOps][AuthSubmit]", {
-          mode: authMode,
-          message: msg,
-          originalMessage: cloudErr && cloudErr.originalMessage ? cloudErr.originalMessage : null,
-          networkFallback: !!(cloudErr && cloudErr.isNetworkFallback),
-          transientAuthLock: !!(cloudErr && cloudErr.isTransientAuthLock),
-          cooldown: !!(cloudErr && cloudErr.isCloudCooldown),
-          ua: navigator.userAgent
-        });
-      } catch (_) {}
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : "Error de autenticacion");
     } finally {
       setSyncBusy(false);
     }
@@ -5733,16 +5658,12 @@ function App() {
         if (realtimeSub && typeof realtimeSub.unsubscribe === "function") realtimeSub.unsubscribe();
       } catch(_){}
       realtimeSub = null;
-      setRealtimeStatus(window.authUser ? "DISCONNECTED" : "LOCAL_ONLY");
+      setRealtimeStatus(authUser ? "DISCONNECTED" : "LOCAL_ONLY");
     }
     var authFlowPromise = Promise.resolve();
 
     function startRealtime(user){
       stopRealtime();
-      if (cloudCooldownRef.current) {
-        setRealtimeStatus("LOCAL_ONLY");
-        return;
-      }
       var realtimeUserId = String(user && user.id ? user.id : "").trim();
       if (!realtimeUserId || !(window.TraceOpsCloud && window.TraceOpsCloud.subscribeRccaRealtime)) {
         setRealtimeStatus("DISCONNECTED");
@@ -5770,15 +5691,14 @@ function App() {
         if (typeof updateAuthUI === "function") updateAuthUI();
 
         if (user) {
-          traceOpsClearCloudCooldown();
           setCloudStatus("Sesion activa");
-          setRealtimeStatus("DISCONNECTED");
-          try { await traceOpsSafeCloudCall(function(){ return refreshCloudRcca(); }, 5000); } catch(_) {}
+          setRealtimeStatus("CONNECTING");
+          await refreshCloudRcca();
           await new Promise(function(resolve){ setTimeout(resolve, 150); });
           startRealtime(user);
         } else {
           stopRealtime();
-          setCloudStatus("Sin sesion en nube");
+          setCloudStatus("Modo local");
           setRealtimeStatus("LOCAL_ONLY");
         }
 
@@ -5788,13 +5708,11 @@ function App() {
         setAuthReady(true);
         setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
         if (cloudErr && cloudErr.isTransientAuthLock) {
-          setCloudStatus("Sesion ocupada · reintentando");
-          setRealtimeStatus("DISCONNECTED");
-        } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) {
-          traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+          setCloudStatus("Sesion activa · reintentando nube");
+          setRealtimeStatus("CONNECTING");
         } else {
-          setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
-          setRealtimeStatus("ERROR");
+          setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
+          setRealtimeStatus(cloudErr && cloudErr.isNetworkFallback ? "LOCAL_ONLY" : "ERROR");
         }
       });
       return authFlowPromise;
@@ -5804,25 +5722,21 @@ function App() {
       runAuthFlow(user);
     });
 
-    traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 5000).then(function(user){
+    window.TraceOpsCloud.getUser().then(function(user){
       return runAuthFlow(user);
     }).catch(function(err){
       var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthReady(true);
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
       if (cloudErr && cloudErr.isTransientAuthLock) {
-        setCloudStatus("Sesion ocupada · reintentando");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || cloudErr.isCloudCooldown)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+        setCloudStatus("Sesion activa · reintentando nube");
       } else {
-        setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
+        setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
       }
     });
 
     return function(){
       stopRealtime();
-      try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
-      cloudCooldownTimerRef.current = null;
       try {
         var sub = unsub && unsub.data && unsub.data.subscription;
         if (sub && typeof sub.unsubscribe === "function") sub.unsubscribe();
@@ -6044,14 +5958,14 @@ function App() {
     var firstDate = src.primera_deteccion || (firstEv && firstEv.fecha) || src.fecha || '';
     var lastDate = src.ultima_deteccion || (lastEv && lastEv.fecha) || src.fecha || '';
     var detectionWindow = firstDate || lastDate ? [firstDate || 'N/D', lastDate || firstDate || 'N/D'].join(' -> ') : 'N/D';
-    var model = src.modelo || (firstEv && firstEv.modelo) || 'N/D';
-    var line = src.linea || (firstEv && firstEv.linea_estacion) || 'N/D';
-    var station = src.estacion_dominante || stations[0] || 'N/D';
-    var defect = src.defecto_dominante || defects[0] || 'N/A';
-    var pattern = src.patron_detectado || 'No pattern formally captured yet.';
-    var impact = src.alcance_exposicion || impacts[0] || 'Operational and quality impact under review.';
+    var model = src.modelo || src.model || (firstEv && firstEv.modelo) || 'N/D';
+    var line = src.linea || src.main_line || (firstEv && firstEv.linea_estacion) || 'N/D';
+    var station = src.estacion_dominante || src.main_station || stations[0] || 'N/D';
+    var defect = src.defecto_dominante || src.failure_mode || defects[0] || 'N/A';
+    var pattern = src.patron_detectado || src.w2h_mechanism || src.yokoten_trigger || 'No pattern formally captured yet.';
+    var impact = src.alcance_exposicion || src.impact_exposure_statement || impacts[0] || 'Operational and quality impact under review.';
     var tracePath = linked.length ? linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).join(' -> ') : 'No linked events.';
-    var complaintAnchor = src.problema || src.titulo_corto || (firstEv && (firstEv.evento_detectado_full || firstEv.evento_detectado)) || 'Complaint anchor pending.';
+    var complaintAnchor = src.problema || src.complaint_anchor_full || src.complaint_anchor_short || src.titulo_corto || (firstEv && (firstEv.evento_detectado_full || firstEv.evento_detectado)) || 'Complaint anchor pending.';
     var occurrenceSummary = traceOpsEightdHasText(src.causa_raiz)
       ? ('Probable occurrence mechanism supported by current evidence: ' + src.causa_raiz)
       : (traceOpsEightdHasText(src.hipotesis)
@@ -6091,10 +6005,10 @@ function App() {
       recurrence: src.recurrencia || 'N/D',
       analysisMaturity: src.madurez_analisis || 'N/D',
       evidenceSummary: src.evidencia_resumen || '',
-      lotBatch: src.lot_batch || src.lote_afectado || '',
-      serialRange: src.serial_range || src.seriales_afectados || '',
-      buildWindow: src.build_window || detectionWindow,
-      materialAffected: src.material_afectado || '',
+      lotBatch: src.lot_batch || src.trace_supplier_lot || src.supplier_lot || src.lote_afectado || '',
+      serialRange: src.serial_range || src.trace_serial_batch || src.serial_batch || src.seriales_afectados || '',
+      buildWindow: src.build_window || ([src.detection_window_start || '', src.detection_window_end || ''].filter(Boolean).join(' -> ')) || detectionWindow,
+      materialAffected: src.material_afectado || src.material_affected || '',
       exposure: src.alcance_exposicion || '',
       customerImpact: src.impacto_cliente || '',
       prevention: src.accion_preventiva || '',
@@ -6109,6 +6023,15 @@ function App() {
 
   function traceOpsEightdBuildTeamText(model) {
     var proofPoints = [];
+    var src = model && model.source ? model.source : {};
+    if (Array.isArray(src.d1_team_members) && src.d1_team_members.length) {
+      var teamRows = src.d1_team_members.map(function(row){ return (row.role || 'Role') + ': ' + (row.name || 'Pending') + ' · ' + (row.email || 'Pending'); }).join(' | ');
+      proofPoints.push('D1 team: ' + teamRows);
+    }
+    if (Array.isArray(src.escalation_members) && src.escalation_members.length) {
+      var escRows = src.escalation_members.map(function(row){ return (row.level || 'Level') + ': ' + (row.owner || 'Pending') + ' · ' + (row.email || 'Pending'); }).join(' | ');
+      proofPoints.push('Escalation: ' + escRows);
+    }
     var owner = model.owners.length ? model.owners[0] : 'Quality owner pending';
     var roleSet = ['Quality'];
     var blob = [model.line || '', model.station || '', model.defect || '', model.pattern || '', model.rootCause || '', model.hypothesis || ''].join(' ').toLowerCase();
@@ -10089,307 +10012,591 @@ function exportEightdPpt(draft) {
     var init = props.init || {};
     var onSave = props.onSave;
     var onClose = props.onClose;
-    var ev = Array.isArray(props.events) ? props.events : [];
-    var compact = (typeof window !== "undefined") ? window.innerWidth <= 760 : false;
-    var initIds = Array.isArray(init.event_ids) ? init.event_ids.slice() : [];
-    var firstLinked = initIds.length ? ev.find(function(e){ return e.id === initIds[0]; }) : null;
+    var incomingDraft = readRccaDraft();
+    var canUseDraft = !!(incomingDraft && incomingDraft.form && isFreshRccaDraft(incomingDraft) && ((init.rcca_id && incomingDraft.form && (incomingDraft.form.original_rcca_id===init.rcca_id || incomingDraft.form.rcca_id===init.rcca_id)) || (!init.rcca_id && incomingDraft.mode==="new") || init.__restored_draft));
+    if (canUseDraft) init = Object.assign({}, init, incomingDraft.form, { __restored_draft: true });
 
-    function safeLine(source){
-      var raw = String(source || '').trim();
-      if (!raw) return '';
-      return raw.split('/')[0].trim();
-    }
-    function safeStation(source){
-      var raw = String(source || '').trim();
-      if (!raw) return '';
-      var parts = raw.split('/');
-      return (parts[1] || '').trim();
-    }
-    function makeId(){
-      if (init.rcca_id) return init.rcca_id;
-      if (typeof genRccaId === 'function') {
-        try { return genRccaId(initIds, ev); } catch (_) {}
+    var isEdit = !!init.rcca_id;
+    var restoredDraft = !!init.__restored_draft;
+    var initIds = (init.event_ids || []).slice();
+    var metaInputRef = _useRef(null);
+    var compactArr = _useState(function(){ try { return window.innerWidth <= 1180; } catch(_) { return false; } });
+    var compact = compactArr[0]; var setCompact = compactArr[1];
+    React.useEffect(function(){
+      function onResize(){
+        try { setCompact(window.innerWidth <= 1180); } catch(_) {}
       }
-      return 'RCCA-' + Date.now();
-    }
-    function buildInitialFile(item, role){
-      var next = Object.assign({}, item || {});
-      next.id = next.id || ('file_' + Math.random().toString(36).slice(2,10));
-      next.name = next.name || 'attachment';
-      next.kind = next.kind || 'file';
-      next.size = Number(next.size || 0);
-      next.data_url = next.data_url || '';
-      next.evidence_role = role || next.evidence_role || 'general';
-      return next;
-    }
-
-    var stateArr = _useState(function(){
+      onResize();
+      window.addEventListener('resize', onResize);
+      return function(){ window.removeEventListener('resize', onResize); };
+    }, []);
+    function stackGrid(cols){ return compact ? '1fr' : cols; }
+    function rowGrid(cols){ return compact ? '1fr' : cols; }
+    function fieldShellStyle(spanFull){
       return {
-        rcca_id: makeId(),
-        original_rcca_id: init.rcca_id || makeId(),
-        event_ids: initIds,
-        modelo: init.modelo || (firstLinked && firstLinked.modelo) || '',
-        linea: init.linea || safeLine((firstLinked && firstLinked.linea_estacion) || ''),
-        estacion_dominante: init.estacion_dominante || safeStation((firstLinked && firstLinked.linea_estacion) || ''),
-        detection_window: init.detection_window || init.fecha || '',
-        titulo_corto: init.titulo_corto || '',
-        complaint_anchor: init.complaint_anchor || init.problema || (firstLinked && firstLinked.evento_detectado) || '',
-        impact_exposure: init.impact_exposure || init.alcance_exposicion || '',
-        trace_anchor: init.trace_anchor || init.material_afectado || '',
-        containment_actions: init.containment_actions || init.contencion || '',
-        rc_mechanism: init.rc_mechanism || init.causa_raiz || '',
-        detection_gap: init.detection_gap || init.evidencia_resumen || '',
-        factors: init.factors || init.hipotesis || '',
-        corrective_actions: init.corrective_actions || init.accion_correctiva || '',
-        verification_method: init.verification_method || '',
-        success_criteria: init.success_criteria || '',
-        lesson_learned: init.lesson_learned || init.leccion_aprendida || '',
-        yokoten: init.yokoten || init.accion_preventiva || '',
+        width:'100%',
+        minWidth:0,
+        maxWidth: compact ? '100%' : (spanFull ? '100%' : '560px'),
+        justifySelf:'stretch'
+      };
+    }
+    function controlBaseStyle(multiline){
+      return {
+        width:'100%',
+        minWidth:0,
+        border:'1.5px solid #DDDBD7',
+        borderRadius:12,
+        padding: compact ? '12px 14px' : '10px 12px',
+        fontSize: compact ? 16 : 15,
+        color:'#1A1714',
+        outline:'none',
+        background:'#fff',
+        lineHeight: multiline ? 1.45 : 1.3
+      };
+    }
+    function rowButtonStyle(){ return {width:compact?'100%':'auto',height:38,border:'1px solid #DDDBD7',borderRadius:9,background:'#fff',padding:'0 10px',cursor:'pointer'}; }
+    var stepDefs = [
+      { key:'identity', label:'1. Identity' },
+      { key:'d1d2', label:'2. D1-D2' },
+      { key:'evidence', label:'3. Evidence' },
+      { key:'d3', label:'4. D3' },
+      { key:'d4a', label:'5. D4A' },
+      { key:'d4b', label:'6. D4B' },
+      { key:'d5d6', label:'7. D5-D6' },
+      { key:'d7d8', label:'8. D7-D8 + Appendix' }
+    ];
+
+    function safeList(v){ return Array.isArray(v) ? v.slice() : []; }
+    function ensureRows(existing, defs){
+      var rows = safeList(existing);
+      return defs.map(function(def, idx){
+        var row = rows[idx] || {};
+        return Object.assign({}, def, row);
+      });
+    }
+    function isoToDisplay(v){
+      var s = String(v || '').trim();
+      if (!s) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        var p = s.split('-');
+        return p[2] + '/' + p[1] + '/' + p[0];
+      }
+      return s;
+    }
+    function displayToIso(v){
+      var s = String(v || '').trim();
+      if (!s) return '';
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+        var p = s.split('/');
+        return p[2] + '-' + p[1] + '-' + p[0];
+      }
+      return s;
+    }
+    function joinNonEmpty(list, sep){ return (list || []).filter(function(x){ return !!String(x || '').trim(); }).join(sep || '\n'); }
+    function summarizeTable(rows, formatter){ return (rows || []).map(function(row){ return formatter(row); }).filter(function(x){ return !!String(x || '').trim(); }).join('\n'); }
+    function initialTeamRows(){
+      return ensureRows(init.d1_team_members, [
+        { role:'PM', name:'', email:'' },
+        { role:'QE', name:'', email:init.owner_email || '' },
+        { role:'SQE', name:'', email:'' },
+        { role:'TE', name:'', email:'' },
+        { role:'PE', name:'', email:'' },
+        { role:'PD', name:'', email:'' }
+      ]);
+    }
+    function initialEscalationRows(){
+      return ensureRows(init.escalation_members, [
+        { level:'Process Coordinator', owner:'', email:'' },
+        { level:'Quality Coordinator', owner:'', email:init.owner_email || '' },
+        { level:'Quality Manager', owner:'', email:'' },
+        { level:'TE Manager', owner:'', email:'' },
+        { level:'Manufacturing Manager', owner:'', email:'' },
+        { level:'BU Manager', owner:'', email:'' }
+      ]);
+    }
+    function initialContainmentRows(){
+      return safeList(init.containment_rows && init.containment_rows.length ? init.containment_rows : [
+        { location:'SMT', qty_suspect:'', qty_good:'', qty_bad:'', responsible:init.owner_email || '', clean_date:'', status:'Contained' }
+      ]);
+    }
+    function initialContainmentActions(){
+      return safeList(init.containment_action_rows && init.containment_action_rows.length ? init.containment_action_rows : [
+        { action:'', owner:init.owner_email || '', start:'', completion:'', status:'Pending', proof:'' }
+      ]);
+    }
+    function initialWhyRows(prefix){
+      var existing = safeList(init[prefix]);
+      var out = [];
+      for (var i = 0; i < 5; i++) out.push(existing[i] || { index:i+1, text:'' });
+      return out;
+    }
+    function initialActionsRows(){
+      return safeList(init.d5_actions && init.d5_actions.length ? init.d5_actions : [
+        { axis:'Occurrence', action_text:'', addresses:'', owner:'', ecd:'', status:'Open', proof_linked:'' }
+      ]);
+    }
+    function initialVerificationRows(){
+      return safeList(init.d6_verifications && init.d6_verifications.length ? init.d6_verifications : [
+        { axis:'Occurrence', linked_action_id:'', measurement_method:'', validation_result:'', responsible:'', completion_date:'', acceptance_criteria:'', recurrence_status:'', conclusion:'' }
+      ]);
+    }
+    function initialFlowRows(){
+      return safeList(init.appendix_flow && init.appendix_flow.length ? init.appendix_flow : [
+        { stage:'Build', station:init.linea || '', timestamp:init.primera_deteccion || init.fecha || '', source:'TraceOps', result:'', observation:'' },
+        { stage:'Complaint', station:init.estacion_dominante || init.linea || '', timestamp:init.ultima_deteccion || init.fecha || '', source:'RCCA', result:'', observation:'' }
+      ]);
+    }
+    function initialTraceRows(){
+      return safeList(init.appendix_traceability && init.appendix_traceability.length ? init.appendix_traceability : [
+        { process_step:init.estacion_dominante || 'Process', line:init.linea || '', station:init.estacion_dominante || '', equipment_tester:init.estacion_dominante || '', timestamp:init.fecha || '', result:'', source:init.rcca_id || 'TraceOps', why_it_matters:'' }
+      ]);
+    }
+
+    var formArr = _useState(function(){
+      var ids = initIds;
+      var defaultTitle = init.titulo_corto || init.short_title || (init.problema ? String(init.problema).slice(0, 80) : '');
+      var defaultStart = displayToIso(init.primera_deteccion || init.fecha || new Date().toISOString().slice(0,10));
+      var defaultEnd = displayToIso(init.ultima_deteccion || init.fecha || new Date().toISOString().slice(0,10));
+      return Object.assign({
+        rcca_id: init.rcca_id || genRccaId(ids, ev),
+        original_rcca_id: init.rcca_id || genRccaId(ids, ev),
+        event_ids: ids,
+        modelo: init.modelo || '',
+        linea: init.linea || '',
+        fecha: init.fecha || new Date().toISOString().slice(0,10),
+        titulo_corto: defaultTitle,
+        tipo_caso: init.tipo_caso || '',
         estatus_rcca: init.estatus_rcca || 'NUEVO',
-        responsible_engineer: init.responsible_engineer || init.owner_email || '',
-        meta_files: Array.isArray(init.meta_files) ? init.meta_files.map(function(x){ return buildInitialFile(x); }) : []
-      };
+        severidad: init.severidad || '',
+        recurrencia: init.recurrencia || '',
+        madurez_analisis: init.madurez_analisis || '',
+        estacion_dominante: init.estacion_dominante || '',
+        defecto_dominante: init.defecto_dominante || '',
+        primera_deteccion: init.primera_deteccion || '',
+        ultima_deteccion: init.ultima_deteccion || '',
+        problema: init.problema || '',
+        causa_raiz: init.causa_raiz || '',
+        contencion: init.contencion || '',
+        accion_correctiva: init.accion_correctiva || '',
+        accion_preventiva: init.accion_preventiva || '',
+        patron_detectado: init.patron_detectado || '',
+        leccion_aprendida: init.leccion_aprendida || '',
+        hipotesis: init.hipotesis || '',
+        evidencia_resumen: init.evidencia_resumen || '',
+        validacion: init.validacion || '',
+        alcance_exposicion: init.alcance_exposicion || '',
+        material_afectado: init.material_afectado || '',
+        meta_files: traceOpsNormalizeMetaFiles(init.meta_files || []),
+        source: init.source || 'manual',
+        owner_email: init.owner_email || '',
+        owner_name: init.owner_name || '',
+        created_at: init.created_at || '',
+        updated_at: init.updated_at || '',
+        risk_level: init.risk_level || '',
+        main_station: init.main_station || init.estacion_dominante || init.linea || '',
+        failure_mode: init.failure_mode || init.defecto_dominante || '',
+        detection_window_start: init.detection_window_start || defaultStart,
+        detection_window_end: init.detection_window_end || defaultEnd,
+        customer_exposure: init.customer_exposure || '',
+        customer_notified: init.customer_notified || '',
+        complaint_anchor_short: init.complaint_anchor_short || defaultTitle,
+        complaint_anchor_full: init.complaint_anchor_full || init.problema || '',
+        impact_exposure_statement: init.impact_exposure_statement || init.alcance_exposicion || '',
+        trace_sku_version: init.trace_sku_version || init.sku_version || '',
+        trace_supplier_lot: init.trace_supplier_lot || init.lot_batch || init.lote_afectado || '',
+        trace_serial_batch: init.trace_serial_batch || init.serial_range || init.seriales_afectados || '',
+        trace_date_code: init.trace_date_code || '',
+        trace_component_pn: init.trace_component_pn || '',
+        trace_equipment_tester: init.trace_equipment_tester || init.estacion_dominante || '',
+        trace_barcodes: init.trace_barcodes || '',
+        w2h_who: init.w2h_who || '',
+        w2h_what: init.w2h_what || init.problema || '',
+        w2h_where: init.w2h_where || [init.linea || '', init.estacion_dominante || ''].filter(Boolean).join(' · '),
+        w2h_when: init.w2h_when || [isoToDisplay(defaultStart), isoToDisplay(defaultEnd)].filter(Boolean).join(' -> '),
+        w2h_how: init.w2h_how || init.estacion_dominante || '',
+        w2h_why: init.w2h_why || '',
+        w2h_how_many: init.w2h_how_many || '',
+        w2h_mechanism: init.w2h_mechanism || init.patron_detectado || '',
+        w2h_total_units: init.w2h_total_units || '',
+        w2h_suspect_units: init.w2h_suspect_units || '',
+        w2h_clean_units: init.w2h_clean_units || '',
+        w2h_risk_units: init.w2h_risk_units || '',
+        w2h_clean_yield: init.w2h_clean_yield || '',
+        w2h_ojt_touch_rate: init.w2h_ojt_touch_rate || '',
+        d1_team_members: initialTeamRows(),
+        escalation_members: initialEscalationRows(),
+        containment_rows: initialContainmentRows(),
+        containment_action_rows: initialContainmentActions(),
+        shielding_owner: init.shielding_owner || init.owner_email || '',
+        shielding_start: init.shielding_start || '',
+        shielding_status: init.shielding_status || '',
+        shielding_statement: init.shielding_statement || '',
+        occurrence_short: init.occurrence_short || init.hipotesis || '',
+        occurrence_full: init.occurrence_full || init.causa_raiz || '',
+        occurrence_status: init.occurrence_status || 'probable',
+        cause_machine: init.cause_machine || '',
+        cause_man: init.cause_man || '',
+        cause_method: init.cause_method || '',
+        cause_measurement: init.cause_measurement || '',
+        cause_material: init.cause_material || '',
+        cause_environment: init.cause_environment || '',
+        occurrence_whys: initialWhyRows('occurrence_whys'),
+        occurrence_support_short: init.occurrence_support_short || init.evidencia_resumen || '',
+        occurrence_support_full: init.occurrence_support_full || init.evidencia_resumen || '',
+        occurrence_conclusion: init.occurrence_conclusion || init.causa_raiz || '',
+        escape_point: init.escape_point || init.punto_escape || '',
+        expected_detection_control: init.expected_detection_control || '',
+        escape_failure_mode: init.escape_failure_mode || init.defecto_dominante || '',
+        control_gap: init.control_gap || '',
+        detection_gap_identified: init.detection_gap_identified || '',
+        escape_why_short: init.escape_why_short || '',
+        escape_why_full: init.escape_why_full || '',
+        escape_proof_event: init.escape_proof_event || '',
+        escape_status: init.escape_status || 'pending',
+        escape_whys: initialWhyRows('escape_whys'),
+        escape_conclusion_short: init.escape_conclusion_short || '',
+        escape_conclusion_full: init.escape_conclusion_full || '',
+        d5_actions: initialActionsRows(),
+        d6_verifications: initialVerificationRows(),
+        preventive_actions_text: init.preventive_actions_text || init.accion_preventiva || '',
+        replication_scope: init.replication_scope || '',
+        lesson_learned_text: init.lesson_learned_text || init.leccion_aprendida || '',
+        yokoten_trigger: init.yokoten_trigger || init.patron_detectado || '',
+        deployment_owner: init.deployment_owner || init.owner_email || '',
+        deployment_status: init.deployment_status || '',
+        closure_basis: init.closure_basis || '',
+        closure_statement_short: init.closure_statement_short || '',
+        closure_statement_full: init.closure_statement_full || '',
+        closure_open_items: init.closure_open_items || '',
+        closure_status: init.closure_status || '',
+        appendix_flow: initialFlowRows(),
+        appendix_traceability: initialTraceRows()
+      }, {});
     });
-    var form = stateArr[0];
-    var setForm = stateArr[1];
-    var badInputRef = _useRef(null);
-    var goodInputRef = _useRef(null);
-    var generalInputRef = _useRef(null);
+    var form = formArr[0]; var setForm = formArr[1];
+    var stepArr = _useState(function(){ return init.__draft_builder_step || 'identity'; });
+    var currentStep = stepArr[0]; var setCurrentStep = stepArr[1];
 
-    function upd(key, value){
+    function setWholeForm(next){ setForm(next); }
+    function upd(key, value){ var next = Object.assign({}, form); next[key] = value; setWholeForm(next); }
+    function updateListField(listKey, idx, field, value){
+      var next = Object.assign({}, form); var list = safeList(form[listKey]); var row = Object.assign({}, list[idx] || {}); row[field] = value; list[idx] = row; next[listKey] = list; setWholeForm(next);
+    }
+    function addRow(listKey, template){ var next = Object.assign({}, form); var list = safeList(form[listKey]); list.push(Object.assign({}, template || {})); next[listKey] = list; setWholeForm(next); }
+    function removeRow(listKey, idx){ var next = Object.assign({}, form); var list = safeList(form[listKey]); if (list.length <= 1) return; list.splice(idx,1); next[listKey] = list; setWholeForm(next); }
+    function replaceMetaFiles(nextFiles){ var next = Object.assign({}, form); next.meta_files = traceOpsNormalizeMetaFiles(nextFiles || []); next.meta = Object.assign({}, next.meta || {}, { evidence: traceOpsBuildEvidenceMetaFromFiles(next.meta_files) }); setWholeForm(next); }
+    function setMetaFileRole(fileId, role){ var nextFiles = traceOpsNormalizeMetaFiles(form.meta_files || []).map(function(item){ return item.id !== fileId ? item : Object.assign({}, item, { evidence_role: traceOpsNormalizeEvidenceRole(role) }); }); replaceMetaFiles(nextFiles); }
+    function removeMetaFile(fileId){ replaceMetaFiles((form.meta_files || []).filter(function(item){ return item.id !== fileId; })); try { if (metaInputRef.current) metaInputRef.current.value = ''; } catch(_) {} }
+    function downloadMetaFile(item){ if (!item || !item.data_url) return; var a = document.createElement('a'); a.href = item.data_url; a.download = item.name || 'meta-file'; document.body.appendChild(a); a.click(); setTimeout(function(){ try { document.body.removeChild(a); } catch(_){} }, 50); }
+    async function addMetaFiles(fileList){
+      var incoming = Array.prototype.slice.call(fileList || []);
+      if (!incoming.length) return;
+      var current = traceOpsNormalizeMetaFiles(form.meta_files || []);
+      if (current.length + incoming.length > TRACEOPS_RCCA_META_MAX_FILES) { alert('Puedes guardar hasta ' + TRACEOPS_RCCA_META_MAX_FILES + ' archivos meta por RCCA.'); return; }
+      var totalBytes = current.reduce(function(sum, item){ return sum + Number(item.size || 0); }, 0);
+      var prepared = [];
+      for (var i = 0; i < incoming.length; i++) {
+        var file = incoming[i];
+        var ext = traceOpsMetaExt(file && file.name);
+        if (TRACEOPS_RCCA_META_ACCEPT.indexOf(ext) < 0) { alert('Formato no permitido: ' + (file && file.name ? file.name : 'archivo') + '. Usa ZIP, PPT/PPTX o JPG/PNG.'); return; }
+        if (file.size > TRACEOPS_RCCA_META_MAX_FILE_BYTES) { alert('El archivo ' + file.name + ' excede el limite de ' + traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_FILE_BYTES) + '.'); return; }
+        totalBytes += file.size || 0;
+        if (totalBytes > TRACEOPS_RCCA_META_MAX_TOTAL_BYTES) { alert('El total de adjuntos meta excede ' + traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_TOTAL_BYTES) + '.'); return; }
+        var dataUrl = await new Promise(function(resolve,reject){ try { var reader = new FileReader(); reader.onload = function(){ resolve(reader.result); }; reader.onerror = function(){ reject(new Error('No se pudo leer ' + file.name)); }; reader.readAsDataURL(file); } catch(err){ reject(err); } });
+        prepared.push({ id:'meta_' + Date.now().toString(36) + '_' + i + '_' + Math.random().toString(36).slice(2,7), name:file.name, type:file.type || '', size:Number(file.size || 0), kind:traceOpsMetaTypeLabel(file), data_url:String(dataUrl || ''), evidence_role: traceOpsIsImageMetaFile(file) ? traceOpsSuggestEvidenceRole(file, current.concat(prepared)) : undefined });
+      }
+      replaceMetaFiles(current.concat(prepared));
+      try { if (metaInputRef.current) metaInputRef.current.value = ''; } catch(_) {}
+    }
+
+    React.useEffect(function(){ var payload = { ts:new Date().toISOString(), mode:isEdit?'edit':'new', form:Object.assign({}, form, { __draft_builder_step: currentStep }) }; var t = setTimeout(function(){ writeRccaDraft(payload); }, 120); return function(){ clearTimeout(t); }; }, [form, isEdit, currentStep]);
+
+    function toggleEvent(evId){
+      var cur = form.event_ids || [];
+      var newIds = cur.indexOf(evId) >= 0 ? cur.filter(function(x){ return x !== evId; }) : cur.concat([evId]);
+      var firstEv = newIds.length > 0 ? ev.find(function(e){ return e.id === newIds[0]; }) : null;
       var next = Object.assign({}, form);
-      next[key] = value;
-      setForm(next);
-    }
-
-    function toggleEvent(id){
-      var ids = (form.event_ids || []).slice();
-      if (ids.indexOf(id) >= 0) ids = ids.filter(function(x){ return x !== id; });
-      else ids.push(id);
-      var next = Object.assign({}, form, { event_ids: ids });
-      var first = ids.length ? ev.find(function(e){ return e.id === ids[0]; }) : null;
-      if (first) {
-        if (!next.modelo) next.modelo = first.modelo || '';
-        if (!next.linea) next.linea = safeLine(first.linea_estacion || '');
-        if (!next.estacion_dominante) next.estacion_dominante = safeStation(first.linea_estacion || '');
-        if (!next.complaint_anchor) next.complaint_anchor = first.evento_detectado || '';
+      next.event_ids = newIds;
+      next.rcca_id = isEdit ? (form.original_rcca_id || form.rcca_id) : genRccaId(newIds, ev);
+      if (firstEv) {
+        if (!form.modelo) next.modelo = firstEv.modelo || '';
+        if (!form.linea) next.linea = firstEv.linea_estacion || '';
+        if (!form.main_station) next.main_station = firstEv.linea_estacion || '';
+        if (!form.estacion_dominante) next.estacion_dominante = firstEv.linea_estacion || '';
+        if (!form.failure_mode && firstEv.defecto_smt && firstEv.defecto_smt !== 'N/A') next.failure_mode = firstEv.defecto_smt;
+        if (!form.defecto_dominante && firstEv.defecto_smt && firstEv.defecto_smt !== 'N/A') next.defecto_dominante = firstEv.defecto_smt;
+        if (!form.problema && firstEv.evento_detectado) next.problema = firstEv.evento_detectado;
+        if (!form.complaint_anchor_full && firstEv.evento_detectado) next.complaint_anchor_full = firstEv.evento_detectado;
+        if (!form.complaint_anchor_short && firstEv.evento_detectado) next.complaint_anchor_short = firstEv.evento_detectado.slice(0,70);
+        if (!form.titulo_corto && firstEv.evento_detectado) next.titulo_corto = firstEv.evento_detectado.slice(0,52);
       }
-      setForm(next);
+      setWholeForm(next);
     }
 
-    async function readFiles(fileList, role){
-      var files = Array.prototype.slice.call(fileList || []);
-      if (!files.length) return;
-      var built = [];
-      for (var i=0;i<files.length;i++) {
-        var file = files[i];
-        var dataUrl = await new Promise(function(resolve){
-          try {
-            var fr = new FileReader();
-            fr.onload = function(){ resolve(fr.result || ''); };
-            fr.onerror = function(){ resolve(''); };
-            fr.readAsDataURL(file);
-          } catch (_) { resolve(''); }
-        });
-        built.push({
-          id: 'file_' + Math.random().toString(36).slice(2,10),
-          name: file.name || 'attachment',
-          kind: /^image\//i.test(String(file.type || '')) ? 'image' : 'file',
-          size: Number(file.size || 0),
-          data_url: dataUrl,
-          evidence_role: role || 'general'
-        });
-      }
-      upd('meta_files', (form.meta_files || []).concat(built));
+    function renderInput(label, key, placeholder, type, spanFull){
+      return <div style={fieldShellStyle(spanFull)}><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>{label}</div><input type={type || 'text'} inputMode={type === 'date' ? undefined : 'text'} value={form[key] || ''} placeholder={placeholder || ''} onChange={function(e){ upd(key, e.target.value); }} style={controlBaseStyle(false)} /></div>;
     }
+    function renderTextArea(label, key, rows, placeholder, spanFull){
+      return <div style={fieldShellStyle(spanFull !== false)}><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>{label}</div><textarea value={form[key] || ''} rows={rows || 3} placeholder={placeholder || ''} onChange={function(e){ upd(key, e.target.value); }} style={Object.assign({}, controlBaseStyle(true), {resize:'vertical',fontFamily:'inherit',minHeight:compact ? ((rows || 3) * 24 + 28) : undefined})} /></div>;
+    }
+    function renderSelect(label, key, opts, spanFull){
+      return <div style={fieldShellStyle(spanFull)}><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>{label}</div><select value={form[key] || ''} onChange={function(e){ upd(key, e.target.value); }} style={controlBaseStyle(false)}><option value=''>-</option>{opts.map(function(opt){ return <option key={opt.v} value={opt.v}>{opt.l}</option>; })}</select></div>;
+    }
+    function renderTableCard(title, subtitle, content){
+      return <div style={{background:'#fff',border:'1px solid #DDDBD7',borderRadius:14,overflow:'hidden',minWidth:0,maxWidth:'100%'}}><div style={{padding:compact?'10px 12px':'11px 12px',borderBottom:'1px solid #EEECEA',background:'#F8F7F5'}}><div style={{fontSize:compact?11.5:12,fontWeight:800,color:'#1A1714'}}>{title}</div>{subtitle && <div style={{fontSize:compact?9.5:10,color:'#8A8580',marginTop:2,lineHeight:1.35}}>{subtitle}</div>}</div><div style={{padding:compact?10:12,minWidth:0,overflowX:'hidden'}}>{content}</div></div>;
+    }
+    function buildLegacyPayload(){
+      var teamText = summarizeTable(form.d1_team_members, function(row){ return row.role + ': ' + (String(row.name || '').trim() || 'Pending') + ' · ' + (String(row.email || '').trim() || 'Pending'); });
+      var escalationText = summarizeTable(form.escalation_members, function(row){ return row.level + ': ' + (String(row.owner || '').trim() || 'Pending') + ' · ' + (String(row.email || '').trim() || 'Pending'); });
+      var containmentSummary = joinNonEmpty([summarizeTable(form.containment_rows, function(row){ return [row.location, row.qty_suspect ? ('Qty suspect ' + row.qty_suspect) : '', row.status].filter(Boolean).join(' · '); }), summarizeTable(form.containment_action_rows, function(row){ return [row.action, row.status, row.owner].filter(Boolean).join(' · '); }), form.shielding_statement ? ('Customer shielding: ' + form.shielding_statement) : '']);
+      var actionsSummary = summarizeTable(form.d5_actions, function(row){ return [row.axis, row.action_text, row.owner, row.ecd, row.status].filter(Boolean).join(' · '); });
+      var verificationSummary = summarizeTable(form.d6_verifications, function(row){ return [row.axis, row.measurement_method, row.validation_result, row.completion_date].filter(Boolean).join(' · '); });
+      var evidenceCounts = traceOpsCountEvidenceRoles(form.meta_files || []);
+      var complaintFull = form.complaint_anchor_full || form.complaint_anchor_short || form.problema || '';
+      return Object.assign({}, form, {
+        owner_email: form.owner_email || form.deployment_owner || '',
+        titulo_corto: form.titulo_corto || form.complaint_anchor_short || '',
+        tipo_caso: form.tipo_caso || '',
+        estatus_rcca: form.estatus_rcca || '',
+        problema: complaintFull,
+        hipotesis: form.occurrence_short || form.hipotesis || '',
+        causa_raiz: form.occurrence_conclusion || form.occurrence_full || form.causa_raiz || '',
+        contencion: containmentSummary || form.contencion || '',
+        accion_correctiva: actionsSummary || form.accion_correctiva || '',
+        accion_preventiva: form.preventive_actions_text || form.accion_preventiva || '',
+        patron_detectado: form.w2h_mechanism || form.yokoten_trigger || form.patron_detectado || '',
+        leccion_aprendida: form.lesson_learned_text || form.leccion_aprendida || '',
+        evidencia_resumen: joinNonEmpty([form.occurrence_support_full || form.occurrence_support_short || form.evidencia_resumen, 'Evidence summary: bad=' + evidenceCounts.bad + ' · good=' + evidenceCounts.good + ' · general=' + evidenceCounts.general, form.trace_barcodes ? ('Affected barcodes: ' + form.trace_barcodes) : '']),
+        validacion: verificationSummary || form.validacion || '',
+        alcance_exposicion: form.impact_exposure_statement || form.alcance_exposicion || '',
+        material_afectado: form.material_afectado || form.trace_component_pn || '',
+        estacion_dominante: form.main_station || form.estacion_dominante || '',
+        defecto_dominante: form.failure_mode || form.defecto_dominante || '',
+        primera_deteccion: isoToDisplay(form.detection_window_start) || form.primera_deteccion || '',
+        ultima_deteccion: isoToDisplay(form.detection_window_end) || form.ultima_deteccion || '',
+        d1_team: joinNonEmpty([teamText, escalationText]),
+        escape_point: form.escape_point || '',
+        punto_escape: form.escape_point || '',
+        serial_range: form.trace_serial_batch || '',
+        seriales_afectados: form.trace_serial_batch || '',
+        lot_batch: form.trace_supplier_lot || '',
+        lote_afectado: form.trace_supplier_lot || '',
+        build_window: joinNonEmpty([isoToDisplay(form.detection_window_start), isoToDisplay(form.detection_window_end)], ' -> '),
+        complaint_anchor_short: form.complaint_anchor_short || '',
+        complaint_anchor_full: complaintFull,
+        impact_exposure_statement: form.impact_exposure_statement || '',
+        d1_team_members: safeList(form.d1_team_members), escalation_members: safeList(form.escalation_members), containment_rows: safeList(form.containment_rows), containment_action_rows: safeList(form.containment_action_rows), occurrence_whys: safeList(form.occurrence_whys), escape_whys: safeList(form.escape_whys), d5_actions: safeList(form.d5_actions), d6_verifications: safeList(form.d6_verifications), appendix_flow: safeList(form.appendix_flow), appendix_traceability: safeList(form.appendix_traceability)
+      });
+    }
+    function computeBuilderBlockers(){
+      var blockers = [];
+      if (!String(form.complaint_anchor_short || '').trim()) blockers.push('Missing complaint anchor');
+      if (!String(form.modelo || '').trim()) blockers.push('Missing model');
+      if (!String(form.linea || '').trim()) blockers.push('Missing line');
+      if (!String(form.main_station || form.estacion_dominante || '').trim()) blockers.push('Missing main station');
+      if (!safeList(form.d1_team_members).some(function(row){ return String(row.name || '').trim(); })) blockers.push('Missing D1 team');
+      if (!String(form.trace_supplier_lot || '').trim() && !String(form.trace_serial_batch || '').trim()) blockers.push('Missing lot / serial trace');
+      var counts = traceOpsCountEvidenceRoles(form.meta_files || []);
+      if (!counts.bad) blockers.push('Missing bad evidence');
+      if (!counts.good) blockers.push('Missing good evidence');
+      if (!String(form.escape_point || '').trim()) blockers.push('Missing escape point');
+      if (!String(form.control_gap || '').trim()) blockers.push('Missing control gap');
+      if (!safeList(form.d5_actions).some(function(row){ return String(row.action_text || '').trim(); })) blockers.push('Missing D5 action');
+      if (!safeList(form.d6_verifications).some(function(row){ return String(row.validation_result || '').trim(); })) blockers.push('Missing D6 verification');
+      if (!safeList(form.appendix_traceability).some(function(row){ return String(row.process_step || '').trim() && String(row.station || '').trim(); })) blockers.push('Missing appendix trace row');
+      return blockers;
+    }
+    function EvidenceRoleChip(props2){ return <button type='button' onClick={props2.onClick} style={{background:props2.active?props2.bg:'transparent',color:props2.active?props2.color:'#6A6560',border:'none',borderRadius:999,padding:'5px 8px',fontSize:9.5,fontWeight:800,cursor:'pointer'}}>{props2.label}</button>; }
 
-    function removeFile(id){
-      upd('meta_files', (form.meta_files || []).filter(function(x){ return x.id !== id; }));
-    }
-    function setFileRole(id, role){
-      upd('meta_files', (form.meta_files || []).map(function(x){ return x.id === id ? Object.assign({}, x, { evidence_role: role }) : x; }));
-    }
-    function filesByRole(role){
-      return (form.meta_files || []).filter(function(x){ return String(x.evidence_role || 'general') === role; });
-    }
+    var builderBlockers = computeBuilderBlockers();
+    var currentStepIndex = Math.max(0, stepDefs.findIndex(function(item){ return item.key === currentStep; }));
+    function goPrev(){ if (currentStepIndex > 0) setCurrentStep(stepDefs[currentStepIndex - 1].key); }
+    function goNext(){ if (currentStepIndex < stepDefs.length - 1) setCurrentStep(stepDefs[currentStepIndex + 1].key); }
+    function saveStructured(){ var payload = buildLegacyPayload(); if (!payload.problema || !payload.causa_raiz) { alert('Completa Problem Statement y Occurrence Conclusion.'); return; } Promise.resolve(onSave(payload)).then(function(ok){ if (ok !== false) onClose(); }); }
 
-    function buildPayload(){
-      var payload = {
-        rcca_id: form.rcca_id,
-        original_rcca_id: form.original_rcca_id,
-        event_ids: (form.event_ids || []).slice(),
-        modelo: form.modelo,
-        linea: form.linea,
-        estacion_dominante: form.estacion_dominante,
-        detection_window: form.detection_window,
-        titulo_corto: form.titulo_corto,
-        complaint_anchor: form.complaint_anchor,
-        problema: form.complaint_anchor,
-        impact_exposure: form.impact_exposure,
-        alcance_exposicion: form.impact_exposure,
-        trace_anchor: form.trace_anchor,
-        material_afectado: form.trace_anchor,
-        containment_actions: form.containment_actions,
-        contencion: form.containment_actions,
-        rc_mechanism: form.rc_mechanism,
-        causa_raiz: form.rc_mechanism,
-        detection_gap: form.detection_gap,
-        evidencia_resumen: form.detection_gap,
-        factors: form.factors,
-        hipotesis: form.factors,
-        corrective_actions: form.corrective_actions,
-        accion_correctiva: form.corrective_actions,
-        verification_method: form.verification_method,
-        success_criteria: form.success_criteria,
-        validacion: [('Method: ' + String(form.verification_method || '').trim()).trim(), ('Success criteria: ' + String(form.success_criteria || '').trim()).trim()].filter(Boolean).join('\n'),
-        lesson_learned: form.lesson_learned,
-        leccion_aprendida: form.lesson_learned,
-        yokoten: form.yokoten,
-        accion_preventiva: form.yokoten,
-        estatus_rcca: form.estatus_rcca,
-        responsible_engineer: form.responsible_engineer,
-        owner_email: form.responsible_engineer,
-        meta_files: (form.meta_files || []).slice(),
-        meta: { evidence: { bad_count: filesByRole('bad').length, good_count: filesByRole('good').length, general_count: filesByRole('general').length } },
-        source: init.source || 'manual'
-      };
-      return payload;
-    }
+    function renderIdentityStep(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}><div style={{display:'grid',gridTemplateColumns:stackGrid('1.2fr .8fr'),gap:12}}>{renderTableCard('Case identity','Feeds RCCA cover and 8D overview.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('RCCA ID','rcca_id','')} {renderInput('Short title','titulo_corto','Executive case title')} {renderInput('Owner name','owner_name','')} {renderInput('Owner e-mail','owner_email','')} {renderSelect('Case type','tipo_caso',[{v:'GENERAL',l:'GENERAL'},{v:'SMT',l:'SMT'},{v:'AOI',l:'AOI'},{v:'ICT',l:'ICT'},{v:'MATERIAL',l:'MATERIAL'},{v:'PROCESO',l:'PROCESO'},{v:'TEST',l:'TEST'}])} {renderSelect('Status','estatus_rcca',[{v:'NUEVO',l:'NUEVO'},{v:'IN ANALYSIS',l:'IN ANALYSIS'},{v:'CONTENIDO',l:'CONTENIDO'},{v:'VALIDANDO',l:'VALIDANDO'},{v:'CERRADO',l:'CERRADO'}])} {renderSelect('Severity','severidad',[{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'},{v:'4',l:'4'},{v:'5',l:'5'}])} {renderSelect('Recurrence','recurrencia',[{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'},{v:'4',l:'4'},{v:'5',l:'5'}])}</div>)}{renderTableCard('Operational anchor','Line, station, failure mode and exposure.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('Model','modelo','')} {renderInput('Line','linea','')} {renderInput('Main station','main_station','')} {renderInput('Failure mode','failure_mode','')} {renderInput('Detection start','detection_window_start','', 'date')} {renderInput('Detection end','detection_window_end','', 'date')} {renderSelect('Customer exposure','customer_exposure',[{v:'YES',l:'YES'},{v:'NO',l:'NO'}])} {renderSelect('Customer notified','customer_notified',[{v:'YES',l:'YES'},{v:'NO',l:'NO'}])}</div>)}</div>{renderTableCard('Narrative','Use short text for overview and full text for D2/D4/D8.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Complaint anchor short','complaint_anchor_short',2,'Executive preview')} {renderTextArea('Complaint anchor full','complaint_anchor_full',4,'Technical full statement')} {renderTextArea('Impact / exposure','impact_exposure_statement',3,'Internal / shipped / customer exposure')}</div>)}</div>; }
 
-    function inputStyle(multiline){
-      return {width:'100%', border:'1.5px solid #D7DCE5', borderRadius:12, padding:compact ? '12px' : '11px 12px', fontSize:16, color:'#102A43', outline:'none', background:'#fff', resize:multiline ? 'vertical' : 'none', fontFamily:'inherit', lineHeight:1.45};
-    }
-    function sectionWrap(bg,border){
-      return {background:bg||'#fff', border:'1px solid ' + (border||'#D9E6F7'), borderRadius:18, padding:compact?14:18, boxShadow:'0 2px 12px rgba(20,32,51,.04)'};
-    }
-    function labelStyle(accent){
-      return {fontSize:10, fontWeight:800, color:accent||'#6A6560', marginBottom:4, textTransform:'uppercase', letterSpacing:'.04em'};
-    }
-    function field(title, node, accent){
-      return <div style={{display:'flex', flexDirection:'column', gap:4}}><div style={labelStyle(accent)}>{title}</div>{node}</div>;
-    }
-    function pickerCard(title, icon, role, tint, refObj){
-      var count = filesByRole(role).length;
-      return <button type="button" onClick={function(){ if (refObj && refObj.current) refObj.current.click(); }} style={{background:'#fff', border:'1px solid ' + tint, borderRadius:14, padding:'14px 12px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, cursor:'pointer', minHeight:108}}>
-        <div style={{fontSize:26,lineHeight:1}}>{icon}</div>
-        <div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',color:'#1F3A5F',textAlign:'center',lineHeight:1.35}}>{title}</div>
-        <div style={{fontSize:10,color:'#6A6560'}}>{count ? (count + ' file' + (count !== 1 ? 's' : '')) : 'Tap to upload'}</div>
-      </button>;
-    }
+    function renderD1D2Step(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}>{renderTableCard('D1 Team','Explicit owner and support functions.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.d1_team_members).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('120px 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Role</div><input value={row.role || ''} onChange={function(e){ updateListField('d1_team_members', idx, 'role', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Name</div><input value={row.name || ''} onChange={function(e){ updateListField('d1_team_members', idx, 'name', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>E-mail</div><input value={row.email || ''} onChange={function(e){ updateListField('d1_team_members', idx, 'email', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('d1_team_members', idx); }} style={rowButtonStyle()}>–</button></div>; })}</div>)} {renderTableCard('Escalation','Customer / managerial review path.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.escalation_members).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('180px 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Level</div><input value={row.level || ''} onChange={function(e){ updateListField('escalation_members', idx, 'level', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Owner</div><input value={row.owner || ''} onChange={function(e){ updateListField('escalation_members', idx, 'owner', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>E-mail</div><input value={row.email || ''} onChange={function(e){ updateListField('escalation_members', idx, 'email', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('escalation_members', idx); }} style={rowButtonStyle()}>–</button></div>; })}</div>)}<div style={{display:'grid',gridTemplateColumns:stackGrid('1fr 1fr'),gap:12}}>{renderTableCard('D2 Traceability','Fields that usually export as Pending must be explicit.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('SKU version','trace_sku_version','')} {renderInput('Supplier / Lot','trace_supplier_lot','')} {renderInput('Serial / Batch','trace_serial_batch','')} {renderInput('Date code','trace_date_code','')} {renderInput('Component P/N','trace_component_pn','')} {renderInput('Equipment / Tester','trace_equipment_tester','')} <div style={{gridColumn:'1 / -1'}}>{renderTextArea('Affected barcodes','trace_barcodes',3,'One per line or comma-separated')}</div></div>)} {renderTableCard('5W2H','Structured problem delimitation.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('Who','w2h_who','')} {renderInput('How','w2h_how','')} {renderTextArea('What','w2h_what',3,'')} {renderTextArea('Why','w2h_why',3,'')} {renderInput('Where','w2h_where','')} {renderInput('When','w2h_when','')} {renderInput('Mechanism','w2h_mechanism','')} {renderInput('How many summary','w2h_how_many','')}</div>)}</div>{renderTableCard('How many structure','Quantify what later appears in overview and D2.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(3,minmax(0,1fr))'),gap:10}}>{renderInput('Total units','w2h_total_units','')} {renderInput('Suspect units','w2h_suspect_units','')} {renderInput('Clean units','w2h_clean_units','')} {renderInput('Risk units','w2h_risk_units','')} {renderInput('Clean yield','w2h_clean_yield','')} {renderInput('OJT / touch rate','w2h_ojt_touch_rate','')}</div>)}</div>; }
 
-    var sheetOuterStyle = {position:'fixed', inset:0, zIndex:9998, background:compact ? '#F8FAFC' : 'rgba(0,0,0,.55)', display:'flex', flexDirection:'column', justifyContent:compact ? 'stretch' : 'center'};
-    var sheetInnerStyle = compact
-      ? {background:'#F8FAFC', width:'100%', height:'100svh', maxHeight:'100svh', overflow:'hidden', display:'flex', flexDirection:'column'}
-      : {background:'#F8FAFC', borderRadius:20, width:'100%', maxWidth:920, height:'min(92vh, 920px)', overflow:'hidden', display:'flex', flexDirection:'column', margin:'0 auto', boxShadow:'0 20px 60px rgba(0,0,0,.24)'};
+    function renderEvidenceStep(){ var evidenceCounts = traceOpsCountEvidenceRoles(form.meta_files || []); return <div style={{display:'flex',flexDirection:'column',gap:12}}>{renderTableCard('Linked events','Select the events that feed RCCA and 8D traceability.', <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:220,overflowY:'auto'}}>{ev.length===0 ? <div style={{fontSize:11,color:'#8A8580',fontStyle:'italic'}}>No events loaded</div> : ev.map(function(item){ var selected = (form.event_ids || []).indexOf(item.id) >= 0; return <div key={item.id} onClick={function(){ toggleEvent(item.id); }} style={{display:'flex',alignItems:'center',gap:10,background:selected?'#EAF2FF':'#F8F7F5',border:'1.5px solid ' + (selected ? '#2F6FB3' : '#DDDBD7'),borderRadius:9,padding:'8px 10px',cursor:'pointer'}}><div style={{width:16,height:16,borderRadius:4,background:selected?'#1F3A5F':'#fff',border:'1.5px solid ' + (selected ? '#1F3A5F' : '#C8C4BE'),display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:10,fontWeight:700}}>{selected?'v':''}</div><div style={{minWidth:0,flex:1}}><div style={{display:'flex',gap:6,alignItems:'center'}}><span style={{fontSize:9.5,fontFamily:'monospace',fontWeight:700,color:selected?'#1F3A5F':'#8A8580'}}>{item.id}</span><span style={{fontSize:9,color:'#8A8580'}}>{item.fecha}</span></div><div style={{fontSize:10.5,color:'#1A1714',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{(item.evento_detectado || '').slice(0,90)}</div></div></div>; })}</div>)} {renderTableCard('Evidence manager','Each file should have a role for D2 / D4 / D6 / Appendix.', <div style={{display:'flex',flexDirection:'column',gap:10}}><div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}><button type='button' onClick={function(){ if (metaInputRef.current) metaInputRef.current.click(); }} style={{background:'#1F3A5F',color:'#fff',border:'none',borderRadius:9,padding:'9px 12px',fontSize:11,fontWeight:800,cursor:'pointer'}}>+ Upload evidence</button><input ref={metaInputRef} type='file' multiple accept={TRACEOPS_RCCA_META_ACCEPT.join(',')} style={{display:'none'}} onChange={function(e){ addMetaFiles(e.target.files).catch(function(err){ alert(err && err.message ? err.message : String(err)); }); }} /><span style={{fontSize:10.5,color:'#6A6560'}}>Bad: <strong style={{color:'#C0392B'}}>{evidenceCounts.bad}</strong> · Good: <strong style={{color:'#1A7A3C'}}>{evidenceCounts.good}</strong> · General: <strong style={{color:'#2F6FB3'}}>{evidenceCounts.general}</strong></span></div>{form.meta_files && form.meta_files.length ? <div style={{display:'flex',flexDirection:'column',gap:8}}>{form.meta_files.map(function(file){ return <div key={file.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,background:'#fff',border:'1px solid #D8E1F7',borderRadius:10,padding:'9px 10px',flexWrap:'wrap'}}><div style={{display:'flex',alignItems:'center',gap:10,minWidth:0,flex:1}}><div style={{fontSize:10,fontWeight:800,color:'#1F3A5F',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:999,padding:'4px 8px',minWidth:42,textAlign:'center'}}>{traceOpsMetaIcon(file)}</div><div style={{minWidth:0,flex:1}}><div style={{fontSize:11.5,fontWeight:700,color:'#1A1714',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{file.name}</div><div style={{fontSize:10,color:'#6A6560',marginTop:2}}>{file.kind} · {traceOpsFormatBytes(file.size)}</div></div></div><div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>{traceOpsIsImageMetaFile(file) && <div style={{display:'inline-flex',gap:4,flexWrap:'wrap',padding:'3px',background:'#F8F7F5',border:'1px solid #DDDBD7',borderRadius:999}}><EvidenceRoleChip active={(file.evidence_role||'general')==='bad'} bg='#FDF0EE' color='#C0392B' label='Bad part' onClick={function(){ setMetaFileRole(file.id, 'bad'); }} /><EvidenceRoleChip active={(file.evidence_role||'general')==='good'} bg='#EEF6FF' color='#1A7A3C' label='Good part' onClick={function(){ setMetaFileRole(file.id, 'good'); }} /><EvidenceRoleChip active={(file.evidence_role||'general')==='general'} bg='#EAF2FF' color='#2F6FB3' label='General' onClick={function(){ setMetaFileRole(file.id, 'general'); }} /></div>}<button type='button' onClick={function(){ downloadMetaFile(file); }} style={{background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:8,padding:'6px 10px',fontSize:10.5,fontWeight:700,color:'#2F6FB3',cursor:'pointer'}}>Download</button><button type='button' onClick={function(){ removeMetaFile(file.id); }} style={{background:'#fff',border:'1px solid #DDDBD7',borderRadius:8,padding:'6px 10px',fontSize:10.5,fontWeight:700,color:'#6A6560',cursor:'pointer'}}>Remove</button></div></div>; })}</div> : <div style={{background:'#fff',border:'1px dashed #C7DBF7',borderRadius:10,padding:'16px 12px',fontSize:11,color:'#6A6560'}}>No evidence uploaded yet. Add at least one bad and one good image if the case requires visual comparison.</div>}</div>)}</div>; }
+
+    function renderD3Step(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}>{renderTableCard('Containment by location','Rows feed D3 by location.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.containment_rows).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('1.1fr repeat(5,minmax(0,1fr)) auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Location</div><input value={row.location || ''} onChange={function(e){ updateListField('containment_rows', idx, 'location', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Qty suspect</div><input value={row.qty_suspect || ''} onChange={function(e){ updateListField('containment_rows', idx, 'qty_suspect', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Good qty</div><input value={row.qty_good || ''} onChange={function(e){ updateListField('containment_rows', idx, 'qty_good', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Bad qty</div><input value={row.qty_bad || ''} onChange={function(e){ updateListField('containment_rows', idx, 'qty_bad', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Responsible</div><input value={row.responsible || ''} onChange={function(e){ updateListField('containment_rows', idx, 'responsible', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Clean date</div><input value={row.clean_date || ''} onChange={function(e){ updateListField('containment_rows', idx, 'clean_date', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('containment_rows', idx); }} style={rowButtonStyle()}>–</button></div>; })}<button type='button' onClick={function(){ addRow('containment_rows', { location:'', qty_suspect:'', qty_good:'', qty_bad:'', responsible:'', clean_date:'', status:'Pending' }); }} style={{alignSelf:'flex-start',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add containment row</button></div>)} {renderTableCard('Additional containment actions','These actions later feed D3 narrative.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.containment_action_rows).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('1.8fr 1fr 1fr 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Action</div><input value={row.action || ''} onChange={function(e){ updateListField('containment_action_rows', idx, 'action', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Owner</div><input value={row.owner || ''} onChange={function(e){ updateListField('containment_action_rows', idx, 'owner', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Start</div><input value={row.start || ''} onChange={function(e){ updateListField('containment_action_rows', idx, 'start', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Completion</div><input value={row.completion || ''} onChange={function(e){ updateListField('containment_action_rows', idx, 'completion', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Status</div><input value={row.status || ''} onChange={function(e){ updateListField('containment_action_rows', idx, 'status', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('containment_action_rows', idx); }} style={rowButtonStyle()}>–</button></div>; })}<button type='button' onClick={function(){ addRow('containment_action_rows', { action:'', owner:'', start:'', completion:'', status:'Pending', proof:'' }); }} style={{alignSelf:'flex-start',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add action</button></div>)} {renderTableCard('Customer shielding','Complete when there is external exposure or customer communication.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('Shielding owner','shielding_owner','')} {renderInput('Shielding start','shielding_start','', 'datetime-local')} {renderInput('Shielding status','shielding_status','')} <div style={{gridColumn:'1 / -1'}}>{renderTextArea('Shielding statement','shielding_statement',3,'Customer protection within 24h / internal only / shipped risk')}</div></div>)}</div>; }
+
+    function renderD4AStep(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}><div style={{display:'grid',gridTemplateColumns:stackGrid('1fr 1fr'),gap:12}}>{renderTableCard('Occurrence framing','Short + full narrative and status.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Occurrence short','occurrence_short',3,'Working hypothesis / executive narrative')} {renderTextArea('Occurrence full','occurrence_full',5,'Detailed technical mechanism')} {renderSelect('Occurrence status','occurrence_status',[{v:'hypothesis',l:'Hypothesis'},{v:'probable',l:'Probable'},{v:'confirmed',l:'Confirmed'}])}</div>)} {renderTableCard('6M structure','Support the occurrence path by category.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderTextArea('Machine','cause_machine',3,'')} {renderTextArea('Man','cause_man',3,'')} {renderTextArea('Method','cause_method',3,'')} {renderTextArea('Measurement','cause_measurement',3,'')} {renderTextArea('Material','cause_material',3,'')} {renderTextArea('Environment','cause_environment',3,'')}</div>)}</div>{renderTableCard('5 Whys - occurrence','One row per why.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.occurrence_whys).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('64px 1fr'),gap:8,alignItems:'center'}}><div style={{fontSize:11,fontWeight:800,color:'#1F3A5F',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:999,padding:'8px 10px',textAlign:'center'}}>Why {idx+1}</div><input value={row.text || ''} onChange={function(e){ updateListField('occurrence_whys', idx, 'text', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'9px 10px',fontSize:12}}/></div>; })}</div>)} {renderTableCard('Supporting evidence and conclusion','These fields should later read cleanly in D4A and Appendix.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Support short','occurrence_support_short',3,'')} {renderTextArea('Support full','occurrence_support_full',4,'')} {renderTextArea('Occurrence conclusion','occurrence_conclusion',4,'')}</div>)}</div>; }
+
+    function renderD4BStep(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}><div style={{display:'grid',gridTemplateColumns:stackGrid('1fr 1fr'),gap:12}}>{renderTableCard('Escape definition','Define control stage and gap explicitly.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('Escape point','escape_point','')} {renderInput('Expected detection control','expected_detection_control','')} {renderInput('Failure mode under review','escape_failure_mode','')} {renderInput('Proof event / station','escape_proof_event','')} <div style={{gridColumn:'1 / -1'}}>{renderTextArea('Control limitation / gap','control_gap',3,'')}</div> <div style={{gridColumn:'1 / -1'}}>{renderTextArea('Detection gap identified','detection_gap_identified',3,'')}</div></div>)} {renderTableCard('Why control did not detect','Make the escape reasoning explicit.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Why not detected short','escape_why_short',3,'')} {renderTextArea('Why not detected full','escape_why_full',4,'')} {renderSelect('Escape status','escape_status',[{v:'pending',l:'Pending'},{v:'under_validation',l:'Under validation'},{v:'confirmed',l:'Confirmed'}])}</div>)}</div>{renderTableCard('5 Whys - escape','One row per why.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.escape_whys).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('64px 1fr'),gap:8,alignItems:'center'}}><div style={{fontSize:11,fontWeight:800,color:'#B87820',background:'#FEF9E8',border:'1px solid #F5E4A0',borderRadius:999,padding:'8px 10px',textAlign:'center'}}>Why {idx+1}</div><input value={row.text || ''} onChange={function(e){ updateListField('escape_whys', idx, 'text', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'9px 10px',fontSize:12}}/></div>; })}</div>)} {renderTableCard('Escape conclusion','Use short + full versions for export friendliness.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Escape conclusion short','escape_conclusion_short',3,'')} {renderTextArea('Escape conclusion full','escape_conclusion_full',4,'')}</div>)}</div>; }
+
+    function renderD5D6Step(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}>{renderTableCard('D5 Corrective actions','Matrix by axis: occurrence, detection, system.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.d5_actions).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('130px 1.8fr 1fr 1fr 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Axis</div><select value={row.axis || 'Occurrence'} onChange={function(e){ updateListField('d5_actions', idx, 'axis', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12,background:'#fff'}}><option value='Occurrence'>Occurrence</option><option value='Detection'>Detection</option><option value='System'>System</option></select></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Action</div><input value={row.action_text || ''} onChange={function(e){ updateListField('d5_actions', idx, 'action_text', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Addresses</div><input value={row.addresses || ''} onChange={function(e){ updateListField('d5_actions', idx, 'addresses', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Owner</div><input value={row.owner || ''} onChange={function(e){ updateListField('d5_actions', idx, 'owner', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>ECD</div><input value={row.ecd || ''} onChange={function(e){ updateListField('d5_actions', idx, 'ecd', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Status</div><input value={row.status || ''} onChange={function(e){ updateListField('d5_actions', idx, 'status', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('d5_actions', idx); }} style={rowButtonStyle()}>–</button></div>; })}<button type='button' onClick={function(){ addRow('d5_actions', { axis:'Occurrence', action_text:'', addresses:'', owner:'', ecd:'', status:'Open', proof_linked:'' }); }} style={{alignSelf:'flex-start',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add action row</button></div>)} {renderTableCard('D6 Verification of effectiveness','One row per axis or validation path.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.d6_verifications).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('130px 1fr 1fr 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Axis</div><input value={row.axis || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'axis', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Measurement method</div><input value={row.measurement_method || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'measurement_method', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Validation result</div><input value={row.validation_result || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'validation_result', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Responsible</div><input value={row.responsible || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'responsible', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Completion date</div><input value={row.completion_date || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'completion_date', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('d6_verifications', idx); }} style={rowButtonStyle()}>–</button><div style={{gridColumn:'1 / -1',display:'grid',gridTemplateColumns:stackGrid('1fr 1fr 1fr'),gap:8}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Acceptance criteria</div><input value={row.acceptance_criteria || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'acceptance_criteria', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Recurrence status</div><input value={row.recurrence_status || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'recurrence_status', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Conclusion</div><input value={row.conclusion || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'conclusion', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div></div></div>; })}<button type='button' onClick={function(){ addRow('d6_verifications', { axis:'Occurrence', linked_action_id:'', measurement_method:'', validation_result:'', responsible:'', completion_date:'', acceptance_criteria:'', recurrence_status:'', conclusion:'' }); }} style={{alignSelf:'flex-start',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add verification row</button></div>)}</div>; }
+
+    function renderD7D8Step(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}><div style={{display:'grid',gridTemplateColumns:stackGrid('1fr 1fr'),gap:12}}>{renderTableCard('D7 Prevention / Yokoten','Structured capture for prevention and replication.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Preventive actions','preventive_actions_text',4,'')} {renderTextArea('Replication scope','replication_scope',3,'')} {renderTextArea('Lesson learned','lesson_learned_text',3,'')} {renderTextArea('Yokoten trigger','yokoten_trigger',3,'')} <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>{renderInput('Deployment owner','deployment_owner','')} {renderInput('Deployment status','deployment_status','')}</div></div>)} {renderTableCard('D8 Closure','Closure narrative and open items.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Closure basis','closure_basis',3,'')} {renderTextArea('Closure statement short','closure_statement_short',2,'')} {renderTextArea('Closure statement full','closure_statement_full',4,'')} {renderTextArea('Open items','closure_open_items',3,'')} {renderInput('Closure status','closure_status','')}</div>)}</div>{renderTableCard('Appendix builder','Build the flow by station/date and trace rows from RCCA source data.', <div style={{display:'flex',flexDirection:'column',gap:12}}><div><div style={{fontSize:11,fontWeight:800,color:'#1F3A5F',marginBottom:8}}>Flow by station & date</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.appendix_flow).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('120px 140px 160px 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Stage</div><input value={row.stage || ''} onChange={function(e){ updateListField('appendix_flow', idx, 'stage', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Station</div><input value={row.station || ''} onChange={function(e){ updateListField('appendix_flow', idx, 'station', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Timestamp</div><input value={row.timestamp || ''} onChange={function(e){ updateListField('appendix_flow', idx, 'timestamp', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Source</div><input value={row.source || ''} onChange={function(e){ updateListField('appendix_flow', idx, 'source', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Result / observation</div><input value={joinNonEmpty([row.result,row.observation],' · ')} onChange={function(e){ updateListField('appendix_flow', idx, 'result', e.target.value); updateListField('appendix_flow', idx, 'observation', ''); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('appendix_flow', idx); }} style={rowButtonStyle()}>–</button></div>; })}</div><button type='button' onClick={function(){ addRow('appendix_flow', { stage:'', station:'', timestamp:'', source:'', result:'', observation:'' }); }} style={{marginTop:8,background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add flow row</button></div><div><div style={{fontSize:11,fontWeight:800,color:'#1F3A5F',marginBottom:8}}>Traceability mapping</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.appendix_traceability).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('1.1fr .8fr .8fr .9fr 1fr .9fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Process step</div><input value={row.process_step || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'process_step', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Line</div><input value={row.line || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'line', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Station</div><input value={row.station || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'station', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Equipment</div><input value={row.equipment_tester || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'equipment_tester', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Timestamp</div><input value={row.timestamp || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'timestamp', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Result</div><input value={row.result || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'result', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('appendix_traceability', idx); }} style={rowButtonStyle()}>–</button></div>; })}</div><button type='button' onClick={function(){ addRow('appendix_traceability', { process_step:'', line:'', station:'', equipment_tester:'', timestamp:'', result:'', source:form.rcca_id || 'TraceOps', why_it_matters:'' }); }} style={{marginTop:8,background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add trace row</button></div></div>)}</div>; }
+
+    var stepContent = currentStep==='identity' ? renderIdentityStep() : currentStep==='d1d2' ? renderD1D2Step() : currentStep==='evidence' ? renderEvidenceStep() : currentStep==='d3' ? renderD3Step() : currentStep==='d4a' ? renderD4AStep() : currentStep==='d4b' ? renderD4BStep() : currentStep==='d5d6' ? renderD5D6Step() : renderD7D8Step();
 
     return (
-      <div style={sheetOuterStyle} onClick={function(){ if (!compact) onClose(); }}>
-        <div style={sheetInnerStyle} onClick={function(e){ e.stopPropagation(); }}>
-          <div style={{position:'sticky', top:0, background:'#fff', borderBottom:'1px solid #E6ECF5', padding:compact ? '14px' : '14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, zIndex:2, flexWrap:compact ? 'wrap' : 'nowrap', flexShrink:0}}>
-            <div style={{minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:800,color:'#102A43'}}>{init.rcca_id ? 'Edit RCCA' : 'New RCCA'}</div>
-              <div style={{fontSize:10.5,color:'#5F766C',marginTop:2}}>Simple capture for 8D essentials</div>
+      <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:9998,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={function(){ onClose(); }}>
+        <div className='traceops-rcca-builder' style={{background:'#fff',borderRadius:'16px 16px 0 0',width:compact?'calc(100vw - 16px)':'min(1180px, calc(100vw - 24px))',maxWidth:1180,maxHeight:'min(92vh, 100dvh - 16px)',overflowY:'auto',overflowX:'hidden',paddingBottom:24}} onClick={function(e){ e.stopPropagation(); }}>
+          <div style={{position:'sticky',top:0,background:'#fff',borderBottom:'1px solid #EEECEA',padding:compact?'12px 14px':'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',zIndex:2}}>
+            <div><div style={{fontSize:13,fontWeight:800,color:'#1A1714'}}>{isEdit ? 'RCCA Builder · Edit' : 'RCCA Builder · New'}</div><div style={{fontSize:10,fontFamily:'monospace',color:'#2F6FB3',fontWeight:700,marginTop:2}}>{form.rcca_id}</div><div style={{fontSize:10,color:'#6A6560',marginTop:4}}>Capture once → feed RCCA + 8D</div></div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}><span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,background:'#EEF6FF',color:'#145A28',border:'1px solid #A0DEB4',borderRadius:999,padding:'6px 10px'}}>Structure {Math.max(0, 100 - builderBlockers.length * 8)}%</span><span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,background:'#EAF2FF',color:'#2F6FB3',border:'1px solid #C7DBF7',borderRadius:999,padding:'6px 10px'}}>Evidence {(traceOpsCountEvidenceRoles(form.meta_files || []).bad + traceOpsCountEvidenceRoles(form.meta_files || []).good) > 0 ? 70 : 20}%</span><button onClick={onClose} style={{background:'#F8F7F5',border:'1px solid #DDDBD7',borderRadius:8,padding:'8px 14px',fontSize:12,cursor:'pointer',color:'#6A6560'}}>Cancel</button></div>
+          </div>
+          <div style={{padding:compact?'14px 14px 18px':'16px 20px',display:'grid',gridTemplateColumns:compact?'1fr':'minmax(0,1fr) 280px',gap:16,alignItems:'start',minWidth:0,overflowX:'hidden'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:12,minWidth:0,overflowX:'hidden'}}>
+              {restoredDraft && <div style={{background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:10,padding:'9px 12px',fontSize:10.5,color:'#1F3A5F'}}>A local draft was restored so you can continue the RCCA builder without losing text.</div>}
+              <div style={{display:'flex',gap:8,flexWrap:compact?'nowrap':'wrap',overflowX:compact?'auto':'visible',paddingBottom:compact?4:0,WebkitOverflowScrolling:'touch',maxWidth:'100%',minWidth:0}}>{stepDefs.map(function(step){ var active = step.key === currentStep; return <button key={step.key} type='button' onClick={function(){ setCurrentStep(step.key); }} style={{background:active?'#1F3A5F':'#F8F7F5',color:active?'#fff':'#6A6560',border:'1px solid ' + (active ? '#1F3A5F' : '#DDDBD7'),borderRadius:999,padding:'9px 12px',fontSize:11,fontWeight:800,cursor:'pointer',whiteSpace:'nowrap',flex:'0 0 auto'}}>{step.label}</button>; })}</div>
+              {stepContent}
+              <div style={{display:'flex',flexDirection:compact?'column':'row',justifyContent:'space-between',gap:12,marginTop:2}}><button type='button' onClick={goPrev} disabled={currentStepIndex===0} style={{background:currentStepIndex===0?'#F8F7F5':'#fff',color:currentStepIndex===0?'#B8B4AE':'#1A1714',border:'1px solid #DDDBD7',borderRadius:10,padding:'11px 16px',fontSize:12,fontWeight:800,cursor:currentStepIndex===0?'default':'pointer',width:compact?'100%':'auto'}}>← Previous</button><div style={{display:'flex',gap:8,flexDirection:compact?'column':'row',flexWrap:'wrap',justifyContent:'flex-end'}}><button type='button' onClick={function(){ writeRccaDraft({ ts:new Date().toISOString(), mode:isEdit?'edit':'new', form:Object.assign({}, form, { __draft_builder_step: currentStep }) }); }} style={{background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:10,padding:'11px 16px',fontSize:12,fontWeight:800,color:'#2F6FB3',cursor:'pointer',width:compact?'100%':'auto'}}>Save draft</button>{currentStepIndex < stepDefs.length - 1 ? <button type='button' onClick={goNext} style={{background:'#1F3A5F',color:'#fff',border:'none',borderRadius:10,padding:'11px 16px',fontSize:12,fontWeight:800,cursor:'pointer',width:compact?'100%':'auto'}}>Next →</button> : <button type='button' onClick={saveStructured} style={{background:'#1F3A5F',color:'#fff',border:'none',borderRadius:10,padding:'11px 16px',fontSize:12,fontWeight:800,cursor:'pointer',width:compact?'100%':'auto'}}>{isEdit ? 'Update RCCA' : 'Save RCCA'}</button>}</div></div>
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <span style={{display:'inline-flex',alignItems:'center',padding:'7px 10px',borderRadius:999,fontSize:10,fontWeight:800,background:'#EEF6FF',color:'#2F6FB3',border:'1px solid #C9DAF5'}}>{(form.meta_files || []).length} evidence</span>
-              <button type="button" onClick={onClose} style={{background:'#fff',border:'1px solid #D7DCE5',borderRadius:10,padding:'8px 12px',fontSize:12,fontWeight:700,cursor:'pointer',color:'#6A6560'}}>Cancel</button>
+            <div style={{display:'flex',flexDirection:'column',gap:12,position:compact?'static':'sticky',top:86,minWidth:0,overflowX:'hidden'}}>{renderTableCard('Export blockers','These gaps are the same ones that later appear as Pending in the 8D.', <div style={{display:'flex',flexDirection:'column',gap:6}}>{builderBlockers.length ? builderBlockers.map(function(item){ return <div key={item} style={{fontSize:10.5,color:'#C0392B',background:'#FDF0EE',border:'1px solid #F0C4BE',borderRadius:999,padding:'6px 10px',fontWeight:800}}>{item}</div>; }) : <div style={{fontSize:10.5,color:'#145A28',background:'#EEF6FF',border:'1px solid #A0DEB4',borderRadius:999,padding:'6px 10px',fontWeight:800}}>Builder looks reviewable</div>}</div>)}{renderTableCard('Quick summary','Visible source fields for RCCA and 8D.', <div style={{display:'flex',flexDirection:'column',gap:8}}><div style={{fontSize:11,color:'#6A6560'}}>Model <strong style={{color:'#1A1714'}}>{form.modelo || '-'}</strong></div><div style={{fontSize:11,color:'#6A6560'}}>Line <strong style={{color:'#1A1714'}}>{form.linea || '-'}</strong></div><div style={{fontSize:11,color:'#6A6560'}}>Station <strong style={{color:'#1A1714'}}>{form.main_station || '-'}</strong></div><div style={{fontSize:11,color:'#6A6560'}}>Failure mode <strong style={{color:'#1A1714'}}>{form.failure_mode || '-'}</strong></div><div style={{fontSize:11,color:'#6A6560'}}>Events linked <strong style={{color:'#1A1714'}}>{(form.event_ids || []).length}</strong></div></div>)}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+  function EightdDraftEditor(props){
+    var init = props.init || {};
+    var sourceRcca = props.sourceRcca || null;
+    var formArr = _useState(function(){ return Object.assign({}, init); });
+    var form = formArr[0]; var setForm = formArr[1];
+    var mobileArr = _useState(function(){ try { return window.innerWidth <= 760; } catch(_) { return false; } });
+    var mobile = mobileArr[0]; var setMobile = mobileArr[1];
+    var collapsedArr = _useState(function(){ return { source:false, missing:false, events:true }; });
+    var collapsed = collapsedArr[0]; var setCollapsed = collapsedArr[1];
+    React.useEffect(function(){ setForm(Object.assign({}, props.init || {})); }, [props.init && props.init.eightd_id, props.init && props.init.updated_at]);
+    React.useEffect(function(){
+      function onResize(){
+        try { setMobile(window.innerWidth <= 760); } catch(_) {}
+      }
+      onResize();
+      window.addEventListener('resize', onResize);
+      return function(){ window.removeEventListener('resize', onResize); };
+    }, []);
+    React.useEffect(function(){
+      if (!sourceRcca || !sourceRcca.rcca_id) return;
+      var sourceFingerprint = traceOpsRccaFingerprint(sourceRcca);
+      var currentFingerprint = form && form.source_snapshot ? traceOpsRccaFingerprint(form.source_snapshot) : '';
+      if (sourceFingerprint && sourceFingerprint !== currentFingerprint) {
+        var refreshed = traceOpsBuildEightdDraftFromRcca(sourceRcca, form || {});
+        setForm(refreshed);
+      }
+    }, [sourceRcca && sourceRcca.rcca_id, sourceRcca && sourceRcca.updated_at, traceOpsMetaFilesFingerprint(sourceRcca && sourceRcca.meta_files)]);
+    function upd(k,v){ var next = Object.assign({}, form); next[k] = v; var ready = traceOpsComputeEightdReadiness(next); next.readiness_score = ready.overallScore; next.structure_readiness_score = ready.structureScore; next.evidence_readiness_score = ready.evidenceScore; next.case_maturity_score = ready.overallScore; next.missing_fields = ready.structureMissing; next.escalation_blockers = ready.blockers; next.can_promote = ready.canPromote; next.draft_stage = ready.stage; setForm(next); }
+    function togglePanel(key){ var next = Object.assign({}, collapsed); next[key] = !next[key]; setCollapsed(next); }
+    var readiness = traceOpsComputeEightdReadiness(form);
+    var linkedEvents = traceOpsCollectLinkedEventsByIds(form.linked_event_ids || []);
+    var missingPretty = { d1_team:"D1 Team", d2_problem:"D2 Problem", d3_containment:"D3 Containment", d4_root_cause:"D4 Root Cause", d4_escape_point:"Escape Point", d5_pca:"D5 Corrective Action", d6_validation:"D6 Validation", d7_prevention:"D7 Prevention" };
+    var sectionDefs = [
+      ["d1_team","D1 Team","Equipo multifuncional, owner y areas soporte."],
+      ["d2_problem","D2 Problem Description","Que, donde, cuando, cuanto, impacto y eventos vinculados."],
+      ["d3_containment","D3 Containment","Contencion inmediata, material bloqueado, WIP / FG, accion ejecutada."],
+      ["d4_root_cause","D4 Root Cause","Hipotesis, causa raiz confirmada, evidencia y patron."],
+      ["d4_escape_point","D4 Escape Point","Control que no detecto o no bloqueo el problema."],
+      ["d5_pca","D5 Permanent Corrective Action","Accion correctiva permanente."],
+      ["d6_validation","D6 Validation","Metodo de validacion, resultados y recurrencia."],
+      ["d7_prevention","D7 Prevention / Yokoten","Prevencion, leccion aprendida, reapplication."],
+      ["d8_closure","D8 Closure","Cierre ejecutivo, efectividad y aprobacion."],
+    ];
+    function badge(bg,color,text){
+      return <span style={{fontSize:9.5,fontWeight:700,background:bg,color:color,borderRadius:999,padding:mobile?"4px 8px":"4px 8px",display:"inline-flex",alignItems:"center"}}>{text}</span>;
+    }
+    function renderPanel(title, subtitle, keyName, body){
+      var canCollapse = !!mobile;
+      var isClosed = canCollapse ? !!collapsed[keyName] : false;
+      return <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+        <div style={{padding:mobile?"11px 12px":"12px 14px",background:"#F8F7F5",borderBottom:isClosed?"none":"1px solid #EEECEA",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10}}>
+          <div style={{minWidth:0,flex:1}}>
+            <div style={{fontSize:mobile?12:12.5,fontWeight:800,color:"#1A1714"}}>{title}</div>
+            <div style={{fontSize:mobile?9.5:10,color:"#8A8580",marginTop:2,lineHeight:1.35}}>{subtitle}</div>
+          </div>
+          {canCollapse&&<button onClick={function(){togglePanel(keyName);}} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:999,padding:"5px 10px",fontSize:10,fontWeight:800,color:"#6A6560",cursor:"pointer",flex:"0 0 auto"}}>{isClosed?"Abrir":"Ocultar"}</button>}
+        </div>
+        {!isClosed&&body}
+      </div>;
+    }
+    var sourcePanel = renderPanel("Source RCCA","Referencia congelada del caso base.","source",
+      <div style={{padding:mobile?12:14,display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {badge("#F5F0FE","#6B2DA8",form.source_rcca_id || "Sin RCCA")}
+          {form.modelo&&badge("#EAF2FF","#1F3A5F",form.modelo)}
+          {form.linea&&badge("#EAF2FF","#1F3A5F",form.linea)}
+          {form.status&&badge("#EAF2FF","#2F6FB3",form.status)}
+        </div>
+        <div style={{fontSize:mobile?12.5:13,fontWeight:800,color:"#1A1714",lineHeight:1.35,overflowWrap:"anywhere"}}>{form.source_title || "Sin titulo"}</div>
+        <div style={{fontSize:10.5,color:"#6A6560",overflowWrap:"anywhere"}}>Owner: {form.owner_email || "N/D"}</div>
+        <div style={{fontSize:10.5,color:"#6A6560"}}>Fecha base: {form.fecha || "N/D"}</div>
+      </div>
+    );
+    var missingPanel = renderPanel("Maturity gates","Bloqueos para promocion y campos que aun requieren decision humana.","missing",
+      <div style={{padding:mobile?12:14,display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {badge("#EAF2FF","#1F3A5F","Overall " + readiness.overallScore + "%")}
+          {badge("#EEF6FF","#145A28","Structure " + readiness.structureScore + "%")}
+          {badge(readiness.evidenceScore>=70?"#EAF2FF":"#FEF9E8",readiness.evidenceScore>=70?"#2F6FB3":"#B87820","Evidence " + readiness.evidenceScore + "%")}
+          {badge(readiness.canPromote?"#EEF6FF":"#FDF0EE",readiness.canPromote?"#145A28":"#C0392B",readiness.stage)}
+        </div>
+        {readiness.blockers.length===0 ? <div style={{fontSize:11.5,color:"#145A28",fontWeight:700}}>Draft listo para review tecnico. No hay bloqueos de promocion.</div> : <div><div style={{fontSize:9.5,fontWeight:800,color:"#C0392B",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Promotion blockers</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.blockers.map(function(label){return <span key={label} style={{fontSize:9.5,fontWeight:700,background:"#FDF0EE",color:"#C0392B",borderRadius:999,padding:"4px 8px"}}>{label}</span>;})}</div></div>}
+        {readiness.structureMissing.length>0 && <div><div style={{fontSize:9.5,fontWeight:800,color:"#B87820",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Missing sections</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.structureMissing.map(function(key){return <span key={key} style={{fontSize:9.5,fontWeight:700,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"4px 8px"}}>{missingPretty[key] || key}</span>;})}</div></div>}
+      </div>
+    );
+    var eventsPanel = renderPanel("Linked events", linkedEvents.length + " evento" + (linkedEvents.length!==1?"s":"") + " usados para construir el draft.", "events",
+      <div style={{padding:mobile?12:14,display:"flex",flexDirection:"column",gap:8,maxHeight:mobile?"none":260,overflowY:mobile?"visible":"auto"}}>
+        {linkedEvents.length===0 ? <div style={{fontSize:11.5,color:"#8A8580"}}>Sin eventos vinculados.</div> : linkedEvents.map(function(item){
+          return <div key={item.id} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:10,padding:"10px 12px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}><span style={{fontSize:9.5,fontFamily:"monospace",fontWeight:700,color:"#2F6FB3"}}>{item.id}</span><span style={{fontSize:9.5,color:"#8A8580"}}>{item.fecha} · {item.turno}</span></div>
+            <div style={{fontSize:11.5,fontWeight:700,color:"#1A1714",marginTop:4,lineHeight:1.35}}>{item.evento_detectado || item.tipo_evento}</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
+              {item.linea_estacion&&<span style={{fontSize:8.8,background:"#EAF2FF",color:"#1F3A5F",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.linea_estacion}</span>}
+              {item.defecto_smt&&item.defecto_smt!=="N/A"&&<span style={{fontSize:8.8,background:"#F5F0FE",color:"#6B2DA8",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.defecto_smt}</span>}
+            </div>
+          </div>;
+        })}
+      </div>
+    );
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.58)",zIndex:9996,display:"flex",alignItems:mobile?"stretch":"center",justifyContent:"center",padding:mobile?0:16}} onClick={function(){props.onClose();}}>
+        <div style={{background:"#fff",borderRadius:mobile?0:18,maxWidth:1120,width:"100%",height:mobile?"100svh":"auto",maxHeight:mobile?"100svh":"90vh",overflow:"auto",boxShadow:mobile?"none":"0 20px 60px rgba(0,0,0,.24)"}} onClick={function(e){e.stopPropagation();}}>
+          <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:mobile?"12px 12px 10px":"16px 20px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap",zIndex:2}}>
+            <div style={{minWidth:0,flex:mobile?"1 1 100%":"1 1 auto"}}>
+              <div style={{fontSize:10.5,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",color:"#2F6FB3"}}>8D Draft Generator</div>
+              <div style={{fontSize:mobile?16:18,fontWeight:800,color:"#1A1714",marginTop:4,lineHeight:1.15,overflowWrap:"anywhere"}}>{form.source_title || form.source_rcca_id || "Draft 8D"}</div>
+              <div style={{fontSize:10,color:"#6A6560",marginTop:4,fontFamily:"monospace",overflowWrap:"anywhere"}}>{form.eightd_id} · Source RCCA {form.source_rcca_id || "N/D"}</div>
+              {mobile&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+                {form.modelo&&badge("#EAF2FF","#1F3A5F",form.modelo)}
+                {form.linea&&badge("#EAF2FF","#1F3A5F",form.linea)}
+                {form.status&&badge("#EAF2FF","#2F6FB3",form.status)}
+              </div>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:mobile?"repeat(2,minmax(0,1fr))":"repeat(" + (sourceRcca?"5":"4") + ",auto)",gap:8,justifyContent:mobile?"stretch":"flex-end",width:mobile?"100%":"auto",alignItems:"stretch"}}>
+              <div style={{gridColumn:mobile?"1 / -1":"auto",display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",justifyContent:mobile?"flex-start":"flex-end"}}>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.overallScore>=85?"#EAF2FF":readiness.overallScore>=60?"#FEF9E8":"#FDF0EE",color:readiness.overallScore>=85?"#1F3A5F":readiness.overallScore>=60?"#B87820":"#C0392B",border:"1px solid "+(readiness.overallScore>=85?"#C7DBF7":readiness.overallScore>=60?"#F5E4A0":"#F0C4BE"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Maturity {readiness.overallScore}%</span>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:"#EEF6FF",color:"#145A28",border:"1px solid #A0DEB4",borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Structure {readiness.structureScore}%</span>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.evidenceScore>=70?"#EAF2FF":"#FEF9E8",color:readiness.evidenceScore>=70?"#2F6FB3":"#B87820",border:"1px solid "+(readiness.evidenceScore>=70?"#C7DBF7":"#F5E4A0"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Evidence {readiness.evidenceScore}%</span>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.canPromote?"#EEF6FF":"#FDF0EE",color:readiness.canPromote?"#145A28":"#C0392B",border:"1px solid "+(readiness.canPromote?"#A0DEB4":"#F0C4BE"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>{readiness.stage}</span>
+              </div>
+              <button onClick={function(){ props.onSave(Object.assign({}, form, { readiness_score: readiness.overallScore, structure_readiness_score: readiness.structureScore, evidence_readiness_score: readiness.evidenceScore, case_maturity_score: readiness.overallScore, missing_fields: readiness.structureMissing, escalation_blockers: readiness.blockers, can_promote: readiness.canPromote, draft_stage: readiness.stage })); }} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"Guardar":"Guardar Draft"}</button>
+              <button onClick={function(){ exportEightdPpt(Object.assign({}, form, { readiness_score: readiness.overallScore, structure_readiness_score: readiness.structureScore, evidence_readiness_score: readiness.evidenceScore, case_maturity_score: readiness.overallScore, missing_fields: readiness.structureMissing, escalation_blockers: readiness.blockers, can_promote: readiness.canPromote, draft_stage: readiness.stage })); }} style={{background:"#FEF9E8",border:"1px solid #F5E4A0",color:"#B87820",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"PPT":"Exportar PPT"}</button>
+              <button onClick={function(){ exportEightdHtml(Object.assign({}, form, { readiness_score: readiness.overallScore, structure_readiness_score: readiness.structureScore, evidence_readiness_score: readiness.evidenceScore, case_maturity_score: readiness.overallScore, missing_fields: readiness.structureMissing, escalation_blockers: readiness.blockers, can_promote: readiness.canPromote, draft_stage: readiness.stage })); }} style={{background:"#EAF2FF",border:"1px solid #C8D7F8",color:"#2F6FB3",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"HTML":"Exportar HTML"}</button>
+              {sourceRcca&&<button onClick={function(){ props.onRefresh(sourceRcca); }} style={{background:"#F5F0FE",border:"1px solid #DBCDF8",color:"#6B2DA8",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"Refresh":"Refresh from RCCA"}</button>}
+              <button onClick={props.onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",color:"#6A6560",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%",gridColumn:mobile&&(!sourceRcca)?"1 / -1":"auto"}}>{mobile?"Cerrar":"Cerrar"}</button>
             </div>
           </div>
-
-          <div style={{padding:compact?12:20, display:'flex', flexDirection:'column', gap:14, overflowY:'auto', WebkitOverflowScrolling:'touch', flex:1, minHeight:0, paddingBottom:compact?32:28}}>
-            <div style={sectionWrap('#fff', '#D9E6F7')}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,marginBottom:10,flexWrap:'wrap'}}>
-                <div>
-                  <div style={{fontSize:12,fontWeight:800,color:'#1F3A5F',textTransform:'uppercase',letterSpacing:'.08em'}}>Linked events</div>
-                  <div style={{fontSize:11,color:'#5F766C',marginTop:4}}>Select only the events that anchor this RCCA.</div>
-                </div>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:220,overflowY:'auto'}}>
-                {ev.length === 0 ? <div style={{fontSize:11,color:'#8A8580'}}>No events loaded.</div> : ev.map(function(e){
-                  var selected = (form.event_ids || []).indexOf(e.id) >= 0;
-                  return <div key={e.id} onClick={function(){ toggleEvent(e.id); }} style={{display:'flex',alignItems:'flex-start',gap:10,background:selected?'#EEF5FF':'#F8FAFC',border:'1px solid '+(selected?'#2F6FB3':'#D7DCE5'),borderRadius:12,padding:'10px 12px',cursor:'pointer'}}>
-                    <div style={{width:18,height:18,borderRadius:6,background:selected?'#1F3A5F':'#fff',border:'1px solid '+(selected?'#1F3A5F':'#C8D0DD'),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,flexShrink:0}}>{selected?'v':''}</div>
-                    <div style={{minWidth:0,flex:1}}>
-                      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><span style={{fontSize:10,fontFamily:'monospace',fontWeight:800,color:selected?'#1F3A5F':'#6A6560'}}>{e.id}</span><span style={{fontSize:10,color:'#8A8580'}}>{e.fecha}</span></div>
-                      <div style={{fontSize:11.5,fontWeight:700,color:'#102A43',marginTop:4,lineHeight:1.35}}>{e.evento_detectado ? e.evento_detectado.slice(0,110) : ''}</div>
-                    </div>
-                  </div>;
-                })}
-              </div>
+          <div style={{padding:mobile?"12px":"18px 20px",display:"grid",gridTemplateColumns:mobile?"1fr":"1.55fr .95fr",gap:12}}>
+            {mobile&&<div style={{display:"flex",flexDirection:"column",gap:12}}>{sourcePanel}{missingPanel}{eventsPanel}</div>}
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {sectionDefs.map(function(sec){
+                return <div key={sec[0]} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+                  <div style={{padding:mobile?"11px 12px":"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
+                    <div style={{fontSize:mobile?12.5:12.5,fontWeight:800,color:"#1A1714",lineHeight:1.2}}>{sec[1]}</div>
+                    <div style={{fontSize:mobile?9.5:10,color:"#8A8580",marginTop:2,lineHeight:1.35}}>{sec[2]}</div>
+                  </div>
+                  <div style={{padding:mobile?10:12}}>
+                    <textarea value={form[sec[0]] || ""} rows={mobile?(sec[0]==="d2_problem"||sec[0]==="d4_root_cause"?5:3):(sec[0]==="d2_problem"||sec[0]==="d4_root_cause"?6:4)} onChange={function(e){upd(sec[0], e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:mobile?"10px":"10px 12px",fontSize:mobile?11.5:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit",lineHeight:1.55,minHeight:mobile?80:"auto"}} />
+                  </div>
+                </div>;
+              })}
             </div>
-
-            <div style={sectionWrap('#fff', '#D9E6F7')}>
-              <div style={{fontSize:12,fontWeight:800,color:'#1F3A5F',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12}}>01. Case Identification</div>
-              <div style={{display:'grid',gridTemplateColumns:compact?'1fr':'repeat(4,minmax(0,1fr))',gap:12}}>
-                {field('RCCA ID', <input value={form.rcca_id} onChange={function(e){ upd('rcca_id', e.target.value); }} style={inputStyle(false)} placeholder='RCCA-E002-PROC-260320' />)}
-                {field('Model', <input value={form.modelo} onChange={function(e){ upd('modelo', e.target.value); }} style={inputStyle(false)} placeholder='Vanguard / 73-20513-08' />)}
-                {field('Line', <input value={form.linea} onChange={function(e){ upd('linea', e.target.value); }} style={inputStyle(false)} placeholder='SMT L13' />)}
-                {field('Station', <input value={form.estacion_dominante} onChange={function(e){ upd('estacion_dominante', e.target.value); }} style={inputStyle(false)} placeholder='ICT impact' />)}
-                {field('Detection window', <input value={form.detection_window} onChange={function(e){ upd('detection_window', e.target.value); }} style={inputStyle(false)} placeholder='04/03/2026 -> 12/03/2026' />)}
-                {field('Title / Defect', <input value={form.titulo_corto} onChange={function(e){ upd('titulo_corto', e.target.value); }} style={inputStyle(false)} placeholder='Wrong component / Solder short' />)}
-                {field('Status', <select value={form.estatus_rcca} onChange={function(e){ upd('estatus_rcca', e.target.value); }} style={Object.assign({}, inputStyle(false), {background:'#fff'})}><option value='NUEVO'>NUEVO</option><option value='IN ANALYSIS'>IN ANALYSIS</option><option value='CONTENIDO'>CONTENIDO</option><option value='VALIDANDO'>VALIDANDO</option><option value='CERRADO'>CERRADO</option></select>)}
-                {field('Responsible engineer', <input value={form.responsible_engineer} onChange={function(e){ upd('responsible_engineer', e.target.value); }} style={inputStyle(false)} placeholder='your.email@foxconn.com' />)}
-                <div style={{gridColumn:compact?'auto':'1 / -1'}}>{field('Complaint Anchor', <textarea value={form.complaint_anchor} onChange={function(e){ upd('complaint_anchor', e.target.value); }} rows={3} style={inputStyle(true)} placeholder='What happened, where, when, and why it matters.' />)}</div>
-                <div style={{gridColumn:compact?'auto':'1 / -1'}}>{field('Impact / Exposure', <textarea value={form.impact_exposure} onChange={function(e){ upd('impact_exposure', e.target.value); }} rows={3} style={inputStyle(true)} placeholder='Units at risk, exposure window, customer impact, or production impact.' />)}</div>
-                <div style={{gridColumn:compact?'auto':'1 / -1'}}>{field('Traceability Anchor (Lot, Serial, Date Code, PN)', <textarea value={form.trace_anchor} onChange={function(e){ upd('trace_anchor', e.target.value); }} rows={3} style={Object.assign({}, inputStyle(true), {background:'#F7FAFF'})} placeholder='Paste lot, serial range, date code, component P/N, or barcode scope here.' />)}</div>
-              </div>
-            </div>
-
-            <div style={sectionWrap('#fff', '#F2DFC0')}>
-              <div style={{fontSize:12,fontWeight:800,color:'#9A6A16',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12}}>02. Containment + Root Cause & Escape</div>
-              <div style={{display:'grid',gridTemplateColumns:compact?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>
-                <div style={{gridColumn:compact?'auto':'1 / -1'}}>{field('Containment Actions', <textarea value={form.containment_actions} onChange={function(e){ upd('containment_actions', e.target.value); }} rows={3} style={inputStyle(true)} placeholder='What immediate actions stopped the defect from moving?' />)}</div>
-                {field('Root Cause Mechanism', <textarea value={form.rc_mechanism} onChange={function(e){ upd('rc_mechanism', e.target.value); }} rows={4} style={inputStyle(true)} placeholder='How did the physical failure occur?' />)}
-                {field('Detection Gap', <textarea value={form.detection_gap} onChange={function(e){ upd('detection_gap', e.target.value); }} rows={4} style={inputStyle(true)} placeholder='Why did the expected control not detect it?' />)}
-                <div style={{gridColumn:compact?'auto':'1 / -1'}}>{field('Contributing Factors', <textarea value={form.factors} onChange={function(e){ upd('factors', e.target.value); }} rows={3} style={inputStyle(true)} placeholder='Only relevant factors: Man, Machine, Method, Material, etc.' />)}</div>
-              </div>
-            </div>
-
-            <div style={sectionWrap('#fff', '#D9E6F7')}>
-              <div style={{fontSize:12,fontWeight:800,color:'#1F3A5F',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12}}>03. Actions & Closure</div>
-              <div style={{display:'grid',gridTemplateColumns:compact?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>
-                <div style={{gridColumn:compact?'auto':'1 / -1'}}>{field('Corrective Actions', <textarea value={form.corrective_actions} onChange={function(e){ upd('corrective_actions', e.target.value); }} rows={3} style={inputStyle(true)} placeholder='Occurrence, detection, and system actions in one concise block.' />)}</div>
-                {field('Verification Method', <textarea value={form.verification_method} onChange={function(e){ upd('verification_method', e.target.value); }} rows={3} style={inputStyle(true)} placeholder='How will you validate the actions?' />)}
-                {field('Success Criteria', <textarea value={form.success_criteria} onChange={function(e){ upd('success_criteria', e.target.value); }} rows={3} style={inputStyle(true)} placeholder='Zero recurrence, successful challenges, stable control, etc.' />)}
-                {field('Lesson Learned', <textarea value={form.lesson_learned} onChange={function(e){ upd('lesson_learned', e.target.value); }} rows={3} style={inputStyle(true)} placeholder='Key insight that should remain visible in the 8D.' />)}
-                {field('Yokoten / Replication', <textarea value={form.yokoten} onChange={function(e){ upd('yokoten', e.target.value); }} rows={3} style={inputStyle(true)} placeholder='Where else should this be applied?' />)}
-              </div>
-            </div>
-
-            <div style={sectionWrap('#F8FAFC', '#CBD5E1')}>
-              <div style={{fontSize:12,fontWeight:800,color:'#475569',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12}}>04. Evidence Anchors (Appendix)</div>
-              <div style={{display:'grid',gridTemplateColumns:compact?'1fr':'repeat(3,minmax(0,1fr))',gap:12}}>
-                {pickerCard('Bad Part Photo', '📸', 'bad', '#F0C4BE', badInputRef)}
-                {pickerCard('Good Part Photo', '📸', 'good', '#A0DEB4', goodInputRef)}
-                {pickerCard('Logs / SPI Data', '📊', 'general', '#C7DBF7', generalInputRef)}
-              </div>
-              <input ref={badInputRef} type='file' multiple accept='image/*,.zip,.pdf,.csv,.xlsx,.xls,.txt' style={{display:'none'}} onChange={function(e){ readFiles(e.target.files, 'bad'); e.target.value=''; }} />
-              <input ref={goodInputRef} type='file' multiple accept='image/*,.zip,.pdf,.csv,.xlsx,.xls,.txt' style={{display:'none'}} onChange={function(e){ readFiles(e.target.files, 'good'); e.target.value=''; }} />
-              <input ref={generalInputRef} type='file' multiple accept='image/*,.zip,.pdf,.csv,.xlsx,.xls,.txt' style={{display:'none'}} onChange={function(e){ readFiles(e.target.files, 'general'); e.target.value=''; }} />
-              <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:12}}>
-                {(form.meta_files || []).length===0 ? <div style={{fontSize:11,color:'#8A8580',background:'#fff',border:'1px dashed #CBD5E1',borderRadius:12,padding:'12px 14px'}}>No evidence files uploaded yet.</div> : (form.meta_files || []).map(function(file){
-                  var role = String(file.evidence_role || 'general');
-                  return <div key={file.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,background:'#fff',border:'1px solid #D9E6F7',borderRadius:12,padding:'10px 12px',flexWrap:'wrap'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0,flex:1}}>
-                      <div style={{fontSize:18}}>{file.kind === 'image' ? '📷' : '📎'}</div>
-                      <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:11.5,fontWeight:700,color:'#102A43',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{file.name}</div>
-                        <div style={{fontSize:10,color:'#6A6560',marginTop:2}}>{role} · {Math.round((Number(file.size || 0)/1024))} KB</div>
-                      </div>
-                    </div>
-                    <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-                      <select value={role} onChange={function(e){ setFileRole(file.id, e.target.value); }} style={{border:'1px solid #D7DCE5',borderRadius:999,padding:'6px 10px',fontSize:10.5,fontWeight:700,color:'#1F3A5F',background:'#F7FAFF'}}><option value='bad'>Bad</option><option value='good'>Good</option><option value='general'>General</option></select>
-                      <button type='button' onClick={function(){ removeFile(file.id); }} style={{background:'#FDF0EE',border:'1px solid #F0C4BE',borderRadius:999,padding:'6px 10px',fontSize:10.5,fontWeight:700,color:'#C0392B',cursor:'pointer'}}>Remove</button>
-                    </div>
-                  </div>;
-                })}
-              </div>
-            </div>
-
-            <div style={{display:'grid',gridTemplateColumns:compact?'1fr':'1fr auto',gap:10,alignItems:'center'}}>
-              <button type='button' onClick={function(){ onSave(buildPayload()); }} style={{background:'#1F3A5F',color:'#fff',border:'none',borderRadius:12,padding:'12px 16px',fontSize:13,fontWeight:800,cursor:'pointer'}}>Save RCCA</button>
-              <button type='button' onClick={onClose} style={{background:'#fff',border:'1px solid #D7DCE5',borderRadius:12,padding:'12px 16px',fontSize:12,fontWeight:700,cursor:'pointer',color:'#6A6560'}}>Cancel</button>
-            </div>
+            {!mobile&&<div style={{display:"flex",flexDirection:"column",gap:12}}>{sourcePanel}{missingPanel}{eventsPanel}</div>}
           </div>
         </div>
       </div>
@@ -10710,7 +10917,7 @@ function exportEightdPpt(draft) {
               {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Modo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
             </div>
             <div style={{fontSize:10,lineHeight:1.4,color:syncBusy?"#CDE7C5":"rgba(255,255,255,.5)",padding:"8px 10px",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,background:"rgba(255,255,255,.03)"}}>
-              {authUser && authUser.email ? ("Sesión: " + authUser.email + " · " + cloudStatus) : (!authReady ? "Inicializando nube..." : cloudStatus)}
+              {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(cloudStatus+(authReady?"":" · cargando"))}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:8,fontSize:10,fontWeight:700,color:realtimeUi.color,background:realtimeUi.bg,border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:"8px 10px"}}>
               <span style={{display:"inline-block",width:8,height:8,borderRadius:99,background:realtimeUi.color}}></span>
@@ -10828,7 +11035,7 @@ function exportEightdPpt(draft) {
           </div>
         </div>
       )}
-      {rccaForm&&<RccaForm init={rccaForm} events={data&&Array.isArray(data.eventos)?data.eventos:[]} onSave={saveRcca} onClose={function(){clearRccaDraft();setRccaForm(null);}}/>}
+      {rccaForm&&<RccaForm init={rccaForm} onSave={saveRcca} onClose={function(){clearRccaDraft();setRccaForm(null);}}/>}
       {eightdDetail&&<EightdDraftEditor init={eightdDetail} sourceRcca={(eightdDetail&&eightdDetail.source_rcca_id)?(rccaList.find(function(item){return item.rcca_id===eightdDetail.source_rcca_id;})||eightdDetail.source_snapshot||null):null} onSave={saveEightdDraft} onRefresh={function(source){openEightdDraftFromRcca(source,true);}} onClose={function(){setEightdDetail(null);}}/>}
       {rccaDetail&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9997,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={function(){setRccaDetail(null);}}>
