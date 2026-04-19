@@ -10085,7 +10085,7 @@ function exportEightdPpt(draft) {
   }
 
   function RccaForm(props){
-    var init=props.init||{};var onSave=props.onSave;var onClose=props.onClose;
+    var init=props.init||{};var onSave=props.onSave;var onClose=props.onClose;var ev=Array.isArray(props.events)?props.events:[];
     var incomingDraft = readRccaDraft();
     var canUseDraft = !!(incomingDraft && incomingDraft.form && isFreshRccaDraft(incomingDraft) && ((init.rcca_id && incomingDraft.form && (incomingDraft.form.original_rcca_id===init.rcca_id || incomingDraft.form.rcca_id===init.rcca_id)) || (!init.rcca_id && incomingDraft.mode==="new") || init.__restored_draft));
     if (canUseDraft) init = Object.assign({}, init, incomingDraft.form, { __restored_draft: true });
@@ -10856,7 +10856,7 @@ function exportEightdPpt(draft) {
           </div>
         </div>
       )}
-      {rccaForm&&<RccaForm init={rccaForm} onSave={saveRcca} onClose={function(){clearRccaDraft();setRccaForm(null);}}/>}
+      {rccaForm&&<RccaForm init={rccaForm} events={data&&Array.isArray(data.eventos)?data.eventos:[]} onSave={saveRcca} onClose={function(){clearRccaDraft();setRccaForm(null);}}/>}
       {eightdDetail&&<EightdDraftEditor init={eightdDetail} sourceRcca={(eightdDetail&&eightdDetail.source_rcca_id)?(rccaList.find(function(item){return item.rcca_id===eightdDetail.source_rcca_id;})||eightdDetail.source_snapshot||null):null} onSave={saveEightdDraft} onRefresh={function(source){openEightdDraftFromRcca(source,true);}} onClose={function(){setEightdDetail(null);}}/>}
       {rccaDetail&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9997,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={function(){setRccaDetail(null);}}>
