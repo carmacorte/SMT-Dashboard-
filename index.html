@@ -1824,12 +1824,6 @@ function traceOpsNormalizeCloudError(err) {
     e.originalMessage = raw;
     return e;
   }
-  if (low.indexOf("504") >= 0 || low.indexOf("gateway timeout") >= 0 || low.indexOf("connection timeout") >= 0 || low.indexOf("timeout") >= 0) {
-    var e0 = new Error("La nube no respondió a tiempo. TraceOps mantiene modo local y reintentará más tarde.");
-    e0.isBackendTimeout = true;
-    e0.originalMessage = raw;
-    return e0;
-  }
   if (low.indexOf('another request stole it') >= 0 || low.indexOf('auth-token') >= 0 && low.indexOf('lock') >= 0) {
     var e2 = new Error("La sesión en nube está ocupada por otra operación. Reintentando sin bloquear la app.");
     e2.isTransientAuthLock = true;
@@ -1837,28 +1831,6 @@ function traceOpsNormalizeCloudError(err) {
     return e2;
   }
   return err instanceof Error ? err : new Error(raw || "Error de nube");
-}
-window.__traceopsCloudCooldownUntil = window.__traceopsCloudCooldownUntil || 0;
-function traceOpsCloudCircuitOpen() {
-  return Date.now() < Number(window.__traceopsCloudCooldownUntil || 0);
-}
-function traceOpsOpenCloudCircuit(ms) {
-  window.__traceopsCloudCooldownUntil = Date.now() + Math.max(5000, Number(ms || 30000));
-}
-function traceOpsClearCloudCircuit() {
-  window.__traceopsCloudCooldownUntil = 0;
-}
-function traceOpsWithTimeout(promise, ms) {
-  return Promise.race([
-    promise,
-    new Promise(function(_, reject){
-      setTimeout(function(){
-        var e = new Error("timeout");
-        e.isBackendTimeout = true;
-        reject(e);
-      }, Math.max(1000, Number(ms || 5000)));
-    })
-  ]);
 }
 
 window.TraceOpsCloud = (function(){
@@ -5418,6 +5390,63 @@ function App() {
   var storageErrArr = _useState("");
   var storageErrMsg = storageErrArr[0]; var setStorageErrMsg = storageErrArr[1];
 
+  var cloudModeRef = React.useRef("OK");
+  var cloudCooldownRef = React.useRef(false);
+  var cloudCooldownTimerRef = React.useRef(null);
+
+  function traceOpsClearCloudCooldown() {
+    try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
+    cloudCooldownTimerRef.current = null;
+    cloudCooldownRef.current = false;
+    cloudModeRef.current = "OK";
+  }
+
+  function traceOpsTriggerCloudCooldown(reasonLabel) {
+    try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
+    cloudCooldownRef.current = true;
+    cloudModeRef.current = "DEGRADED";
+    setCloudStatus(reasonLabel || "Nube saturada · trabajando local");
+    setRealtimeStatus("LOCAL_ONLY");
+    cloudCooldownTimerRef.current = setTimeout(function(){
+      cloudCooldownRef.current = false;
+      cloudModeRef.current = "OK";
+      setCloudStatus(function(prev){
+        var low = String(prev || "").toLowerCase();
+        if (low.indexOf("sesion") >= 0) return prev;
+        return "Reintentando conexion...";
+      });
+    }, 30000);
+  }
+
+  async function traceOpsSafeCloudCall(promiseFactory, timeoutMs) {
+    if (cloudCooldownRef.current) {
+      var cooldownErr = new Error("cloud_cooldown");
+      cooldownErr.isCloudCooldown = true;
+      throw cooldownErr;
+    }
+    var ms = Math.max(1500, Number(timeoutMs || 5000));
+    try {
+      return await Promise.race([
+        Promise.resolve().then(promiseFactory),
+        new Promise(function(_, reject){
+          setTimeout(function(){
+            var timeoutErr = new Error("cloud_timeout");
+            timeoutErr.isCloudTimeout = true;
+            reject(timeoutErr);
+          }, ms);
+        })
+      ]);
+    } catch (err) {
+      var cloudErr = traceOpsNormalizeCloudError(err);
+      var raw = String((cloudErr && (cloudErr.originalMessage || cloudErr.message)) || err || "").toLowerCase();
+      var shouldCooldown = !!(cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) || raw.indexOf("timeout") >= 0 || raw.indexOf("504") >= 0 || raw.indexOf("connection terminated") >= 0 || raw.indexOf("failed to fetch") >= 0 || raw.indexOf("networkerror") >= 0 || raw.indexOf("too many concurrent requests") >= 0;
+      if (shouldCooldown) {
+        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+      }
+      throw cloudErr;
+    }
+  }
+
   var realtimeUi = (function(){
     var map = {
       CONNECTED: { label: "Realtime activo", color: "#1A7A3C", bg: "#EEF8F1" },
@@ -5430,7 +5459,7 @@ function App() {
       CLOSED: { label: "Realtime detenido", color: "#6A6560", bg: "#F3F1EE" },
       LOCAL_ONLY: { label: "Modo local", color: "#6A6560", bg: "#F3F1EE" }
     };
-    return map[realtimeStatus] || { label: "Realtime " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
+    return map[realtimeStatus] || { label: "Estado realtime: " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
   })();
 
   React.useEffect(function(){
@@ -5549,16 +5578,9 @@ function App() {
       setCloudStatus("Modo local");
       return [];
     }
-    if (traceOpsCloudCircuitOpen()) {
-      setAuthReady(true);
-      setCloudStatus("Nube saturada · trabajando local");
-      setRealtimeStatus("LOCAL_ONLY");
-      return [];
-    }
     try {
       setSyncBusy(true);
-      var remoteItems = await traceOpsWithTimeout(window.TraceOpsCloud.listRcca(), 5000);
-      traceOpsClearCloudCircuit();
+      var remoteItems = await window.TraceOpsCloud.listRcca();
       var merged = mergeRccaRecords(opts.baseList || rccaList, remoteItems);
       await persistRccaLocal(merged);
       setCloudStatus(remoteItems.length ? ("Sincronizado · " + remoteItems.length + " RCCA") : "Sesion activa · nube vacia");
@@ -5566,12 +5588,10 @@ function App() {
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
-      if (cloudErr && (cloudErr.isBackendTimeout || cloudErr.isNetworkFallback)) {
-        traceOpsOpenCloudCircuit(30000);
-        setCloudStatus(cloudErr.isBackendTimeout ? "Nube saturada · trabajando local" : "Modo local · nube no disponible");
-        setRealtimeStatus("LOCAL_ONLY");
-      } else if (cloudErr && cloudErr.isTransientAuthLock) {
-        setCloudStatus("Sesion activa · reintentando nube");
+      if (cloudErr && cloudErr.isTransientAuthLock) {
+        setCloudStatus("Sesion ocupada · reintentando");
+      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || cloudErr.isCloudCooldown)) {
+        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
       } else {
         setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
       }
@@ -5584,10 +5604,6 @@ function App() {
 
   async function syncAllLocalToCloud(baseList) {
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured()) || !authUser) return;
-    if (traceOpsCloudCircuitOpen()) {
-      setCloudStatus("Nube saturada · sync diferido");
-      return false;
-    }
     var items = baseList || rccaList;
     if (!items.length) {
       setCloudStatus("Sesion activa · sin RCCA por subir");
@@ -5596,20 +5612,13 @@ function App() {
     setSyncBusy(true);
     try {
       for (var i = 0; i < items.length; i++) {
-        await traceOpsWithTimeout(window.TraceOpsCloud.upsertRcca(items[i]), 5000);
+        await window.TraceOpsCloud.upsertRcca(items[i]);
       }
-      traceOpsClearCloudCircuit();
       setCloudStatus("Sincronizado · " + items.length + " RCCA");
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
-      if (cloudErr && (cloudErr.isBackendTimeout || cloudErr.isNetworkFallback)) {
-        traceOpsOpenCloudCircuit(30000);
-        setCloudStatus(cloudErr.isBackendTimeout ? "Nube saturada · sync diferido" : "Modo local · pendiente de sincronizacion");
-        setRealtimeStatus("LOCAL_ONLY");
-      } else {
-        setCloudStatus("Pendiente de sincronizacion");
-      }
+      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · pendiente de sincronizacion" : "Pendiente de sincronizacion");
       return false;
     } finally {
       setSyncBusy(false);
@@ -5618,54 +5627,53 @@ function App() {
 
   async function handleAuthSubmit() {
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
-      setAuthErrMsg("Configura TRACEOPS_SUPABASE.url y anonKey para habilitar nube.");
+      setAuthErrMsg("Backend no configurado. Se mantiene modo local.");
       setCloudStatus("Modo local · sin backend");
       setRealtimeStatus("LOCAL_ONLY");
       return;
     }
-    if (traceOpsCloudCircuitOpen()) {
-      setAuthErrMsg("La nube está saturada temporalmente. Sigue en modo local y reintenta en unos segundos.");
-      setCloudStatus("Nube saturada · trabajando local");
-      setRealtimeStatus("LOCAL_ONLY");
-      return;
-    }
-    if (!authEmail.trim() || !authPassword.trim()) {
-      setAuthErrMsg("Completa correo y contrasena.");
+    var email = String(authEmail || "").trim();
+    var password = String(authPassword || "");
+    if (!email || !password) {
+      setAuthErrMsg("Ingresa correo y contrasena.");
       setCloudStatus("Credenciales incompletas");
+      setRealtimeStatus("LOCAL_ONLY");
       return;
     }
     setAuthErrMsg("");
     setSyncBusy(true);
-    setCloudStatus(authMode === "signup" ? "Creando cuenta..." : "Iniciando sesion...");
     setRealtimeStatus("LOCAL_ONLY");
     try {
-      localStorage.setItem("traceops_auth_email", authEmail.trim());
+      localStorage.setItem("traceops_auth_email", email);
+    } catch(_) {}
+    try {
+      setCloudStatus(authMode === "signup" ? "Creando cuenta..." : "Conectando...");
       if (authMode === "signup") {
-        await traceOpsWithTimeout(window.TraceOpsCloud.signUp(authEmail.trim(), authPassword), 5000);
-        traceOpsClearCloudCircuit();
+        await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signUp(email, password); }, 7000);
         setCloudStatus("Cuenta creada · revisa confirmacion");
         setAuthErrMsg("Si el proyecto requiere confirmacion por correo, valida tu email antes de sincronizar.");
-      } else {
-        await traceOpsWithTimeout(window.TraceOpsCloud.signIn(authEmail.trim(), authPassword), 5000);
-        traceOpsClearCloudCircuit();
-        setCloudStatus("Sesion iniciada");
+        setRealtimeStatus("LOCAL_ONLY");
+        return;
       }
-      var currentUser = await traceOpsWithTimeout(window.TraceOpsCloud.getUser(), 4000);
-      setAuthUser(currentUser);
-      if (authMode !== "signup") {
-        await syncAllLocalToCloud(rccaList);
-        await refreshCloudRcca({ baseList: rccaList });
-      }
+      await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signIn(email, password); }, 7000);
+      var currentUser = await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 5000);
+      traceOpsClearCloudCooldown();
+      setAuthUser(currentUser || null);
+      setCloudStatus("Sesion activa");
+      setRealtimeStatus(currentUser && currentUser.id ? "DISCONNECTED" : "LOCAL_ONLY");
+      try { await syncAllLocalToCloud(rccaList); } catch(_) {}
+      try { await refreshCloudRcca({ baseList: rccaList }); } catch(_) {}
       setAuthPassword("");
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
-      var msg = cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr);
+      var msg = cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr || "");
       var low = String(msg || "").toLowerCase();
       setAuthErrMsg(msg);
-      if (cloudErr && (cloudErr.isBackendTimeout || cloudErr.isNetworkFallback)) {
-        traceOpsOpenCloudCircuit(30000);
-        setCloudStatus(cloudErr.isBackendTimeout ? "Nube saturada · trabajando local" : "Modo local · nube no disponible");
+      if (cloudErr && cloudErr.isCloudCooldown) {
+        setCloudStatus("Nube saturada · trabajando local");
         setRealtimeStatus("LOCAL_ONLY");
+      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || low.indexOf("cloud_timeout") >= 0 || low.indexOf("504") >= 0 || low.indexOf("connection terminated") >= 0 || low.indexOf("too many concurrent requests") >= 0)) {
+        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
       } else if (cloudErr && cloudErr.isTransientAuthLock) {
         setCloudStatus("Sesion ocupada · reintentando");
         setRealtimeStatus("DISCONNECTED");
@@ -5685,8 +5693,8 @@ function App() {
           message: msg,
           originalMessage: cloudErr && cloudErr.originalMessage ? cloudErr.originalMessage : null,
           networkFallback: !!(cloudErr && cloudErr.isNetworkFallback),
-          backendTimeout: !!(cloudErr && cloudErr.isBackendTimeout),
           transientAuthLock: !!(cloudErr && cloudErr.isTransientAuthLock),
+          cooldown: !!(cloudErr && cloudErr.isCloudCooldown),
           ua: navigator.userAgent
         });
       } catch (_) {}
@@ -5702,7 +5710,6 @@ function App() {
       await window.TraceOpsCloud.signOut();
       setAuthUser(null);
       setCloudStatus("Modo local");
-      setRealtimeStatus("LOCAL_ONLY");
       setAuthErrMsg("");
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
@@ -5726,12 +5733,16 @@ function App() {
         if (realtimeSub && typeof realtimeSub.unsubscribe === "function") realtimeSub.unsubscribe();
       } catch(_){}
       realtimeSub = null;
-      setRealtimeStatus(authUser ? "DISCONNECTED" : "LOCAL_ONLY");
+      setRealtimeStatus(window.authUser ? "DISCONNECTED" : "LOCAL_ONLY");
     }
     var authFlowPromise = Promise.resolve();
 
     function startRealtime(user){
       stopRealtime();
+      if (cloudCooldownRef.current) {
+        setRealtimeStatus("LOCAL_ONLY");
+        return;
+      }
       var realtimeUserId = String(user && user.id ? user.id : "").trim();
       if (!realtimeUserId || !(window.TraceOpsCloud && window.TraceOpsCloud.subscribeRccaRealtime)) {
         setRealtimeStatus("DISCONNECTED");
@@ -5759,13 +5770,12 @@ function App() {
         if (typeof updateAuthUI === "function") updateAuthUI();
 
         if (user) {
-          setCloudStatus(traceOpsCloudCircuitOpen() ? "Sesion activa · nube degradada" : "Sesion activa");
+          traceOpsClearCloudCooldown();
+          setCloudStatus("Sesion activa");
           setRealtimeStatus("DISCONNECTED");
-          if (!traceOpsCloudCircuitOpen()) {
-            await refreshCloudRcca();
-            await new Promise(function(resolve){ setTimeout(resolve, 150); });
-            startRealtime(user);
-          }
+          try { await traceOpsSafeCloudCall(function(){ return refreshCloudRcca(); }, 5000); } catch(_) {}
+          await new Promise(function(resolve){ setTimeout(resolve, 150); });
+          startRealtime(user);
         } else {
           stopRealtime();
           setCloudStatus("Sin sesion en nube");
@@ -5778,12 +5788,10 @@ function App() {
         setAuthReady(true);
         setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
         if (cloudErr && cloudErr.isTransientAuthLock) {
-          setCloudStatus("Sesion activa · reintentando nube");
+          setCloudStatus("Sesion ocupada · reintentando");
           setRealtimeStatus("DISCONNECTED");
-        } else if (cloudErr && (cloudErr.isBackendTimeout || cloudErr.isNetworkFallback)) {
-          traceOpsOpenCloudCircuit(30000);
-          setCloudStatus(cloudErr.isBackendTimeout ? "Nube saturada · trabajando local" : "Modo local · nube no disponible");
-          setRealtimeStatus("LOCAL_ONLY");
+        } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) {
+          traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
         } else {
           setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
           setRealtimeStatus("ERROR");
@@ -5796,27 +5804,25 @@ function App() {
       runAuthFlow(user);
     });
 
-    window.TraceOpsCloud.getUser().then(function(user){
+    traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 5000).then(function(user){
       return runAuthFlow(user);
     }).catch(function(err){
       var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthReady(true);
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
       if (cloudErr && cloudErr.isTransientAuthLock) {
-        setCloudStatus("Sesion activa · reintentando nube");
+        setCloudStatus("Sesion ocupada · reintentando");
+      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || cloudErr.isCloudCooldown)) {
+        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
       } else {
-        if (cloudErr && (cloudErr.isBackendTimeout || cloudErr.isNetworkFallback)) {
-          traceOpsOpenCloudCircuit(30000);
-          setCloudStatus(cloudErr.isBackendTimeout ? "Nube saturada · trabajando local" : "Modo local · nube no disponible");
-          setRealtimeStatus("LOCAL_ONLY");
-        } else {
-          setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
-        }
+        setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
       }
     });
 
     return function(){
       stopRealtime();
+      try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
+      cloudCooldownTimerRef.current = null;
       try {
         var sub = unsub && unsub.data && unsub.data.subscription;
         if (sub && typeof sub.unsubscribe === "function") sub.unsubscribe();
