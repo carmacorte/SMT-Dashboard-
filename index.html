@@ -5379,7 +5379,7 @@ function App() {
   var authReady = authReadyArr[0]; var setAuthReady = authReadyArr[1];
   var cloudStatusArr = _useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "Configurando nube..." : "Modo local");
   var cloudStatus = cloudStatusArr[0]; var setCloudStatus = cloudStatusArr[1];
-  var realtimeStatusArr = _useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "CONNECTING" : "LOCAL_ONLY");
+  var realtimeStatusArr = _useState("LOCAL_ONLY");
   var realtimeStatus = realtimeStatusArr[0]; var setRealtimeStatus = realtimeStatusArr[1];
   var syncBusyArr = _useState(false);
   var syncBusy = syncBusyArr[0]; var setSyncBusy = syncBusyArr[1];
@@ -5394,15 +5394,15 @@ function App() {
     var map = {
       CONNECTED: { label: "Realtime activo", color: "#1A7A3C", bg: "#EEF8F1" },
       SUBSCRIBED: { label: "Realtime activo", color: "#1A7A3C", bg: "#EEF8F1" },
-      CONNECTING: { label: "Realtime conectando", color: "#B87820", bg: "#FBF5E6" },
+      CONNECTING: { label: "Conectando realtime...", color: "#B87820", bg: "#FBF5E6" },
       CHANNEL_ERROR: { label: "Realtime con error", color: "#C0392B", bg: "#FDF0EE" },
       TIMED_OUT: { label: "Realtime en espera", color: "#B87820", bg: "#FBF5E6" },
       ERROR: { label: "Realtime con error", color: "#C0392B", bg: "#FDF0EE" },
-      DISCONNECTED: { label: "Realtime desconectado", color: "#6A6560", bg: "#F3F1EE" },
-      CLOSED: { label: "Realtime desconectado", color: "#6A6560", bg: "#F3F1EE" },
+      DISCONNECTED: { label: "Sesion sin realtime", color: "#6A6560", bg: "#F3F1EE" },
+      CLOSED: { label: "Realtime detenido", color: "#6A6560", bg: "#F3F1EE" },
       LOCAL_ONLY: { label: "Modo local", color: "#6A6560", bg: "#F3F1EE" }
     };
-    return map[realtimeStatus] || { label: "Realtime " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
+    return map[realtimeStatus] || { label: "Estado realtime: " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
   })();
 
   React.useEffect(function(){
@@ -5568,33 +5568,90 @@ function App() {
 
   async function handleAuthSubmit() {
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
-      setAuthErrMsg("Configura TRACEOPS_SUPABASE.url y anonKey para habilitar nube.");
+      setAuthErrMsg("Backend no configurado. Se mantiene modo local.");
+      setCloudStatus("Modo local · sin backend");
+      setRealtimeStatus("LOCAL_ONLY");
       return;
     }
-    if (!authEmail.trim() || !authPassword.trim()) {
-      setAuthErrMsg("Completa correo y contrasena.");
+
+    var email = String(authEmail || "").trim();
+    var password = String(authPassword || "");
+
+    if (!email || !password) {
+      setAuthErrMsg("Ingresa correo y contrasena.");
+      setCloudStatus("Credenciales incompletas");
+      setRealtimeStatus("LOCAL_ONLY");
       return;
     }
-    setAuthErrMsg("");
+
     setSyncBusy(true);
+    setAuthErrMsg("");
+    localStorage.setItem("traceops_auth_email", email);
+
+    if (!authReady) {
+      setCloudStatus("Validando nube...");
+    } else {
+      setCloudStatus(authMode === "signup" ? "Creando cuenta..." : "Iniciando sesion...");
+    }
+
+    setRealtimeStatus("LOCAL_ONLY");
+
     try {
-      localStorage.setItem("traceops_auth_email", authEmail.trim());
       if (authMode === "signup") {
-        await window.TraceOpsCloud.signUp(authEmail.trim(), authPassword);
-        setCloudStatus("Cuenta creada. Revisa tu correo si Supabase pide confirmacion.");
-      } else {
-        await window.TraceOpsCloud.signIn(authEmail.trim(), authPassword);
-        setCloudStatus("Sesion iniciada.");
+        await window.TraceOpsCloud.signUp(email, password);
+        setCloudStatus("Cuenta creada · revisa confirmacion");
+        setAuthErrMsg("Si el proyecto requiere confirmacion por correo, valida tu email antes de sincronizar.");
+        setRealtimeStatus("LOCAL_ONLY");
+        return;
       }
-      var currentUser = await window.TraceOpsCloud.getUser();
-      setAuthUser(currentUser);
-      await syncAllLocalToCloud(rccaList);
-      await refreshCloudRcca({ baseList: rccaList });
+
+      await window.TraceOpsCloud.signIn(email, password);
+
+      setCloudStatus("Sesion activa");
+      setAuthErrMsg("");
+      setRealtimeStatus("DISCONNECTED");
       setAuthPassword("");
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
-      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
-      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : "Error de autenticacion");
+      var msg = cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr || "");
+      var low = String(msg || "").toLowerCase();
+
+      setAuthErrMsg(msg);
+
+      if (cloudErr && cloudErr.isNetworkFallback) {
+        setCloudStatus("Error de conexion con nube");
+        setRealtimeStatus("LOCAL_ONLY");
+      } else if (cloudErr && cloudErr.isTransientAuthLock) {
+        setCloudStatus("Sesion ocupada · reintentando");
+        setRealtimeStatus("DISCONNECTED");
+      } else if (
+        low.indexOf("invalid login credentials") >= 0 ||
+        low.indexOf("invalid credentials") >= 0 ||
+        low.indexOf("credenciales") >= 0
+      ) {
+        setCloudStatus("Credenciales invalidas");
+        setRealtimeStatus("LOCAL_ONLY");
+      } else if (
+        low.indexOf("email not confirmed") >= 0 ||
+        low.indexOf("correo no confirmado") >= 0
+      ) {
+        setCloudStatus("Correo pendiente de confirmacion");
+        setRealtimeStatus("LOCAL_ONLY");
+      } else {
+        setCloudStatus("Error de autenticacion");
+        setRealtimeStatus("LOCAL_ONLY");
+      }
+
+      try {
+        console.warn("[TraceOps][AuthSubmit]", {
+          mode: authMode,
+          message: msg,
+          originalMessage: cloudErr && cloudErr.originalMessage ? cloudErr.originalMessage : null,
+          networkFallback: !!(cloudErr && cloudErr.isNetworkFallback),
+          transientAuthLock: !!(cloudErr && cloudErr.isTransientAuthLock),
+          ua: navigator.userAgent
+        });
+      } catch (_) {}
     } finally {
       setSyncBusy(false);
     }
@@ -5606,7 +5663,8 @@ function App() {
     try {
       await window.TraceOpsCloud.signOut();
       setAuthUser(null);
-      setCloudStatus("Modo local");
+      setCloudStatus("Sin sesion en nube");
+      setRealtimeStatus("LOCAL_ONLY");
       setAuthErrMsg("");
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
@@ -5664,13 +5722,13 @@ function App() {
 
         if (user) {
           setCloudStatus("Sesion activa");
-          setRealtimeStatus("CONNECTING");
+          setRealtimeStatus("DISCONNECTED");
           await refreshCloudRcca();
           await new Promise(function(resolve){ setTimeout(resolve, 150); });
           startRealtime(user);
         } else {
           stopRealtime();
-          setCloudStatus("Modo local");
+          setCloudStatus("Sin sesion en nube");
           setRealtimeStatus("LOCAL_ONLY");
         }
 
@@ -10810,7 +10868,7 @@ function replaceMetaFiles(nextFiles){
               {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Modo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
             </div>
             <div style={{fontSize:10,lineHeight:1.4,color:syncBusy?"#CDE7C5":"rgba(255,255,255,.5)",padding:"8px 10px",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,background:"rgba(255,255,255,.03)"}}>
-              {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(cloudStatus+(authReady?"":" · cargando"))}
+              {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(!authReady?"Inicializando nube...":cloudStatus)}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:8,fontSize:10,fontWeight:700,color:realtimeUi.color,background:realtimeUi.bg,border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:"8px 10px"}}>
               <span style={{display:"inline-block",width:8,height:8,borderRadius:99,background:realtimeUi.color}}></span>
