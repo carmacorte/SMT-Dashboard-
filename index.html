@@ -543,6 +543,34 @@ tr:hover td{background:var(--g50)}
 }
 
 
+/* RCCA Builder form control normalization */
+.traceops-rcca-builder,
+.traceops-rcca-builder *{
+  -webkit-text-size-adjust:100%;
+}
+.traceops-rcca-builder input,
+.traceops-rcca-builder select,
+.traceops-rcca-builder textarea{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif !important;
+  font-size:15px !important;
+  line-height:1.35 !important;
+}
+.traceops-rcca-builder textarea{
+  line-height:1.45 !important;
+}
+.traceops-rcca-builder option{
+  font-size:15px !important;
+}
+@media (max-width:1180px){
+  .traceops-rcca-builder input,
+  .traceops-rcca-builder select,
+  .traceops-rcca-builder textarea,
+  .traceops-rcca-builder option{
+    font-size:16px !important;
+  }
+}
+
+
 /* ---- TraceOps embedded UI fix: ensure classes actually render ---- */
 .traceops-context{background:linear-gradient(135deg,#FFFFFF,#F7FAFF);border:1px solid #D9E6F7;border-radius:24px;padding:18px 20px;margin:0 0 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;box-shadow:0 10px 24px rgba(20,32,51,.05)}
 .traceops-context-main{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1}
@@ -5379,7 +5407,7 @@ function App() {
   var authReady = authReadyArr[0]; var setAuthReady = authReadyArr[1];
   var cloudStatusArr = _useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "Configurando nube..." : "Modo local");
   var cloudStatus = cloudStatusArr[0]; var setCloudStatus = cloudStatusArr[1];
-  var realtimeStatusArr = _useState("LOCAL_ONLY");
+  var realtimeStatusArr = _useState(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured() ? "CONNECTING" : "LOCAL_ONLY");
   var realtimeStatus = realtimeStatusArr[0]; var setRealtimeStatus = realtimeStatusArr[1];
   var syncBusyArr = _useState(false);
   var syncBusy = syncBusyArr[0]; var setSyncBusy = syncBusyArr[1];
@@ -5390,76 +5418,19 @@ function App() {
   var storageErrArr = _useState("");
   var storageErrMsg = storageErrArr[0]; var setStorageErrMsg = storageErrArr[1];
 
-  var cloudModeRef = React.useRef("OK");
-  var cloudCooldownRef = React.useRef(false);
-  var cloudCooldownTimerRef = React.useRef(null);
-
-  function traceOpsClearCloudCooldown() {
-    try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
-    cloudCooldownTimerRef.current = null;
-    cloudCooldownRef.current = false;
-    cloudModeRef.current = "OK";
-  }
-
-  function traceOpsTriggerCloudCooldown(reasonLabel) {
-    try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
-    cloudCooldownRef.current = true;
-    cloudModeRef.current = "DEGRADED";
-    setCloudStatus(reasonLabel || "Nube saturada · trabajando local");
-    setRealtimeStatus("LOCAL_ONLY");
-    cloudCooldownTimerRef.current = setTimeout(function(){
-      cloudCooldownRef.current = false;
-      cloudModeRef.current = "OK";
-      setCloudStatus(function(prev){
-        var low = String(prev || "").toLowerCase();
-        if (low.indexOf("sesion") >= 0) return prev;
-        return "Reintentando conexion...";
-      });
-    }, 30000);
-  }
-
-  async function traceOpsSafeCloudCall(promiseFactory, timeoutMs) {
-    if (cloudCooldownRef.current) {
-      var cooldownErr = new Error("cloud_cooldown");
-      cooldownErr.isCloudCooldown = true;
-      throw cooldownErr;
-    }
-    var ms = Math.max(1500, Number(timeoutMs || 5000));
-    try {
-      return await Promise.race([
-        Promise.resolve().then(promiseFactory),
-        new Promise(function(_, reject){
-          setTimeout(function(){
-            var timeoutErr = new Error("cloud_timeout");
-            timeoutErr.isCloudTimeout = true;
-            reject(timeoutErr);
-          }, ms);
-        })
-      ]);
-    } catch (err) {
-      var cloudErr = traceOpsNormalizeCloudError(err);
-      var raw = String((cloudErr && (cloudErr.originalMessage || cloudErr.message)) || err || "").toLowerCase();
-      var shouldCooldown = !!(cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) || raw.indexOf("timeout") >= 0 || raw.indexOf("504") >= 0 || raw.indexOf("connection terminated") >= 0 || raw.indexOf("failed to fetch") >= 0 || raw.indexOf("networkerror") >= 0 || raw.indexOf("too many concurrent requests") >= 0;
-      if (shouldCooldown) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
-      }
-      throw cloudErr;
-    }
-  }
-
   var realtimeUi = (function(){
     var map = {
       CONNECTED: { label: "Realtime activo", color: "#1A7A3C", bg: "#EEF8F1" },
       SUBSCRIBED: { label: "Realtime activo", color: "#1A7A3C", bg: "#EEF8F1" },
-      CONNECTING: { label: "Conectando realtime...", color: "#B87820", bg: "#FBF5E6" },
+      CONNECTING: { label: "Realtime conectando", color: "#B87820", bg: "#FBF5E6" },
       CHANNEL_ERROR: { label: "Realtime con error", color: "#C0392B", bg: "#FDF0EE" },
       TIMED_OUT: { label: "Realtime en espera", color: "#B87820", bg: "#FBF5E6" },
       ERROR: { label: "Realtime con error", color: "#C0392B", bg: "#FDF0EE" },
-      DISCONNECTED: { label: "Sesion sin realtime", color: "#6A6560", bg: "#F3F1EE" },
-      CLOSED: { label: "Realtime detenido", color: "#6A6560", bg: "#F3F1EE" },
+      DISCONNECTED: { label: "Realtime desconectado", color: "#6A6560", bg: "#F3F1EE" },
+      CLOSED: { label: "Realtime desconectado", color: "#6A6560", bg: "#F3F1EE" },
       LOCAL_ONLY: { label: "Modo local", color: "#6A6560", bg: "#F3F1EE" }
     };
-    return map[realtimeStatus] || { label: "Estado realtime: " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
+    return map[realtimeStatus] || { label: "Realtime " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
   })();
 
   React.useEffect(function(){
@@ -5589,11 +5560,9 @@ function App() {
       var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
       if (cloudErr && cloudErr.isTransientAuthLock) {
-        setCloudStatus("Sesion ocupada · reintentando");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || cloudErr.isCloudCooldown)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+        setCloudStatus("Sesion activa · reintentando nube");
       } else {
-        setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
+        setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
       }
       return [];
     } finally {
@@ -5627,77 +5596,33 @@ function App() {
 
   async function handleAuthSubmit() {
     if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
-      setAuthErrMsg("Backend no configurado. Se mantiene modo local.");
-      setCloudStatus("Modo local · sin backend");
-      setRealtimeStatus("LOCAL_ONLY");
+      setAuthErrMsg("Configura TRACEOPS_SUPABASE.url y anonKey para habilitar nube.");
       return;
     }
-    var email = String(authEmail || "").trim();
-    var password = String(authPassword || "");
-    if (!email || !password) {
-      setAuthErrMsg("Ingresa correo y contrasena.");
-      setCloudStatus("Credenciales incompletas");
-      setRealtimeStatus("LOCAL_ONLY");
+    if (!authEmail.trim() || !authPassword.trim()) {
+      setAuthErrMsg("Completa correo y contrasena.");
       return;
     }
     setAuthErrMsg("");
     setSyncBusy(true);
-    setRealtimeStatus("LOCAL_ONLY");
     try {
-      localStorage.setItem("traceops_auth_email", email);
-    } catch(_) {}
-    try {
-      setCloudStatus(authMode === "signup" ? "Creando cuenta..." : "Conectando...");
+      localStorage.setItem("traceops_auth_email", authEmail.trim());
       if (authMode === "signup") {
-        await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signUp(email, password); }, 7000);
-        setCloudStatus("Cuenta creada · revisa confirmacion");
-        setAuthErrMsg("Si el proyecto requiere confirmacion por correo, valida tu email antes de sincronizar.");
-        setRealtimeStatus("LOCAL_ONLY");
-        return;
+        await window.TraceOpsCloud.signUp(authEmail.trim(), authPassword);
+        setCloudStatus("Cuenta creada. Revisa tu correo si Supabase pide confirmacion.");
+      } else {
+        await window.TraceOpsCloud.signIn(authEmail.trim(), authPassword);
+        setCloudStatus("Sesion iniciada.");
       }
-      await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signIn(email, password); }, 7000);
-      var currentUser = await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 5000);
-      traceOpsClearCloudCooldown();
-      setAuthUser(currentUser || null);
-      setCloudStatus("Sesion activa");
-      setRealtimeStatus(currentUser && currentUser.id ? "DISCONNECTED" : "LOCAL_ONLY");
-      try { await syncAllLocalToCloud(rccaList); } catch(_) {}
-      try { await refreshCloudRcca({ baseList: rccaList }); } catch(_) {}
+      var currentUser = await window.TraceOpsCloud.getUser();
+      setAuthUser(currentUser);
+      await syncAllLocalToCloud(rccaList);
+      await refreshCloudRcca({ baseList: rccaList });
       setAuthPassword("");
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
-      var msg = cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr || "");
-      var low = String(msg || "").toLowerCase();
-      setAuthErrMsg(msg);
-      if (cloudErr && cloudErr.isCloudCooldown) {
-        setCloudStatus("Nube saturada · trabajando local");
-        setRealtimeStatus("LOCAL_ONLY");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || low.indexOf("cloud_timeout") >= 0 || low.indexOf("504") >= 0 || low.indexOf("connection terminated") >= 0 || low.indexOf("too many concurrent requests") >= 0)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
-      } else if (cloudErr && cloudErr.isTransientAuthLock) {
-        setCloudStatus("Sesion ocupada · reintentando");
-        setRealtimeStatus("DISCONNECTED");
-      } else if (low.indexOf("invalid login credentials") >= 0 || low.indexOf("invalid credentials") >= 0 || low.indexOf("credenciales") >= 0) {
-        setCloudStatus("Credenciales invalidas");
-        setRealtimeStatus("LOCAL_ONLY");
-      } else if (low.indexOf("email not confirmed") >= 0 || low.indexOf("correo no confirmado") >= 0) {
-        setCloudStatus("Correo pendiente de confirmacion");
-        setRealtimeStatus("LOCAL_ONLY");
-      } else {
-        setCloudStatus("Error de autenticacion");
-        setRealtimeStatus("LOCAL_ONLY");
-      }
-      try {
-        console.warn("[TraceOps][AuthSubmit]", {
-          mode: authMode,
-          message: msg,
-          originalMessage: cloudErr && cloudErr.originalMessage ? cloudErr.originalMessage : null,
-          networkFallback: !!(cloudErr && cloudErr.isNetworkFallback),
-          transientAuthLock: !!(cloudErr && cloudErr.isTransientAuthLock),
-          cooldown: !!(cloudErr && cloudErr.isCloudCooldown),
-          ua: navigator.userAgent
-        });
-      } catch (_) {}
+      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
+      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : "Error de autenticacion");
     } finally {
       setSyncBusy(false);
     }
@@ -5733,16 +5658,12 @@ function App() {
         if (realtimeSub && typeof realtimeSub.unsubscribe === "function") realtimeSub.unsubscribe();
       } catch(_){}
       realtimeSub = null;
-      setRealtimeStatus(window.authUser ? "DISCONNECTED" : "LOCAL_ONLY");
+      setRealtimeStatus(authUser ? "DISCONNECTED" : "LOCAL_ONLY");
     }
     var authFlowPromise = Promise.resolve();
 
     function startRealtime(user){
       stopRealtime();
-      if (cloudCooldownRef.current) {
-        setRealtimeStatus("LOCAL_ONLY");
-        return;
-      }
       var realtimeUserId = String(user && user.id ? user.id : "").trim();
       if (!realtimeUserId || !(window.TraceOpsCloud && window.TraceOpsCloud.subscribeRccaRealtime)) {
         setRealtimeStatus("DISCONNECTED");
@@ -5770,15 +5691,14 @@ function App() {
         if (typeof updateAuthUI === "function") updateAuthUI();
 
         if (user) {
-          traceOpsClearCloudCooldown();
           setCloudStatus("Sesion activa");
-          setRealtimeStatus("DISCONNECTED");
-          try { await traceOpsSafeCloudCall(function(){ return refreshCloudRcca(); }, 5000); } catch(_) {}
+          setRealtimeStatus("CONNECTING");
+          await refreshCloudRcca();
           await new Promise(function(resolve){ setTimeout(resolve, 150); });
           startRealtime(user);
         } else {
           stopRealtime();
-          setCloudStatus("Sin sesion en nube");
+          setCloudStatus("Modo local");
           setRealtimeStatus("LOCAL_ONLY");
         }
 
@@ -5788,13 +5708,11 @@ function App() {
         setAuthReady(true);
         setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
         if (cloudErr && cloudErr.isTransientAuthLock) {
-          setCloudStatus("Sesion ocupada · reintentando");
-          setRealtimeStatus("DISCONNECTED");
-        } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) {
-          traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+          setCloudStatus("Sesion activa · reintentando nube");
+          setRealtimeStatus("CONNECTING");
         } else {
-          setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
-          setRealtimeStatus("ERROR");
+          setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
+          setRealtimeStatus(cloudErr && cloudErr.isNetworkFallback ? "LOCAL_ONLY" : "ERROR");
         }
       });
       return authFlowPromise;
@@ -5804,25 +5722,21 @@ function App() {
       runAuthFlow(user);
     });
 
-    traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 5000).then(function(user){
+    window.TraceOpsCloud.getUser().then(function(user){
       return runAuthFlow(user);
     }).catch(function(err){
       var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthReady(true);
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
       if (cloudErr && cloudErr.isTransientAuthLock) {
-        setCloudStatus("Sesion ocupada · reintentando");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || cloudErr.isCloudCooldown)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+        setCloudStatus("Sesion activa · reintentando nube");
       } else {
-        setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
+        setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · nube no disponible" : ("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr))));
       }
     });
 
     return function(){
       stopRealtime();
-      try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
-      cloudCooldownTimerRef.current = null;
       try {
         var sub = unsub && unsub.data && unsub.data.subscription;
         if (sub && typeof sub.unsubscribe === "function") sub.unsubscribe();
@@ -6044,14 +5958,14 @@ function App() {
     var firstDate = src.primera_deteccion || (firstEv && firstEv.fecha) || src.fecha || '';
     var lastDate = src.ultima_deteccion || (lastEv && lastEv.fecha) || src.fecha || '';
     var detectionWindow = firstDate || lastDate ? [firstDate || 'N/D', lastDate || firstDate || 'N/D'].join(' -> ') : 'N/D';
-    var model = src.modelo || (firstEv && firstEv.modelo) || 'N/D';
-    var line = src.linea || (firstEv && firstEv.linea_estacion) || 'N/D';
-    var station = src.estacion_dominante || stations[0] || 'N/D';
-    var defect = src.defecto_dominante || defects[0] || 'N/A';
-    var pattern = src.patron_detectado || 'No pattern formally captured yet.';
-    var impact = src.alcance_exposicion || impacts[0] || 'Operational and quality impact under review.';
+    var model = src.modelo || src.model || (firstEv && firstEv.modelo) || 'N/D';
+    var line = src.linea || src.main_line || (firstEv && firstEv.linea_estacion) || 'N/D';
+    var station = src.estacion_dominante || src.main_station || stations[0] || 'N/D';
+    var defect = src.defecto_dominante || src.failure_mode || defects[0] || 'N/A';
+    var pattern = src.patron_detectado || src.w2h_mechanism || src.yokoten_trigger || 'No pattern formally captured yet.';
+    var impact = src.alcance_exposicion || src.impact_exposure_statement || impacts[0] || 'Operational and quality impact under review.';
     var tracePath = linked.length ? linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).join(' -> ') : 'No linked events.';
-    var complaintAnchor = src.problema || src.titulo_corto || (firstEv && (firstEv.evento_detectado_full || firstEv.evento_detectado)) || 'Complaint anchor pending.';
+    var complaintAnchor = src.problema || src.complaint_anchor_full || src.complaint_anchor_short || src.titulo_corto || (firstEv && (firstEv.evento_detectado_full || firstEv.evento_detectado)) || 'Complaint anchor pending.';
     var occurrenceSummary = traceOpsEightdHasText(src.causa_raiz)
       ? ('Probable occurrence mechanism supported by current evidence: ' + src.causa_raiz)
       : (traceOpsEightdHasText(src.hipotesis)
@@ -6091,10 +6005,10 @@ function App() {
       recurrence: src.recurrencia || 'N/D',
       analysisMaturity: src.madurez_analisis || 'N/D',
       evidenceSummary: src.evidencia_resumen || '',
-      lotBatch: src.lot_batch || src.lote_afectado || '',
-      serialRange: src.serial_range || src.seriales_afectados || '',
-      buildWindow: src.build_window || detectionWindow,
-      materialAffected: src.material_afectado || '',
+      lotBatch: src.lot_batch || src.trace_supplier_lot || src.supplier_lot || src.lote_afectado || '',
+      serialRange: src.serial_range || src.trace_serial_batch || src.serial_batch || src.seriales_afectados || '',
+      buildWindow: src.build_window || ([src.detection_window_start || '', src.detection_window_end || ''].filter(Boolean).join(' -> ')) || detectionWindow,
+      materialAffected: src.material_afectado || src.material_affected || '',
       exposure: src.alcance_exposicion || '',
       customerImpact: src.impacto_cliente || '',
       prevention: src.accion_preventiva || '',
@@ -6109,6 +6023,15 @@ function App() {
 
   function traceOpsEightdBuildTeamText(model) {
     var proofPoints = [];
+    var src = model && model.source ? model.source : {};
+    if (Array.isArray(src.d1_team_members) && src.d1_team_members.length) {
+      var teamRows = src.d1_team_members.map(function(row){ return (row.role || 'Role') + ': ' + (row.name || 'Pending') + ' · ' + (row.email || 'Pending'); }).join(' | ');
+      proofPoints.push('D1 team: ' + teamRows);
+    }
+    if (Array.isArray(src.escalation_members) && src.escalation_members.length) {
+      var escRows = src.escalation_members.map(function(row){ return (row.level || 'Level') + ': ' + (row.owner || 'Pending') + ' · ' + (row.email || 'Pending'); }).join(' | ');
+      proofPoints.push('Escalation: ' + escRows);
+    }
     var owner = model.owners.length ? model.owners[0] : 'Quality owner pending';
     var roleSet = ['Quality'];
     var blob = [model.line || '', model.station || '', model.defect || '', model.pattern || '', model.rootCause || '', model.hypothesis || ''].join(' ').toLowerCase();
@@ -8176,73 +8099,34 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     return slide;
   }
 
-  function traceOpsPptAppendixCheckpointRows(normalized, model){
-    var evidenceText = traceOpsPptEvidenceSummaryText(normalized, model);
-    var correlationText = traceOpsPptCorrelationText(normalized, model);
-    var rows = [
-      [
-        'Customer symptom',
-        traceOpsEightdHasText(normalized && normalized.complaint_anchor) ? 'Available' : 'Pending',
-        'Keep observable customer or internal symptom visible'
-      ],
-      [
-        'Golden reference',
-        /good part|reference|golden/i.test(String(correlationText || '') + ' ' + String(evidenceText || '')) ? 'Available' : 'Review',
-        'Maintain expected-good condition even if pending'
-      ],
-      [
-        'Installed vs removed state comparison',
-        /installed|removed|comparison|mismatch|wrong component/i.test(String(evidenceText || '')) ? 'Available' : 'Review',
-        'Do not suppress comparison checkpoint'
-      ],
-      [
-        'Serial / batch trace',
-        (traceOpsEightdHasText(model && model.tracePath) || traceOpsEightdHasText(model && model.detectionWindow)) ? 'Pending' : 'Review',
-        'Preserve lot or serial trace status'
-      ],
-      [
-        'Control gap explanation',
-        traceOpsEightdHasText(model && model.escapeSummary) ? 'Available' : 'Pending',
-        'State why earlier control did not trigger'
-      ],
-      [
-        'Corrective action proof',
-        traceOpsEightdHasText(normalized && normalized.d5_pca) || (model && model.actions && model.actions.length) ? 'Under validation' : 'Pending',
-        'Closure requires post-action proof'
-      ]
-    ];
-    return rows;
-  }
-
   async function traceOpsPptBuildAppendixSlide(pptx, normalized, model, linked){
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'Appendix A - Traceability & Evidence', 'Foxconn-aligned traceability and evidence summary', 8, model.evidenceRefs.length ? 'Under Validation' : 'Draft');
+    slide.addText(traceOpsPptSafe('Event timeline', 40), {x:0.42, y:1.66, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(traceOpsPptTimelineTable(normalized, linked, model), {x:0.42, y:1.90, w:12.48, h:0.72, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.8, margin:0.04, rowH:[0.20,0.44], valign:'mid', align:'center', fit:'shrink'});
 
-    slide.addText(traceOpsPptSafe('Flow by station & date', 40), {x:0.42, y:1.66, w:2.6, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addText('Visual path of the case using the detected station and date references.', {x:2.46, y:1.68, w:7.10, h:0.14, fontFace:'Segoe UI', fontSize:8.3, color:'5F766C', margin:0, fit:'shrink'});
-    traceOpsPptDrawTraceFlow(slide, traceOpsPptBuildFlowNodes(normalized, model), 0.42, 1.92, 9.70, 1.10);
+    slide.addText(traceOpsPptSafe('Flow by station & date', 40), {x:0.42, y:2.74, w:2.6, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText('Visual path of the case using the detected station and date references.', {x:2.46, y:2.76, w:10.44, h:0.14, fontFace:'Segoe UI', fontSize:8.3, color:'5F766C', margin:0, fit:'shrink'});
+    traceOpsPptDrawTraceFlow(slide, traceOpsPptBuildFlowNodes(normalized, model), 0.42, 2.96, 12.48, 0.98);
+
+    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:4.10, w:8.54, h:0.74, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.4, margin:0.04, rowH:[0.18,0.48], colW:[4.18,4.16], fit:'shrink'});
 
     var appendixBad = await traceOpsPptPickEvidenceImage(normalized, 'bad');
     var appendixGood = await traceOpsPptPickEvidenceImage(normalized, 'good');
-    await traceOpsPptRenderEvidencePanel(slide, {x:10.34, y:1.92, w:1.24, h:1.10, label:'Bad part', caption:'Evidence view', tone:'bad', imageData:appendixBad});
-    await traceOpsPptRenderEvidencePanel(slide, {x:11.72, y:1.92, w:1.24, h:1.10, label:'Good part', caption:'Reference view', tone:'good', imageData:appendixGood});
+    await traceOpsPptRenderEvidencePanel(slide, {x:9.16, y:4.10, w:1.78, h:0.74, label:'Bad part', caption:'Evidence view', tone:'bad', imageData:appendixBad});
+    await traceOpsPptRenderEvidencePanel(slide, {x:11.12, y:4.10, w:1.78, h:0.74, label:'Good part', caption:'Reference view', tone:'good', imageData:appendixGood});
 
-    slide.addText('Trace validation (live checkpoints)', {x:0.42, y:3.18, w:2.8, h:0.14, fontFace:'Segoe UI', fontSize:8.2, color:'6B7280', margin:0});
-
+    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:4.98, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:5.00, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'5F766C', margin:0, fit:'shrink'});
     var evidenceRows = traceOpsPptDetailedEventRows(normalized, model);
+    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:5.24, w:12.48, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:7.8, margin:0.04, rowH:0.20, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], fit:'shrink'});
+
     var firstEvidence = (Array.isArray(evidenceRows) && evidenceRows.length ? evidenceRows[0] : ['Pending','Pending','Pending','Pending','Pending','Pending','TraceOps']);
+    traceOpsPptBox(slide, 0.42, 6.14, 12.48, 0.42, 'FAFCFF');
+    traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 6.23, 1.4);
+    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending') + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:6.24, w:10.70, h:0.12, fontFace:'Segoe UI', fontSize:8.4, color:'102A43', margin:0, fit:'shrink'});
 
-    traceOpsPptBox(slide, 0.42, 3.34, 12.48, 0.42, 'FAFCFF');
-    traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 3.43, 1.4);
-    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || model.line || 'Pending') + ' | Station: ' + String(firstEvidence[2] || model.station || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || model.station || 'Pending') + ' | Result: ' + String(firstEvidence[5] || model.traceResult || 'Pending'), 180), {x:1.92, y:3.44, w:10.70, h:0.12, fontFace:'Segoe UI', fontSize:8.2, color:'102A43', margin:0, fit:'shrink'});
-
-    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}]].concat(traceOpsPptAppendixCheckpointRows(normalized, model))), {x:0.42, y:3.82, w:12.48, h:0.52, border:{type:'solid', pt:1, color:'102A43'}, fill:'102A43', color:'FFFFFF', fontFace:'Segoe UI', fontSize:7.6, margin:0.03, rowH:[0.13,0.075,0.075,0.075,0.075,0.075,0.075], colW:[2.70,1.78,7.90], fit:'shrink'});
-
-    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 150), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 150)]]), {x:0.42, y:4.54, w:8.90, h:0.70, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.2, margin:0.04, rowH:[0.18,0.44], colW:[4.38,4.34], fit:'shrink'});
-
-    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:5.40, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:5.42, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.2, color:'5F766C', margin:0, fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:5.66, w:12.48, h:0.46, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.0, margin:0.03, rowH:[0.16,0.18], colW:[1.80,1.08,1.86,2.40,1.72,1.40,2.22], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) || !!appendixGood ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) || !!appendixBad ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.62, w:12.48, h:0.44, border:{type:'solid', pt:1, color:'102A43'}, fill:'102A43', color:'FFFFFF', fontFace:'Segoe UI', fontSize:7.8, margin:0.03, rowH:0.065, colW:[2.86,1.40,8.22], fit:'shrink'});
     return slide;
   }
 
@@ -10123,382 +10007,464 @@ function exportEightdPpt(draft) {
     );
   }
 
+
   function RccaForm(props){
-    var init=props.init||{};var onSave=props.onSave;var onClose=props.onClose;
+    var init = props.init || {};
+    var onSave = props.onSave;
+    var onClose = props.onClose;
     var incomingDraft = readRccaDraft();
     var canUseDraft = !!(incomingDraft && incomingDraft.form && isFreshRccaDraft(incomingDraft) && ((init.rcca_id && incomingDraft.form && (incomingDraft.form.original_rcca_id===init.rcca_id || incomingDraft.form.rcca_id===init.rcca_id)) || (!init.rcca_id && incomingDraft.mode==="new") || init.__restored_draft));
     if (canUseDraft) init = Object.assign({}, init, incomingDraft.form, { __restored_draft: true });
-    var isEdit=!!init.rcca_id;
-    var restoredDraft=!!init.__restored_draft;
-    var basicFields=[{key:"problema",label:"Problem",rows:2,required:true},{key:"causa_raiz",label:"Root Cause",rows:3,required:true},{key:"contencion",label:"Containment",rows:2},{key:"accion_correctiva",label:"Corrective Action",rows:2},{key:"accion_preventiva",label:"Preventive Action",rows:2},{key:"patron_detectado",label:"Patron Detectado",rows:1},{key:"leccion_aprendida",label:"Leccion Aprendida",rows:2}];
-    var insightFields=[{key:"hipotesis",label:"Hypothesis",rows:2},{key:"evidencia_resumen",label:"Evidence Summary",rows:3},{key:"validacion",label:"Validation",rows:2},{key:"alcance_exposicion",label:"Scope / Exposure",rows:2},{key:"material_afectado",label:"Affected Material",rows:2}];
-    var initIds=(init.event_ids||[]).slice();
-    var formArr=_useState(function(){
-      var ids=initIds;
-      return Object.assign({
-        rcca_id:init.rcca_id||genRccaId(ids,ev),
-        original_rcca_id:init.rcca_id||genRccaId(ids,ev),
-        event_ids:ids,
-        modelo:init.modelo||"",
-        linea:init.linea||"",
-        fecha:init.fecha||new Date().toISOString().slice(0,10),
-        titulo_corto:init.titulo_corto||"",
-        tipo_caso:init.tipo_caso||"",
-        estatus_rcca:init.estatus_rcca||"",
-        severidad:init.severidad||"",
-        recurrencia:init.recurrencia||"",
-        madurez_analisis:init.madurez_analisis||"",
-        estacion_dominante:init.estacion_dominante||"",
-        defecto_dominante:init.defecto_dominante||"",
-        primera_deteccion:init.primera_deteccion||"",
-        ultima_deteccion:init.ultima_deteccion||"",
-        problema:init.problema||"",
-        causa_raiz:init.causa_raiz||"",
-        contencion:init.contencion||"",
-        accion_correctiva:init.accion_correctiva||"",
-        accion_preventiva:init.accion_preventiva||"",
-        patron_detectado:init.patron_detectado||"",
-        leccion_aprendida:init.leccion_aprendida||"",
-        hipotesis:init.hipotesis||"",
-        evidencia_resumen:init.evidencia_resumen||"",
-        validacion:init.validacion||"",
-        alcance_exposicion:init.alcance_exposicion||"",
-        material_afectado:init.material_afectado||"",
-        meta_files:traceOpsNormalizeMetaFiles(init.meta_files||[]),
-        source:init.source||"manual",
-        owner_email:init.owner_email||"",
-        created_at:init.created_at||"",
-        updated_at:init.updated_at||""
-      },{});
-    });
-    var form=formArr[0];var setForm=formArr[1];
-    var insightsOpenArr=_useState(function(){return typeof init.__draft_insights_open === "boolean" ? init.__draft_insights_open : !!(init.hipotesis||init.evidencia_resumen||init.validacion||init.alcance_exposicion||init.material_afectado);});
-    var insightsOpen=insightsOpenArr[0];var setInsightsOpen=insightsOpenArr[1];
-    var frontOpenArr=_useState(function(){return typeof init.__draft_front_open === "boolean" ? init.__draft_front_open : !!(init.titulo_corto||init.tipo_caso||init.estatus_rcca||init.severidad||init.recurrencia||init.madurez_analisis||init.estacion_dominante||init.defecto_dominante);});
-    var frontOpen=frontOpenArr[0];var setFrontOpen=frontOpenArr[1];
-    var metaInputRef=_useRef(null);
-    
-async function traceOpsCompressImageFileIfNeeded(file, opts){
-  var options = Object.assign({
-    maxBytes: 15 * 1024 * 1024,
-    maxDimension: 2200,
-    jpegQualityStart: 0.9,
-    jpegQualityMin: 0.55
-  }, opts || {});
-  if (!file || !/^image\//i.test(String(file.type || ''))) return file;
-  if ((file.size || 0) <= options.maxBytes) return file;
 
-  try {
-    var dataUrl = await new Promise(function(resolve, reject){
-      var fr = new FileReader();
-      fr.onload = function(){ resolve(fr.result); };
-      fr.onerror = reject;
-      fr.readAsDataURL(file);
-    });
-
-    var img = await new Promise(function(resolve, reject){
-      var im = new Image();
-      im.onload = function(){ resolve(im); };
-      im.onerror = reject;
-      im.src = dataUrl;
-    });
-
-    var w = img.naturalWidth || img.width || 0;
-    var h = img.naturalHeight || img.height || 0;
-    if (!w || !h) return file;
-
-    var scale = Math.min(1, options.maxDimension / Math.max(w, h));
-    var tw = Math.max(1, Math.round(w * scale));
-    var th = Math.max(1, Math.round(h * scale));
-
-    var canvas = document.createElement('canvas');
-    canvas.width = tw;
-    canvas.height = th;
-    var ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) return file;
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, tw, th);
-    ctx.drawImage(img, 0, 0, tw, th);
-
-    var outType = /^image\/png$/i.test(String(file.type || '')) ? 'image/jpeg' : (file.type || 'image/jpeg');
-    var q = options.jpegQualityStart;
-    var blob = await new Promise(function(resolve){ canvas.toBlob(resolve, outType, q); });
-    while (blob && blob.size > options.maxBytes && q > options.jpegQualityMin) {
-      q = Math.max(options.jpegQualityMin, q - 0.08);
-      blob = await new Promise(function(resolve){ canvas.toBlob(resolve, outType, q); });
-    }
-    if (!blob) return file;
-    if (blob.size > options.maxBytes) return file;
-
-    var newName = String(file.name || 'image').replace(/\.(png|jpg|jpeg|webp)$/i, '');
-    var ext = outType === 'image/jpeg' ? '.jpg' : '';
-    return new File([blob], newName + ext, { type: outType, lastModified: Date.now() });
-  } catch (_) {
-    return file;
-  }
-}
-
-async function traceOpsPrepareMetaFilesWithCompression(fileList, limits){
-  var list = Array.from(fileList || []);
-  var prepared = [];
-  for (var i = 0; i < list.length; i++) {
-    var file = list[i];
-    if (/^image\//i.test(String(file.type || '')) && (file.size || 0) > ((limits && limits.perFile) || (15 * 1024 * 1024))) {
-      file = await traceOpsCompressImageFileIfNeeded(file, { maxBytes: (limits && limits.perFile) || (15 * 1024 * 1024) });
-    }
-    prepared.push(file);
-  }
-  return prepared;
-}
-
-
-function replaceMetaFiles(nextFiles){
-      var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});
-      n.meta_files=traceOpsNormalizeMetaFiles(nextFiles||[]);
-      n.meta = Object.assign({}, n.meta || {}, { evidence: traceOpsBuildEvidenceMetaFromFiles(n.meta_files) });
-      setForm(n);
-    }
-    function setMetaFileRole(fileId, role){
-      var nextFiles = traceOpsNormalizeMetaFiles(form.meta_files || []).map(function(item){
-        if (item.id !== fileId) return item;
-        var next = Object.assign({}, item);
-        next.evidence_role = traceOpsNormalizeEvidenceRole(role);
-        return next;
-      });
-      replaceMetaFiles(nextFiles);
-    }
-    function removeMetaFile(fileId){
-      replaceMetaFiles((form.meta_files||[]).filter(function(item){ return item.id !== fileId; }));
-      try { if (metaInputRef.current) metaInputRef.current.value = ""; } catch(_) {}
-    }
-    function downloadMetaFile(item){
-      if (!item || !item.data_url) return;
-      var a=document.createElement('a');
-      a.href=item.data_url;
-      a.download=item.name||'meta-file';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function(){ try { document.body.removeChild(a); } catch(_){} }, 50);
-    }
-    async function addMetaFiles(fileList){
-      var incoming=Array.prototype.slice.call(fileList||[]);
-      if(!incoming.length) return;
-      var current=traceOpsNormalizeMetaFiles(form.meta_files||[]);
-      if(current.length + incoming.length > TRACEOPS_RCCA_META_MAX_FILES){
-        alert('Puedes guardar hasta ' + TRACEOPS_RCCA_META_MAX_FILES + ' archivos meta por RCCA.');
-        return;
+    var isEdit = !!init.rcca_id;
+    var restoredDraft = !!init.__restored_draft;
+    var initIds = (init.event_ids || []).slice();
+    var metaInputRef = _useRef(null);
+    var compactArr = _useState(function(){ try { return window.innerWidth <= 1180; } catch(_) { return false; } });
+    var compact = compactArr[0]; var setCompact = compactArr[1];
+    React.useEffect(function(){
+      function onResize(){
+        try { setCompact(window.innerWidth <= 1180); } catch(_) {}
       }
-      var totalBytes=current.reduce(function(sum,item){ return sum + Number(item.size||0); }, 0);
-      var prepared=[];
-      for(var i=0;i<incoming.length;i++){
-        var file=incoming[i];
-        var ext=traceOpsMetaExt(file && file.name);
-        if(TRACEOPS_RCCA_META_ACCEPT.indexOf(ext) < 0){
-          alert('Formato no permitido: ' + (file && file.name ? file.name : 'archivo') + '. Usa ZIP, PPT/PPTX o JPG/PNG.');
-          return;
-        }
-        if(file.size > TRACEOPS_RCCA_META_MAX_FILE_BYTES){
-          alert('El archivo ' + file.name + ' excede el limite de ' + traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_FILE_BYTES) + '.');
-          return;
-        }
+      onResize();
+      window.addEventListener('resize', onResize);
+      return function(){ window.removeEventListener('resize', onResize); };
+    }, []);
+    function stackGrid(cols){ return compact ? '1fr' : cols; }
+    function rowGrid(cols){ return compact ? '1fr' : cols; }
+    function fieldShellStyle(spanFull){
+      return {
+        width:'100%',
+        minWidth:0,
+        maxWidth: compact ? '100%' : (spanFull ? '100%' : '560px'),
+        justifySelf:'stretch'
+      };
+    }
+    function controlBaseStyle(multiline){
+      return {
+        width:'100%',
+        minWidth:0,
+        border:'1.5px solid #DDDBD7',
+        borderRadius:12,
+        padding: compact ? '12px 14px' : '10px 12px',
+        fontSize: compact ? 16 : 15,
+        color:'#1A1714',
+        outline:'none',
+        background:'#fff',
+        lineHeight: multiline ? 1.45 : 1.3
+      };
+    }
+    function rowButtonStyle(){ return {width:compact?'100%':'auto',height:38,border:'1px solid #DDDBD7',borderRadius:9,background:'#fff',padding:'0 10px',cursor:'pointer'}; }
+    var stepDefs = [
+      { key:'identity', label:'1. Identity' },
+      { key:'d1d2', label:'2. D1-D2' },
+      { key:'evidence', label:'3. Evidence' },
+      { key:'d3', label:'4. D3' },
+      { key:'d4a', label:'5. D4A' },
+      { key:'d4b', label:'6. D4B' },
+      { key:'d5d6', label:'7. D5-D6' },
+      { key:'d7d8', label:'8. D7-D8 + Appendix' }
+    ];
+
+    function safeList(v){ return Array.isArray(v) ? v.slice() : []; }
+    function ensureRows(existing, defs){
+      var rows = safeList(existing);
+      return defs.map(function(def, idx){
+        var row = rows[idx] || {};
+        return Object.assign({}, def, row);
+      });
+    }
+    function isoToDisplay(v){
+      var s = String(v || '').trim();
+      if (!s) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        var p = s.split('-');
+        return p[2] + '/' + p[1] + '/' + p[0];
+      }
+      return s;
+    }
+    function displayToIso(v){
+      var s = String(v || '').trim();
+      if (!s) return '';
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+        var p = s.split('/');
+        return p[2] + '-' + p[1] + '-' + p[0];
+      }
+      return s;
+    }
+    function joinNonEmpty(list, sep){ return (list || []).filter(function(x){ return !!String(x || '').trim(); }).join(sep || '\n'); }
+    function summarizeTable(rows, formatter){ return (rows || []).map(function(row){ return formatter(row); }).filter(function(x){ return !!String(x || '').trim(); }).join('\n'); }
+    function initialTeamRows(){
+      return ensureRows(init.d1_team_members, [
+        { role:'PM', name:'', email:'' },
+        { role:'QE', name:'', email:init.owner_email || '' },
+        { role:'SQE', name:'', email:'' },
+        { role:'TE', name:'', email:'' },
+        { role:'PE', name:'', email:'' },
+        { role:'PD', name:'', email:'' }
+      ]);
+    }
+    function initialEscalationRows(){
+      return ensureRows(init.escalation_members, [
+        { level:'Process Coordinator', owner:'', email:'' },
+        { level:'Quality Coordinator', owner:'', email:init.owner_email || '' },
+        { level:'Quality Manager', owner:'', email:'' },
+        { level:'TE Manager', owner:'', email:'' },
+        { level:'Manufacturing Manager', owner:'', email:'' },
+        { level:'BU Manager', owner:'', email:'' }
+      ]);
+    }
+    function initialContainmentRows(){
+      return safeList(init.containment_rows && init.containment_rows.length ? init.containment_rows : [
+        { location:'SMT', qty_suspect:'', qty_good:'', qty_bad:'', responsible:init.owner_email || '', clean_date:'', status:'Contained' }
+      ]);
+    }
+    function initialContainmentActions(){
+      return safeList(init.containment_action_rows && init.containment_action_rows.length ? init.containment_action_rows : [
+        { action:'', owner:init.owner_email || '', start:'', completion:'', status:'Pending', proof:'' }
+      ]);
+    }
+    function initialWhyRows(prefix){
+      var existing = safeList(init[prefix]);
+      var out = [];
+      for (var i = 0; i < 5; i++) out.push(existing[i] || { index:i+1, text:'' });
+      return out;
+    }
+    function initialActionsRows(){
+      return safeList(init.d5_actions && init.d5_actions.length ? init.d5_actions : [
+        { axis:'Occurrence', action_text:'', addresses:'', owner:'', ecd:'', status:'Open', proof_linked:'' }
+      ]);
+    }
+    function initialVerificationRows(){
+      return safeList(init.d6_verifications && init.d6_verifications.length ? init.d6_verifications : [
+        { axis:'Occurrence', linked_action_id:'', measurement_method:'', validation_result:'', responsible:'', completion_date:'', acceptance_criteria:'', recurrence_status:'', conclusion:'' }
+      ]);
+    }
+    function initialFlowRows(){
+      return safeList(init.appendix_flow && init.appendix_flow.length ? init.appendix_flow : [
+        { stage:'Build', station:init.linea || '', timestamp:init.primera_deteccion || init.fecha || '', source:'TraceOps', result:'', observation:'' },
+        { stage:'Complaint', station:init.estacion_dominante || init.linea || '', timestamp:init.ultima_deteccion || init.fecha || '', source:'RCCA', result:'', observation:'' }
+      ]);
+    }
+    function initialTraceRows(){
+      return safeList(init.appendix_traceability && init.appendix_traceability.length ? init.appendix_traceability : [
+        { process_step:init.estacion_dominante || 'Process', line:init.linea || '', station:init.estacion_dominante || '', equipment_tester:init.estacion_dominante || '', timestamp:init.fecha || '', result:'', source:init.rcca_id || 'TraceOps', why_it_matters:'' }
+      ]);
+    }
+
+    var formArr = _useState(function(){
+      var ids = initIds;
+      var defaultTitle = init.titulo_corto || init.short_title || (init.problema ? String(init.problema).slice(0, 80) : '');
+      var defaultStart = displayToIso(init.primera_deteccion || init.fecha || new Date().toISOString().slice(0,10));
+      var defaultEnd = displayToIso(init.ultima_deteccion || init.fecha || new Date().toISOString().slice(0,10));
+      return Object.assign({
+        rcca_id: init.rcca_id || genRccaId(ids, ev),
+        original_rcca_id: init.rcca_id || genRccaId(ids, ev),
+        event_ids: ids,
+        modelo: init.modelo || '',
+        linea: init.linea || '',
+        fecha: init.fecha || new Date().toISOString().slice(0,10),
+        titulo_corto: defaultTitle,
+        tipo_caso: init.tipo_caso || '',
+        estatus_rcca: init.estatus_rcca || 'NUEVO',
+        severidad: init.severidad || '',
+        recurrencia: init.recurrencia || '',
+        madurez_analisis: init.madurez_analisis || '',
+        estacion_dominante: init.estacion_dominante || '',
+        defecto_dominante: init.defecto_dominante || '',
+        primera_deteccion: init.primera_deteccion || '',
+        ultima_deteccion: init.ultima_deteccion || '',
+        problema: init.problema || '',
+        causa_raiz: init.causa_raiz || '',
+        contencion: init.contencion || '',
+        accion_correctiva: init.accion_correctiva || '',
+        accion_preventiva: init.accion_preventiva || '',
+        patron_detectado: init.patron_detectado || '',
+        leccion_aprendida: init.leccion_aprendida || '',
+        hipotesis: init.hipotesis || '',
+        evidencia_resumen: init.evidencia_resumen || '',
+        validacion: init.validacion || '',
+        alcance_exposicion: init.alcance_exposicion || '',
+        material_afectado: init.material_afectado || '',
+        meta_files: traceOpsNormalizeMetaFiles(init.meta_files || []),
+        source: init.source || 'manual',
+        owner_email: init.owner_email || '',
+        owner_name: init.owner_name || '',
+        created_at: init.created_at || '',
+        updated_at: init.updated_at || '',
+        risk_level: init.risk_level || '',
+        main_station: init.main_station || init.estacion_dominante || init.linea || '',
+        failure_mode: init.failure_mode || init.defecto_dominante || '',
+        detection_window_start: init.detection_window_start || defaultStart,
+        detection_window_end: init.detection_window_end || defaultEnd,
+        customer_exposure: init.customer_exposure || '',
+        customer_notified: init.customer_notified || '',
+        complaint_anchor_short: init.complaint_anchor_short || defaultTitle,
+        complaint_anchor_full: init.complaint_anchor_full || init.problema || '',
+        impact_exposure_statement: init.impact_exposure_statement || init.alcance_exposicion || '',
+        trace_sku_version: init.trace_sku_version || init.sku_version || '',
+        trace_supplier_lot: init.trace_supplier_lot || init.lot_batch || init.lote_afectado || '',
+        trace_serial_batch: init.trace_serial_batch || init.serial_range || init.seriales_afectados || '',
+        trace_date_code: init.trace_date_code || '',
+        trace_component_pn: init.trace_component_pn || '',
+        trace_equipment_tester: init.trace_equipment_tester || init.estacion_dominante || '',
+        trace_barcodes: init.trace_barcodes || '',
+        w2h_who: init.w2h_who || '',
+        w2h_what: init.w2h_what || init.problema || '',
+        w2h_where: init.w2h_where || [init.linea || '', init.estacion_dominante || ''].filter(Boolean).join(' · '),
+        w2h_when: init.w2h_when || [isoToDisplay(defaultStart), isoToDisplay(defaultEnd)].filter(Boolean).join(' -> '),
+        w2h_how: init.w2h_how || init.estacion_dominante || '',
+        w2h_why: init.w2h_why || '',
+        w2h_how_many: init.w2h_how_many || '',
+        w2h_mechanism: init.w2h_mechanism || init.patron_detectado || '',
+        w2h_total_units: init.w2h_total_units || '',
+        w2h_suspect_units: init.w2h_suspect_units || '',
+        w2h_clean_units: init.w2h_clean_units || '',
+        w2h_risk_units: init.w2h_risk_units || '',
+        w2h_clean_yield: init.w2h_clean_yield || '',
+        w2h_ojt_touch_rate: init.w2h_ojt_touch_rate || '',
+        d1_team_members: initialTeamRows(),
+        escalation_members: initialEscalationRows(),
+        containment_rows: initialContainmentRows(),
+        containment_action_rows: initialContainmentActions(),
+        shielding_owner: init.shielding_owner || init.owner_email || '',
+        shielding_start: init.shielding_start || '',
+        shielding_status: init.shielding_status || '',
+        shielding_statement: init.shielding_statement || '',
+        occurrence_short: init.occurrence_short || init.hipotesis || '',
+        occurrence_full: init.occurrence_full || init.causa_raiz || '',
+        occurrence_status: init.occurrence_status || 'probable',
+        cause_machine: init.cause_machine || '',
+        cause_man: init.cause_man || '',
+        cause_method: init.cause_method || '',
+        cause_measurement: init.cause_measurement || '',
+        cause_material: init.cause_material || '',
+        cause_environment: init.cause_environment || '',
+        occurrence_whys: initialWhyRows('occurrence_whys'),
+        occurrence_support_short: init.occurrence_support_short || init.evidencia_resumen || '',
+        occurrence_support_full: init.occurrence_support_full || init.evidencia_resumen || '',
+        occurrence_conclusion: init.occurrence_conclusion || init.causa_raiz || '',
+        escape_point: init.escape_point || init.punto_escape || '',
+        expected_detection_control: init.expected_detection_control || '',
+        escape_failure_mode: init.escape_failure_mode || init.defecto_dominante || '',
+        control_gap: init.control_gap || '',
+        detection_gap_identified: init.detection_gap_identified || '',
+        escape_why_short: init.escape_why_short || '',
+        escape_why_full: init.escape_why_full || '',
+        escape_proof_event: init.escape_proof_event || '',
+        escape_status: init.escape_status || 'pending',
+        escape_whys: initialWhyRows('escape_whys'),
+        escape_conclusion_short: init.escape_conclusion_short || '',
+        escape_conclusion_full: init.escape_conclusion_full || '',
+        d5_actions: initialActionsRows(),
+        d6_verifications: initialVerificationRows(),
+        preventive_actions_text: init.preventive_actions_text || init.accion_preventiva || '',
+        replication_scope: init.replication_scope || '',
+        lesson_learned_text: init.lesson_learned_text || init.leccion_aprendida || '',
+        yokoten_trigger: init.yokoten_trigger || init.patron_detectado || '',
+        deployment_owner: init.deployment_owner || init.owner_email || '',
+        deployment_status: init.deployment_status || '',
+        closure_basis: init.closure_basis || '',
+        closure_statement_short: init.closure_statement_short || '',
+        closure_statement_full: init.closure_statement_full || '',
+        closure_open_items: init.closure_open_items || '',
+        closure_status: init.closure_status || '',
+        appendix_flow: initialFlowRows(),
+        appendix_traceability: initialTraceRows()
+      }, {});
+    });
+    var form = formArr[0]; var setForm = formArr[1];
+    var stepArr = _useState(function(){ return init.__draft_builder_step || 'identity'; });
+    var currentStep = stepArr[0]; var setCurrentStep = stepArr[1];
+
+    function setWholeForm(next){ setForm(next); }
+    function upd(key, value){ var next = Object.assign({}, form); next[key] = value; setWholeForm(next); }
+    function updateListField(listKey, idx, field, value){
+      var next = Object.assign({}, form); var list = safeList(form[listKey]); var row = Object.assign({}, list[idx] || {}); row[field] = value; list[idx] = row; next[listKey] = list; setWholeForm(next);
+    }
+    function addRow(listKey, template){ var next = Object.assign({}, form); var list = safeList(form[listKey]); list.push(Object.assign({}, template || {})); next[listKey] = list; setWholeForm(next); }
+    function removeRow(listKey, idx){ var next = Object.assign({}, form); var list = safeList(form[listKey]); if (list.length <= 1) return; list.splice(idx,1); next[listKey] = list; setWholeForm(next); }
+    function replaceMetaFiles(nextFiles){ var next = Object.assign({}, form); next.meta_files = traceOpsNormalizeMetaFiles(nextFiles || []); next.meta = Object.assign({}, next.meta || {}, { evidence: traceOpsBuildEvidenceMetaFromFiles(next.meta_files) }); setWholeForm(next); }
+    function setMetaFileRole(fileId, role){ var nextFiles = traceOpsNormalizeMetaFiles(form.meta_files || []).map(function(item){ return item.id !== fileId ? item : Object.assign({}, item, { evidence_role: traceOpsNormalizeEvidenceRole(role) }); }); replaceMetaFiles(nextFiles); }
+    function removeMetaFile(fileId){ replaceMetaFiles((form.meta_files || []).filter(function(item){ return item.id !== fileId; })); try { if (metaInputRef.current) metaInputRef.current.value = ''; } catch(_) {} }
+    function downloadMetaFile(item){ if (!item || !item.data_url) return; var a = document.createElement('a'); a.href = item.data_url; a.download = item.name || 'meta-file'; document.body.appendChild(a); a.click(); setTimeout(function(){ try { document.body.removeChild(a); } catch(_){} }, 50); }
+    async function addMetaFiles(fileList){
+      var incoming = Array.prototype.slice.call(fileList || []);
+      if (!incoming.length) return;
+      var current = traceOpsNormalizeMetaFiles(form.meta_files || []);
+      if (current.length + incoming.length > TRACEOPS_RCCA_META_MAX_FILES) { alert('Puedes guardar hasta ' + TRACEOPS_RCCA_META_MAX_FILES + ' archivos meta por RCCA.'); return; }
+      var totalBytes = current.reduce(function(sum, item){ return sum + Number(item.size || 0); }, 0);
+      var prepared = [];
+      for (var i = 0; i < incoming.length; i++) {
+        var file = incoming[i];
+        var ext = traceOpsMetaExt(file && file.name);
+        if (TRACEOPS_RCCA_META_ACCEPT.indexOf(ext) < 0) { alert('Formato no permitido: ' + (file && file.name ? file.name : 'archivo') + '. Usa ZIP, PPT/PPTX o JPG/PNG.'); return; }
+        if (file.size > TRACEOPS_RCCA_META_MAX_FILE_BYTES) { alert('El archivo ' + file.name + ' excede el limite de ' + traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_FILE_BYTES) + '.'); return; }
         totalBytes += file.size || 0;
-        if(totalBytes > TRACEOPS_RCCA_META_MAX_TOTAL_BYTES){
-          alert('El total de adjuntos meta excede ' + traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_TOTAL_BYTES) + '.');
-          return;
-        }
-        var dataUrl=await new Promise(function(resolve,reject){
-          try{
-            var reader=new FileReader();
-            reader.onload=function(){ resolve(reader.result); };
-            reader.onerror=function(){ reject(new Error('No se pudo leer ' + file.name)); };
-            reader.readAsDataURL(file);
-          }catch(err){ reject(err); }
-        });
-        var suggestedRole = traceOpsSuggestEvidenceRole(file, current.concat(prepared));
-        prepared.push({
-          id:'meta_' + Date.now().toString(36) + '_' + i + '_' + Math.random().toString(36).slice(2,7),
-          name:file.name,
-          type:file.type || '',
-          size:Number(file.size||0),
-          kind:traceOpsMetaTypeLabel(file),
-          data_url:String(dataUrl||''),
-          evidence_role: traceOpsIsImageMetaFile(file) ? suggestedRole : undefined
-        });
+        if (totalBytes > TRACEOPS_RCCA_META_MAX_TOTAL_BYTES) { alert('El total de adjuntos meta excede ' + traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_TOTAL_BYTES) + '.'); return; }
+        var dataUrl = await new Promise(function(resolve,reject){ try { var reader = new FileReader(); reader.onload = function(){ resolve(reader.result); }; reader.onerror = function(){ reject(new Error('No se pudo leer ' + file.name)); }; reader.readAsDataURL(file); } catch(err){ reject(err); } });
+        prepared.push({ id:'meta_' + Date.now().toString(36) + '_' + i + '_' + Math.random().toString(36).slice(2,7), name:file.name, type:file.type || '', size:Number(file.size || 0), kind:traceOpsMetaTypeLabel(file), data_url:String(dataUrl || ''), evidence_role: traceOpsIsImageMetaFile(file) ? traceOpsSuggestEvidenceRole(file, current.concat(prepared)) : undefined });
       }
       replaceMetaFiles(current.concat(prepared));
-      try { if (metaInputRef.current) metaInputRef.current.value = ""; } catch(_) {}
+      try { if (metaInputRef.current) metaInputRef.current.value = ''; } catch(_) {}
     }
-    React.useEffect(function(){
-      var payload = {
-        ts:new Date().toISOString(),
-        mode:isEdit?"edit":"new",
-        form:Object.assign({}, form, { __draft_front_open: frontOpen, __draft_insights_open: insightsOpen })
-      };
-      var t = setTimeout(function(){ writeRccaDraft(payload); }, 120);
-      return function(){ clearTimeout(t); };
-    }, [form, isEdit, frontOpen, insightsOpen]);
-    React.useEffect(function(){
-      function persistNow(){
-        writeRccaDraft({
-          ts:new Date().toISOString(),
-          mode:isEdit?"edit":"new",
-          form:Object.assign({}, form, { __draft_front_open: frontOpen, __draft_insights_open: insightsOpen })
-        });
-      }
-      function onVisibility(){ if(document.visibilityState === "hidden") persistNow(); }
-      window.addEventListener("pagehide", persistNow);
-      window.addEventListener("beforeunload", persistNow);
-      document.addEventListener("visibilitychange", onVisibility);
-      return function(){
-        window.removeEventListener("pagehide", persistNow);
-        window.removeEventListener("beforeunload", persistNow);
-        document.removeEventListener("visibilitychange", onVisibility);
-      };
-    }, [form, isEdit, frontOpen, insightsOpen]);
-    function upd(k,v){var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});n[k]=v;setForm(n);}
+
+    React.useEffect(function(){ var payload = { ts:new Date().toISOString(), mode:isEdit?'edit':'new', form:Object.assign({}, form, { __draft_builder_step: currentStep }) }; var t = setTimeout(function(){ writeRccaDraft(payload); }, 120); return function(){ clearTimeout(t); }; }, [form, isEdit, currentStep]);
+
     function toggleEvent(evId){
-      var cur=form.event_ids;var newIds=cur.indexOf(evId)>=0?cur.filter(function(x){return x!==evId;}):cur.concat([evId]);
-      var firstEv=newIds.length>0?ev.find(function(e){return e.id===newIds[0];}):null;
-      var n={};Object.keys(form).forEach(function(fk){n[fk]=form[fk];});
-      n.event_ids=newIds;
-      n.rcca_id=isEdit?(form.original_rcca_id||form.rcca_id):genRccaId(newIds,ev);
-      if(firstEv){
-        if(!form.modelo||form.modelo===init.modelo)n.modelo=firstEv.modelo||"";
-        if(!form.linea||form.linea===init.linea)n.linea=firstEv.linea_estacion||"";
-        if(!form.estacion_dominante)n.estacion_dominante=firstEv.linea_estacion||"";
-        if(!form.defecto_dominante&&firstEv.defecto_smt&&firstEv.defecto_smt!=="N/A")n.defecto_dominante=firstEv.defecto_smt;
-        if(!form.fecha||form.fecha===init.fecha){var dp=(firstEv.fecha||"").split("/");n.fecha=dp.length===3?dp[2]+"-"+dp[1].padStart(2,"0")+"-"+dp[0].padStart(2,"0"):form.fecha;}
-        if(!form.problema&&firstEv.evento_detectado)n.problema=firstEv.evento_detectado;
-        if(!form.titulo_corto&&firstEv.evento_detectado)n.titulo_corto=firstEv.evento_detectado.slice(0,52);
+      var cur = form.event_ids || [];
+      var newIds = cur.indexOf(evId) >= 0 ? cur.filter(function(x){ return x !== evId; }) : cur.concat([evId]);
+      var firstEv = newIds.length > 0 ? ev.find(function(e){ return e.id === newIds[0]; }) : null;
+      var next = Object.assign({}, form);
+      next.event_ids = newIds;
+      next.rcca_id = isEdit ? (form.original_rcca_id || form.rcca_id) : genRccaId(newIds, ev);
+      if (firstEv) {
+        if (!form.modelo) next.modelo = firstEv.modelo || '';
+        if (!form.linea) next.linea = firstEv.linea_estacion || '';
+        if (!form.main_station) next.main_station = firstEv.linea_estacion || '';
+        if (!form.estacion_dominante) next.estacion_dominante = firstEv.linea_estacion || '';
+        if (!form.failure_mode && firstEv.defecto_smt && firstEv.defecto_smt !== 'N/A') next.failure_mode = firstEv.defecto_smt;
+        if (!form.defecto_dominante && firstEv.defecto_smt && firstEv.defecto_smt !== 'N/A') next.defecto_dominante = firstEv.defecto_smt;
+        if (!form.problema && firstEv.evento_detectado) next.problema = firstEv.evento_detectado;
+        if (!form.complaint_anchor_full && firstEv.evento_detectado) next.complaint_anchor_full = firstEv.evento_detectado;
+        if (!form.complaint_anchor_short && firstEv.evento_detectado) next.complaint_anchor_short = firstEv.evento_detectado.slice(0,70);
+        if (!form.titulo_corto && firstEv.evento_detectado) next.titulo_corto = firstEv.evento_detectado.slice(0,52);
       }
-      if(newIds.length>0){
-        var linked=newIds.map(function(id){return ev.find(function(e){return e.id===id;});}).filter(Boolean);
-        var sortedAsc=linked.slice().sort(function(a,b){return traceOpsGetDateValue(a.fecha)-traceOpsGetDateValue(b.fecha);});
-        var sortedDesc=linked.slice().sort(function(a,b){return traceOpsGetDateValue(b.fecha)-traceOpsGetDateValue(a.fecha);});
-        if(!form.primera_deteccion&&sortedAsc.length>0)n.primera_deteccion=sortedAsc[0].fecha||"";
-        if(!form.ultima_deteccion&&sortedDesc.length>0)n.ultima_deteccion=sortedDesc[0].fecha||"";
-      }
-      setForm(n);
+      setWholeForm(next);
     }
-    function SelectField(p){return(<div key={p.k}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{p.l}</div><select value={form[p.k]} onChange={function(e){upd(p.k,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none",background:"#fff"}}><option value="">-</option>{p.opts.map(function(opt){return<option key={opt.v} value={opt.v}>{opt.l}</option>;})}</select></div>);}
-    return(
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9998,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={function(){onClose();}}>
-        <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:820,maxHeight:"90vh",overflow:"auto",paddingBottom:32}} onClick={function(e){e.stopPropagation();}}>
-          <div style={{position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #EEECEA",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",zIndex:1}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:700,color:"#1A1714"}}>{isEdit?"Edit RCCA":"New RCCA"}</div>
-              <div style={{fontSize:10,fontFamily:"monospace",color:"#2F6FB3",fontWeight:600,marginTop:2}}>{form.rcca_id}</div>
+
+    function renderInput(label, key, placeholder, type, spanFull){
+      return <div style={fieldShellStyle(spanFull)}><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>{label}</div><input type={type || 'text'} inputMode={type === 'date' ? undefined : 'text'} value={form[key] || ''} placeholder={placeholder || ''} onChange={function(e){ upd(key, e.target.value); }} style={controlBaseStyle(false)} /></div>;
+    }
+    function renderTextArea(label, key, rows, placeholder, spanFull){
+      return <div style={fieldShellStyle(spanFull !== false)}><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>{label}</div><textarea value={form[key] || ''} rows={rows || 3} placeholder={placeholder || ''} onChange={function(e){ upd(key, e.target.value); }} style={Object.assign({}, controlBaseStyle(true), {resize:'vertical',fontFamily:'inherit',minHeight:compact ? ((rows || 3) * 24 + 28) : undefined})} /></div>;
+    }
+    function renderSelect(label, key, opts, spanFull){
+      return <div style={fieldShellStyle(spanFull)}><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>{label}</div><select value={form[key] || ''} onChange={function(e){ upd(key, e.target.value); }} style={controlBaseStyle(false)}><option value=''>-</option>{opts.map(function(opt){ return <option key={opt.v} value={opt.v}>{opt.l}</option>; })}</select></div>;
+    }
+    function renderTableCard(title, subtitle, content){
+      return <div style={{background:'#fff',border:'1px solid #DDDBD7',borderRadius:14,overflow:'hidden',minWidth:0,maxWidth:'100%'}}><div style={{padding:compact?'10px 12px':'11px 12px',borderBottom:'1px solid #EEECEA',background:'#F8F7F5'}}><div style={{fontSize:compact?11.5:12,fontWeight:800,color:'#1A1714'}}>{title}</div>{subtitle && <div style={{fontSize:compact?9.5:10,color:'#8A8580',marginTop:2,lineHeight:1.35}}>{subtitle}</div>}</div><div style={{padding:compact?10:12,minWidth:0,overflowX:'hidden'}}>{content}</div></div>;
+    }
+    function buildLegacyPayload(){
+      var teamText = summarizeTable(form.d1_team_members, function(row){ return row.role + ': ' + (String(row.name || '').trim() || 'Pending') + ' · ' + (String(row.email || '').trim() || 'Pending'); });
+      var escalationText = summarizeTable(form.escalation_members, function(row){ return row.level + ': ' + (String(row.owner || '').trim() || 'Pending') + ' · ' + (String(row.email || '').trim() || 'Pending'); });
+      var containmentSummary = joinNonEmpty([summarizeTable(form.containment_rows, function(row){ return [row.location, row.qty_suspect ? ('Qty suspect ' + row.qty_suspect) : '', row.status].filter(Boolean).join(' · '); }), summarizeTable(form.containment_action_rows, function(row){ return [row.action, row.status, row.owner].filter(Boolean).join(' · '); }), form.shielding_statement ? ('Customer shielding: ' + form.shielding_statement) : '']);
+      var actionsSummary = summarizeTable(form.d5_actions, function(row){ return [row.axis, row.action_text, row.owner, row.ecd, row.status].filter(Boolean).join(' · '); });
+      var verificationSummary = summarizeTable(form.d6_verifications, function(row){ return [row.axis, row.measurement_method, row.validation_result, row.completion_date].filter(Boolean).join(' · '); });
+      var evidenceCounts = traceOpsCountEvidenceRoles(form.meta_files || []);
+      var complaintFull = form.complaint_anchor_full || form.complaint_anchor_short || form.problema || '';
+      return Object.assign({}, form, {
+        owner_email: form.owner_email || form.deployment_owner || '',
+        titulo_corto: form.titulo_corto || form.complaint_anchor_short || '',
+        tipo_caso: form.tipo_caso || '',
+        estatus_rcca: form.estatus_rcca || '',
+        problema: complaintFull,
+        hipotesis: form.occurrence_short || form.hipotesis || '',
+        causa_raiz: form.occurrence_conclusion || form.occurrence_full || form.causa_raiz || '',
+        contencion: containmentSummary || form.contencion || '',
+        accion_correctiva: actionsSummary || form.accion_correctiva || '',
+        accion_preventiva: form.preventive_actions_text || form.accion_preventiva || '',
+        patron_detectado: form.w2h_mechanism || form.yokoten_trigger || form.patron_detectado || '',
+        leccion_aprendida: form.lesson_learned_text || form.leccion_aprendida || '',
+        evidencia_resumen: joinNonEmpty([form.occurrence_support_full || form.occurrence_support_short || form.evidencia_resumen, 'Evidence summary: bad=' + evidenceCounts.bad + ' · good=' + evidenceCounts.good + ' · general=' + evidenceCounts.general, form.trace_barcodes ? ('Affected barcodes: ' + form.trace_barcodes) : '']),
+        validacion: verificationSummary || form.validacion || '',
+        alcance_exposicion: form.impact_exposure_statement || form.alcance_exposicion || '',
+        material_afectado: form.material_afectado || form.trace_component_pn || '',
+        estacion_dominante: form.main_station || form.estacion_dominante || '',
+        defecto_dominante: form.failure_mode || form.defecto_dominante || '',
+        primera_deteccion: isoToDisplay(form.detection_window_start) || form.primera_deteccion || '',
+        ultima_deteccion: isoToDisplay(form.detection_window_end) || form.ultima_deteccion || '',
+        d1_team: joinNonEmpty([teamText, escalationText]),
+        escape_point: form.escape_point || '',
+        punto_escape: form.escape_point || '',
+        serial_range: form.trace_serial_batch || '',
+        seriales_afectados: form.trace_serial_batch || '',
+        lot_batch: form.trace_supplier_lot || '',
+        lote_afectado: form.trace_supplier_lot || '',
+        build_window: joinNonEmpty([isoToDisplay(form.detection_window_start), isoToDisplay(form.detection_window_end)], ' -> '),
+        complaint_anchor_short: form.complaint_anchor_short || '',
+        complaint_anchor_full: complaintFull,
+        impact_exposure_statement: form.impact_exposure_statement || '',
+        d1_team_members: safeList(form.d1_team_members), escalation_members: safeList(form.escalation_members), containment_rows: safeList(form.containment_rows), containment_action_rows: safeList(form.containment_action_rows), occurrence_whys: safeList(form.occurrence_whys), escape_whys: safeList(form.escape_whys), d5_actions: safeList(form.d5_actions), d6_verifications: safeList(form.d6_verifications), appendix_flow: safeList(form.appendix_flow), appendix_traceability: safeList(form.appendix_traceability)
+      });
+    }
+    function computeBuilderBlockers(){
+      var blockers = [];
+      if (!String(form.complaint_anchor_short || '').trim()) blockers.push('Missing complaint anchor');
+      if (!String(form.modelo || '').trim()) blockers.push('Missing model');
+      if (!String(form.linea || '').trim()) blockers.push('Missing line');
+      if (!String(form.main_station || form.estacion_dominante || '').trim()) blockers.push('Missing main station');
+      if (!safeList(form.d1_team_members).some(function(row){ return String(row.name || '').trim(); })) blockers.push('Missing D1 team');
+      if (!String(form.trace_supplier_lot || '').trim() && !String(form.trace_serial_batch || '').trim()) blockers.push('Missing lot / serial trace');
+      var counts = traceOpsCountEvidenceRoles(form.meta_files || []);
+      if (!counts.bad) blockers.push('Missing bad evidence');
+      if (!counts.good) blockers.push('Missing good evidence');
+      if (!String(form.escape_point || '').trim()) blockers.push('Missing escape point');
+      if (!String(form.control_gap || '').trim()) blockers.push('Missing control gap');
+      if (!safeList(form.d5_actions).some(function(row){ return String(row.action_text || '').trim(); })) blockers.push('Missing D5 action');
+      if (!safeList(form.d6_verifications).some(function(row){ return String(row.validation_result || '').trim(); })) blockers.push('Missing D6 verification');
+      if (!safeList(form.appendix_traceability).some(function(row){ return String(row.process_step || '').trim() && String(row.station || '').trim(); })) blockers.push('Missing appendix trace row');
+      return blockers;
+    }
+    function EvidenceRoleChip(props2){ return <button type='button' onClick={props2.onClick} style={{background:props2.active?props2.bg:'transparent',color:props2.active?props2.color:'#6A6560',border:'none',borderRadius:999,padding:'5px 8px',fontSize:9.5,fontWeight:800,cursor:'pointer'}}>{props2.label}</button>; }
+
+    var builderBlockers = computeBuilderBlockers();
+    var currentStepIndex = Math.max(0, stepDefs.findIndex(function(item){ return item.key === currentStep; }));
+    function goPrev(){ if (currentStepIndex > 0) setCurrentStep(stepDefs[currentStepIndex - 1].key); }
+    function goNext(){ if (currentStepIndex < stepDefs.length - 1) setCurrentStep(stepDefs[currentStepIndex + 1].key); }
+    function saveStructured(){ var payload = buildLegacyPayload(); if (!payload.problema || !payload.causa_raiz) { alert('Completa Problem Statement y Occurrence Conclusion.'); return; } Promise.resolve(onSave(payload)).then(function(ok){ if (ok !== false) onClose(); }); }
+
+    function renderIdentityStep(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}><div style={{display:'grid',gridTemplateColumns:stackGrid('1.2fr .8fr'),gap:12}}>{renderTableCard('Case identity','Feeds RCCA cover and 8D overview.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('RCCA ID','rcca_id','')} {renderInput('Short title','titulo_corto','Executive case title')} {renderInput('Owner name','owner_name','')} {renderInput('Owner e-mail','owner_email','')} {renderSelect('Case type','tipo_caso',[{v:'GENERAL',l:'GENERAL'},{v:'SMT',l:'SMT'},{v:'AOI',l:'AOI'},{v:'ICT',l:'ICT'},{v:'MATERIAL',l:'MATERIAL'},{v:'PROCESO',l:'PROCESO'},{v:'TEST',l:'TEST'}])} {renderSelect('Status','estatus_rcca',[{v:'NUEVO',l:'NUEVO'},{v:'IN ANALYSIS',l:'IN ANALYSIS'},{v:'CONTENIDO',l:'CONTENIDO'},{v:'VALIDANDO',l:'VALIDANDO'},{v:'CERRADO',l:'CERRADO'}])} {renderSelect('Severity','severidad',[{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'},{v:'4',l:'4'},{v:'5',l:'5'}])} {renderSelect('Recurrence','recurrencia',[{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'},{v:'4',l:'4'},{v:'5',l:'5'}])}</div>)}{renderTableCard('Operational anchor','Line, station, failure mode and exposure.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('Model','modelo','')} {renderInput('Line','linea','')} {renderInput('Main station','main_station','')} {renderInput('Failure mode','failure_mode','')} {renderInput('Detection start','detection_window_start','', 'date')} {renderInput('Detection end','detection_window_end','', 'date')} {renderSelect('Customer exposure','customer_exposure',[{v:'YES',l:'YES'},{v:'NO',l:'NO'}])} {renderSelect('Customer notified','customer_notified',[{v:'YES',l:'YES'},{v:'NO',l:'NO'}])}</div>)}</div>{renderTableCard('Narrative','Use short text for overview and full text for D2/D4/D8.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Complaint anchor short','complaint_anchor_short',2,'Executive preview')} {renderTextArea('Complaint anchor full','complaint_anchor_full',4,'Technical full statement')} {renderTextArea('Impact / exposure','impact_exposure_statement',3,'Internal / shipped / customer exposure')}</div>)}</div>; }
+
+    function renderD1D2Step(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}>{renderTableCard('D1 Team','Explicit owner and support functions.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.d1_team_members).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('120px 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Role</div><input value={row.role || ''} onChange={function(e){ updateListField('d1_team_members', idx, 'role', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Name</div><input value={row.name || ''} onChange={function(e){ updateListField('d1_team_members', idx, 'name', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>E-mail</div><input value={row.email || ''} onChange={function(e){ updateListField('d1_team_members', idx, 'email', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('d1_team_members', idx); }} style={rowButtonStyle()}>–</button></div>; })}</div>)} {renderTableCard('Escalation','Customer / managerial review path.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.escalation_members).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('180px 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Level</div><input value={row.level || ''} onChange={function(e){ updateListField('escalation_members', idx, 'level', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Owner</div><input value={row.owner || ''} onChange={function(e){ updateListField('escalation_members', idx, 'owner', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>E-mail</div><input value={row.email || ''} onChange={function(e){ updateListField('escalation_members', idx, 'email', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('escalation_members', idx); }} style={rowButtonStyle()}>–</button></div>; })}</div>)}<div style={{display:'grid',gridTemplateColumns:stackGrid('1fr 1fr'),gap:12}}>{renderTableCard('D2 Traceability','Fields that usually export as Pending must be explicit.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('SKU version','trace_sku_version','')} {renderInput('Supplier / Lot','trace_supplier_lot','')} {renderInput('Serial / Batch','trace_serial_batch','')} {renderInput('Date code','trace_date_code','')} {renderInput('Component P/N','trace_component_pn','')} {renderInput('Equipment / Tester','trace_equipment_tester','')} <div style={{gridColumn:'1 / -1'}}>{renderTextArea('Affected barcodes','trace_barcodes',3,'One per line or comma-separated')}</div></div>)} {renderTableCard('5W2H','Structured problem delimitation.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('Who','w2h_who','')} {renderInput('How','w2h_how','')} {renderTextArea('What','w2h_what',3,'')} {renderTextArea('Why','w2h_why',3,'')} {renderInput('Where','w2h_where','')} {renderInput('When','w2h_when','')} {renderInput('Mechanism','w2h_mechanism','')} {renderInput('How many summary','w2h_how_many','')}</div>)}</div>{renderTableCard('How many structure','Quantify what later appears in overview and D2.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(3,minmax(0,1fr))'),gap:10}}>{renderInput('Total units','w2h_total_units','')} {renderInput('Suspect units','w2h_suspect_units','')} {renderInput('Clean units','w2h_clean_units','')} {renderInput('Risk units','w2h_risk_units','')} {renderInput('Clean yield','w2h_clean_yield','')} {renderInput('OJT / touch rate','w2h_ojt_touch_rate','')}</div>)}</div>; }
+
+    function renderEvidenceStep(){ var evidenceCounts = traceOpsCountEvidenceRoles(form.meta_files || []); return <div style={{display:'flex',flexDirection:'column',gap:12}}>{renderTableCard('Linked events','Select the events that feed RCCA and 8D traceability.', <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:220,overflowY:'auto'}}>{ev.length===0 ? <div style={{fontSize:11,color:'#8A8580',fontStyle:'italic'}}>No events loaded</div> : ev.map(function(item){ var selected = (form.event_ids || []).indexOf(item.id) >= 0; return <div key={item.id} onClick={function(){ toggleEvent(item.id); }} style={{display:'flex',alignItems:'center',gap:10,background:selected?'#EAF2FF':'#F8F7F5',border:'1.5px solid ' + (selected ? '#2F6FB3' : '#DDDBD7'),borderRadius:9,padding:'8px 10px',cursor:'pointer'}}><div style={{width:16,height:16,borderRadius:4,background:selected?'#1F3A5F':'#fff',border:'1.5px solid ' + (selected ? '#1F3A5F' : '#C8C4BE'),display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:10,fontWeight:700}}>{selected?'v':''}</div><div style={{minWidth:0,flex:1}}><div style={{display:'flex',gap:6,alignItems:'center'}}><span style={{fontSize:9.5,fontFamily:'monospace',fontWeight:700,color:selected?'#1F3A5F':'#8A8580'}}>{item.id}</span><span style={{fontSize:9,color:'#8A8580'}}>{item.fecha}</span></div><div style={{fontSize:10.5,color:'#1A1714',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{(item.evento_detectado || '').slice(0,90)}</div></div></div>; })}</div>)} {renderTableCard('Evidence manager','Each file should have a role for D2 / D4 / D6 / Appendix.', <div style={{display:'flex',flexDirection:'column',gap:10}}><div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}><button type='button' onClick={function(){ if (metaInputRef.current) metaInputRef.current.click(); }} style={{background:'#1F3A5F',color:'#fff',border:'none',borderRadius:9,padding:'9px 12px',fontSize:11,fontWeight:800,cursor:'pointer'}}>+ Upload evidence</button><input ref={metaInputRef} type='file' multiple accept={TRACEOPS_RCCA_META_ACCEPT.join(',')} style={{display:'none'}} onChange={function(e){ addMetaFiles(e.target.files).catch(function(err){ alert(err && err.message ? err.message : String(err)); }); }} /><span style={{fontSize:10.5,color:'#6A6560'}}>Bad: <strong style={{color:'#C0392B'}}>{evidenceCounts.bad}</strong> · Good: <strong style={{color:'#1A7A3C'}}>{evidenceCounts.good}</strong> · General: <strong style={{color:'#2F6FB3'}}>{evidenceCounts.general}</strong></span></div>{form.meta_files && form.meta_files.length ? <div style={{display:'flex',flexDirection:'column',gap:8}}>{form.meta_files.map(function(file){ return <div key={file.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,background:'#fff',border:'1px solid #D8E1F7',borderRadius:10,padding:'9px 10px',flexWrap:'wrap'}}><div style={{display:'flex',alignItems:'center',gap:10,minWidth:0,flex:1}}><div style={{fontSize:10,fontWeight:800,color:'#1F3A5F',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:999,padding:'4px 8px',minWidth:42,textAlign:'center'}}>{traceOpsMetaIcon(file)}</div><div style={{minWidth:0,flex:1}}><div style={{fontSize:11.5,fontWeight:700,color:'#1A1714',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{file.name}</div><div style={{fontSize:10,color:'#6A6560',marginTop:2}}>{file.kind} · {traceOpsFormatBytes(file.size)}</div></div></div><div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>{traceOpsIsImageMetaFile(file) && <div style={{display:'inline-flex',gap:4,flexWrap:'wrap',padding:'3px',background:'#F8F7F5',border:'1px solid #DDDBD7',borderRadius:999}}><EvidenceRoleChip active={(file.evidence_role||'general')==='bad'} bg='#FDF0EE' color='#C0392B' label='Bad part' onClick={function(){ setMetaFileRole(file.id, 'bad'); }} /><EvidenceRoleChip active={(file.evidence_role||'general')==='good'} bg='#EEF6FF' color='#1A7A3C' label='Good part' onClick={function(){ setMetaFileRole(file.id, 'good'); }} /><EvidenceRoleChip active={(file.evidence_role||'general')==='general'} bg='#EAF2FF' color='#2F6FB3' label='General' onClick={function(){ setMetaFileRole(file.id, 'general'); }} /></div>}<button type='button' onClick={function(){ downloadMetaFile(file); }} style={{background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:8,padding:'6px 10px',fontSize:10.5,fontWeight:700,color:'#2F6FB3',cursor:'pointer'}}>Download</button><button type='button' onClick={function(){ removeMetaFile(file.id); }} style={{background:'#fff',border:'1px solid #DDDBD7',borderRadius:8,padding:'6px 10px',fontSize:10.5,fontWeight:700,color:'#6A6560',cursor:'pointer'}}>Remove</button></div></div>; })}</div> : <div style={{background:'#fff',border:'1px dashed #C7DBF7',borderRadius:10,padding:'16px 12px',fontSize:11,color:'#6A6560'}}>No evidence uploaded yet. Add at least one bad and one good image if the case requires visual comparison.</div>}</div>)}</div>; }
+
+    function renderD3Step(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}>{renderTableCard('Containment by location','Rows feed D3 by location.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.containment_rows).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('1.1fr repeat(5,minmax(0,1fr)) auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Location</div><input value={row.location || ''} onChange={function(e){ updateListField('containment_rows', idx, 'location', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Qty suspect</div><input value={row.qty_suspect || ''} onChange={function(e){ updateListField('containment_rows', idx, 'qty_suspect', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Good qty</div><input value={row.qty_good || ''} onChange={function(e){ updateListField('containment_rows', idx, 'qty_good', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Bad qty</div><input value={row.qty_bad || ''} onChange={function(e){ updateListField('containment_rows', idx, 'qty_bad', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Responsible</div><input value={row.responsible || ''} onChange={function(e){ updateListField('containment_rows', idx, 'responsible', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Clean date</div><input value={row.clean_date || ''} onChange={function(e){ updateListField('containment_rows', idx, 'clean_date', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('containment_rows', idx); }} style={rowButtonStyle()}>–</button></div>; })}<button type='button' onClick={function(){ addRow('containment_rows', { location:'', qty_suspect:'', qty_good:'', qty_bad:'', responsible:'', clean_date:'', status:'Pending' }); }} style={{alignSelf:'flex-start',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add containment row</button></div>)} {renderTableCard('Additional containment actions','These actions later feed D3 narrative.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.containment_action_rows).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('1.8fr 1fr 1fr 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Action</div><input value={row.action || ''} onChange={function(e){ updateListField('containment_action_rows', idx, 'action', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Owner</div><input value={row.owner || ''} onChange={function(e){ updateListField('containment_action_rows', idx, 'owner', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Start</div><input value={row.start || ''} onChange={function(e){ updateListField('containment_action_rows', idx, 'start', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Completion</div><input value={row.completion || ''} onChange={function(e){ updateListField('containment_action_rows', idx, 'completion', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Status</div><input value={row.status || ''} onChange={function(e){ updateListField('containment_action_rows', idx, 'status', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('containment_action_rows', idx); }} style={rowButtonStyle()}>–</button></div>; })}<button type='button' onClick={function(){ addRow('containment_action_rows', { action:'', owner:'', start:'', completion:'', status:'Pending', proof:'' }); }} style={{alignSelf:'flex-start',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add action</button></div>)} {renderTableCard('Customer shielding','Complete when there is external exposure or customer communication.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('Shielding owner','shielding_owner','')} {renderInput('Shielding start','shielding_start','', 'datetime-local')} {renderInput('Shielding status','shielding_status','')} <div style={{gridColumn:'1 / -1'}}>{renderTextArea('Shielding statement','shielding_statement',3,'Customer protection within 24h / internal only / shipped risk')}</div></div>)}</div>; }
+
+    function renderD4AStep(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}><div style={{display:'grid',gridTemplateColumns:stackGrid('1fr 1fr'),gap:12}}>{renderTableCard('Occurrence framing','Short + full narrative and status.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Occurrence short','occurrence_short',3,'Working hypothesis / executive narrative')} {renderTextArea('Occurrence full','occurrence_full',5,'Detailed technical mechanism')} {renderSelect('Occurrence status','occurrence_status',[{v:'hypothesis',l:'Hypothesis'},{v:'probable',l:'Probable'},{v:'confirmed',l:'Confirmed'}])}</div>)} {renderTableCard('6M structure','Support the occurrence path by category.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderTextArea('Machine','cause_machine',3,'')} {renderTextArea('Man','cause_man',3,'')} {renderTextArea('Method','cause_method',3,'')} {renderTextArea('Measurement','cause_measurement',3,'')} {renderTextArea('Material','cause_material',3,'')} {renderTextArea('Environment','cause_environment',3,'')}</div>)}</div>{renderTableCard('5 Whys - occurrence','One row per why.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.occurrence_whys).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('64px 1fr'),gap:8,alignItems:'center'}}><div style={{fontSize:11,fontWeight:800,color:'#1F3A5F',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:999,padding:'8px 10px',textAlign:'center'}}>Why {idx+1}</div><input value={row.text || ''} onChange={function(e){ updateListField('occurrence_whys', idx, 'text', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'9px 10px',fontSize:12}}/></div>; })}</div>)} {renderTableCard('Supporting evidence and conclusion','These fields should later read cleanly in D4A and Appendix.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Support short','occurrence_support_short',3,'')} {renderTextArea('Support full','occurrence_support_full',4,'')} {renderTextArea('Occurrence conclusion','occurrence_conclusion',4,'')}</div>)}</div>; }
+
+    function renderD4BStep(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}><div style={{display:'grid',gridTemplateColumns:stackGrid('1fr 1fr'),gap:12}}>{renderTableCard('Escape definition','Define control stage and gap explicitly.', <div style={{display:'grid',gridTemplateColumns:stackGrid('repeat(2,minmax(0,1fr))'),gap:10}}>{renderInput('Escape point','escape_point','')} {renderInput('Expected detection control','expected_detection_control','')} {renderInput('Failure mode under review','escape_failure_mode','')} {renderInput('Proof event / station','escape_proof_event','')} <div style={{gridColumn:'1 / -1'}}>{renderTextArea('Control limitation / gap','control_gap',3,'')}</div> <div style={{gridColumn:'1 / -1'}}>{renderTextArea('Detection gap identified','detection_gap_identified',3,'')}</div></div>)} {renderTableCard('Why control did not detect','Make the escape reasoning explicit.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Why not detected short','escape_why_short',3,'')} {renderTextArea('Why not detected full','escape_why_full',4,'')} {renderSelect('Escape status','escape_status',[{v:'pending',l:'Pending'},{v:'under_validation',l:'Under validation'},{v:'confirmed',l:'Confirmed'}])}</div>)}</div>{renderTableCard('5 Whys - escape','One row per why.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.escape_whys).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('64px 1fr'),gap:8,alignItems:'center'}}><div style={{fontSize:11,fontWeight:800,color:'#B87820',background:'#FEF9E8',border:'1px solid #F5E4A0',borderRadius:999,padding:'8px 10px',textAlign:'center'}}>Why {idx+1}</div><input value={row.text || ''} onChange={function(e){ updateListField('escape_whys', idx, 'text', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'9px 10px',fontSize:12}}/></div>; })}</div>)} {renderTableCard('Escape conclusion','Use short + full versions for export friendliness.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Escape conclusion short','escape_conclusion_short',3,'')} {renderTextArea('Escape conclusion full','escape_conclusion_full',4,'')}</div>)}</div>; }
+
+    function renderD5D6Step(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}>{renderTableCard('D5 Corrective actions','Matrix by axis: occurrence, detection, system.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.d5_actions).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('130px 1.8fr 1fr 1fr 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Axis</div><select value={row.axis || 'Occurrence'} onChange={function(e){ updateListField('d5_actions', idx, 'axis', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12,background:'#fff'}}><option value='Occurrence'>Occurrence</option><option value='Detection'>Detection</option><option value='System'>System</option></select></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Action</div><input value={row.action_text || ''} onChange={function(e){ updateListField('d5_actions', idx, 'action_text', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Addresses</div><input value={row.addresses || ''} onChange={function(e){ updateListField('d5_actions', idx, 'addresses', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Owner</div><input value={row.owner || ''} onChange={function(e){ updateListField('d5_actions', idx, 'owner', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>ECD</div><input value={row.ecd || ''} onChange={function(e){ updateListField('d5_actions', idx, 'ecd', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Status</div><input value={row.status || ''} onChange={function(e){ updateListField('d5_actions', idx, 'status', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('d5_actions', idx); }} style={rowButtonStyle()}>–</button></div>; })}<button type='button' onClick={function(){ addRow('d5_actions', { axis:'Occurrence', action_text:'', addresses:'', owner:'', ecd:'', status:'Open', proof_linked:'' }); }} style={{alignSelf:'flex-start',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add action row</button></div>)} {renderTableCard('D6 Verification of effectiveness','One row per axis or validation path.', <div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.d6_verifications).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('130px 1fr 1fr 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Axis</div><input value={row.axis || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'axis', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Measurement method</div><input value={row.measurement_method || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'measurement_method', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Validation result</div><input value={row.validation_result || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'validation_result', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Responsible</div><input value={row.responsible || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'responsible', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Completion date</div><input value={row.completion_date || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'completion_date', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('d6_verifications', idx); }} style={rowButtonStyle()}>–</button><div style={{gridColumn:'1 / -1',display:'grid',gridTemplateColumns:stackGrid('1fr 1fr 1fr'),gap:8}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Acceptance criteria</div><input value={row.acceptance_criteria || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'acceptance_criteria', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Recurrence status</div><input value={row.recurrence_status || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'recurrence_status', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Conclusion</div><input value={row.conclusion || ''} onChange={function(e){ updateListField('d6_verifications', idx, 'conclusion', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div></div></div>; })}<button type='button' onClick={function(){ addRow('d6_verifications', { axis:'Occurrence', linked_action_id:'', measurement_method:'', validation_result:'', responsible:'', completion_date:'', acceptance_criteria:'', recurrence_status:'', conclusion:'' }); }} style={{alignSelf:'flex-start',background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add verification row</button></div>)}</div>; }
+
+    function renderD7D8Step(){ return <div style={{display:'flex',flexDirection:'column',gap:12}}><div style={{display:'grid',gridTemplateColumns:stackGrid('1fr 1fr'),gap:12}}>{renderTableCard('D7 Prevention / Yokoten','Structured capture for prevention and replication.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Preventive actions','preventive_actions_text',4,'')} {renderTextArea('Replication scope','replication_scope',3,'')} {renderTextArea('Lesson learned','lesson_learned_text',3,'')} {renderTextArea('Yokoten trigger','yokoten_trigger',3,'')} <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>{renderInput('Deployment owner','deployment_owner','')} {renderInput('Deployment status','deployment_status','')}</div></div>)} {renderTableCard('D8 Closure','Closure narrative and open items.', <div style={{display:'flex',flexDirection:'column',gap:10}}>{renderTextArea('Closure basis','closure_basis',3,'')} {renderTextArea('Closure statement short','closure_statement_short',2,'')} {renderTextArea('Closure statement full','closure_statement_full',4,'')} {renderTextArea('Open items','closure_open_items',3,'')} {renderInput('Closure status','closure_status','')}</div>)}</div>{renderTableCard('Appendix builder','Build the flow by station/date and trace rows from RCCA source data.', <div style={{display:'flex',flexDirection:'column',gap:12}}><div><div style={{fontSize:11,fontWeight:800,color:'#1F3A5F',marginBottom:8}}>Flow by station & date</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.appendix_flow).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('120px 140px 160px 1fr 1fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Stage</div><input value={row.stage || ''} onChange={function(e){ updateListField('appendix_flow', idx, 'stage', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Station</div><input value={row.station || ''} onChange={function(e){ updateListField('appendix_flow', idx, 'station', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Timestamp</div><input value={row.timestamp || ''} onChange={function(e){ updateListField('appendix_flow', idx, 'timestamp', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Source</div><input value={row.source || ''} onChange={function(e){ updateListField('appendix_flow', idx, 'source', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Result / observation</div><input value={joinNonEmpty([row.result,row.observation],' · ')} onChange={function(e){ updateListField('appendix_flow', idx, 'result', e.target.value); updateListField('appendix_flow', idx, 'observation', ''); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('appendix_flow', idx); }} style={rowButtonStyle()}>–</button></div>; })}</div><button type='button' onClick={function(){ addRow('appendix_flow', { stage:'', station:'', timestamp:'', source:'', result:'', observation:'' }); }} style={{marginTop:8,background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add flow row</button></div><div><div style={{fontSize:11,fontWeight:800,color:'#1F3A5F',marginBottom:8}}>Traceability mapping</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{safeList(form.appendix_traceability).map(function(row, idx){ return <div key={idx} style={{display:'grid',gridTemplateColumns:rowGrid('1.1fr .8fr .8fr .9fr 1fr .9fr auto'),gap:8,alignItems:'end'}}><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Process step</div><input value={row.process_step || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'process_step', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Line</div><input value={row.line || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'line', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Station</div><input value={row.station || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'station', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Equipment</div><input value={row.equipment_tester || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'equipment_tester', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Timestamp</div><input value={row.timestamp || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'timestamp', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><div><div style={{fontSize:10,fontWeight:700,color:'#6A6560',marginBottom:4}}>Result</div><input value={row.result || ''} onChange={function(e){ updateListField('appendix_traceability', idx, 'result', e.target.value); }} style={{width:'100%',border:'1.5px solid #DDDBD7',borderRadius:9,padding:'8px 10px',fontSize:12}}/></div><button type='button' onClick={function(){ removeRow('appendix_traceability', idx); }} style={rowButtonStyle()}>–</button></div>; })}</div><button type='button' onClick={function(){ addRow('appendix_traceability', { process_step:'', line:'', station:'', equipment_tester:'', timestamp:'', result:'', source:form.rcca_id || 'TraceOps', why_it_matters:'' }); }} style={{marginTop:8,background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:9,padding:'8px 12px',fontSize:11,fontWeight:800,color:'#2F6FB3',cursor:'pointer'}}>+ Add trace row</button></div></div>)}</div>; }
+
+    var stepContent = currentStep==='identity' ? renderIdentityStep() : currentStep==='d1d2' ? renderD1D2Step() : currentStep==='evidence' ? renderEvidenceStep() : currentStep==='d3' ? renderD3Step() : currentStep==='d4a' ? renderD4AStep() : currentStep==='d4b' ? renderD4BStep() : currentStep==='d5d6' ? renderD5D6Step() : renderD7D8Step();
+
+    return (
+      <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:9998,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={function(){ onClose(); }}>
+        <div className='traceops-rcca-builder' style={{background:'#fff',borderRadius:'16px 16px 0 0',width:compact?'calc(100vw - 16px)':'min(1180px, calc(100vw - 24px))',maxWidth:1180,maxHeight:'min(92vh, 100dvh - 16px)',overflowY:'auto',overflowX:'hidden',paddingBottom:24,boxShadow:'0 24px 64px rgba(0,0,0,.26)'}} onClick={function(e){ e.stopPropagation(); }}>
+          <div style={{position:'sticky',top:0,background:'#fff',borderBottom:'1px solid #EEECEA',padding:compact?'12px 14px':'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',zIndex:50,boxShadow:'0 6px 18px rgba(26,23,20,.06)'}}>
+            <div style={{minWidth:0,flex:'1 1 220px'}}>
+              <div style={{fontSize:compact?18:16,fontWeight:800,color:'#1A1714',lineHeight:1.1}}>{isEdit ? 'Edit RCCA' : 'New RCCA'}</div>
+              <div style={{fontSize:compact?11:10,fontFamily:'monospace',color:'#2F6FB3',fontWeight:700,marginTop:4,wordBreak:'break-word'}}>{form.rcca_id}</div>
+              {!compact && <div style={{fontSize:10,color:'#6A6560',marginTop:4}}>Capture once → feed RCCA + 8D</div>}
             </div>
-            <button onClick={onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6A6560"}}>Cancel</button>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',justifyContent:'flex-end'}}>
+              {!compact && <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,background:'#EEF6FF',color:'#145A28',border:'1px solid #A0DEB4',borderRadius:999,padding:'6px 10px'}}>Structure {Math.max(0, 100 - builderBlockers.length * 8)}%</span>}
+              {!compact && <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,background:'#EAF2FF',color:'#2F6FB3',border:'1px solid #C7DBF7',borderRadius:999,padding:'6px 10px'}}>Evidence {(traceOpsCountEvidenceRoles(form.meta_files || []).bad + traceOpsCountEvidenceRoles(form.meta_files || []).good) > 0 ? 70 : 20}%</span>}
+              <button onClick={onClose} style={{background:'#F8F7F5',border:'1px solid #DDDBD7',borderRadius:12,padding:compact?'10px 18px':'8px 14px',fontSize:compact?14:12,fontWeight:700,cursor:'pointer',color:'#6A6560',minHeight:compact?44:'auto'}}>Cancel</button>
+            </div>
+            {compact && <div style={{width:'100%',display:'flex',gap:8,flexWrap:'wrap',marginTop:2}}>
+              <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,background:'#EEF6FF',color:'#145A28',border:'1px solid #A0DEB4',borderRadius:999,padding:'6px 10px'}}>Structure {Math.max(0, 100 - builderBlockers.length * 8)}%</span>
+              <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,background:'#EAF2FF',color:'#2F6FB3',border:'1px solid #C7DBF7',borderRadius:999,padding:'6px 10px'}}>Evidence {(traceOpsCountEvidenceRoles(form.meta_files || []).bad + traceOpsCountEvidenceRoles(form.meta_files || []).good) > 0 ? 70 : 20}%</span>
+            </div>}
           </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
-            {restoredDraft&&<div style={{background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:8,padding:"8px 12px",fontSize:10.5,color:"#1F3A5F"}}>A local draft was restored so you can continue without losing text.</div>}{isEdit&&<div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:8,padding:"8px 12px",fontSize:10.5,color:"#8B6A1E"}}>Edit mode active. You can update text and linked events without changing the RCCA ID.</div>}
-            <div>
-              <div style={{fontSize:10,fontWeight:700,color:"#2F6FB3",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Link to events ({form.event_ids.length} selected)</div>
-              {ev.length===0?<div style={{fontSize:11,color:"#8A8580",fontStyle:"italic"}}>No events loaded</div>:(
-                <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:200,overflowY:"auto",border:"1px solid #EEECEA",borderRadius:8,padding:8}}>
-                  {ev.map(function(e){var selected=form.event_ids.indexOf(e.id)>=0;return(
-                    <div key={e.id} onClick={function(){toggleEvent(e.id);}} style={{display:"flex",alignItems:"center",gap:10,background:selected?"#EAF2FF":"#F8F7F5",border:"1.5px solid "+(selected?"#2F6FB3":"#DDDBD7"),borderRadius:7,padding:"8px 11px",cursor:"pointer"}}>
-                      <div style={{width:16,height:16,borderRadius:4,flexShrink:0,background:selected?"#1F3A5F":"#fff",border:"1.5px solid "+(selected?"#1F3A5F":"#C8C4BE"),display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:10,fontWeight:700}}>{selected?"v":""}</div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:9.5,fontWeight:700,fontFamily:"monospace",color:selected?"#1F3A5F":"#8A8580"}}>{e.id}</span><span style={{fontSize:9,color:"#8A8580"}}>{e.fecha}</span></div>
-                        <div style={{fontSize:10.5,color:"#1A1714",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.evento_detectado?e.evento_detectado.slice(0,60):""}</div>
-                      </div>
-                    </div>
-                  );})}
-                </div>
-              )}
+          <div style={{padding:compact?'14px 14px 18px':'16px 20px',display:'grid',gridTemplateColumns:compact?'1fr':'minmax(0,1fr) 280px',gap:16,alignItems:'start',minWidth:0,overflowX:'hidden'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:12,minWidth:0,overflowX:'hidden'}}>
+              {restoredDraft && <div style={{background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:10,padding:'9px 12px',fontSize:10.5,color:'#1F3A5F'}}>A local draft was restored so you can continue the RCCA builder without losing text.</div>}
+              <div style={{display:'flex',gap:8,flexWrap:compact?'nowrap':'wrap',overflowX:compact?'auto':'visible',paddingBottom:compact?4:0,WebkitOverflowScrolling:'touch',maxWidth:'100%',minWidth:0}}>{stepDefs.map(function(step){ var active = step.key === currentStep; return <button key={step.key} type='button' onClick={function(){ setCurrentStep(step.key); }} style={{background:active?'#1F3A5F':'#F8F7F5',color:active?'#fff':'#6A6560',border:'1px solid ' + (active ? '#1F3A5F' : '#DDDBD7'),borderRadius:999,padding:'9px 12px',fontSize:11,fontWeight:800,cursor:'pointer',whiteSpace:'nowrap',flex:'0 0 auto'}}>{step.label}</button>; })}</div>
+              {stepContent}
+              <div style={{display:'flex',flexDirection:compact?'column':'row',justifyContent:'space-between',gap:12,marginTop:2}}><button type='button' onClick={goPrev} disabled={currentStepIndex===0} style={{background:currentStepIndex===0?'#F8F7F5':'#fff',color:currentStepIndex===0?'#B8B4AE':'#1A1714',border:'1px solid #DDDBD7',borderRadius:10,padding:'11px 16px',fontSize:12,fontWeight:800,cursor:currentStepIndex===0?'default':'pointer',width:compact?'100%':'auto'}}>← Previous</button><div style={{display:'flex',gap:8,flexDirection:compact?'column':'row',flexWrap:'wrap',justifyContent:'flex-end'}}><button type='button' onClick={function(){ writeRccaDraft({ ts:new Date().toISOString(), mode:isEdit?'edit':'new', form:Object.assign({}, form, { __draft_builder_step: currentStep }) }); }} style={{background:'#EAF2FF',border:'1px solid #C7DBF7',borderRadius:10,padding:'11px 16px',fontSize:12,fontWeight:800,color:'#2F6FB3',cursor:'pointer',width:compact?'100%':'auto'}}>Save draft</button>{currentStepIndex < stepDefs.length - 1 ? <button type='button' onClick={goNext} style={{background:'#1F3A5F',color:'#fff',border:'none',borderRadius:10,padding:'11px 16px',fontSize:12,fontWeight:800,cursor:'pointer',width:compact?'100%':'auto'}}>Next →</button> : <button type='button' onClick={saveStructured} style={{background:'#1F3A5F',color:'#fff',border:'none',borderRadius:10,padding:'11px 16px',fontSize:12,fontWeight:800,cursor:'pointer',width:compact?'100%':'auto'}}>{isEdit ? 'Update RCCA' : 'Save RCCA'}</button>}</div></div>
             </div>
-            <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:9.5,color:"#8A8580",fontWeight:600,textTransform:"uppercase"}}>RCCA ID:</span>
-              <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:"#1F3A5F"}}>{form.rcca_id}</span>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-              {[{k:"modelo",l:"Modelo/N-P"},{k:"linea",l:"Line"},{k:"fecha",l:"Date"}].map(function(f){return(
-                <div key={f.k}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.l}</div><input value={form[f.k]} onChange={function(e){upd(f.k,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
-              );})}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[{k:"primera_deteccion",l:"1st Detection",ph:"DD/MM/YYYY or YYYY-MM-DD"},{k:"ultima_deteccion",l:"Last Detection",ph:"DD/MM/YYYY or YYYY-MM-DD"}].map(function(f){return(
-                <div key={f.k}>
-                  <div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.l}</div>
-                  <input value={form[f.k]} placeholder={f.ph} onChange={function(e){upd(f.k,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/>
-                </div>
-              );})}
-            </div>
-            <div style={{border:"1px solid #DDDBD7",borderRadius:10,overflow:"hidden"}}>
-              <button onClick={function(){setFrontOpen(!frontOpen);}} style={{width:"100%",textAlign:"left",padding:"11px 12px",background:frontOpen?"#F5F0FE":"#F8F7F5",border:"none",borderBottom:frontOpen?"1px solid #E6DDF9":"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,fontWeight:700,color:"#6B2DA8",textTransform:"uppercase",letterSpacing:".06em"}}>Card front</span><span style={{fontSize:11,color:"#6B2DA8",fontWeight:700}}>{frontOpen?"Hide":"Show"}</span></button>
-              {frontOpen&&<div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-                <div><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>Titulo corto</div><input value={form.titulo_corto} onChange={function(e){upd("titulo_corto",e.target.value);}} placeholder="Resumen corto para la carta" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-                  {SelectField({k:"tipo_caso",l:"Tipo de caso",opts:[{v:"GENERAL",l:"GENERAL"},{v:"SMT",l:"SMT"},{v:"AOI",l:"AOI"},{v:"ICT",l:"ICT"},{v:"BGA",l:"BGA"},{v:"PTH",l:"PTH"},{v:"MATERIAL",l:"MATERIAL"},{v:"PROCESO",l:"PROCESO"},{v:"SISTEMA",l:"SISTEMA"},{v:"TEST",l:"TEST"}]})}
-                  {SelectField({k:"estatus_rcca",l:"Estatus",opts:[{v:"NUEVO",l:"NUEVO"},{v:"IN ANALYSIS",l:"IN ANALYSIS"},{v:"CONTENIDO",l:"CONTENIDO"},{v:"VALIDANDO",l:"VALIDANDO"},{v:"CERRADO",l:"CERRADO"}]})}
-                  {SelectField({k:"severidad",l:"Severidad",opts:[{v:"1",l:"1"},{v:"2",l:"2"},{v:"3",l:"3"},{v:"4",l:"4"},{v:"5",l:"5"}]})}
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-                  {SelectField({k:"recurrencia",l:"Recurrencia",opts:[{v:"1",l:"1"},{v:"2",l:"2"},{v:"3",l:"3"},{v:"4",l:"4"},{v:"5",l:"5"}]})}
-                  {SelectField({k:"madurez_analisis",l:"Madurez",opts:[{v:"1",l:"1"},{v:"2",l:"2"},{v:"3",l:"3"},{v:"4",l:"4"},{v:"5",l:"5"}]})}
-                  <div><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>Estacion dominante</div><input value={form.estacion_dominante} onChange={function(e){upd("estacion_dominante",e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
-                </div>
-                <div><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>Defecto dominante</div><input value={form.defecto_dominante} onChange={function(e){upd("defecto_dominante",e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"7px 10px",fontSize:12,color:"#1A1714",outline:"none"}}/></div>
-              </div>}
-            </div>
-            {basicFields.map(function(f){return(
-              <div key={f.key}>
-                <div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.label}{f.required&&<span style={{color:"#C0392B"}}> *</span>}</div>
-                <textarea value={form[f.key]} rows={f.rows} onChange={function(e){upd(f.key,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
-              </div>
-            );})}
-            <div style={{border:"1px solid #DDDBD7",borderRadius:10,overflow:"hidden"}}>
-              <button onClick={function(){setInsightsOpen(!insightsOpen);}} style={{width:"100%",textAlign:"left",padding:"11px 12px",background:insightsOpen?"#EAF2FF":"#F8F7F5",border:"none",borderBottom:insightsOpen?"1px solid #D8E1F7":"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,fontWeight:700,color:"#2F6FB3",textTransform:"uppercase",letterSpacing:".06em"}}>Insights opcionales</span><span style={{fontSize:11,color:"#2F6FB3",fontWeight:700}}>{insightsOpen?"Ocultar":"Mostrar"}</span></button>
-              {insightsOpen&&<div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>{insightFields.map(function(f){return(<div key={f.key}><div style={{fontSize:10,fontWeight:600,color:"#6A6560",marginBottom:3}}>{f.label}</div><textarea value={form[f.key]} rows={f.rows} onChange={function(e){upd(f.key,e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:7,padding:"8px 10px",fontSize:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit"}}/></div>);})}</div>}
-            </div>
-            <div style={{border:"1px solid #D8E1F7",borderRadius:10,overflow:"hidden",background:"#F7FAFF"}}>
-              <div style={{padding:"11px 12px",borderBottom:"1px solid #D8E1F7",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
-                <div>
-                  <div style={{fontSize:11,fontWeight:700,color:"#1F3A5F",textTransform:"uppercase",letterSpacing:".06em"}}>Archivos meta</div>
-                  <div style={{fontSize:10,color:"#6A6560",marginTop:3}}>Guarda evidencia del caso como ZIP, PPT/PPTX y JPG/PNG dentro del RCCA. Las imagenes intentan asignarse automaticamente a Bad / Good part y puedes corregirlo manualmente.</div>
-                </div>
-                <button type="button" onClick={function(){ if(metaInputRef.current) metaInputRef.current.click(); }} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:8,padding:"8px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>+ Agregar archivo</button>
-                <input ref={metaInputRef} type="file" multiple accept={TRACEOPS_RCCA_META_ACCEPT.join(',')} style={{display:"none"}} onChange={function(e){ addMetaFiles(e.target.files).catch(function(err){ alert(err && err.message ? err.message : String(err)); }); }}/>
-              </div>
-              <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
-                <div style={{fontSize:10,color:"#6A6560"}}>Límite: {TRACEOPS_RCCA_META_MAX_FILES} archivos · {traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_FILE_BYTES)} por archivo · {traceOpsFormatBytes(TRACEOPS_RCCA_META_MAX_TOTAL_BYTES)} total.</div>
-                {form.meta_files&&form.meta_files.length?(
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    {form.meta_files.map(function(file){return(
-                      <div key={file.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#fff",border:"1px solid #D8E1F7",borderRadius:8,padding:"9px 10px",flexWrap:"wrap"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
-                          <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:999,padding:"4px 8px",minWidth:42,textAlign:"center"}}>{traceOpsMetaIcon(file)}</div>
-                          <div style={{minWidth:0,flex:1}}>
-                            <div style={{fontSize:11.5,fontWeight:700,color:"#1A1714",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{file.name}</div>
-                            <div style={{fontSize:10,color:"#6A6560",marginTop:2}}>{file.kind} · {traceOpsFormatBytes(file.size)}</div>
-                          </div>
-                        </div>
-                        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                          {traceOpsIsImageMetaFile(file)&&<div style={{display:"inline-flex",gap:4,flexWrap:"wrap",padding:"3px",background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:999}}>
-                            {[["bad","Bad part","#FDF0EE","#C0392B"],["good","Good part","#EEF6FF","#1A7A3C"],["general","General","#EAF2FF","#2F6FB3"]].map(function(opt){
-                              var active=(file.evidence_role||'general')===opt[0];
-                              return <button key={opt[0]} type="button" onClick={function(){setMetaFileRole(file.id,opt[0]);}} style={{background:active?opt[2]:"transparent",color:active?opt[3]:"#6A6560",border:"none",borderRadius:999,padding:"5px 8px",fontSize:9.5,fontWeight:800,cursor:"pointer"}}>{opt[1]}</button>;
-                            })}
-                          </div>}
-                          <button type="button" onClick={function(){traceOpsDownloadMetaFile(file);}} style={{background:"#EAF2FF",border:"1px solid #C7DBF7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#2F6FB3",cursor:"pointer"}}>Descargar</button>
-                          <button type="button" onClick={function(){removeMetaFile(file.id);}} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:8,padding:"6px 10px",fontSize:10.5,fontWeight:700,color:"#6A6560",cursor:"pointer"}}>Quitar</button>
-                        </div>
-                      </div>
-                    );})}
-                  </div>
-                ):(
-                  <div style={{background:"#fff",border:"1px dashed #C7DBF7",borderRadius:8,padding:"14px 12px",fontSize:11,color:"#6A6560"}}>Aún no hay archivos meta cargados para este RCCA.</div>
-                )}
-              </div>
-            </div>
-            <button onClick={async function(){if(!form.problema||!form.causa_raiz){alert("Completa Problema y Causa Raiz");return;}var ok = await onSave(form);if(ok!==false) onClose();}} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4}}>{isEdit?"Actualizar RCCA":"Guardar RCCA"}</button>
+            <div style={{display:'flex',flexDirection:'column',gap:12,position:compact?'static':'sticky',top:86,minWidth:0,overflowX:'hidden'}}>{renderTableCard('Export blockers','These gaps are the same ones that later appear as Pending in the 8D.', <div style={{display:'flex',flexDirection:'column',gap:6}}>{builderBlockers.length ? builderBlockers.map(function(item){ return <div key={item} style={{fontSize:10.5,color:'#C0392B',background:'#FDF0EE',border:'1px solid #F0C4BE',borderRadius:999,padding:'6px 10px',fontWeight:800}}>{item}</div>; }) : <div style={{fontSize:10.5,color:'#145A28',background:'#EEF6FF',border:'1px solid #A0DEB4',borderRadius:999,padding:'6px 10px',fontWeight:800}}>Builder looks reviewable</div>}</div>)}{renderTableCard('Quick summary','Visible source fields for RCCA and 8D.', <div style={{display:'flex',flexDirection:'column',gap:8}}><div style={{fontSize:11,color:'#6A6560'}}>Model <strong style={{color:'#1A1714'}}>{form.modelo || '-'}</strong></div><div style={{fontSize:11,color:'#6A6560'}}>Line <strong style={{color:'#1A1714'}}>{form.linea || '-'}</strong></div><div style={{fontSize:11,color:'#6A6560'}}>Station <strong style={{color:'#1A1714'}}>{form.main_station || '-'}</strong></div><div style={{fontSize:11,color:'#6A6560'}}>Failure mode <strong style={{color:'#1A1714'}}>{form.failure_mode || '-'}</strong></div><div style={{fontSize:11,color:'#6A6560'}}>Events linked <strong style={{color:'#1A1714'}}>{(form.event_ids || []).length}</strong></div></div>)}</div>
           </div>
         </div>
       </div>
     );
   }
+
 
   function EightdDraftEditor(props){
     var init = props.init || {};
@@ -10963,7 +10929,7 @@ function replaceMetaFiles(nextFiles){
               {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Modo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
             </div>
             <div style={{fontSize:10,lineHeight:1.4,color:syncBusy?"#CDE7C5":"rgba(255,255,255,.5)",padding:"8px 10px",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,background:"rgba(255,255,255,.03)"}}>
-              {authUser && authUser.email ? ("Sesión: " + authUser.email + " · " + cloudStatus) : (!authReady ? "Inicializando nube..." : cloudStatus)}
+              {authUser&&authUser.email?("Sesión: "+authUser.email+" · "+cloudStatus):(cloudStatus+(authReady?"":" · cargando"))}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:8,fontSize:10,fontWeight:700,color:realtimeUi.color,background:realtimeUi.bg,border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:"8px 10px"}}>
               <span style={{display:"inline-block",width:8,height:8,borderRadius:99,background:realtimeUi.color}}></span>
