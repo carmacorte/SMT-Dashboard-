@@ -1813,30 +1813,46 @@ window.TRACEOPS_SUPABASE = window.TRACEOPS_SUPABASE || {
   enabled: false
 };
 
-if (typeof window !== "undefined" && !window.global) { window.global = window; }
+if (typeof window !== "undefined" && !window.global) {
+  window.global = window;
+}
 
 function traceOpsNormalizeCloudError(err) {
   var raw = err && err.message ? String(err.message) : String(err || "");
   var low = raw.toLowerCase();
-  if (low.indexOf("load failed") >= 0 || low.indexOf("failed to fetch") >= 0 || low.indexOf("networkerror") >= 0) {
+
+  if (
+    low.indexOf("load failed") >= 0 ||
+    low.indexOf("failed to fetch") >= 0 ||
+    low.indexOf("networkerror") >= 0
+  ) {
     var e = new Error("No se pudo conectar con Supabase desde este navegador. Se mantiene modo local.");
     e.isNetworkFallback = true;
     e.originalMessage = raw;
     return e;
   }
-  if (low.indexOf('another request stole it') >= 0 || low.indexOf('auth-token') >= 0 && low.indexOf('lock') >= 0) {
+
+  if (
+    low.indexOf("another request stole it") >= 0 ||
+    (low.indexOf("auth-token") >= 0 && low.indexOf("lock") >= 0)
+  ) {
     var e2 = new Error("La sesión en nube está ocupada por otra operación. Reintentando sin bloquear la app.");
     e2.isTransientAuthLock = true;
     e2.originalMessage = raw;
     return e2;
   }
+
   return err instanceof Error ? err : new Error(raw || "Error de nube");
 }
 
-window.TraceOpsCloud = (function(){
+window.TraceOpsCloud = (function () {
   var __traceops_user_cache = null;
+  var __traceops_session_cache = null;
   var __traceops_user_loading = null;
-  function cfg(){
+  var __traceops_session_loading = null;
+  var __traceops_refresh_loading = null;
+
+  function cfg() {
     var raw = window.TRACEOPS_SUPABASE || {};
     return {
       url: (raw.url || "").trim(),
@@ -1845,208 +1861,354 @@ window.TraceOpsCloud = (function(){
     };
   }
 
-  function isConfigured(){
+  function isConfigured() {
     var c = cfg();
-    return c.enabled && c.url && c.anonKey && window.supabase && typeof window.supabase.createClient === "function";
+    return (
+      c.enabled &&
+      c.url &&
+      c.anonKey &&
+      window.supabase &&
+      typeof window.supabase.createClient === "function"
+    );
   }
 
-  function getClient(){
+  function getClient() {
     if (!isConfigured()) return null;
+
     if (!window.__traceopsSupabaseClient) {
       var c = cfg();
       window.__traceopsSupabaseClient = window.supabase.createClient(c.url, c.anonKey, {
         auth: {
           persistSession: true,
-          autoRefreshToken: true,
+          autoRefreshToken: false,
           detectSessionInUrl: true
         },
         global: {
-          fetch: function(url, options) {
-            return fetch(url, options).catch(function(err){
+          fetch: function (url, options) {
+            return fetch(url, options).catch(function (err) {
               throw traceOpsNormalizeCloudError(err);
             });
           }
         }
       });
     }
+
     return window.__traceopsSupabaseClient;
   }
 
-  async function getUser(){
+  function setSessionCache(session) {
+    __traceops_session_cache = session || null;
+    __traceops_user_cache = session && session.user ? session.user : null;
+  }
+
+  async function getSession(options) {
     var client = getClient();
     if (!client) return null;
-    if (__traceops_user_cache) return __traceops_user_cache;
-    if (__traceops_user_loading) return __traceops_user_loading;
-    __traceops_user_loading = (async function(){
+
+    options = options || {};
+    var force = !!options.force;
+
+    if (!force && __traceops_session_cache) return __traceops_session_cache;
+    if (!force && __traceops_session_loading) return __traceops_session_loading;
+
+    __traceops_session_loading = (async function () {
       try {
-        var out = await client.auth.getUser();
-        __traceops_user_cache = out && out.data ? (out.data.user || null) : null;
-        return __traceops_user_cache;
+        var out = await client.auth.getSession();
+        var session = out && out.data ? (out.data.session || null) : null;
+        setSessionCache(session);
+        return session;
       } catch (err) {
         throw traceOpsNormalizeCloudError(err);
+      } finally {
+        __traceops_session_loading = null;
+      }
+    })();
+
+    return __traceops_session_loading;
+  }
+
+  async function refreshSession() {
+    var client = getClient();
+    if (!client) return null;
+    if (__traceops_refresh_loading) return __traceops_refresh_loading;
+
+    __traceops_refresh_loading = (async function () {
+      try {
+        var out = await client.auth.refreshSession();
+        if (out.error) throw out.error;
+        var session = out && out.data ? (out.data.session || null) : null;
+        setSessionCache(session);
+        return session;
+      } catch (err) {
+        throw traceOpsNormalizeCloudError(err);
+      } finally {
+        __traceops_refresh_loading = null;
+      }
+    })();
+
+    return __traceops_refresh_loading;
+  }
+
+  async function ensureSession() {
+    var session = await getSession();
+    if (session) return session;
+
+    try {
+      session = await refreshSession();
+      return session || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function getUser(options) {
+    options = options || {};
+
+    if (!options.force && __traceops_user_cache) return __traceops_user_cache;
+    if (!options.force && __traceops_user_loading) return __traceops_user_loading;
+
+    __traceops_user_loading = (async function () {
+      try {
+        var session = await ensureSession();
+        var user = session && session.user ? session.user : null;
+        __traceops_user_cache = user;
+        return user;
       } finally {
         __traceops_user_loading = null;
       }
     })();
+
     return __traceops_user_loading;
   }
 
-async function initApp(){
-  var client = getClient();
-  if (!client) return;
-
-  const { data } = await client.auth.getSession();
-
-  if (data && data.session) {
-    if(window.__TRACEOPS_DEV__){console.log("[TraceOps] Sesión activa detectada");}
-
-    // 🔥 AUTO LOAD
-    await loadRccasFromCloud();
-  }
-}
-async function loadRccasFromCloud(){
-  var client = getClient();
-  var user = await getUser();
-  if (!client || !user) {
-    console.warn("No hay cliente Supabase o sesion activa");
-    return [];
-  }
-
-  const { data, error } = await client
-    .from('traceops_rcca_cases')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('updated_at', { ascending: false });
-
-  if (error) {
-    console.error("Error cargando RCCA:", error);
-    return [];
-  }
-
-  if(window.__TRACEOPS_DEV__){console.log("[TraceOps] RCCA desde nube:", data);}
-
-  const rccas = (data || []).map(function(row){ return row.payload; }).filter(Boolean);
-  try {
-    var localRccas = [];
-    try { localRccas = JSON.parse(localStorage.getItem("traceops_rcca_cases") || "[]") || []; } catch(_) {}
-    var mergedById = {};
-    if (Array.isArray(localRccas)) {
-      localRccas.forEach(function(item){
-        if (item && item.rcca_id) mergedById[item.rcca_id] = traceOpsMergeRccaPayload(mergedById[item.rcca_id], item);
-      });
-    }
-    rccas.forEach(function(item){
-      if (item && item.rcca_id) mergedById[item.rcca_id] = traceOpsMergeRccaPayload(mergedById[item.rcca_id], item);
-    });
-    var mergedList = Object.keys(mergedById).map(function(k){ return mergedById[k]; });
-    localStorage.setItem("traceops_rcca_cases", JSON.stringify(mergedList));
-    window.__traceops_cloud_rccas = mergedList;
-    if (typeof renderInvestigationCarousel === "function") {
-      renderInvestigationCarousel(mergedList);
-    }
-    return mergedList;
-  } catch(_) {}
-
-  if(window.__TRACEOPS_DEV__){console.log("[TraceOps] RCCA normalizados:", rccas);}
-
-  localStorage.setItem("traceops_rcca_cases", JSON.stringify(rccas));
-  window.__traceops_cloud_rccas = rccas;
-  if (typeof renderInvestigationCarousel === "function") {
-    renderInvestigationCarousel(rccas);
-  }
-  return rccas;
-} 
-async function signIn(email, password){
-    var client = getClient();
-    if (!client) throw new Error("Supabase no configurado.");
-    var out = await client.auth.signInWithPassword({ email: email, password: password });
-    if (out.error) throw traceOpsNormalizeCloudError(out.error);
-    __traceops_user_cache = out && out.data && out.data.user ? out.data.user : null;
-    __traceops_user_loading = null;
-    return out.data;
-  }
-
-async function signUp(email, password){
-    var client = getClient();
-    if (!client) throw new Error("Supabase no configurado.");
-    var out = await client.auth.signUp({ email: email, password: password });
-    if (out.error) throw traceOpsNormalizeCloudError(out.error);
-    __traceops_user_cache = out && out.data && out.data.user ? out.data.user : null;
-    __traceops_user_loading = null;
-    return out.data;
-  }
-
-  async function signOut(){
+  async function initApp() {
     var client = getClient();
     if (!client) return;
-    var out = await client.auth.signOut();
-    if (out.error) throw traceOpsNormalizeCloudError(out.error);
-    __traceops_user_cache = null;
-    __traceops_user_loading = null;
+
+    var session = await ensureSession();
+
+    if (session) {
+      if (window.__TRACEOPS_DEV__) {
+        console.log("[TraceOps] Sesión activa detectada");
+      }
+      await loadRccasFromCloud();
+    }
   }
 
-  function onAuthChange(handler){
+  async function loadRccasFromCloud() {
     var client = getClient();
-    if (!client) return { data: { subscription: { unsubscribe: function(){} } } };
-    return client.auth.onAuthStateChange(function(evt, session){
-      __traceops_user_cache = session && session.user ? session.user : null;
+    var session = await ensureSession();
+    var user = session && session.user ? session.user : null;
+
+    if (!client || !user) {
+      console.warn("No hay cliente Supabase o sesion activa");
+      return [];
+    }
+
+    var result = await client
+      .from("traceops_rcca_cases")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
+
+    if (result.error) {
+      console.error("Error cargando RCCA:", traceOpsNormalizeCloudError(result.error));
+      return [];
+    }
+
+    if (window.__TRACEOPS_DEV__) {
+      console.log("[TraceOps] RCCA desde nube:", result.data);
+    }
+
+    var rccas = (result.data || [])
+      .map(function (row) { return row.payload; })
+      .filter(Boolean);
+
+    try {
+      var localRccas = [];
+      try {
+        localRccas = JSON.parse(localStorage.getItem("traceops_rcca_cases") || "[]") || [];
+      } catch (_) {}
+
+      var mergedById = {};
+
+      if (Array.isArray(localRccas)) {
+        localRccas.forEach(function (item) {
+          if (item && item.rcca_id) {
+            mergedById[item.rcca_id] = traceOpsMergeRccaPayload(mergedById[item.rcca_id], item);
+          }
+        });
+      }
+
+      rccas.forEach(function (item) {
+        if (item && item.rcca_id) {
+          mergedById[item.rcca_id] = traceOpsMergeRccaPayload(mergedById[item.rcca_id], item);
+        }
+      });
+
+      var mergedList = Object.keys(mergedById).map(function (k) {
+        return mergedById[k];
+      });
+
+      localStorage.setItem("traceops_rcca_cases", JSON.stringify(mergedList));
+      window.__traceops_cloud_rccas = mergedList;
+
+      if (typeof renderInvestigationCarousel === "function") {
+        renderInvestigationCarousel(mergedList);
+      }
+
+      return mergedList;
+    } catch (_) {}
+
+    localStorage.setItem("traceops_rcca_cases", JSON.stringify(rccas));
+    window.__traceops_cloud_rccas = rccas;
+
+    if (typeof renderInvestigationCarousel === "function") {
+      renderInvestigationCarousel(rccas);
+    }
+
+    return rccas;
+  }
+
+  async function signIn(email, password) {
+    var client = getClient();
+    if (!client) throw new Error("Supabase no configurado.");
+
+    var out = await client.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (out.error) throw traceOpsNormalizeCloudError(out.error);
+
+    var session = out && out.data ? (out.data.session || null) : null;
+    setSessionCache(session);
+    return out.data;
+  }
+
+  async function signUp(email, password) {
+    var client = getClient();
+    if (!client) throw new Error("Supabase no configurado.");
+
+    var out = await client.auth.signUp({
+      email: email,
+      password: password
+    });
+
+    if (out.error) throw traceOpsNormalizeCloudError(out.error);
+
+    var session = out && out.data ? (out.data.session || null) : null;
+    setSessionCache(session);
+    return out.data;
+  }
+
+  async function signOut() {
+    var client = getClient();
+    if (!client) return;
+
+    var out = await client.auth.signOut();
+    if (out.error) throw traceOpsNormalizeCloudError(out.error);
+
+    setSessionCache(null);
+    __traceops_user_loading = null;
+    __traceops_session_loading = null;
+    __traceops_refresh_loading = null;
+  }
+
+  function onAuthChange(handler) {
+    var client = getClient();
+    if (!client) {
+      return {
+        data: {
+          subscription: {
+            unsubscribe: function () {}
+          }
+        }
+      };
+    }
+
+    return client.auth.onAuthStateChange(function (evt, session) {
+      setSessionCache(session || null);
       __traceops_user_loading = null;
-      handler(evt, session && session.user ? session.user : null, session);
+      __traceops_session_loading = null;
+      __traceops_refresh_loading = null;
+      handler(evt, session && session.user ? session.user : null, session || null);
     });
   }
 
-  function subscribeRccaRealtime(userId, handler, onStatus){
+  function subscribeRccaRealtime(userId, handler, onStatus) {
     var client = getClient();
-    var normalizedUserId = String(userId || '').trim();
+    var normalizedUserId = String(userId || "").trim();
+
     if (!client || !normalizedUserId || !handler) {
-      try { if (onStatus) onStatus('CLOSED'); } catch(_) {}
-      return { unsubscribe: function(){} };
+      try { if (onStatus) onStatus("CLOSED"); } catch (_) {}
+      return { unsubscribe: function () {} };
     }
+
     try {
-      var channelName = 'traceops-rcca-' + normalizedUserId.replace(/[^a-zA-Z0-9_-]/g, '_');
-      var realtimeFilter = 'user_id=eq.' + normalizedUserId;
+      var channelName = "traceops-rcca-" + normalizedUserId.replace(/[^a-zA-Z0-9_-]/g, "_");
+      var realtimeFilter = "user_id=eq." + normalizedUserId;
+
       try {
-        if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime filter:', realtimeFilter);
-      } catch(_) {}
+        if (window.__TRACEOPS_DEV__) {
+          console.log("[TraceOps] RCCA realtime filter:", realtimeFilter);
+        }
+      } catch (_) {}
+
       var channel = client.channel(channelName);
-      channel.on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'traceops_rcca_cases',
-        filter: realtimeFilter
-      }, function(payload){
-        try { handler(payload || null); } catch(_) {}
-      });
-      channel.subscribe(function(status){
+
+      channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "traceops_rcca_cases",
+          filter: realtimeFilter
+        },
+        function (payload) {
+          try { handler(payload || null); } catch (_) {}
+        }
+      );
+
+      channel.subscribe(function (status) {
         try {
-          if (window.__TRACEOPS_DEV__) console.log('[TraceOps] RCCA realtime status:', status, 'user_id:', normalizedUserId);
-        } catch(_) {}
-        try { if (onStatus) onStatus(status || 'UNKNOWN'); } catch(_) {}
+          if (window.__TRACEOPS_DEV__) {
+            console.log("[TraceOps] RCCA realtime status:", status, "user_id:", normalizedUserId);
+          }
+        } catch (_) {}
+
+        try { if (onStatus) onStatus(status || "UNKNOWN"); } catch (_) {}
       });
+
       return {
-        unsubscribe: function(){
-          try { if (onStatus) onStatus('CLOSED'); } catch(_) {}
-          try { client.removeChannel(channel); } catch(_) {}
+        unsubscribe: function () {
+          try { if (onStatus) onStatus("CLOSED"); } catch (_) {}
+          try { client.removeChannel(channel); } catch (_) {}
         }
       };
     } catch (err) {
-      console.warn('[TraceOps] Realtime RCCA unavailable:', err);
-      try { if (onStatus) onStatus('CHANNEL_ERROR'); } catch(_) {}
-      return { unsubscribe: function(){} };
+      console.warn("[TraceOps] Realtime RCCA unavailable:", err);
+      try { if (onStatus) onStatus("CHANNEL_ERROR"); } catch (_) {}
+      return { unsubscribe: function () {} };
     }
   }
 
-  async function listRcca(){
+  async function listRcca() {
     var client = getClient();
-    var user = await getUser();
+    var session = await ensureSession();
+    var user = session && session.user ? session.user : null;
+
     if (!client || !user) return [];
+
     var q = await client
       .from("traceops_rcca_cases")
       .select("rcca_id,payload,updated_at")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
+
     if (q.error) throw traceOpsNormalizeCloudError(q.error);
-    return (q.data || []).map(function(row){
+
+    return (q.data || []).map(function (row) {
       var payload = row.payload || {};
       payload.rcca_id = payload.rcca_id || row.rcca_id;
       payload._cloud_updated_at = row.updated_at || null;
@@ -2054,10 +2216,13 @@ async function signUp(email, password){
     });
   }
 
-  async function upsertRcca(rcca){
+  async function upsertRcca(rcca) {
     var client = getClient();
-    var user = await getUser();
+    var session = await ensureSession();
+    var user = session && session.user ? session.user : null;
+
     if (!client || !user) throw new Error("Sesion no disponible.");
+
     var row = {
       user_id: user.id,
       rcca_id: rcca.rcca_id,
@@ -2067,16 +2232,30 @@ async function signUp(email, password){
       }),
       updated_at: new Date().toISOString()
     };
-    var q = await client.from("traceops_rcca_cases").upsert(row, { onConflict: "user_id,rcca_id" }).select("updated_at").single();
+
+    var q = await client
+      .from("traceops_rcca_cases")
+      .upsert(row, { onConflict: "user_id,rcca_id" })
+      .select("updated_at")
+      .single();
+
     if (q.error) throw traceOpsNormalizeCloudError(q.error);
     return q.data;
   }
 
-  async function removeRcca(rccaId){
+  async function removeRcca(rccaId) {
     var client = getClient();
-    var user = await getUser();
+    var session = await ensureSession();
+    var user = session && session.user ? session.user : null;
+
     if (!client || !user) throw new Error("Sesion no disponible.");
-    var q = await client.from("traceops_rcca_cases").delete().eq("user_id", user.id).eq("rcca_id", rccaId);
+
+    var q = await client
+      .from("traceops_rcca_cases")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("rcca_id", rccaId);
+
     if (q.error) throw traceOpsNormalizeCloudError(q.error);
   }
 
@@ -2084,7 +2263,12 @@ async function signUp(email, password){
     cfg: cfg,
     isConfigured: isConfigured,
     getClient: getClient,
+    getSession: getSession,
+    ensureSession: ensureSession,
+    refreshSession: refreshSession,
     getUser: getUser,
+    initApp: initApp,
+    loadRccasFromCloud: loadRccasFromCloud,
     signIn: signIn,
     signUp: signUp,
     signOut: signOut,
@@ -2096,6 +2280,7 @@ async function signUp(email, password){
   };
 })();
 </script>
+
 
 </head>
 <body>
@@ -2278,27 +2463,29 @@ function buildExecutiveDashboardPptModelLocal(src) {
   if (!actionsList.length && obj.d5ActionsText) {
     actionsList = String(obj.d5ActionsText).split(/\n+/).filter(Boolean).slice(0,3);
   }
+  var readinessFn = (typeof window !== 'undefined' && typeof window.traceOpsComputeEightdReadiness === 'function') ? window.traceOpsComputeEightdReadiness : null;
+  var maturity = readinessFn ? readinessFn(obj) : { overallScore: 0, evidenceScore: 0, stage: (obj.reportStatus || obj.status || 'Draft') };
   return {
     title: obj.title || obj.caseTitle || defect,
-    model: obj.model || obj.product || hdr.model || 'N/D',
-    line: hdr.line || obj.line || 'N/D',
-    station: hdr.station || obj.station || 'N/D',
-    window: hdr.window || obj.window || obj.detectionWindow || 'N/D',
+    model: obj.model || obj.product || hdr.model || obj.modelo || 'N/D',
+    line: hdr.line || obj.line || obj.linea || 'N/D',
+    station: hdr.station || obj.station || obj.estacion_dominante || 'N/D',
+    window: hdr.window || obj.window || obj.detectionWindow || obj.fecha || 'N/D',
     openItems: (obj.pendingValidations != null ? obj.pendingValidations : (read.pendingValidations != null ? read.pendingValidations : (k.openItems != null ? k.openItems : (obj.openItems != null ? obj.openItems : 0)))),
-    readiness8d: obj.readiness || obj.readiness8d || hdr.readiness8d || (((obj.readiness_score != null ? Number(obj.readiness_score) : NaN) >= 100) ? '100%' : ((obj.readiness_score != null && !isNaN(Number(obj.readiness_score))) ? (String(Math.round(Number(obj.readiness_score))) + '%') : '100%')),
-    evidenceBadge: (obj.badGoodComplete || obj.evidenceComplete || (obj.badPartImage && obj.goodPartImage) || (obj.bad_part_images && obj.good_part_images) || (obj.meta && obj.meta.evidence && obj.meta.evidence.bad_part && obj.meta.evidence.bad_part.length && obj.meta.evidence.good_part && obj.meta.evidence.good_part.length)) ? 'Complete' : 'Partial',
-    reportStatus: obj.reportStatus || obj.status || read.currentStatus || 'Draft',
-    complaintAnchor: obj.complaintAnchor || obj.description || obj.problemDescription || '',
-    occurrenceConclusion: obj.occurrenceConclusion || '',
-    escapeConclusion: obj.escapeConclusion || '',
-    exposureWindow: obj.exposureWindow || obj.detectionWindow || obj.window || '',
+    readiness8d: String(maturity.overallScore) + '%',
+    evidenceBadge: maturity.evidenceScore >= 85 ? 'Complete' : (maturity.evidenceScore >= 60 ? 'Partial' : 'Weak'),
+    reportStatus: obj.reportStatus || obj.status || read.currentStatus || maturity.stage || 'Draft',
+    complaintAnchor: obj.complaintAnchor || obj.description || obj.problemDescription || obj.d2_problem || '',
+    occurrenceConclusion: obj.occurrenceConclusion || obj.d4_root_cause || '',
+    escapeConclusion: obj.escapeConclusion || obj.d4_escape_point || '',
+    exposureWindow: obj.exposureWindow || obj.detectionWindow || obj.window || obj.fecha || '',
     estimatedImpact: obj.estimatedImpact || obj.impact || obj.exposureImpact || '',
     defect: defect,
-    traceabilityPartial: !obj.traceabilityComplete,
+    traceabilityPartial: maturity.evidence.traceabilityCoverage < 60,
     pendingValidations: read.pendingValidations || obj.pendingValidations || 0,
-    closureEligibility: read.closureEligibility || obj.closureEligibility || 'Pending',
-    statusBanner: /closed|complete/i.test(obj.reportStatus || '') ? 'CLOSED' : ((obj.pendingValidations != null && Number(obj.pendingValidations) === 0 && (obj.readiness || obj.readiness8d || '') === '100%') ? 'READY FOR REVIEW' : 'UNDER VALIDATION'),
-    riskBanner: (Number(risk.high || 0) > 0 ? 'HIGH' : (Number(risk.medium || 0) > 0 ? 'MEDIUM' : 'LOW')) + ' – ' + (((read.closureEligibility || obj.closureEligibility || '').toLowerCase().indexOf('pending') >= 0 || (obj.pendingValidations != null && Number(obj.pendingValidations) > 0)) ? 'CONTAINED, ROOT CAUSE NOT FULLY CONFIRMED' : 'CONTROLLED'),
+    closureEligibility: read.closureEligibility || obj.closureEligibility || (maturity.canPromote ? 'Ready for review' : 'Pending'),
+    statusBanner: /closed|complete/i.test(obj.reportStatus || '') ? 'CLOSED' : (maturity.canPromote ? 'READY FOR REVIEW' : 'UNDER VALIDATION'),
+    riskBanner: (Number(risk.high || 0) > 0 ? 'HIGH' : (Number(risk.medium || 0) > 0 ? 'MEDIUM' : 'LOW')) + ' – ' + (maturity.canPromote ? 'CONTROLLED' : 'EVIDENCE / CONTROL GAP OPEN'),
     actionsList: actionsList
   };
 }
@@ -5277,6 +5464,32 @@ function App() {
     if (s === 'bad' || s === 'good' || s === 'general') return s;
     return 'general';
   }
+  function traceOpsInferEvidenceRoleFromName(name){
+    var s = String(name || '').toLowerCase();
+    if (!s) return '';
+    if (/(^|[^a-z])(bad|ng|nok|defect|failed?|fail|issue|wrong|reject|removed|as[-_ ]?found)([^a-z]|$)/i.test(s)) return 'bad';
+    if (/(^|[^a-z])(good|ok|golden|reference|ref|ideal|control|nominal|baseline|after|fixed)([^a-z]|$)/i.test(s)) return 'good';
+    return '';
+  }
+  function traceOpsCountEvidenceRoles(metaFiles){
+    return (Array.isArray(metaFiles) ? metaFiles : []).reduce(function(acc, file){
+      if (!file || !traceOpsIsImageMetaFile(file)) return acc;
+      var role = traceOpsNormalizeEvidenceRole(file.evidence_role || file.role);
+      if (role === 'bad') acc.bad += 1;
+      else if (role === 'good') acc.good += 1;
+      else acc.general += 1;
+      return acc;
+    }, { bad:0, good:0, general:0 });
+  }
+  function traceOpsSuggestEvidenceRole(file, currentMetaFiles){
+    if (!traceOpsIsImageMetaFile(file)) return undefined;
+    var inferred = traceOpsInferEvidenceRoleFromName(file && file.name);
+    if (inferred) return inferred;
+    var counts = traceOpsCountEvidenceRoles(currentMetaFiles);
+    if (!counts.bad) return 'bad';
+    if (!counts.good) return 'good';
+    return 'general';
+  }
   function traceOpsNormalizeMetaFiles(list){
     return (Array.isArray(list) ? list : []).map(function(item){
       var normalized = {
@@ -5303,6 +5516,23 @@ function App() {
       else out.general.push(file.data_url);
     });
     return out;
+  }
+  function traceOpsMetaFilesFingerprint(metaFiles){
+    return (Array.isArray(metaFiles) ? metaFiles : []).map(function(file){
+      if (!file) return '';
+      var normalized = traceOpsNormalizeMetaFileForMerge ? traceOpsNormalizeMetaFileForMerge(file) : file;
+      var key = traceOpsMetaFileStableKey ? traceOpsMetaFileStableKey(normalized) : (String((file && file.name) || '') + '|' + String((file && file.size) || 0));
+      var role = traceOpsNormalizeEvidenceRole(file && (file.evidence_role || file.role));
+      return [key, role, traceOpsIsImageMetaFile(file) ? 'image' : 'file'].join('|');
+    }).filter(Boolean).sort().join('||');
+  }
+  function traceOpsRccaFingerprint(rcca){
+    var metaFiles = (rcca && rcca.meta_files) || [];
+    return [
+      String((rcca && rcca.rcca_id) || ''),
+      String((rcca && rcca.updated_at) || ''),
+      traceOpsMetaFilesFingerprint(metaFiles)
+    ].join('@@');
   }
   function isFreshRccaDraft(draft){
     var ts = draft && draft.ts ? new Date(draft.ts).getTime() : 0;
@@ -5748,17 +5978,86 @@ function App() {
     return (ids || []).map(function(id){ return map[id]; }).filter(Boolean);
   }
 
-  function traceOpsComputeEightdReadiness(draft) {
-    var weights = { d1_team:5, d2_problem:20, d3_containment:15, d4_root_cause:20, d4_escape_point:10, d5_pca:15, d6_validation:10, d7_prevention:5, d8_closure:0 };
-    var score = 0;
-    var missing = [];
-    Object.keys(weights).forEach(function(key){
-      if (traceOpsTextFilled(draft && draft[key])) score += weights[key];
-      else if (weights[key] > 0) missing.push(key);
-    });
-    return { score: score, missing: missing };
+  function traceOpsEightdEvidenceMeta(draft) {
+    var src = draft || {};
+    var meta = (src.meta && src.meta.evidence) || {};
+    var bad = typeof traceOpsPptExtractEvidenceNames === 'function' ? traceOpsPptExtractEvidenceNames(meta.bad_part || src.bad_part_images || src.bad_part_image || src.bad_part_evidence || []) : [];
+    var good = typeof traceOpsPptExtractEvidenceNames === 'function' ? traceOpsPptExtractEvidenceNames(meta.good_part || src.good_part_images || src.good_part_image || src.good_part_evidence || []) : [];
+    var general = typeof traceOpsPptExtractEvidenceNames === 'function' ? traceOpsPptExtractEvidenceNames(meta.general || src.evidence_images || src.installed_removed_images || []) : [];
+    var linkedIds = Array.isArray(src.linked_event_ids) ? src.linked_event_ids.filter(Boolean) : (Array.isArray(src.event_ids) ? src.event_ids.filter(Boolean) : []);
+    var traceFields = [src.modelo, src.linea, src.station || src.estacion_dominante, src.serial_range, src.lot_batch, src.build_window, src.trace_path, src.fecha];
+    var traceabilityCount = traceFields.filter(function(v){ return traceOpsTextFilled(v); }).length;
+    return {
+      bad: bad,
+      good: good,
+      general: general,
+      linkedCount: linkedIds.length,
+      totalCount: bad.length + good.length + general.length,
+      hasBadGood: bad.length > 0 && good.length > 0,
+      traceabilityCount: traceabilityCount,
+      traceabilityCoverage: Math.min(100, Math.round((traceabilityCount / 5) * 100))
+    };
   }
 
+  function traceOpsEightdStageLabel(draft, structureScore, evidenceScore, blockers) {
+    var src = draft || {};
+    if (/closed|complete/i.test(String(src.status || src.reportStatus || ''))) return 'Closed';
+    if (traceOpsTextFilled(src.d8_closure) && blockers.length === 0 && structureScore >= 90 && evidenceScore >= 75) return 'Ready for 8D';
+    if (traceOpsTextFilled(src.d6_validation)) return blockers.length ? 'Validated with gaps' : 'Validated';
+    if (traceOpsTextFilled(src.d4_root_cause) || traceOpsTextFilled(src.d5_pca)) return 'RCCA in progress';
+    if (traceOpsTextFilled(src.d3_containment)) return 'Contained';
+    if (traceOpsTextFilled(src.d2_problem) || traceOpsTextFilled(src.complaint_anchor)) return 'Triaged';
+    return 'Detected';
+  }
+
+  function traceOpsComputeEightdReadiness(draft) {
+    var weights = { d1_team:5, d2_problem:20, d3_containment:15, d4_root_cause:20, d4_escape_point:10, d5_pca:15, d6_validation:10, d7_prevention:5, d8_closure:0 };
+    var structureScore = 0;
+    var structureMissing = [];
+    Object.keys(weights).forEach(function(key){
+      if (traceOpsTextFilled(draft && draft[key])) structureScore += weights[key];
+      else if (weights[key] > 0) structureMissing.push(key);
+    });
+    var evidence = traceOpsEightdEvidenceMeta(draft);
+    var evidenceScore = 0;
+    if (evidence.linkedCount > 0) evidenceScore += 20;
+    if (evidence.hasBadGood) evidenceScore += 35;
+    if (evidence.totalCount > 0) evidenceScore += 15;
+    evidenceScore += Math.round(Math.min(20, (evidence.traceabilityCoverage / 100) * 20));
+    if (traceOpsTextFilled(draft && draft.d6_validation)) evidenceScore += 10;
+    if (evidenceScore > 100) evidenceScore = 100;
+
+    var blockers = [];
+    if (!traceOpsTextFilled(draft && (draft.modelo || draft.product || draft.model))) blockers.push('Complete model / part number');
+    if (!traceOpsTextFilled(draft && draft.linea)) blockers.push('Complete line / station');
+    if (evidence.linkedCount === 0) blockers.push('Link at least 1 trace event');
+    if (!traceOpsTextFilled(draft && (draft.d2_problem || draft.complaint_anchor))) blockers.push('Define complaint anchor / D2');
+    if (!evidence.hasBadGood) blockers.push('Classify bad / good evidence');
+    if (evidence.totalCount === 0) blockers.push('Attach visual or file evidence');
+    if (!(traceOpsTextFilled(draft && draft.d4_root_cause) && traceOpsTextFilled(draft && draft.d4_escape_point))) blockers.push('Complete occurrence + escape');
+    if (!traceOpsTextFilled(draft && draft.d6_validation)) blockers.push('Define verification / D6');
+    blockers = Array.from(new Set(blockers));
+
+    var overallScore = Math.round((structureScore * 0.6) + (evidenceScore * 0.4));
+    var stage = traceOpsEightdStageLabel(draft, structureScore, evidenceScore, blockers);
+    return {
+      score: overallScore,
+      overallScore: overallScore,
+      structureScore: structureScore,
+      evidenceScore: evidenceScore,
+      missing: structureMissing,
+      structureMissing: structureMissing,
+      blockers: blockers,
+      canPromote: blockers.length === 0,
+      completed: 8 - structureMissing.length,
+      stage: stage,
+      evidence: evidence
+    };
+  }
+
+  if (typeof window !== 'undefined') {
+    window.traceOpsComputeEightdReadiness = traceOpsComputeEightdReadiness;
+  }
 
   function traceOpsEightdHasText(v) {
     return String(v || '').replace(/\s+/g,' ').trim().length > 0;
@@ -6054,13 +6353,15 @@ function App() {
       owner_email: (existing && existing.owner_email) || (source && source.owner_email) || (authUser && authUser.email) || '',
       status: (existing && existing.status) || 'Draft',
       linked_event_ids: (source && source.event_ids ? source.event_ids.slice() : []),
-      source_snapshot: source,
+      source_snapshot: Object.assign({}, source, { meta_files: traceOpsNormalizeMetaFiles((source && source.meta_files) || []) }),
+      source_rcca_updated_at: (source && source.updated_at) || '',
+      source_evidence_fingerprint: traceOpsRccaFingerprint(source),
       meta: Object.assign({}, (source && source.meta) || {}, (existing && existing.meta) || {}, {
         evidence: (existing && existing.meta && existing.meta.evidence) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || [])
       }),
-      bad_part_images: (existing && existing.bad_part_images) || (((existing && existing.meta && existing.meta.evidence && existing.meta.evidence.bad_part) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || []).bad_part || []).join('\n')),
-      good_part_images: (existing && existing.good_part_images) || (((existing && existing.meta && existing.meta.evidence && existing.meta.evidence.good_part) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || []).good_part || []).join('\n')),
-      evidence_images: (existing && existing.evidence_images) || (((existing && existing.meta && existing.meta.evidence && existing.meta.evidence.general) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || []).general || []).join('\n')),
+      bad_part_images: (existing && existing.bad_part_images) || (traceOpsBuildEvidenceDisplayMetaFromFiles((source && source.meta_files) || []).bad_part || []).join('\n'),
+      good_part_images: (existing && existing.good_part_images) || (traceOpsBuildEvidenceDisplayMetaFromFiles((source && source.meta_files) || []).good_part || []).join('\n'),
+      evidence_images: (existing && existing.evidence_images) || (traceOpsBuildEvidenceDisplayMetaFromFiles((source && source.meta_files) || []).general || []).join('\n'),
       evidence_summary: (existing && existing.evidence_summary) || '',
       correlation_notes: (existing && existing.correlation_notes) || '',
       evidence_checklist: (existing && existing.evidence_checklist) || '',
@@ -6078,8 +6379,14 @@ function App() {
     });
     var draft = traceOpsEightdHydrateDraftFields(baseDraft);
     var readiness = traceOpsComputeEightdReadiness(draft);
-    draft.readiness_score = readiness.score;
-    draft.missing_fields = readiness.missing;
+    draft.readiness_score = readiness.overallScore;
+    draft.structure_readiness_score = readiness.structureScore;
+    draft.evidence_readiness_score = readiness.evidenceScore;
+    draft.case_maturity_score = readiness.overallScore;
+    draft.missing_fields = readiness.structureMissing;
+    draft.escalation_blockers = readiness.blockers;
+    draft.can_promote = readiness.canPromote;
+    draft.draft_stage = readiness.stage;
     return draft;
   }
 
@@ -6089,16 +6396,28 @@ function App() {
       updated_at: new Date().toISOString()
     });
     var currentMeta = Object.assign({}, draftToSave.meta || {});
-    currentMeta.evidence = Object.assign({}, currentMeta.evidence || {}, {
-      bad_part: traceOpsPptExtractEvidenceNames((currentMeta.evidence && currentMeta.evidence.bad_part) || draftToSave.bad_part_images || draftToSave.bad_part_image || draftToSave.bad_part_evidence || []),
-      good_part: traceOpsPptExtractEvidenceNames((currentMeta.evidence && currentMeta.evidence.good_part) || draftToSave.good_part_images || draftToSave.good_part_image || draftToSave.good_part_evidence || []),
-      general: traceOpsPptExtractEvidenceNames((currentMeta.evidence && currentMeta.evidence.general) || draftToSave.evidence_images || draftToSave.installed_removed_images || [])
-    });
+    var existingEvidence = Object.assign({}, currentMeta.evidence || {});
+    currentMeta.evidence = {
+      bad_part: traceOpsMergeEvidenceLists(existingEvidence.bad_part || [], draftToSave.bad_part_images || [], draftToSave.bad_part_image || [], draftToSave.bad_part_evidence || []),
+      good_part: traceOpsMergeEvidenceLists(existingEvidence.good_part || [], draftToSave.good_part_images || [], draftToSave.good_part_image || [], draftToSave.good_part_evidence || []),
+      general: traceOpsMergeEvidenceLists(existingEvidence.general || [], draftToSave.evidence_images || [], draftToSave.installed_removed_images || [])
+    };
     draftToSave.meta = currentMeta;
+    if (draftToSave.source_snapshot) {
+      draftToSave.source_snapshot = Object.assign({}, draftToSave.source_snapshot, { meta_files: traceOpsNormalizeMetaFiles((draftToSave.source_snapshot && draftToSave.source_snapshot.meta_files) || []) });
+      draftToSave.source_rcca_updated_at = (draftToSave.source_snapshot && draftToSave.source_snapshot.updated_at) || draftToSave.source_rcca_updated_at || '';
+      draftToSave.source_evidence_fingerprint = traceOpsRccaFingerprint(draftToSave.source_snapshot);
+    }
     var normalized = traceOpsEightdHydrateDraftFields(draftToSave);
     var readiness = traceOpsComputeEightdReadiness(normalized);
-    normalized.readiness_score = readiness.score;
-    normalized.missing_fields = readiness.missing;
+    normalized.readiness_score = readiness.overallScore;
+    normalized.structure_readiness_score = readiness.structureScore;
+    normalized.evidence_readiness_score = readiness.evidenceScore;
+    normalized.case_maturity_score = readiness.overallScore;
+    normalized.missing_fields = readiness.structureMissing;
+    normalized.escalation_blockers = readiness.blockers;
+    normalized.can_promote = readiness.canPromote;
+    normalized.draft_stage = readiness.stage;
     var updated = eightdList.filter(function(item){ return item.eightd_id !== normalized.eightd_id; });
     updated = [normalized].concat(updated).sort(function(a,b){
       var ta = a && a.updated_at ? new Date(a.updated_at).getTime() : 0;
@@ -6127,7 +6446,9 @@ function App() {
   function openEightdDraftFromRcca(rcca, forceRefresh) {
     if (!rcca || !rcca.rcca_id) return;
     var existing = eightdList.find(function(item){ return item.source_rcca_id === rcca.rcca_id; });
-    if (existing && !forceRefresh) {
+    var currentFingerprint = traceOpsRccaFingerprint(rcca);
+    var needsRefresh = !!(existing && existing.source_evidence_fingerprint !== currentFingerprint);
+    if (existing && !forceRefresh && !needsRefresh) {
       setEightdDetail(existing);
       return;
     }
@@ -6242,9 +6563,9 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     <div class="hero">
       <div class="eyebrow">FOXCONN | TraceOps 8D Draft</div>
       <div class="title">8D RCCA Draft</div>
-      <div class="sub">${esc(normalized.eightd_id)} · RCCA ${esc(normalized.source_rcca_id)} · ${esc(normalized.status || 'Draft')} · Use actual source evidence only</div>
+      <div class="sub">${esc(normalized.eightd_id)} · RCCA ${esc(normalized.source_rcca_id)} · ${esc(normalized.draft_stage || normalized.status || 'Draft')} · Use actual source evidence only</div>
       <div class="kpi-grid">
-        <div class="kpi"><span>Readiness</span><b>${esc(normalized.readiness_score || 0)}%</b></div>
+        <div class="kpi"><span>Maturity</span><b>${esc(normalized.case_maturity_score || normalized.readiness_score || 0)}%</b></div>
         <div class="kpi"><span>Model</span><b>${esc(normalized.modelo || 'Product / Part No.')}</b></div>
         <div class="kpi"><span>Line</span><b>${esc(normalized.linea || 'SMT / Assembly line')}</b></div>
         <div class="kpi"><span>Trace Events</span><b>${esc(linkedEvents.length ? linkedEvents.length + ' linked' : 'Build → Test → Complaint')}</b></div>
@@ -6257,7 +6578,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       <div class="meta-card"><span>Detection Window</span><b>${esc(normalized.detection_window || model.detectionWindow || 'N/D')}</b></div>
       <div class="meta-card"><span>Impact</span><b>${esc(normalized.impact_summary || model.impact || 'Pending')}</b></div>
       <div class="meta-card"><span>Pattern</span><b>${esc(normalized.pattern_detected || model.pattern || 'Pending')}</b></div>
-      <div class="meta-card"><span>Evidence</span><b>${esc(model.evidenceRefs.length ? model.evidenceRefs.length + ' refs' : 'No refs')}</b></div>
+      <div class="meta-card"><span>Evidence</span><b>${esc((normalized.evidence_readiness_score != null ? ('Score ' + normalized.evidence_readiness_score + '%') : (model.evidenceRefs.length ? model.evidenceRefs.length + ' refs' : 'No refs')))}</b></div>
     </div>
 
     <div class="grid-top">
@@ -6695,8 +7016,16 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       activeFill:'EAF2FF', activeLine:'2F6FB3', activeText:'2F6FB3',
       idleFill:'FFFFFF', idleLine:'C9DAF5', idleText:'5F766C'
     });
-    slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:0, y:7.34, w:13.19, h:0.08, line:{color:'0B3A6E', pt:0}, fill:{color:'0B3A6E'}});
-    slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:13.19, y:7.34, w:0.143, h:0.08, line:{color:'D71920', pt:0}, fill:{color:'D71920'}});
+    var _pptRect = (_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect");
+    slide.addShape(_pptRect, {x:0, y:7.205, w:13.333, h:0.014, line:{color:'E8F1FB', pt:0}, fill:{color:'E8F1FB'}});
+    slide.addShape(_pptRect, {x:0, y:7.219, w:13.333, h:0.020, line:{color:'7EA7D8', pt:0}, fill:{color:'7EA7D8'}});
+    slide.addShape(_pptRect, {x:0, y:7.239, w:12.86, h:0.261, line:{color:'0B2F57', pt:0}, fill:{color:'0B2F57'}});
+    slide.addShape(_pptRect, {x:0, y:7.239, w:12.86, h:0.034, line:{color:'3E76B8', pt:0}, fill:{color:'3E76B8'}});
+    slide.addShape(_pptRect, {x:0, y:7.435, w:12.86, h:0.065, line:{color:'062240', pt:0}, fill:{color:'062240'}});
+    slide.addShape(_pptRect, {x:12.84, y:7.239, w:0.020, h:0.261, line:{color:'F2F6FB', pt:0}, fill:{color:'F2F6FB'}});
+    slide.addShape(_pptRect, {x:12.86, y:7.239, w:0.473, h:0.261, line:{color:'C61F2A', pt:0}, fill:{color:'C61F2A'}});
+    slide.addShape(_pptRect, {x:12.86, y:7.239, w:0.473, h:0.034, line:{color:'F06A70', pt:0}, fill:{color:'F06A70'}});
+    slide.addShape(_pptRect, {x:12.86, y:7.435, w:0.473, h:0.065, line:{color:'93131A', pt:0}, fill:{color:'93131A'}});
   }
 
   function traceOpsPptPanelTitle(slide, title, x, y, w){
@@ -7108,35 +7437,21 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
 
   function traceOpsPptReadinessMeta(normalized){
-    function nonPlaceholder(v){
-      var s = String(v || '').replace(/\s+/g, ' ').trim();
-      if (!s) return false;
-      if (/^(pending|n\/d|tbd|under validation|evidence pending|draft|open)$/i.test(s)) return false;
-      if (/^(issue under analysis|exposure under analysis|pending validation window|yokoten trigger pending\.?|customer protection active)$/i.test(s)) return false;
-      if (/auto-calculated by traceops/i.test(s)) return false;
-      return true;
-    }
-    var required = [
-      { label:'D1 Team', ok:function(n){ return nonPlaceholder(n.d1_team) || nonPlaceholder(n.owner_email); } },
-      { label:'D2 Problem', ok:function(n){ return nonPlaceholder(n.d2_problem) || nonPlaceholder(n.complaint_anchor); } },
-      { label:'D3 Containment', ok:function(n){ return nonPlaceholder(n.d3_containment); } },
-      { label:'D4 Occurrence', ok:function(n){ return nonPlaceholder(n.d4_root_cause); } },
-      { label:'D4 Escape', ok:function(n){ return nonPlaceholder(n.d4_escape_point); } },
-      { label:'D5 Actions', ok:function(n){ return nonPlaceholder(n.d5_pca); } },
-      { label:'D6 Validation', ok:function(n){ return nonPlaceholder(n.d6_validation); } },
-      { label:'D7 Prevention', ok:function(n){ return nonPlaceholder(n.d7_prevention); } }
-    ];
-    var missing = [];
-    var completed = 0;
-    required.forEach(function(item){
-      if (item.ok(normalized || {})) completed += 1;
-      else missing.push(item.label);
-    });
+    var computed = traceOpsComputeEightdReadiness(normalized || {});
+    var labelMap = {
+      d1_team:'D1 Team', d2_problem:'D2 Problem', d3_containment:'D3 Containment', d4_root_cause:'D4 Occurrence',
+      d4_escape_point:'D4 Escape', d5_pca:'D5 Actions', d6_validation:'D6 Validation', d7_prevention:'D7 Prevention'
+    };
     return {
-      score: Math.round((completed / 8) * 100),
-      missing: missing,
-      completed: completed,
-      basis: completed + '/8 mandatory sections completed · auto-calculated by TraceOps.'
+      score: computed.overallScore,
+      structureScore: computed.structureScore,
+      evidenceScore: computed.evidenceScore,
+      missing: (computed.structureMissing || []).map(function(key){ return labelMap[key] || key; }),
+      blockers: computed.blockers || [],
+      completed: computed.completed,
+      basis: 'Structure ' + computed.completed + '/8 · Evidence ' + computed.evidenceScore + '% · Overall ' + computed.overallScore + '%.',
+      stage: computed.stage,
+      canPromote: computed.canPromote
     };
   }
 
@@ -7314,6 +7629,102 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   }
 
   
+
+  function traceOpsPptFlowPalette(tone){
+    var key = String(tone || 'blue').toLowerCase();
+    if (key === 'navy') return {accent:'102A43', pill:'EAF2FF', pillText:'17365D', line:'9CB6D4'};
+    if (key === 'red') return {accent:'C93B2E', pill:'FDEDEA', pillText:'8F241B', line:'E5A29B'};
+    if (key === 'green') return {accent:'1E7C56', pill:'EAF7F1', pillText:'15563C', line:'A7D3C2'};
+    if (key === 'cyan') return {accent:'2F6FB3', pill:'EEF5FF', pillText:'1F4E79', line:'B9D2EF'};
+    return {accent:'4A90E2', pill:'F0F6FF', pillText:'1F4E79', line:'BDD4F1'};
+  }
+
+  function traceOpsPptBuildFlowNodes(draft, model){
+    var rows = traceOpsPptDetailedEventRows(draft, model);
+    var nodes = [];
+    function addNode(stage, station, date, tone){
+      nodes.push({
+        stage: traceOpsPptSafe(stage || 'Stage', 34),
+        station: traceOpsPptSafe(station || 'Pending', 42),
+        date: traceOpsPptSafe(date || 'Pending', 28),
+        tone: tone || 'blue'
+      });
+    }
+
+    var buildDate = (draft && draft.build_window) || (model && model.buildWindow) || (draft && draft.detection_window) || (model && model.detectionWindow) || 'Pending';
+    addNode('Build', (draft && draft.linea) || (model && model.line) || 'Line pending', buildDate, 'navy');
+
+    if (Array.isArray(rows) && rows.length) {
+      var seen = {};
+      rows.forEach(function(row, idx){
+        if (nodes.length >= 4) return;
+        var stage = String(row[0] || 'Event').trim() || 'Event';
+        var station = String(row[2] || row[3] || (draft && draft.station) || (model && model.station) || 'Pending').trim() || 'Pending';
+        var date = String(row[4] || buildDate || 'Pending').trim() || 'Pending';
+        var key = [stage, station, date].join('|');
+        if (seen[key]) return;
+        seen[key] = true;
+        addNode(stage, station, date, idx === 0 ? 'cyan' : 'blue');
+      });
+    } else {
+      addNode('Station', (draft && draft.station) || (model && model.station) || 'Pending', (draft && draft.detection_window) || (model && model.detectionWindow) || buildDate, 'blue');
+    }
+
+    addNode('Complaint', (draft && draft.station) || (model && model.station) || 'Complaint anchor', (draft && draft.detection_window) || (model && model.detectionWindow) || buildDate, 'red');
+    addNode('RCCA', (draft && draft.source_rcca_id) ? ('ID ' + draft.source_rcca_id) : 'Actions defined', traceOpsPptExtractDateDdMmYyyy((draft && draft.updated_at) || (draft && draft.created_at) || '') || ((draft && draft.detection_window) || (model && model.detectionWindow) || buildDate), 'green');
+
+    if (nodes.length > 5) {
+      nodes = [nodes[0]].concat(nodes.slice(1, 4)).concat([nodes[nodes.length - 1]]);
+    }
+    return nodes;
+  }
+
+  function traceOpsPptDrawTraceFlow(slide, nodes, x, y, w, h){
+    if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType || !slide) return;
+    var list = Array.isArray(nodes) && nodes.length ? nodes : [{stage:'Build', station:'Pending', date:'Pending', tone:'navy'},{stage:'Complaint', station:'Pending', date:'Pending', tone:'red'}];
+    var count = list.length;
+    var gap = count > 1 ? 0.18 : 0;
+    var nodeW = (w - gap * Math.max(0, count - 1)) / count;
+    var nodeH = h;
+    for (var i = 0; i < count; i++) {
+      var node = list[i] || {};
+      var px = x + i * (nodeW + gap);
+      var pal = traceOpsPptFlowPalette(node.tone);
+
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {
+        x:px, y:y + 0.02, w:nodeW, h:nodeH - 0.04, rectRadius:0.08,
+        line:{color:'D7E2EE', pt:1}, fill:{color:'FFFFFF'}
+      });
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {
+        x:px, y:y + 0.02, w:nodeW, h:0.11, rectRadius:0.08,
+        line:{color:pal.accent, pt:0}, fill:{color:pal.accent}
+      });
+      slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : 'rect'), {
+        x:px + 0.10, y:y + 0.18, w:nodeW - 0.20, h:0.20, rectRadius:0.07,
+        line:{color:pal.line, pt:0.8}, fill:{color:pal.pill}
+      });
+      slide.addText(traceOpsPptSafe(node.date, 26), {
+        x:px + 0.14, y:y + 0.23, w:nodeW - 0.28, h:0.08,
+        fontFace:'Segoe UI', fontSize:7.7, bold:true, color:pal.pillText, margin:0, align:'center', fit:'shrink'
+      });
+      slide.addText(traceOpsPptSafe(node.stage, 28), {
+        x:px + 0.12, y:y + 0.47, w:nodeW - 0.24, h:0.16,
+        fontFace:'Segoe UI', fontSize:9.2, bold:true, color:'102A43', margin:0, align:'center', fit:'shrink'
+      });
+      slide.addText(traceOpsPptWrap('Station: ' + (node.station || 'Pending'), 52), {
+        x:px + 0.12, y:y + 0.67, w:nodeW - 0.24, h:0.22,
+        fontFace:'Segoe UI', fontSize:7.8, color:'4F6478', margin:0, align:'center', fit:'shrink', valign:'mid'
+      });
+
+      if (i < count - 1) {
+        var arrowX = px + nodeW;
+        var midY = y + (nodeH / 2);
+        slide.addShape(_traceOpsPptxRef.ShapeType.line, {x:arrowX + 0.02, y:midY, w:gap - 0.06, h:0, line:{color:'8FB0D6', pt:1.4}});
+        slide.addShape(_traceOpsPptxRef.ShapeType.chevron, {x:arrowX + gap - 0.10, y:midY - 0.08, w:0.10, h:0.16, line:{color:'8FB0D6', pt:0.8}, fill:{color:'8FB0D6'}});
+      }
+    }
+  }
+
   function traceOpsPptStatusToneLocal(status){
     var s = String(status || '').toLowerCase();
     if (/complete|approved|good|available|100|yes|ready|closed/.test(s)) return 'ok';
@@ -7841,24 +8252,29 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     traceOpsPptApplyShell(slide, 'Appendix A - Traceability & Evidence', 'Foxconn-aligned traceability and evidence summary', 8, model.evidenceRefs.length ? 'Under Validation' : 'Draft');
     slide.addText(traceOpsPptSafe('Event timeline', 40), {x:0.42, y:1.66, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(traceOpsPptTimelineTable(normalized, linked, model), {x:0.42, y:1.90, w:12.48, h:0.72, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.8, margin:0.04, rowH:[0.20,0.44], valign:'mid', align:'center', fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:2.82, w:8.54, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.5, margin:0.04, rowH:[0.18,0.54], colW:[4.18,4.16], fit:'shrink'});
+
+    slide.addText(traceOpsPptSafe('Flow by station & date', 40), {x:0.42, y:2.74, w:2.6, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText('Visual path of the case using the detected station and date references.', {x:2.46, y:2.76, w:10.44, h:0.14, fontFace:'Segoe UI', fontSize:8.3, color:'5F766C', margin:0, fit:'shrink'});
+    traceOpsPptDrawTraceFlow(slide, traceOpsPptBuildFlowNodes(normalized, model), 0.42, 2.96, 12.48, 0.98);
+
+    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 170), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 170)]]), {x:0.42, y:4.10, w:8.54, h:0.74, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.4, margin:0.04, rowH:[0.18,0.48], colW:[4.18,4.16], fit:'shrink'});
 
     var appendixBad = await traceOpsPptPickEvidenceImage(normalized, 'bad');
     var appendixGood = await traceOpsPptPickEvidenceImage(normalized, 'good');
-    await traceOpsPptRenderEvidencePanel(slide, {x:9.16, y:2.82, w:1.78, h:0.82, label:'Bad part', caption:'Evidence view', tone:'bad', imageData:appendixBad});
-    await traceOpsPptRenderEvidencePanel(slide, {x:11.12, y:2.82, w:1.78, h:0.82, label:'Good part', caption:'Reference view', tone:'good', imageData:appendixGood});
+    await traceOpsPptRenderEvidencePanel(slide, {x:9.16, y:4.10, w:1.78, h:0.74, label:'Bad part', caption:'Evidence view', tone:'bad', imageData:appendixBad});
+    await traceOpsPptRenderEvidencePanel(slide, {x:11.12, y:4.10, w:1.78, h:0.74, label:'Good part', caption:'Reference view', tone:'good', imageData:appendixGood});
 
-    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:3.84, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:3.86, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:4.98, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:5.00, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.4, color:'5F766C', margin:0, fit:'shrink'});
     var evidenceRows = traceOpsPptDetailedEventRows(normalized, model);
-    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:4.10, w:12.48, h:1.26, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.0, margin:0.04, rowH:0.20, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:5.24, w:12.48, h:0.82, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:7.8, margin:0.04, rowH:0.20, colW:[1.68,1.06,2.10,2.24,1.46,1.46,1.88], fit:'shrink'});
 
     var firstEvidence = (Array.isArray(evidenceRows) && evidenceRows.length ? evidenceRows[0] : ['Pending','Pending','Pending','Pending','Pending','Pending','TraceOps']);
-    traceOpsPptBox(slide, 0.42, 5.52, 12.48, 0.52, 'FAFCFF');
-    traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 5.64, 1.4);
-    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending') + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:5.64, w:10.70, h:0.14, fontFace:'Segoe UI', fontSize:8.6, color:'102A43', margin:0, fit:'shrink'});
+    traceOpsPptBox(slide, 0.42, 6.14, 12.48, 0.42, 'FAFCFF');
+    traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 6.23, 1.4);
+    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || 'Pending') + ' | Station: ' + String(firstEvidence[2] || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || 'Pending') + ' | Result: ' + String(firstEvidence[5] || 'Pending'), 180), {x:1.92, y:6.24, w:10.70, h:0.12, fontFace:'Segoe UI', fontSize:8.4, color:'102A43', margin:0, fit:'shrink'});
 
-    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) || !!appendixGood ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) || !!appendixBad ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.16, w:12.48, h:0.58, border:{type:'solid', pt:1, color:'102A43'}, fill:'102A43', color:'FFFFFF', fontFace:'Segoe UI', fontSize:8.0, margin:0.03, rowH:0.08, colW:[2.86,1.40,8.22], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}],['Customer symptom', traceOpsEightdHasText(normalized.complaint_anchor) ? 'Available' : 'Pending', 'Keep observable customer or internal symptom visible'],['Golden reference', traceOpsEightdHasText(normalized.good_part) || !!appendixGood ? 'Available' : 'Pending', 'Maintain expected-good condition even if pending'],['Installed vs removed state comparison', traceOpsEightdHasText(normalized.installed_removed_compare) || !!appendixBad ? 'Available' : 'Pending', 'Do not suppress comparison checkpoint'],['Serial / batch trace', traceOpsEightdHasText(normalized.serial_batch) ? 'Available' : 'Pending', 'Preserve lot or serial trace status'],['Control gap explanation', traceOpsEightdHasText(normalized.d4_escape_point) ? 'Available' : 'Pending', 'State why earlier control did not trigger'],['Corrective action proof', traceOpsEightdHasText(normalized.d6_validation) ? 'Under validation' : 'Pending', 'Closure requires post-action proof']]), {x:0.42, y:6.62, w:12.48, h:0.44, border:{type:'solid', pt:1, color:'102A43'}, fill:'102A43', color:'FFFFFF', fontFace:'Segoe UI', fontSize:7.8, margin:0.03, rowH:0.065, colW:[2.86,1.40,8.22], fit:'shrink'});
     return slide;
   }
 
@@ -8395,15 +8811,15 @@ function traceOpsPptAddBlueGridGlow(slide, x, y, w, h, opts){
 
 function traceOpsMetaFileStableKey(file){
   var f = file || {};
-  var role = f.evidence_role || f.role || '';
+  var id = String(f.id || '').trim();
+  if (id) return id;
   var name = String(f.name || '').trim().toLowerCase();
   var size = String(f.size || '');
   var type = String(f.type || '').trim().toLowerCase();
   var kind = String(f.kind || '').trim().toLowerCase();
-  var id = String(f.id || '').trim();
   var dataUrl = String(f.data_url || '');
   var head = dataUrl ? dataUrl.slice(0, 96) : '';
-  return [name, size, type, kind, role, id || head].join('|');
+  return [name, size, type, kind, head].join('|');
 }
 
 function traceOpsNormalizeMetaFileForMerge(file){
@@ -8431,7 +8847,7 @@ function traceOpsMergeMetaFiles(existingList, incomingList){
     }
     var merged = Object.assign({}, prev, normalized);
     if (!merged.data_url) merged.data_url = prev.data_url || normalized.data_url || '';
-    if (!merged.evidence_role) merged.evidence_role = normalized.evidence_role || prev.evidence_role || '';
+    merged.evidence_role = traceOpsNormalizeEvidenceRole(normalized.evidence_role || prev.evidence_role || 'general');
     if (!merged.name) merged.name = normalized.name || prev.name || '';
     if (!merged.type) merged.type = normalized.type || prev.type || '';
     if (!merged.size) merged.size = normalized.size || prev.size || 0;
@@ -8444,7 +8860,7 @@ function traceOpsMergeMetaFiles(existingList, incomingList){
   return out;
 }
 
-function traceOpsBuildEvidenceMetaFromFiles(metaFiles){
+function traceOpsBuildEvidenceDisplayMetaFromFiles(metaFiles){
   var evidence = { bad_part: [], good_part: [], general: [] };
   (Array.isArray(metaFiles) ? metaFiles : []).forEach(function(file){
     if (!file || file.kind !== 'image') return;
@@ -8461,6 +8877,19 @@ function traceOpsBuildEvidenceMetaFromFiles(metaFiles){
   return evidence;
 }
 
+function traceOpsMergeEvidenceLists(){
+  var merged = [];
+  for (var i = 0; i < arguments.length; i++) {
+    var part = arguments[i];
+    var list = Array.isArray(part) ? part : traceOpsPptExtractEvidenceNames(part || []);
+    for (var j = 0; j < list.length; j++) {
+      var item = String(list[j] || '').trim();
+      if (item && merged.indexOf(item) < 0) merged.push(item);
+    }
+  }
+  return merged;
+}
+
 function traceOpsMergeRccaPayload(existingRcca, incomingRcca){
   var base = Object.assign({}, existingRcca || {}, incomingRcca || {});
   var existingMeta = Array.isArray(existingRcca && existingRcca.meta_files) ? existingRcca.meta_files : [];
@@ -8473,9 +8902,10 @@ function traceOpsMergeRccaPayload(existingRcca, incomingRcca){
   base.meta = Object.assign({}, existingMetaObj, incomingMetaObj);
   base.meta.evidence = traceOpsBuildEvidenceMetaFromFiles(mergedMeta);
 
-  base.bad_part_images = Array.from(new Set([].concat(base.bad_part_images || [], base.meta.evidence.bad_part || [])));
-  base.good_part_images = Array.from(new Set([].concat(base.good_part_images || [], base.meta.evidence.good_part || [])));
-  base.evidence_images = Array.from(new Set([].concat(base.evidence_images || [], base.meta.evidence.general || [])));
+  var mergedDisplayEvidence = traceOpsBuildEvidenceDisplayMetaFromFiles(mergedMeta);
+  base.bad_part_images = Array.from(new Set([].concat(base.bad_part_images || [], mergedDisplayEvidence.bad_part || [])));
+    base.good_part_images = Array.from(new Set([].concat(base.good_part_images || [], mergedDisplayEvidence.good_part || [])));
+    base.evidence_images = Array.from(new Set([].concat(base.evidence_images || [], mergedDisplayEvidence.general || [])));
 
   return base;
 }
@@ -8484,6 +8914,12 @@ function traceOpsMergeRccaPayload(existingRcca, incomingRcca){
 function exportEightdPpt(draft) {
     if (!draft) return;
     var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
+    if (normalized && normalized.source_snapshot) {
+      normalized.source_evidence_fingerprint = traceOpsRccaFingerprint(normalized.source_snapshot);
+      if ((!normalized.meta || !normalized.meta.evidence || (!((normalized.meta.evidence.bad_part||[]).length) && !((normalized.meta.evidence.good_part||[]).length) && !((normalized.meta.evidence.general||[]).length))) && normalized.source_snapshot.meta_files) {
+        normalized.meta = Object.assign({}, normalized.meta || {}, { evidence: traceOpsBuildEvidenceMetaFromFiles(normalized.source_snapshot.meta_files) });
+      }
+    }
     var readinessMeta = traceOpsPptReadinessMeta(normalized);
     normalized.readiness_score = readinessMeta.score;
     normalized.missing_fields = readinessMeta.missing;
@@ -9910,6 +10346,7 @@ function replaceMetaFiles(nextFiles){
             reader.readAsDataURL(file);
           }catch(err){ reject(err); }
         });
+        var suggestedRole = traceOpsSuggestEvidenceRole(file, current.concat(prepared));
         prepared.push({
           id:'meta_' + Date.now().toString(36) + '_' + i + '_' + Math.random().toString(36).slice(2,7),
           name:file.name,
@@ -9917,7 +10354,7 @@ function replaceMetaFiles(nextFiles){
           size:Number(file.size||0),
           kind:traceOpsMetaTypeLabel(file),
           data_url:String(dataUrl||''),
-          evidence_role: traceOpsIsImageMetaFile(file) ? 'general' : undefined
+          evidence_role: traceOpsIsImageMetaFile(file) ? suggestedRole : undefined
         });
       }
       replaceMetaFiles(current.concat(prepared));
@@ -10052,7 +10489,7 @@ function replaceMetaFiles(nextFiles){
               <div style={{padding:"11px 12px",borderBottom:"1px solid #D8E1F7",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
                 <div>
                   <div style={{fontSize:11,fontWeight:700,color:"#1F3A5F",textTransform:"uppercase",letterSpacing:".06em"}}>Archivos meta</div>
-                  <div style={{fontSize:10,color:"#6A6560",marginTop:3}}>Guarda evidencia del caso como ZIP, PPT/PPTX y JPG/PNG dentro del RCCA.</div>
+                  <div style={{fontSize:10,color:"#6A6560",marginTop:3}}>Guarda evidencia del caso como ZIP, PPT/PPTX y JPG/PNG dentro del RCCA. Las imagenes intentan asignarse automaticamente a Bad / Good part y puedes corregirlo manualmente.</div>
                 </div>
                 <button type="button" onClick={function(){ if(metaInputRef.current) metaInputRef.current.click(); }} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:8,padding:"8px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>+ Agregar archivo</button>
                 <input ref={metaInputRef} type="file" multiple accept={TRACEOPS_RCCA_META_ACCEPT.join(',')} style={{display:"none"}} onChange={function(e){ addMetaFiles(e.target.files).catch(function(err){ alert(err && err.message ? err.message : String(err)); }); }}/>
@@ -10113,7 +10550,16 @@ function replaceMetaFiles(nextFiles){
       window.addEventListener('resize', onResize);
       return function(){ window.removeEventListener('resize', onResize); };
     }, []);
-    function upd(k,v){ var next = Object.assign({}, form); next[k] = v; var ready = traceOpsComputeEightdReadiness(next); next.readiness_score = ready.score; next.missing_fields = ready.missing; setForm(next); }
+    React.useEffect(function(){
+      if (!sourceRcca || !sourceRcca.rcca_id) return;
+      var sourceFingerprint = traceOpsRccaFingerprint(sourceRcca);
+      var currentFingerprint = form && form.source_snapshot ? traceOpsRccaFingerprint(form.source_snapshot) : '';
+      if (sourceFingerprint && sourceFingerprint !== currentFingerprint) {
+        var refreshed = traceOpsBuildEightdDraftFromRcca(sourceRcca, form || {});
+        setForm(refreshed);
+      }
+    }, [sourceRcca && sourceRcca.rcca_id, sourceRcca && sourceRcca.updated_at, traceOpsMetaFilesFingerprint(sourceRcca && sourceRcca.meta_files)]);
+    function upd(k,v){ var next = Object.assign({}, form); next[k] = v; var ready = traceOpsComputeEightdReadiness(next); next.readiness_score = ready.overallScore; next.structure_readiness_score = ready.structureScore; next.evidence_readiness_score = ready.evidenceScore; next.case_maturity_score = ready.overallScore; next.missing_fields = ready.structureMissing; next.escalation_blockers = ready.blockers; next.can_promote = ready.canPromote; next.draft_stage = ready.stage; setForm(next); }
     function togglePanel(key){ var next = Object.assign({}, collapsed); next[key] = !next[key]; setCollapsed(next); }
     var readiness = traceOpsComputeEightdReadiness(form);
     var linkedEvents = traceOpsCollectLinkedEventsByIds(form.linked_event_ids || []);
@@ -10159,9 +10605,16 @@ function replaceMetaFiles(nextFiles){
         <div style={{fontSize:10.5,color:"#6A6560"}}>Fecha base: {form.fecha || "N/D"}</div>
       </div>
     );
-    var missingPanel = renderPanel("Missing fields","Campos que todavia requieren decision humana.","missing",
-      <div style={{padding:mobile?12:14}}>
-        {readiness.missing.length===0 ? <div style={{fontSize:11.5,color:"#2F6FB3",fontWeight:700}}>Draft listo para revision.</div> : <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.missing.map(function(key){return <span key={key} style={{fontSize:9.5,fontWeight:700,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"4px 8px"}}>{missingPretty[key] || key}</span>;})}</div>}
+    var missingPanel = renderPanel("Maturity gates","Bloqueos para promocion y campos que aun requieren decision humana.","missing",
+      <div style={{padding:mobile?12:14,display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {badge("#EAF2FF","#1F3A5F","Overall " + readiness.overallScore + "%")}
+          {badge("#EEF6FF","#145A28","Structure " + readiness.structureScore + "%")}
+          {badge(readiness.evidenceScore>=70?"#EAF2FF":"#FEF9E8",readiness.evidenceScore>=70?"#2F6FB3":"#B87820","Evidence " + readiness.evidenceScore + "%")}
+          {badge(readiness.canPromote?"#EEF6FF":"#FDF0EE",readiness.canPromote?"#145A28":"#C0392B",readiness.stage)}
+        </div>
+        {readiness.blockers.length===0 ? <div style={{fontSize:11.5,color:"#145A28",fontWeight:700}}>Draft listo para review tecnico. No hay bloqueos de promocion.</div> : <div><div style={{fontSize:9.5,fontWeight:800,color:"#C0392B",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Promotion blockers</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.blockers.map(function(label){return <span key={label} style={{fontSize:9.5,fontWeight:700,background:"#FDF0EE",color:"#C0392B",borderRadius:999,padding:"4px 8px"}}>{label}</span>;})}</div></div>}
+        {readiness.structureMissing.length>0 && <div><div style={{fontSize:9.5,fontWeight:800,color:"#B87820",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Missing sections</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{readiness.structureMissing.map(function(key){return <span key={key} style={{fontSize:9.5,fontWeight:700,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"4px 8px"}}>{missingPretty[key] || key}</span>;})}</div></div>}
       </div>
     );
     var eventsPanel = renderPanel("Linked events", linkedEvents.length + " evento" + (linkedEvents.length!==1?"s":"") + " usados para construir el draft.", "events",
@@ -10193,10 +10646,15 @@ function replaceMetaFiles(nextFiles){
               </div>}
             </div>
             <div style={{display:"grid",gridTemplateColumns:mobile?"repeat(2,minmax(0,1fr))":"repeat(" + (sourceRcca?"5":"4") + ",auto)",gap:8,justifyContent:mobile?"stretch":"flex-end",width:mobile?"100%":"auto",alignItems:"stretch"}}>
-              <span style={{gridColumn:mobile?"1 / -1":"auto",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.score>=85?"#EAF2FF":readiness.score>=60?"#FEF9E8":"#FDF0EE",color:readiness.score>=85?"#1F3A5F":readiness.score>=60?"#B87820":"#C0392B",border:"1px solid "+(readiness.score>=85?"#C7DBF7":readiness.score>=60?"#F5E4A0":"#F0C4BE"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Readiness {readiness.score}%</span>
-              <button onClick={function(){ props.onSave(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"Guardar":"Guardar Draft"}</button>
-              <button onClick={function(){ exportEightdPpt(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#FEF9E8",border:"1px solid #F5E4A0",color:"#B87820",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"PPT":"Exportar PPT"}</button>
-              <button onClick={function(){ exportEightdHtml(Object.assign({}, form, { readiness_score: readiness.score, missing_fields: readiness.missing })); }} style={{background:"#EAF2FF",border:"1px solid #C8D7F8",color:"#2F6FB3",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"HTML":"Exportar HTML"}</button>
+              <div style={{gridColumn:mobile?"1 / -1":"auto",display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",justifyContent:mobile?"flex-start":"flex-end"}}>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.overallScore>=85?"#EAF2FF":readiness.overallScore>=60?"#FEF9E8":"#FDF0EE",color:readiness.overallScore>=85?"#1F3A5F":readiness.overallScore>=60?"#B87820":"#C0392B",border:"1px solid "+(readiness.overallScore>=85?"#C7DBF7":readiness.overallScore>=60?"#F5E4A0":"#F0C4BE"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Maturity {readiness.overallScore}%</span>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:"#EEF6FF",color:"#145A28",border:"1px solid #A0DEB4",borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Structure {readiness.structureScore}%</span>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.evidenceScore>=70?"#EAF2FF":"#FEF9E8",color:readiness.evidenceScore>=70?"#2F6FB3":"#B87820",border:"1px solid "+(readiness.evidenceScore>=70?"#C7DBF7":"#F5E4A0"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>Evidence {readiness.evidenceScore}%</span>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:readiness.canPromote?"#EEF6FF":"#FDF0EE",color:readiness.canPromote?"#145A28":"#C0392B",border:"1px solid "+(readiness.canPromote?"#A0DEB4":"#F0C4BE"),borderRadius:999,padding:mobile?"8px 10px":"6px 10px"}}>{readiness.stage}</span>
+              </div>
+              <button onClick={function(){ props.onSave(Object.assign({}, form, { readiness_score: readiness.overallScore, structure_readiness_score: readiness.structureScore, evidence_readiness_score: readiness.evidenceScore, case_maturity_score: readiness.overallScore, missing_fields: readiness.structureMissing, escalation_blockers: readiness.blockers, can_promote: readiness.canPromote, draft_stage: readiness.stage })); }} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"Guardar":"Guardar Draft"}</button>
+              <button onClick={function(){ exportEightdPpt(Object.assign({}, form, { readiness_score: readiness.overallScore, structure_readiness_score: readiness.structureScore, evidence_readiness_score: readiness.evidenceScore, case_maturity_score: readiness.overallScore, missing_fields: readiness.structureMissing, escalation_blockers: readiness.blockers, can_promote: readiness.canPromote, draft_stage: readiness.stage })); }} style={{background:"#FEF9E8",border:"1px solid #F5E4A0",color:"#B87820",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"PPT":"Exportar PPT"}</button>
+              <button onClick={function(){ exportEightdHtml(Object.assign({}, form, { readiness_score: readiness.overallScore, structure_readiness_score: readiness.structureScore, evidence_readiness_score: readiness.evidenceScore, case_maturity_score: readiness.overallScore, missing_fields: readiness.structureMissing, escalation_blockers: readiness.blockers, can_promote: readiness.canPromote, draft_stage: readiness.stage })); }} style={{background:"#EAF2FF",border:"1px solid #C8D7F8",color:"#2F6FB3",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"HTML":"Exportar HTML"}</button>
               {sourceRcca&&<button onClick={function(){ props.onRefresh(sourceRcca); }} style={{background:"#F5F0FE",border:"1px solid #DBCDF8",color:"#6B2DA8",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%"}}>{mobile?"Refresh":"Refresh from RCCA"}</button>}
               <button onClick={props.onClose} style={{background:"#F8F7F5",border:"1px solid #DDDBD7",color:"#6A6560",borderRadius:10,padding:mobile?"11px 12px":"10px 14px",fontSize:mobile?11:12,fontWeight:700,cursor:"pointer",width:"100%",gridColumn:mobile&&(!sourceRcca)?"1 / -1":"auto"}}>{mobile?"Cerrar":"Cerrar"}</button>
             </div>
@@ -11689,8 +12147,8 @@ function replaceMetaFiles(nextFiles){
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:10}}>
                     <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Drafts</div><div style={{fontSize:26,fontWeight:800,color:"#1A1714",marginTop:5}}>{eightdList.length}</div></div>
-                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Ready >= 85%</div><div style={{fontSize:26,fontWeight:800,color:"#2F6FB3",marginTop:5}}>{eightdList.filter(function(item){return (item.readiness_score||0)>=85;}).length}</div></div>
-                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Need review</div><div style={{fontSize:26,fontWeight:800,color:"#B87820",marginTop:5}}>{eightdList.filter(function(item){return (item.readiness_score||0)<85;}).length}</div></div>
+                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Ready for review</div><div style={{fontSize:26,fontWeight:800,color:"#2F6FB3",marginTop:5}}>{eightdList.filter(function(item){return traceOpsComputeEightdReadiness(item).canPromote;}).length}</div></div>
+                    <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>Blocked</div><div style={{fontSize:26,fontWeight:800,color:"#B87820",marginTop:5}}>{eightdList.filter(function(item){return !traceOpsComputeEightdReadiness(item).canPromote;}).length}</div></div>
                     <div style={{background:"#F8F7F5",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",textTransform:"uppercase"}}>RCCA source</div><div style={{fontSize:26,fontWeight:800,color:"#6B2DA8",marginTop:5}}>{rccaList.length}</div></div>
                   </div>
                   <input aria-label="Buscar drafts 8D por RCCA, modelo, línea o título" placeholder="Buscar draft por RCCA, modelo, linea o titulo..." value={eightdFilter} onChange={function(e){setEightdFilter(e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#1A1714",outline:"none"}}/>
@@ -11704,13 +12162,15 @@ function replaceMetaFiles(nextFiles){
                         return (item.eightd_id||"").toLowerCase().indexOf(q)>=0 || (item.source_rcca_id||"").toLowerCase().indexOf(q)>=0 || (item.source_title||"").toLowerCase().indexOf(q)>=0 || (item.modelo||"").toLowerCase().indexOf(q)>=0 || (item.linea||"").toLowerCase().indexOf(q)>=0;
                       }).map(function(item){
                         var source = rccaList.find(function(r){ return r.rcca_id === item.source_rcca_id; }) || item.source_snapshot || null;
+                        var maturity = traceOpsComputeEightdReadiness(item);
                         return <div key={item.eightd_id} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:12,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
                           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
                             <div style={{minWidth:0,flex:1}}>
                               <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                                 <span style={{fontSize:9.5,fontFamily:"monospace",fontWeight:700,color:"#6B2DA8"}}>{item.eightd_id}</span>
-                                <span style={{fontSize:8.8,fontWeight:800,background:(item.readiness_score||0)>=85?"#EAF2FF":(item.readiness_score||0)>=60?"#FEF9E8":"#FDF0EE",color:(item.readiness_score||0)>=85?"#1F3A5F":(item.readiness_score||0)>=60?"#B87820":"#C0392B",borderRadius:999,padding:"3px 8px"}}>{item.readiness_score||0}%</span>
-                                <span style={{fontSize:8.8,fontWeight:800,background:"#EAF2FF",color:"#2F6FB3",borderRadius:999,padding:"3px 8px"}}>{item.status||"Draft"}</span>
+                                <span style={{fontSize:8.8,fontWeight:800,background:maturity.overallScore>=85?"#EAF2FF":maturity.overallScore>=60?"#FEF9E8":"#FDF0EE",color:maturity.overallScore>=85?"#1F3A5F":maturity.overallScore>=60?"#B87820":"#C0392B",borderRadius:999,padding:"3px 8px"}}>Overall {maturity.overallScore}%</span>
+                                <span style={{fontSize:8.8,fontWeight:800,background:maturity.evidenceScore>=70?"#EAF2FF":"#FEF9E8",color:maturity.evidenceScore>=70?"#2F6FB3":"#B87820",borderRadius:999,padding:"3px 8px"}}>Evidence {maturity.evidenceScore}%</span>
+                                <span style={{fontSize:8.8,fontWeight:800,background:maturity.canPromote?"#EEF6FF":"#FDF0EE",color:maturity.canPromote?"#145A28":"#C0392B",borderRadius:999,padding:"3px 8px"}}>{item.draft_stage || maturity.stage}</span>
                               </div>
                               <div style={{fontSize:13,fontWeight:800,color:"#1A1714",marginTop:6,lineHeight:1.32}}>{item.source_title || item.source_rcca_id}</div>
                               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
@@ -11719,6 +12179,7 @@ function replaceMetaFiles(nextFiles){
                                 {item.linea&&<span style={{fontSize:9,background:"#EAF2FF",color:"#1F3A5F",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{item.linea}</span>}
                                 <span style={{fontSize:9,color:"#8A8580"}}>{item.linked_event_ids && item.linked_event_ids.length ? item.linked_event_ids.length : 0} eventos</span>
                               </div>
+                              {item.escalation_blockers&&item.escalation_blockers.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:8}}>{item.escalation_blockers.slice(0,3).map(function(label){return <span key={label} style={{fontSize:8.5,background:"#FDF0EE",color:"#C0392B",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{label}</span>;})}</div>}
                               {item.missing_fields&&item.missing_fields.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:8}}>{item.missing_fields.slice(0,4).map(function(key){return <span key={key} style={{fontSize:8.5,background:"#FEF9E8",color:"#B87820",borderRadius:999,padding:"3px 7px",fontWeight:700}}>{({d1_team:"D1",d2_problem:"D2",d3_containment:"D3",d4_root_cause:"D4",d4_escape_point:"Escape",d5_pca:"D5",d6_validation:"D6",d7_prevention:"D7"}[key]||key)}</span>;})}</div>}
                             </div>
                             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
