@@ -8237,25 +8237,30 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     await traceOpsPptRenderEvidencePanel(slide, {x:10.34, y:1.92, w:1.24, h:1.10, label:'Bad part', caption:'Evidence view', tone:'bad', imageData:appendixBad});
     await traceOpsPptRenderEvidencePanel(slide, {x:11.72, y:1.92, w:1.24, h:1.10, label:'Good part', caption:'Reference view', tone:'good', imageData:appendixGood});
 
-    slide.addText('Trace validation (live checkpoints)', {x:0.42, y:3.14, w:2.8, h:0.12, fontFace:'Segoe UI', fontSize:7.6, color:'6B7280', margin:0});
-
     var evidenceRows = traceOpsPptDetailedEventRows(normalized, model);
-    var checkpointRows = (typeof traceOpsPptAppendixCheckpointRows === 'function'
-      ? traceOpsPptAppendixCheckpointRows(normalized, model)
-      : []);
-    var firstEvidence = (Array.isArray(evidenceRows) && evidenceRows.length ? evidenceRows[0] : ['Pending','Pending','Pending','Pending','Pending','Pending','TraceOps']);
 
-    traceOpsPptBox(slide, 0.42, 3.28, 12.48, 0.34, 'FAFCFF');
-    traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 3.36, 1.4);
-    slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || model.line || 'Pending') + ' | Station: ' + String(firstEvidence[2] || model.station || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || model.station || 'Pending') + ' | Result: ' + String(firstEvidence[5] || model.traceResult || 'Pending'), 180), {x:1.92, y:3.36, w:10.70, h:0.11, fontFace:'Segoe UI', fontSize:7.8, color:'102A43', margin:0, fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([
+      [{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],
+      [traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 150), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 150)]
+    ]), {
+      x:0.42, y:3.36, w:8.90, h:0.76,
+      border:{type:'solid', pt:1, color:'DCE9E2'},
+      fill:'FFFFFF', color:'102A43',
+      fontFace:'Segoe UI', fontSize:8.3,
+      margin:0.04, rowH:[0.18,0.48], colW:[4.38,4.34], fit:'shrink'
+    });
 
-    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}]].concat(Array.isArray(checkpointRows) ? checkpointRows : [])), {x:0.42, y:3.68, w:12.48, h:0.46, border:{type:'solid', pt:1, color:'2A4D73'}, fill:'2A4D73', color:'FFFFFF', fontFace:'Segoe UI', fontSize:7.2, margin:0.025, rowH:[0.12,0.065,0.065,0.065,0.065,0.065,0.065], colW:[2.70,1.78,7.90], fit:'shrink'});
-
-    slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 150), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 150)]]), {x:0.42, y:4.32, w:8.90, h:0.70, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.2, margin:0.04, rowH:[0.18,0.44], colW:[4.38,4.34], fit:'shrink'});
-
-    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:5.18, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:5.20, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.2, color:'5F766C', margin:0, fit:'shrink'});
-    slide.addTable(traceOpsPptSafeTable([[{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {x:0.42, y:5.44, w:12.48, h:0.46, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.0, margin:0.03, rowH:[0.16,0.18], colW:[1.80,1.08,1.86,2.40,1.72,1.40,2.22], fit:'shrink'});
+    slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:4.34, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText('Columns: Process Step | Line | Station | Equipment / Tester | Timestamp | Result | Source', {x:2.28, y:4.36, w:10.34, h:0.14, fontFace:'Segoe UI', fontSize:8.2, color:'5F766C', margin:0, fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([
+      [{text:'Process Step', options:{bold:true}},{text:'Line', options:{bold:true}},{text:'Station', options:{bold:true}},{text:'Equipment / Tester', options:{bold:true}},{text:'Timestamp', options:{bold:true}},{text:'Result', options:{bold:true}},{text:'Source', options:{bold:true}}]
+    ].concat(Array.isArray(evidenceRows) ? evidenceRows : [])), {
+      x:0.42, y:4.60, w:12.48, h:0.46,
+      border:{type:'solid', pt:1, color:'DCE9E2'},
+      fill:'FFFFFF', color:'102A43',
+      fontFace:'Segoe UI', fontSize:8.0,
+      margin:0.03, rowH:[0.16,0.18], colW:[1.80,1.08,1.86,2.40,1.72,1.40,2.22], fit:'shrink'
+    });
     return slide;
   }
 
