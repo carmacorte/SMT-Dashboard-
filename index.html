@@ -6170,6 +6170,37 @@ function App() {
     return traceOpsEightdJoinParagraphs(proofPoints);
   }
 
+
+  function traceOpsEightdSeedEscalationMembers(teamMembers, list) {
+    var seededTeam = traceOpsEightdNormalizeTeamMembers(teamMembers);
+    var normalized = traceOpsEightdNormalizeTeamMembers(list);
+    if (normalized.length) return normalized;
+    return seededTeam.map(function(item){
+      return { role:item.role || '', name:item.name || '', email:item.email || '' };
+    });
+  }
+
+  function traceOpsEightdBuildEscalationTextFromMembers(members, model) {
+    var rows = traceOpsEightdNormalizeTeamMembers(members);
+    if (!rows.length) {
+      return traceOpsEightdJoinParagraphs([
+        'Escalation roster pending.',
+        'Release authority must be explicit whenever hold / release, customer risk, or control-gap validation is involved.'
+      ]);
+    }
+    var owner = rows[0].name || rows[0].email || (model && model.owners && model.owners[0]) || 'Quality owner pending';
+    return traceOpsEightdJoinParagraphs([
+      'Escalation owner: ' + owner,
+      'Escalation roster: ' + rows.map(function(item){
+        var role = item.role || 'Role pending';
+        var label = item.name || item.email || 'Pending member';
+        var emailTag = item.email && item.name ? (' <' + item.email + '>') : (item.email && !item.name ? (' ' + item.email) : '');
+        return role + ': ' + label + emailTag;
+      }).join(' | '),
+      'Release authority must be explicit whenever hold / release, customer risk, or control-gap validation is involved.'
+    ]);
+  }
+
   function traceOpsEightdBuildTeamText(model) {
     var proofPoints = [];
     var owner = model.owners.length ? model.owners[0] : 'Quality owner pending';
@@ -6349,19 +6380,16 @@ function App() {
     next.evidence_checklist = next.evidence_checklist || '□ Customer symptom image / data\n□ Golden reference comparison\n□ Installed-state vs removed-state comparison\n□ Serial / batch trace\n□ Control limitation explanation\n□ Corrective action proof';
     next.meta = traceOpsEightdEnsureMeta(next.meta);
     next.d1_team_members = traceOpsEightdSeedTeamMembers(model, next.d1_team_members);
+    next.d1_escalation_members = traceOpsEightdSeedEscalationMembers(next.d1_team_members, next.d1_escalation_members);
     var manual = next.meta.manual_fields || {};
 
     next.d1_team = manual.d1_team
       ? (next.d1_team || '')
-      : traceOpsEightdBuildTeamText(model);
+      : traceOpsEightdBuildTeamTextFromMembers(next.d1_team_members, model);
 
     next.d1_escalation = manual.d1_escalation
       ? (next.d1_escalation || '')
-      : traceOpsEightdJoinParagraphs([
-          'Owner: ' + ((model.owners && model.owners[0]) || next.owner_email || 'Pending'),
-          'Escalation path: Quality -> Process -> Production -> Materials / Kitting -> Maintenance',
-          'Release authority must be explicit whenever hold / release, customer risk, or control-gap validation is involved.'
-        ]);
+      : traceOpsEightdBuildEscalationTextFromMembers(next.d1_escalation_members, model);
 
     next.d2_problem = manual.d2_problem
       ? (next.d2_problem || '')
@@ -6480,6 +6508,7 @@ function App() {
       correlation_notes: (existing && existing.correlation_notes) || '',
       evidence_checklist: (existing && existing.evidence_checklist) || '',
       d1_team_members: traceOpsEightdSeedTeamMembers(model, (existing && existing.d1_team_members) || []),
+      d1_escalation_members: (existing && existing.d1_escalation_members) || [],
       d1_team: (existing && existing.d1_team) || '',
       d1_escalation: (existing && existing.d1_escalation) || '',
       d2_problem: (existing && existing.d2_problem) || '',
@@ -6594,6 +6623,7 @@ function App() {
     }
     var linkedEvents = model.linked;
     var d1TeamMembers = traceOpsEightdSeedTeamMembers(model, normalized.d1_team_members);
+    var d1EscalationMembers = traceOpsEightdSeedEscalationMembers(d1TeamMembers, normalized.d1_escalation_members);
     function teamTableCard(title, members, summary){
       var rows = (Array.isArray(members) ? members : []).map(function(item){
         return `<tr><td>${esc(item.role || 'Pending')}</td><td>${esc(item.name || 'Pending')}</td><td>${esc(item.email || 'Pending')}</td></tr>`;
@@ -6761,7 +6791,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
     <div class="section-band three">
       ${teamTableCard('D1 Team', d1TeamMembers, normalized.d1_team)}
-      ${block('D1 Escalation', d1EscalationText)}
+      ${teamTableCard('D1 Escalation', d1EscalationMembers, normalized.d1_escalation)}
       ${block('D2 Traceability', d2TraceabilityText)}
     </div>
 
@@ -8235,25 +8265,15 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D1 Team + D2 Problem Description', 'Foxconn standard D1 / D2 required fields', 1, (normalized.status || 'Draft'));
 
-    var ownerEmail = normalized.owner_email || (model.owners && model.owners[0]) || 'Pending';
     var roles = traceOpsEightdSeedTeamMembers(model, normalized.d1_team_members).map(function(item){
       return [item.role || 'Pending', item.name || 'Pending', item.email || 'Pending'];
     });
-    var escalation = [
-      ['Process Coordinator', normalized.process_coordinator || 'Pending', normalized.process_coordinator_email || 'Pending'],
-      ['Quality Coordinator', normalized.quality_coordinator || normalized.owner_name || 'Pending', normalized.quality_coordinator_email || ownerEmail],
-      ['Quality Manager', normalized.quality_manager || 'Pending', normalized.quality_manager_email || 'Pending'],
-      ['TE Manager', normalized.te_manager || 'Pending', normalized.te_manager_email || 'Pending'],
-      ['Manufacturing Manager', normalized.manufacturing_manager || 'Pending', normalized.manufacturing_manager_email || 'Pending'],
-      ['BU Manager', normalized.bu_manager || 'Pending', normalized.bu_manager_email || 'Pending']
-    ];
-
-    var d1EscalationText = traceOpsPptDraftField(
-      normalized.d1_escalation,
-      '',
-      'Escalation path pending.',
-      220
-    );
+    var escalation = traceOpsEightdSeedEscalationMembers(
+      traceOpsEightdSeedTeamMembers(model, normalized.d1_team_members),
+      normalized.d1_escalation_members
+    ).map(function(item){
+      return [item.role || 'Pending', item.name || 'Pending', item.email || 'Pending'];
+    });
 
     var d2TraceabilityText = traceOpsPptDraftField(
       normalized.d2_traceability,
@@ -8291,14 +8311,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
     slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.24, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(
-      traceOpsPptSafeTable([[{text:'Level',options:{bold:true}},{text:'Owner',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(escalation)),
-      {x:0.42, y:4.52, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.05, margin:0.05, rowH:0.28, colW:[1.78,1.42,1.82], fit:'shrink'}
-    );
-
-    traceOpsPptBox(slide, 0.42, 6.72, 5.10, 0.34, 'FAFCFF');
-    slide.addText(
-      traceOpsPptWrap(d1EscalationText, 220),
-      {x:0.56, y:6.82, w:4.80, h:0.12, fontFace:'Segoe UI', fontSize:7.8, color:'102A43', margin:0, fit:'shrink'}
+      traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(escalation)),
+      {x:0.42, y:4.52, w:5.10, h:2.44, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.2, margin:0.05, rowH:0.28, colW:[0.78,1.62,2.50], fit:'shrink'}
     );
 
     slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
@@ -10855,6 +10869,7 @@ function replaceMetaFiles(nextFiles){
     React.useEffect(function(){
       var nextInit = Object.assign({}, props.init || {});
       nextInit.d1_team_members = traceOpsEightdNormalizeTeamMembers(nextInit.d1_team_members);
+      nextInit.d1_escalation_members = traceOpsEightdNormalizeTeamMembers(nextInit.d1_escalation_members);
       setForm(nextInit);
     }, [props.init && props.init.eightd_id, props.init && props.init.updated_at]);
     React.useEffect(function(){
@@ -10911,6 +10926,9 @@ function replaceMetaFiles(nextFiles){
       if (key === 'd1_team') {
         seed.d1_team_members = [];
       }
+      if (key === 'd1_escalation') {
+        seed.d1_escalation_members = [];
+      }
 
       var refreshed = traceOpsBuildEightdDraftFromRcca(sourceRcca, seed);
       setForm(refreshed);
@@ -10923,6 +10941,20 @@ function replaceMetaFiles(nextFiles){
       next.d1_team_members = traceOpsEightdNormalizeTeamMembers(nextMembers);
       next.d1_team = traceOpsEightdBuildTeamTextFromMembers(next.d1_team_members, model);
       next.meta.manual_fields.d1_team = true;
+      if (!next.meta.manual_fields.d1_escalation) {
+        next.d1_escalation_members = traceOpsEightdSeedEscalationMembers(next.d1_team_members, []);
+        next.d1_escalation = traceOpsEightdBuildEscalationTextFromMembers(next.d1_escalation_members, model);
+      }
+      setForm(applyDraftReadiness(next));
+    }
+
+    function syncD1EscalationMembers(nextMembers){
+      var next = Object.assign({}, form);
+      next.meta = traceOpsEightdEnsureMeta(next.meta);
+      var model = traceOpsEightdBuildModel((next.source_snapshot) || next || {}, traceOpsEightdCollectLinkedEvents((next.linked_event_ids || next.event_ids) || []));
+      next.d1_escalation_members = traceOpsEightdNormalizeTeamMembers(nextMembers);
+      next.d1_escalation = traceOpsEightdBuildEscalationTextFromMembers(next.d1_escalation_members, model);
+      next.meta.manual_fields.d1_escalation = true;
       setForm(applyDraftReadiness(next));
     }
 
@@ -10951,6 +10983,35 @@ function replaceMetaFiles(nextFiles){
       if (current.length <= traceOpsEightdDefaultTeamRoles().length) return;
       current.pop();
       syncD1TeamMembers(current);
+    }
+
+    function d1EscalationSeededRows(){
+      return traceOpsEightdSeedEscalationMembers(d1TeamSeededRows(), form.d1_escalation_members);
+    }
+
+    function copyEscalationFromTeam(){
+      syncD1EscalationMembers(d1TeamSeededRows());
+    }
+
+    function addD1EscalationMember(){
+      var current = d1EscalationSeededRows();
+      current.push({ name:'', email:'', role:'' });
+      syncD1EscalationMembers(current);
+    }
+
+    function updateD1EscalationMember(index, key, value){
+      var current = d1EscalationSeededRows();
+      while (current.length <= index) current.push({ name:'', email:'', role:'' });
+      current[index] = Object.assign({}, current[index] || {});
+      current[index][key] = value;
+      syncD1EscalationMembers(current);
+    }
+
+    function removeLastD1EscalationMember(){
+      var current = d1EscalationSeededRows();
+      if (current.length <= traceOpsEightdDefaultTeamRoles().length) return;
+      current.pop();
+      syncD1EscalationMembers(current);
     }
 
     function renderD1TeamField(title, subtitle){
@@ -11010,11 +11071,70 @@ function replaceMetaFiles(nextFiles){
       );
     }
 
+    function renderD1EscalationField(title, subtitle){
+      var members = d1EscalationSeededRows();
+      var manual = traceOpsEightdFieldIsManual(form, 'd1_escalation');
+      return (
+        <div key="d1_escalation" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+          <div style={{padding:mobile?"11px 12px":"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+              <div style={{minWidth:0,flex:1}}>
+                <div style={{fontSize:mobile?12.5:12.5,fontWeight:800,color:"#1A1714",lineHeight:1.2}}>{title}</div>
+                <div style={{fontSize:mobile?9.5:10,color:"#8A8580",marginTop:2,lineHeight:1.35}}>{subtitle}</div>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                <span style={{fontSize:9,fontWeight:800,borderRadius:999,padding:"4px 8px",background:manual ? "#F5F0FE" : "#EAF2FF",color:manual ? "#6B2DA8" : "#1F3A5F",border:"1px solid " + (manual ? "#DBCDF8" : "#C7DBF7")}}>{manual ? "Edited in 8D" : "Auto from RCCA"}</span>
+                <button onClick={copyEscalationFromTeam} style={{background:"#EEF6FF",border:"1px solid #C7DBF7",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#1F3A5F",cursor:"pointer"}}>Copiar desde Team</button>
+                <button onClick={addD1EscalationMember} style={{background:"#EEF6FF",border:"1px solid #C7DBF7",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#1F3A5F",cursor:"pointer"}}>Agregar fila</button>
+                {members.length > traceOpsEightdDefaultTeamRoles().length && <button onClick={removeLastD1EscalationMember} style={{background:"#fff",border:"1px solid #F0C4BE",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#C0392B",cursor:"pointer"}}>Eliminar última</button>}
+                {sourceRcca && (
+                  <button onClick={function(){ refreshDraftFieldFromRcca('d1_escalation'); }} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#6A6560",cursor:"pointer"}}>Refresh field</button>
+                )}
+              </div>
+            </div>
+          </div>
+          <div style={{padding:mobile?10:12,display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{fontSize:11.5,color:"#8A8580",padding:"2px 2px 4px"}}>Escalation replica la tabla de Team y alimenta la tabla D1 del 8D exportado, sin amontonar texto libre en PPT.</div>
+            <div style={{border:"1px solid #E5E2DC",borderRadius:12,overflow:"hidden",background:"#FCFCFB"}}>
+              <div style={{display:"grid",gridTemplateColumns:mobile?"1fr":"1fr 1.2fr 1.35fr",background:"#F8F7F5",borderBottom:"1px solid #E5E2DC"}}>
+                <div style={{padding:"10px 12px",fontSize:10,fontWeight:800,color:"#6A6560",textTransform:"uppercase",letterSpacing:".08em"}}>Role</div>
+                <div style={{padding:"10px 12px",fontSize:10,fontWeight:800,color:"#6A6560",textTransform:"uppercase",letterSpacing:".08em"}}>Name</div>
+                <div style={{padding:"10px 12px",fontSize:10,fontWeight:800,color:"#6A6560",textTransform:"uppercase",letterSpacing:".08em"}}>E-mail</div>
+              </div>
+              {members.map(function(member, idx){
+                return <div key={idx} style={{display:"grid",gridTemplateColumns:mobile?"1fr":"1fr 1.2fr 1.35fr",borderBottom:idx === members.length - 1 ? "none" : "1px solid #E5E2DC"}}>
+                  <div style={{padding:10}}>
+                    <input value={member.role || ''} onChange={function(e){ updateD1EscalationMember(idx, 'role', e.target.value); }} placeholder="QE" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",fontFamily:"inherit",background:"#fff"}} />
+                  </div>
+                  <div style={{padding:10}}>
+                    <input value={member.name || ''} onChange={function(e){ updateD1EscalationMember(idx, 'name', e.target.value); }} placeholder="Nombre" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",fontFamily:"inherit",background:"#fff"}} />
+                  </div>
+                  <div style={{padding:10}}>
+                    <input value={member.email || ''} onChange={function(e){ updateD1EscalationMember(idx, 'email', e.target.value); }} placeholder="correo@empresa.com" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",fontFamily:"inherit",background:"#fff"}} />
+                  </div>
+                </div>;
+              })}
+            </div>
+            <div style={{background: manual ? "#FCFAFF" : "#F8F7F5",border:"1px solid " + (manual ? "#DBCDF8" : "#E5E2DC"),borderRadius:12,padding:mobile?10:12}}>
+              <div style={{fontSize:9.5,fontWeight:800,color:manual?"#6B2DA8":"#6A6560",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6}}>Escalation summary preview</div>
+              <textarea
+                value={form.d1_escalation || ''}
+                rows={mobile ? 5 : 6}
+                onChange={function(e){ upd('d1_escalation', e.target.value); }}
+                style={{width:"100%",border:"1.5px solid " + (manual ? "#CDBAF7" : "#DDDBD7"),borderRadius:10,padding:mobile?"10px":"10px 12px",fontSize:mobile?11.5:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit",lineHeight:1.55,background:"#fff"}}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     function renderDraftOverlayField(sec){
       var key = sec[0];
       var title = sec[1];
       var subtitle = sec[2];
       if (key === 'd1_team') return renderD1TeamField(title, subtitle);
+      if (key === 'd1_escalation') return renderD1EscalationField(title, subtitle);
       var value = form[key] || "";
       var manual = traceOpsEightdFieldIsManual(form, key);
       var tall = key==="d2_problem" || key==="d4_root_cause" || key==="d2_traceability" || key==="d2_5w2h";
