@@ -6171,13 +6171,51 @@ function App() {
   }
 
 
+  function traceOpsEightdDefaultEscalationRoles() {
+    return [
+      { role:'Process Coordinator', sourceRole:'PM' },
+      { role:'Quality Coordinator', sourceRole:'QE' },
+      { role:'Quality Manager', sourceRole:'SQE' },
+      { role:'TE Manager', sourceRole:'TE' },
+      { role:'Manufacturing Manager', sourceRole:'PE' },
+      { role:'BU Manager', sourceRole:'PD' }
+    ];
+  }
+
   function traceOpsEightdSeedEscalationMembers(teamMembers, list) {
     var seededTeam = traceOpsEightdNormalizeTeamMembers(teamMembers);
     var normalized = traceOpsEightdNormalizeTeamMembers(list);
-    if (normalized.length) return normalized;
-    return seededTeam.map(function(item){
-      return { role:item.role || '', name:item.name || '', email:item.email || '' };
+    var defaults = traceOpsEightdDefaultEscalationRoles();
+    var teamByRole = {};
+    var listByRole = {};
+    var extras = [];
+
+    seededTeam.forEach(function(item){
+      var roleKey = String(item && item.role || '').trim().toUpperCase();
+      if (roleKey && !teamByRole[roleKey]) teamByRole[roleKey] = item;
     });
+
+    normalized.forEach(function(item){
+      var roleKey = String(item && item.role || '').trim().toUpperCase();
+      var isDefault = defaults.some(function(def){ return def.role.toUpperCase() === roleKey; });
+      if (isDefault && !listByRole[roleKey]) {
+        listByRole[roleKey] = item;
+      } else {
+        extras.push({ role:item.role || '', name:item.name || '', email:item.email || '' });
+      }
+    });
+
+    var seeded = defaults.map(function(def){
+      var existing = listByRole[def.role.toUpperCase()];
+      if (existing) {
+        return { role:def.role, name:existing.name || '', email:existing.email || '' };
+      }
+      var source = teamByRole[String(def.sourceRole || '').toUpperCase()] || {};
+      return { role:def.role, name:source.name || '', email:source.email || '' };
+    });
+
+    extras.forEach(function(item){ seeded.push(item); });
+    return traceOpsEightdNormalizeTeamMembers(seeded);
   }
 
   function traceOpsEightdBuildEscalationTextFromMembers(members, model) {
@@ -6789,9 +6827,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       ${block('TraceOps Data Anchor', dataAnchor)}
     </div>
 
-    <div class="section-band three">
+    <div class="section-band" style="grid-template-columns:1.1fr .9fr">
       ${teamTableCard('D1 Team', d1TeamMembers, normalized.d1_team)}
-      ${teamTableCard('D1 Escalation', d1EscalationMembers, normalized.d1_escalation)}
       ${block('D2 Traceability', d2TraceabilityText)}
     </div>
 
@@ -6820,6 +6857,21 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     ${block('D8 Closure Statement', normalized.d8_closure, 'soft')}
 
     <div class="note"><strong>Traceability rule.</strong> This 8D remains connected to the original chat analysis, linked events, engineer findings, RCCA content and Yokoten knowledge. No confirmed root cause is claimed unless explicitly validated in the source evidence.</div>
+  </div>
+
+  <div class="page">
+    <div class="hero" style="padding:22px 26px">
+      <div class="eyebrow">FOXCONN | TraceOps 8D Draft</div>
+      <div class="title" style="font-size:30px">Escalation</div>
+      <div class="sub">Escalation roster by coordinator / manager level. This page stays separate from D1-D2 to avoid layout overlap in PPT / PDF export.</div>
+    </div>
+
+    ${teamTableCard('Escalation roster', d1EscalationMembers, '')}
+
+    <div class="section-band">
+      ${block('Escalation guidance', normalized.d1_escalation || 'Release authority must be explicit whenever hold / release, customer risk, or control-gap validation is involved.')}
+      ${block('Ownership note', 'Coordinator and manager roles must confirm release authority, customer risk path and cross-functional escalation ownership.')}
+    </div>
   </div>
 
   <div class="page">
@@ -8268,12 +8320,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var roles = traceOpsEightdSeedTeamMembers(model, normalized.d1_team_members).map(function(item){
       return [item.role || 'Pending', item.name || 'Pending', item.email || 'Pending'];
     });
-    var escalation = traceOpsEightdSeedEscalationMembers(
-      traceOpsEightdSeedTeamMembers(model, normalized.d1_team_members),
-      normalized.d1_escalation_members
-    ).map(function(item){
-      return [item.role || 'Pending', item.name || 'Pending', item.email || 'Pending'];
-    });
 
     var badPartText = traceOpsPptDraftField(
       normalized.bad_part_notes,
@@ -8317,12 +8363,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       {x:0.42, y:1.96, w:5.10, h:2.06, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.5, margin:0.05, rowH:0.28, colW:[0.78,1.62,2.50], fit:'shrink'}
     );
 
-    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.18, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    slide.addTable(
-      traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(escalation)),
-      {x:0.42, y:4.46, w:5.10, h:2.02, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.1, margin:0.05, rowH:0.28, colW:[0.78,1.62,2.50], fit:'shrink'}
-    );
-
     slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     var traceRows = [
       ['Model', normalized.modelo || model.model || 'Pending', 'SKU Version', normalized.revision || 'Pending'],
@@ -8338,7 +8378,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     traceOpsPptBox(slide, 5.74, 3.14, 7.16, 0.28, 'FAFCFF');
     slide.addText(traceSummary, {x:5.90, y:3.20, w:6.84, h:0.14, fontFace:'Segoe UI', fontSize:7.1, color:'102A43', margin:0.01, fit:'shrink'});
 
-    slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.54, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('D2 Problem Description', 40), {x:5.74, y:3.54, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     var problemRows = [
       ['Who', conciseWho, 'How', conciseHow],
       ['What', conciseDefect, 'How many', howMany],
@@ -8347,25 +8387,64 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     ];
     slide.addTable(
       traceOpsPptSafeTable([[{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(problemRows)),
-      {x:5.74, y:3.82, w:7.16, h:1.28, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:7.9, margin:0.04, rowH:0.20, colW:[0.84,2.62,0.84,2.62], fit:'shrink'}
+      {x:5.74, y:3.82, w:7.16, h:1.02, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:7.6, margin:0.04, rowH:0.19, colW:[0.84,2.62,0.84,2.62], fit:'shrink'}
     );
 
-    traceOpsPptBox(slide, 5.74, 5.16, 7.16, 0.26, 'FAFCFF');
-    slide.addText(problemStatement, {x:5.90, y:5.22, w:6.84, h:0.14, fontFace:'Segoe UI', fontSize:7.1, color:'102A43', margin:0.01, fit:'shrink'});
+    traceOpsPptBox(slide, 5.74, 4.92, 7.16, 0.26, 'FAFCFF');
+    slide.addText(problemStatement, {x:5.90, y:4.98, w:6.84, h:0.14, fontFace:'Segoe UI', fontSize:6.9, color:'102A43', margin:0.01, fit:'shrink'});
 
-    slide.addText(traceOpsPptSafe('Bad part / situation', 40), {x:5.74, y:5.50, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.2, bold:true, color:'5F766C'});
-    slide.addText(traceOpsPptSafe('Good part / situation', 40), {x:9.38, y:5.50, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.2, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Bad part / situation', 40), {x:5.74, y:5.24, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.2, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Good part / situation', 40), {x:9.38, y:5.24, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.2, bold:true, color:'5F766C'});
 
-    traceOpsPptBox(slide, 5.74, 5.72, 3.42, 1.18, 'FDF0EE', 'F0C4BE');
-    traceOpsPptBox(slide, 9.48, 5.72, 3.42, 1.18, 'EEF6FF', 'B8DECE');
+    traceOpsPptBox(slide, 5.74, 5.44, 3.42, 1.18, 'FDF0EE', 'F0C4BE');
+    traceOpsPptBox(slide, 9.48, 5.44, 3.42, 1.18, 'EEF6FF', 'B8DECE');
 
-    slide.addText(badPartText, {x:5.90, y:5.88, w:1.08, h:0.74, fontFace:'Segoe UI', fontSize:7.8, color:'102A43', margin:0.03, fit:'shrink'});
-    slide.addText(goodPartText, {x:9.64, y:5.88, w:1.08, h:0.74, fontFace:'Segoe UI', fontSize:7.8, color:'102A43', margin:0.03, fit:'shrink'});
+    slide.addText(badPartText, {x:5.90, y:5.60, w:1.08, h:0.74, fontFace:'Segoe UI', fontSize:7.8, color:'102A43', margin:0.03, fit:'shrink'});
+    slide.addText(goodPartText, {x:9.64, y:5.60, w:1.08, h:0.74, fontFace:'Segoe UI', fontSize:7.8, color:'102A43', margin:0.03, fit:'shrink'});
 
     var badImg = await traceOpsPptPickEvidenceImage(normalized, 'bad');
     var goodImg = await traceOpsPptPickEvidenceImage(normalized, 'good');
-    await traceOpsPptRenderEvidencePanel(slide, {x:7.06, y:5.86, w:1.94, h:0.96, label:'Bad part', caption:'Incorrect setup', tone:'bad', imageData:badImg});
-    await traceOpsPptRenderEvidencePanel(slide, {x:10.80, y:5.86, w:1.94, h:0.96, label:'Good part', caption:'Ideal condition', tone:'good', imageData:goodImg});
+    await traceOpsPptRenderEvidencePanel(slide, {x:7.06, y:5.58, w:1.94, h:0.96, label:'Bad part', caption:'Incorrect setup', tone:'bad', imageData:badImg});
+    await traceOpsPptRenderEvidencePanel(slide, {x:10.80, y:5.58, w:1.94, h:0.96, label:'Good part', caption:'Ideal condition', tone:'good', imageData:goodImg});
+
+    return slide;
+  }
+
+  function traceOpsPptBuildEscalationSlide(pptx, normalized, model){
+    var slide = pptx.addSlide();
+    traceOpsPptApplyShell(slide, 'Escalation', 'Coordinator / manager escalation roster', 1, (normalized.status || 'Draft'));
+
+    var escalation = traceOpsEightdSeedEscalationMembers(
+      traceOpsEightdSeedTeamMembers(model, normalized.d1_team_members),
+      normalized.d1_escalation_members
+    ).map(function(item){
+      return [item.role || 'Pending', item.name || 'Pending', item.email || 'Pending'];
+    });
+
+    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:1.66, w:2.2, h:0.20, fontFace:'Segoe UI', fontSize:14, bold:true, color:'5F766C'});
+    slide.addTable(
+      traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(escalation)),
+      {x:0.42, y:2.00, w:7.20, h:3.18, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:9.0, margin:0.05, rowH:0.34, colW:[2.18,2.16,2.86], fit:'shrink'}
+    );
+
+    slide.addText(traceOpsPptSafe('Escalation guidance', 30), {x:7.92, y:1.66, w:2.4, h:0.20, fontFace:'Segoe UI', fontSize:14, bold:true, color:'5F766C'});
+    traceOpsPptBox(slide, 7.92, 2.00, 4.98, 1.54, 'FAFCFF');
+    slide.addText(
+      traceOpsPptDraftField(
+        normalized.d1_escalation,
+        '',
+        'Release authority must be explicit whenever hold / release, customer risk, or control-gap validation is involved.',
+        260
+      ),
+      {x:8.10, y:2.14, w:4.62, h:1.20, fontFace:'Segoe UI', fontSize:9.0, color:'102A43', margin:0.03, fit:'shrink'}
+    );
+
+    traceOpsPptBox(slide, 7.92, 3.82, 4.98, 1.28, 'FFFFFF');
+    slide.addText(traceOpsPptSafe('Note', 20), {x:8.10, y:3.98, w:0.8, h:0.14, fontFace:'Segoe UI', fontSize:10.5, bold:true, color:'5F766C'});
+    slide.addText(
+      traceOpsPptWrap('Escalation stays on its own slide so D1-D2 keeps a clean layout and avoids overlap in PPT / PDF export.', 150),
+      {x:8.10, y:4.18, w:4.56, h:0.62, fontFace:'Segoe UI', fontSize:8.8, color:'102A43', margin:0.02, fit:'shrink'}
+    );
 
     return slide;
   }
@@ -9268,6 +9347,7 @@ function exportEightdPpt(draft) {
       addExecutiveDashboardSlide(pptx, buildExecutiveDashboardPptModelLocal(Object.assign({}, normalized || {}, model || {}, { qualityDashboard: (model && model.qualityDashboard) || null })));
       traceOpsPptBuildExecutiveOverview(pptx, normalized, model, linked);
       await traceOpsPptBuildTeamProblemSlide(pptx, normalized, model);
+      traceOpsPptBuildEscalationSlide(pptx, normalized, model);
       traceOpsPptBuildContainmentSlide(pptx, normalized, model);
       traceOpsPptBuildOccurrenceSlide(pptx, normalized, model);
       traceOpsPptBuildEscapeSlide(pptx, normalized, model);
@@ -10983,7 +11063,7 @@ function replaceMetaFiles(nextFiles){
     }
 
     function copyEscalationFromTeam(){
-      syncD1EscalationMembers(d1TeamSeededRows());
+      syncD1EscalationMembers(traceOpsEightdSeedEscalationMembers(d1TeamSeededRows(), []));
     }
 
     function addD1EscalationMember(){
@@ -11002,7 +11082,7 @@ function replaceMetaFiles(nextFiles){
 
     function removeLastD1EscalationMember(){
       var current = d1EscalationSeededRows();
-      if (current.length <= traceOpsEightdDefaultTeamRoles().length) return;
+      if (current.length <= traceOpsEightdDefaultEscalationRoles().length) return;
       current.pop();
       syncD1EscalationMembers(current);
     }
@@ -11079,7 +11159,7 @@ function replaceMetaFiles(nextFiles){
                 <span style={{fontSize:9,fontWeight:800,borderRadius:999,padding:"4px 8px",background:manual ? "#F5F0FE" : "#EAF2FF",color:manual ? "#6B2DA8" : "#1F3A5F",border:"1px solid " + (manual ? "#DBCDF8" : "#C7DBF7")}}>{manual ? "Edited in 8D" : "Auto from RCCA"}</span>
                 <button onClick={copyEscalationFromTeam} style={{background:"#EEF6FF",border:"1px solid #C7DBF7",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#1F3A5F",cursor:"pointer"}}>Copiar desde Team</button>
                 <button onClick={addD1EscalationMember} style={{background:"#EEF6FF",border:"1px solid #C7DBF7",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#1F3A5F",cursor:"pointer"}}>Agregar fila</button>
-                {members.length > traceOpsEightdDefaultTeamRoles().length && <button onClick={removeLastD1EscalationMember} style={{background:"#fff",border:"1px solid #F0C4BE",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#C0392B",cursor:"pointer"}}>Eliminar última</button>}
+                {members.length > traceOpsEightdDefaultEscalationRoles().length && <button onClick={removeLastD1EscalationMember} style={{background:"#fff",border:"1px solid #F0C4BE",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#C0392B",cursor:"pointer"}}>Eliminar última</button>}
                 {sourceRcca && (
                   <button onClick={function(){ refreshDraftFieldFromRcca('d1_escalation'); }} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#6A6560",cursor:"pointer"}}>Refresh field</button>
                 )}
@@ -11087,7 +11167,7 @@ function replaceMetaFiles(nextFiles){
             </div>
           </div>
           <div style={{padding:mobile?10:12,display:"flex",flexDirection:"column",gap:10}}>
-            <div style={{fontSize:11.5,color:"#8A8580",padding:"2px 2px 4px"}}>Escalation replica la tabla de Team y alimenta la tabla D1 del 8D exportado, sin amontonar texto libre en PPT.</div>
+            <div style={{fontSize:11.5,color:"#8A8580",padding:"2px 2px 4px"}}>Escalation usa niveles coordinador / manager. Copiar desde Team llena nombres y correos, manteniendo roles de escalación estandarizados.</div>
             <div style={{border:"1px solid #E5E2DC",borderRadius:12,overflow:"hidden",background:"#FCFCFB"}}>
               <div style={{display:"grid",gridTemplateColumns:mobile?"1fr":"1fr 1.2fr 1.35fr",background:"#F8F7F5",borderBottom:"1px solid #E5E2DC"}}>
                 <div style={{padding:"10px 12px",fontSize:10,fontWeight:800,color:"#6A6560",textTransform:"uppercase",letterSpacing:".08em"}}>Role</div>
@@ -11097,7 +11177,7 @@ function replaceMetaFiles(nextFiles){
               {members.map(function(member, idx){
                 return <div key={idx} style={{display:"grid",gridTemplateColumns:mobile?"1fr":"1fr 1.2fr 1.35fr",borderBottom:idx === members.length - 1 ? "none" : "1px solid #E5E2DC"}}>
                   <div style={{padding:10}}>
-                    <input value={member.role || ''} onChange={function(e){ updateD1EscalationMember(idx, 'role', e.target.value); }} placeholder="QE" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",fontFamily:"inherit",background:"#fff"}} />
+                    <input value={member.role || ''} onChange={function(e){ updateD1EscalationMember(idx, 'role', e.target.value); }} placeholder="Quality Coordinator" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",fontFamily:"inherit",background:"#fff"}} />
                   </div>
                   <div style={{padding:10}}>
                     <input value={member.name || ''} onChange={function(e){ updateD1EscalationMember(idx, 'name', e.target.value); }} placeholder="Nombre" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",fontFamily:"inherit",background:"#fff"}} />
@@ -11109,13 +11189,8 @@ function replaceMetaFiles(nextFiles){
               })}
             </div>
             <div style={{background: manual ? "#FCFAFF" : "#F8F7F5",border:"1px solid " + (manual ? "#DBCDF8" : "#E5E2DC"),borderRadius:12,padding:mobile?10:12}}>
-              <div style={{fontSize:9.5,fontWeight:800,color:manual?"#6B2DA8":"#6A6560",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6}}>Escalation summary preview</div>
-              <textarea
-                value={form.d1_escalation || ''}
-                rows={mobile ? 5 : 6}
-                onChange={function(e){ upd('d1_escalation', e.target.value); }}
-                style={{width:"100%",border:"1.5px solid " + (manual ? "#CDBAF7" : "#DDDBD7"),borderRadius:10,padding:mobile?"10px":"10px 12px",fontSize:mobile?11.5:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit",lineHeight:1.55,background:"#fff"}}
-              />
+              <div style={{fontSize:9.5,fontWeight:800,color:manual?"#6B2DA8":"#6A6560",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6}}>Escalation export note</div>
+              <div style={{fontSize:11.5,lineHeight:1.55,color:"#1A1714"}}>El export genera un salto de página / slide exclusivo para Escalation, evitando duplicarlo dentro de D1-D2.</div>
             </div>
           </div>
         </div>
