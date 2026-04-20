@@ -8317,7 +8317,14 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D1 Team + D2 Problem Description', 'Foxconn standard D1 / D2 required fields', 1, (normalized.status || 'Draft'));
 
-    var roles = traceOpsEightdSeedTeamMembers(model, normalized.d1_team_members).map(function(item){
+    var teamSeed = traceOpsEightdSeedTeamMembers(model, normalized.d1_team_members);
+    var roles = teamSeed.map(function(item){
+      return [item.role || 'Pending', item.name || 'Pending', item.email || 'Pending'];
+    });
+    var escalation = traceOpsEightdSeedEscalationMembers(
+      teamSeed,
+      normalized.d1_escalation_members
+    ).map(function(item){
       return [item.role || 'Pending', item.name || 'Pending', item.email || 'Pending'];
     });
 
@@ -8367,6 +8374,12 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     slide.addTable(
       traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(roles)),
       {x:0.42, y:1.96, w:4.88, h:1.88, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.4, margin:0.05, rowH:0.26, colW:[0.78,1.58,2.52], fit:'shrink'}
+    );
+
+    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.08, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addTable(
+      traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(escalation)),
+      {x:0.42, y:4.36, w:4.88, h:1.88, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.1, margin:0.05, rowH:0.26, colW:[1.52,1.34,2.02], fit:'shrink'}
     );
 
     slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.68, y:1.68, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
@@ -9329,7 +9342,6 @@ function exportEightdPpt(draft) {
       addExecutiveDashboardSlide(pptx, buildExecutiveDashboardPptModelLocal(Object.assign({}, normalized || {}, model || {}, { qualityDashboard: (model && model.qualityDashboard) || null })));
       traceOpsPptBuildExecutiveOverview(pptx, normalized, model, linked);
       await traceOpsPptBuildTeamProblemSlide(pptx, normalized, model);
-      traceOpsPptBuildEscalationSlide(pptx, normalized, model);
       traceOpsPptBuildContainmentSlide(pptx, normalized, model);
       traceOpsPptBuildOccurrenceSlide(pptx, normalized, model);
       traceOpsPptBuildEscapeSlide(pptx, normalized, model);
