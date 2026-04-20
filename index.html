@@ -8361,8 +8361,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       'Build window: ' + (normalized.build_window || model.detectionWindow || 'Pending'),
       'Line / station: ' + conciseWhere,
       'Trace path: ' + (normalized.trace_path || model.tracePath || 'No linked events.')
-    ].map(function(line){ return traceOpsPptWrap(line, 78); }).join('
-');
+    ].map(function(line){ return traceOpsPptWrap(line, 78); }).join('\n');
 
     slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(
