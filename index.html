@@ -5419,12 +5419,10 @@ function App() {
   }
 
   async function traceOpsSafeCloudCall(promiseFactory, timeoutMs) {
-    if (cloudCooldownRef.current) {
-      var cooldownErr = new Error("cloud_cooldown");
-      cooldownErr.isCloudCooldown = true;
-      throw cooldownErr;
-    }
     var ms = Math.max(1500, Number(timeoutMs || 5000));
+    if (cloudCooldownRef.current) {
+      try { console.warn("[TraceOps] Cloud in cooldown, retrying softly..."); } catch(_) {}
+    }
     try {
       return await Promise.race([
         Promise.resolve().then(promiseFactory),
@@ -5439,9 +5437,15 @@ function App() {
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
       var raw = String((cloudErr && (cloudErr.originalMessage || cloudErr.message)) || err || "").toLowerCase();
-      var shouldCooldown = !!(cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) || raw.indexOf("timeout") >= 0 || raw.indexOf("504") >= 0 || raw.indexOf("connection terminated") >= 0 || raw.indexOf("failed to fetch") >= 0 || raw.indexOf("networkerror") >= 0 || raw.indexOf("too many concurrent requests") >= 0;
-      if (shouldCooldown) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+      var isHardNetworkError = !!(cloudErr && cloudErr.isNetworkFallback) || raw.indexOf("failed to fetch") >= 0 || raw.indexOf("networkerror") >= 0 || raw.indexOf("load failed") >= 0;
+      var isSoftError = !!(cloudErr && cloudErr.isCloudTimeout) || raw.indexOf("timeout") >= 0 || raw.indexOf("504") >= 0 || raw.indexOf("connection terminated") >= 0 || raw.indexOf("too many concurrent requests") >= 0;
+      if (isHardNetworkError) {
+        traceOpsTriggerCloudCooldown("Sin conexión real");
+      } else if (isSoftError) {
+        setCloudStatus("Servidor lento · reintentando");
+        setRealtimeStatus("DEGRADED");
+      } else {
+        setCloudStatus("Error controlado");
       }
       throw cloudErr;
     }
@@ -5656,7 +5660,12 @@ function App() {
         return;
       }
       await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signIn(email, password); }, 7000);
-      var currentUser = await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 5000);
+      var currentUser = null;
+      try {
+        currentUser = await window.TraceOpsCloud.getUser();
+      } catch (_) {
+        currentUser = null;
+      }
       traceOpsClearCloudCooldown();
       setAuthUser(currentUser || null);
       setCloudStatus("Sesion activa");
@@ -5670,10 +5679,13 @@ function App() {
       var low = String(msg || "").toLowerCase();
       setAuthErrMsg(msg);
       if (cloudErr && cloudErr.isCloudCooldown) {
-        setCloudStatus("Nube saturada · trabajando local");
-        setRealtimeStatus("LOCAL_ONLY");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || low.indexOf("cloud_timeout") >= 0 || low.indexOf("504") >= 0 || low.indexOf("connection terminated") >= 0 || low.indexOf("too many concurrent requests") >= 0)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+        setCloudStatus("Reconectando nube...");
+        setRealtimeStatus("DEGRADED");
+      } else if (cloudErr && cloudErr.isNetworkFallback) {
+        traceOpsTriggerCloudCooldown("Sin conexión real");
+      } else if (cloudErr && (cloudErr.isCloudTimeout || low.indexOf("cloud_timeout") >= 0 || low.indexOf("504") >= 0 || low.indexOf("connection terminated") >= 0 || low.indexOf("too many concurrent requests") >= 0)) {
+        setCloudStatus("Servidor lento · reintenta");
+        setRealtimeStatus("DEGRADED");
       } else if (cloudErr && cloudErr.isTransientAuthLock) {
         setCloudStatus("Sesion ocupada · reintentando");
         setRealtimeStatus("DISCONNECTED");
@@ -5790,8 +5802,11 @@ function App() {
         if (cloudErr && cloudErr.isTransientAuthLock) {
           setCloudStatus("Sesion ocupada · reintentando");
           setRealtimeStatus("DISCONNECTED");
-        } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) {
-          traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+        } else if (cloudErr && cloudErr.isNetworkFallback) {
+          traceOpsTriggerCloudCooldown("Sin conexión real");
+        } else if (cloudErr && cloudErr.isCloudTimeout) {
+          setCloudStatus("Servidor lento · reintentando");
+          setRealtimeStatus("DEGRADED");
         } else {
           setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
           setRealtimeStatus("ERROR");
@@ -5804,7 +5819,7 @@ function App() {
       runAuthFlow(user);
     });
 
-    traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 5000).then(function(user){
+    window.TraceOpsCloud.getUser().then(function(user){
       return runAuthFlow(user);
     }).catch(function(err){
       var cloudErr = traceOpsNormalizeCloudError(err);
@@ -5812,10 +5827,9 @@ function App() {
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
       if (cloudErr && cloudErr.isTransientAuthLock) {
         setCloudStatus("Sesion ocupada · reintentando");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || cloudErr.isCloudCooldown)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
       } else {
-        setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
+        setCloudStatus("Sin sesión en nube");
+        setRealtimeStatus("DEGRADED");
       }
     });
 
