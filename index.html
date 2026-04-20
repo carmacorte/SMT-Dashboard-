@@ -6107,6 +6107,56 @@ function App() {
     };
   }
 
+  function traceOpsEightdNormalizeTeamMembers(list) {
+    return (Array.isArray(list) ? list : []).map(function(item){
+      return {
+        name: String(item && item.name || '').trim(),
+        email: String(item && item.email || '').trim(),
+        role: String(item && item.role || '').trim()
+      };
+    }).filter(function(item){
+      return !!(item.name || item.email || item.role);
+    });
+  }
+
+  function traceOpsEightdSeedTeamMembers(model, list) {
+    var existing = traceOpsEightdNormalizeTeamMembers(list);
+    if (existing.length) return existing;
+    var seeded = [];
+    var owner = model && model.owners && model.owners.length ? model.owners[0] : '';
+    if (owner) seeded.push({ name:'', email:owner, role:'Quality Owner' });
+    var roleSet = ['Quality'];
+    var blob = [model && model.line || '', model && model.station || '', model && model.defect || '', model && model.pattern || '', model && model.rootCause || '', model && model.hypothesis || ''].join(' ').toLowerCase();
+    if (model && model.areas && model.areas.length) roleSet = traceOpsEightdUnique(roleSet.concat(model.areas));
+    if (/setup|feeder|smt|printer|placement|reflow/.test(blob)) roleSet = traceOpsEightdUnique(roleSet.concat(['Process', 'SMT']));
+    if (/ict|aoi|5dx|x ray|inspection|test/.test(blob)) roleSet = traceOpsEightdUnique(roleSet.concat(['Test / ICT']));
+    if (/material|kitting|reel|pn|part|component/.test(blob)) roleSet = traceOpsEightdUnique(roleSet.concat(['Materiales / Kitting']));
+    roleSet.slice(0, 4).forEach(function(role){
+      var already = seeded.some(function(item){ return String(item.role || '').toLowerCase() === String(role || '').toLowerCase(); });
+      if (!already) seeded.push({ name:'', email:'', role:role });
+    });
+    return traceOpsEightdNormalizeTeamMembers(seeded);
+  }
+
+  function traceOpsEightdBuildTeamTextFromMembers(members, model) {
+    var rows = traceOpsEightdNormalizeTeamMembers(members);
+    if (!rows.length) return traceOpsEightdBuildTeamText(model);
+    var proofPoints = [];
+    var owner = rows[0].name || rows[0].email || (model && model.owners && model.owners[0]) || 'Quality owner pending';
+    var roleSet = traceOpsEightdUnique(rows.map(function(item){ return item.role || ''; }).filter(Boolean));
+    proofPoints.push('Owner: ' + owner);
+    proofPoints.push('Core team: ' + (roleSet.length ? roleSet.join(', ') : 'Pending'));
+    proofPoints.push('Team roster: ' + rows.map(function(item){
+      var label = item.name || item.email || 'Pending member';
+      var emailTag = item.email && item.name ? (' <' + item.email + '>') : (item.email && !item.name ? (' ' + item.email) : '');
+      var roleTag = item.role ? (' · ' + item.role) : '';
+      return label + emailTag + roleTag;
+    }).join(' | '));
+    proofPoints.push('Roles / ownership: Quality leads communication and closure readiness; Process / SMT owns occurrence controls; Test / ICT confirms detection coverage; Materiales / Kitting secures segregation and traceability.');
+    if (model && model.linked && model.linked.length) proofPoints.push('TraceOps proof points: ' + model.evidenceRefs.slice(0,4).join(' | '));
+    return traceOpsEightdJoinParagraphs(proofPoints);
+  }
+
   function traceOpsEightdBuildTeamText(model) {
     var proofPoints = [];
     var owner = model.owners.length ? model.owners[0] : 'Quality owner pending';
@@ -6285,6 +6335,7 @@ function App() {
     ]);
     next.evidence_checklist = next.evidence_checklist || '□ Customer symptom image / data\n□ Golden reference comparison\n□ Installed-state vs removed-state comparison\n□ Serial / batch trace\n□ Control limitation explanation\n□ Corrective action proof';
     next.meta = traceOpsEightdEnsureMeta(next.meta);
+    next.d1_team_members = traceOpsEightdSeedTeamMembers(model, next.d1_team_members);
     var manual = next.meta.manual_fields || {};
 
     next.d1_team = manual.d1_team
@@ -6415,6 +6466,7 @@ function App() {
       evidence_summary: (existing && existing.evidence_summary) || '',
       correlation_notes: (existing && existing.correlation_notes) || '',
       evidence_checklist: (existing && existing.evidence_checklist) || '',
+      d1_team_members: traceOpsEightdSeedTeamMembers(model, (existing && existing.d1_team_members) || []),
       d1_team: (existing && existing.d1_team) || '',
       d1_escalation: (existing && existing.d1_escalation) || '',
       d2_problem: (existing && existing.d2_problem) || '',
@@ -10785,7 +10837,11 @@ function replaceMetaFiles(nextFiles){
     var mobile = mobileArr[0]; var setMobile = mobileArr[1];
     var collapsedArr = _useState(function(){ return { source:false, missing:false, events:true }; });
     var collapsed = collapsedArr[0]; var setCollapsed = collapsedArr[1];
-    React.useEffect(function(){ setForm(Object.assign({}, props.init || {})); }, [props.init && props.init.eightd_id, props.init && props.init.updated_at]);
+    React.useEffect(function(){
+      var nextInit = Object.assign({}, props.init || {});
+      nextInit.d1_team_members = traceOpsEightdNormalizeTeamMembers(nextInit.d1_team_members);
+      setForm(nextInit);
+    }, [props.init && props.init.eightd_id, props.init && props.init.updated_at]);
     React.useEffect(function(){
       function onResize(){
         try { setMobile(window.innerWidth <= 760); } catch(_) {}
@@ -10837,15 +10893,107 @@ function replaceMetaFiles(nextFiles){
       var seed = Object.assign({}, form);
       seed.meta = traceOpsEightdEnsureMeta(seed.meta);
       delete seed.meta.manual_fields[key];
+      if (key === 'd1_team') {
+        seed.d1_team_members = [];
+      }
 
       var refreshed = traceOpsBuildEightdDraftFromRcca(sourceRcca, seed);
-      setForm(applyDraftReadiness(refreshed));
+      setForm(refreshed);
+    }
+
+    function syncD1TeamMembers(nextMembers){
+      var next = Object.assign({}, form);
+      next.meta = traceOpsEightdEnsureMeta(next.meta);
+      var model = traceOpsEightdBuildModel((next.source_snapshot) || next || {}, traceOpsEightdCollectLinkedEvents((next.linked_event_ids || next.event_ids) || []));
+      next.d1_team_members = traceOpsEightdNormalizeTeamMembers(nextMembers);
+      next.d1_team = traceOpsEightdBuildTeamTextFromMembers(next.d1_team_members, model);
+      next.meta.manual_fields.d1_team = true;
+      setForm(applyDraftReadiness(next));
+    }
+
+    function addD1TeamMember(){
+      var current = traceOpsEightdNormalizeTeamMembers(form.d1_team_members);
+      current.push({ name:'', email:'', role:'' });
+      syncD1TeamMembers(current);
+    }
+
+    function updateD1TeamMember(index, key, value){
+      var current = traceOpsEightdNormalizeTeamMembers(form.d1_team_members);
+      while (current.length <= index) current.push({ name:'', email:'', role:'' });
+      current[index] = Object.assign({}, current[index] || {});
+      current[index][key] = value;
+      syncD1TeamMembers(current);
+    }
+
+    function removeD1TeamMember(index){
+      var current = traceOpsEightdNormalizeTeamMembers(form.d1_team_members);
+      current.splice(index, 1);
+      syncD1TeamMembers(current);
+    }
+
+    function renderD1TeamField(title, subtitle){
+      var members = traceOpsEightdNormalizeTeamMembers(form.d1_team_members);
+      var manual = traceOpsEightdFieldIsManual(form, 'd1_team');
+      return (
+        <div key="d1_team" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+          <div style={{padding:mobile?"11px 12px":"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+              <div style={{minWidth:0,flex:1}}>
+                <div style={{fontSize:mobile?12.5:12.5,fontWeight:800,color:"#1A1714",lineHeight:1.2}}>{title}</div>
+                <div style={{fontSize:mobile?9.5:10,color:"#8A8580",marginTop:2,lineHeight:1.35}}>{subtitle}</div>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                <span style={{fontSize:9,fontWeight:800,borderRadius:999,padding:"4px 8px",background:manual ? "#F5F0FE" : "#EAF2FF",color:manual ? "#6B2DA8" : "#1F3A5F",border:"1px solid " + (manual ? "#DBCDF8" : "#C7DBF7")}}>{manual ? "Edited in 8D" : "Auto from RCCA"}</span>
+                <button onClick={addD1TeamMember} style={{background:"#EEF6FF",border:"1px solid #C7DBF7",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#1F3A5F",cursor:"pointer"}}>Agregar integrante</button>
+                {sourceRcca && (
+                  <button onClick={function(){ refreshDraftFieldFromRcca('d1_team'); }} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#6A6560",cursor:"pointer"}}>Refresh field</button>
+                )}
+              </div>
+            </div>
+          </div>
+          <div style={{padding:mobile?10:12,display:"flex",flexDirection:"column",gap:10}}>
+            {members.length===0 && <div style={{fontSize:11.5,color:"#8A8580",padding:"2px 2px 4px"}}>Agrega integrantes del equipo D1 para capturar nombre, correo y rol.</div>}
+            {members.map(function(member, idx){
+              return <div key={idx} style={{border:"1px solid #E5E2DC",borderRadius:12,padding:mobile?10:12,background:"#FCFCFB"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+                  <div style={{fontSize:10,fontWeight:800,color:"#6A6560",textTransform:"uppercase",letterSpacing:".08em"}}>Integrante {idx + 1}</div>
+                  <button onClick={function(){ removeD1TeamMember(idx); }} style={{background:"#fff",border:"1px solid #F0C4BE",borderRadius:999,padding:"4px 10px",fontSize:9.5,fontWeight:800,color:"#C0392B",cursor:"pointer"}}>Eliminar</button>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:mobile?"1fr":"1.1fr 1.2fr .9fr",gap:8}}>
+                  <div>
+                    <div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",marginBottom:4}}>Integrante</div>
+                    <input value={member.name || ''} onChange={function(e){ updateD1TeamMember(idx, 'name', e.target.value); }} placeholder="Nombre" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",fontFamily:"inherit"}} />
+                  </div>
+                  <div>
+                    <div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",marginBottom:4}}>Correo</div>
+                    <input value={member.email || ''} onChange={function(e){ updateD1TeamMember(idx, 'email', e.target.value); }} placeholder="correo@empresa.com" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",fontFamily:"inherit"}} />
+                  </div>
+                  <div>
+                    <div style={{fontSize:9.5,fontWeight:800,color:"#8A8580",marginBottom:4}}>Rol</div>
+                    <input value={member.role || ''} onChange={function(e){ updateD1TeamMember(idx, 'role', e.target.value); }} placeholder="Quality / Process / SMT" style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1A1714",outline:"none",fontFamily:"inherit"}} />
+                  </div>
+                </div>
+              </div>;
+            })}
+            <div style={{background: manual ? "#FCFAFF" : "#F8F7F5",border:"1px solid " + (manual ? "#DBCDF8" : "#E5E2DC"),borderRadius:12,padding:mobile?10:12}}>
+              <div style={{fontSize:9.5,fontWeight:800,color:manual?"#6B2DA8":"#6A6560",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6}}>D1 summary preview</div>
+              <textarea
+                value={form.d1_team || ''}
+                rows={mobile ? 5 : 6}
+                onChange={function(e){ upd('d1_team', e.target.value); }}
+                style={{width:"100%",border:"1.5px solid " + (manual ? "#CDBAF7" : "#DDDBD7"),borderRadius:10,padding:mobile?"10px":"10px 12px",fontSize:mobile?11.5:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit",lineHeight:1.55,background:"#fff"}}
+              />
+            </div>
+          </div>
+        </div>
+      );
     }
 
     function renderDraftOverlayField(sec){
       var key = sec[0];
       var title = sec[1];
       var subtitle = sec[2];
+      if (key === 'd1_team') return renderD1TeamField(title, subtitle);
       var value = form[key] || "";
       var manual = traceOpsEightdFieldIsManual(form, key);
       var tall = key==="d2_problem" || key==="d4_root_cause" || key==="d2_traceability" || key==="d2_5w2h";
