@@ -6208,6 +6208,46 @@ function App() {
     return traceOpsEightdJoinParagraphs(parts);
   }
 
+  function traceOpsEightdNormalizeManualFields(map){
+    var next = {};
+    Object.keys(map || {}).forEach(function(key){
+      if (map[key]) next[key] = true;
+    });
+    return next;
+  }
+
+  function traceOpsEightdEnsureMeta(meta){
+    var next = Object.assign({}, meta || {});
+    next.evidence = Object.assign({}, next.evidence || {});
+    next.manual_fields = traceOpsEightdNormalizeManualFields(next.manual_fields);
+    return next;
+  }
+
+  function traceOpsEightdFieldIsManual(draft, key){
+    return !!(draft && draft.meta && draft.meta.manual_fields && draft.meta.manual_fields[key]);
+  }
+
+  function traceOpsEightdSetFieldManual(draft, key, isManual){
+    var next = Object.assign({}, draft || {});
+    next.meta = traceOpsEightdEnsureMeta(next.meta);
+    if (isManual) next.meta.manual_fields[key] = true;
+    else delete next.meta.manual_fields[key];
+    return next;
+  }
+
+  function traceOpsEightdIsComplementaryField(key){
+    var map = {
+      d1_team:1,
+      d1_escalation:1,
+      d2_traceability:1,
+      d2_5w2h:1,
+      bad_part_notes:1,
+      good_part_notes:1,
+      appendix_notes:1
+    };
+    return !!map[key];
+  }
+
   function traceOpsEightdHydrateDraftFields(draft) {
     var model = traceOpsEightdBuildModel((draft && draft.source_snapshot) || draft || {}, traceOpsEightdCollectLinkedEvents((draft && (draft.linked_event_ids || draft.event_ids)) || []));
     var next = Object.assign({}, draft || {});
@@ -6244,15 +6284,90 @@ function App() {
       'Escape review focuses on ' + model.station + ' against the observed failure mode ' + model.defect + '.'
     ]);
     next.evidence_checklist = next.evidence_checklist || '□ Customer symptom image / data\n□ Golden reference comparison\n□ Installed-state vs removed-state comparison\n□ Serial / batch trace\n□ Control limitation explanation\n□ Corrective action proof';
-    next.d1_team = traceOpsEightdHasText(next.d1_team) ? next.d1_team : traceOpsEightdBuildTeamText(model);
-    next.d2_problem = traceOpsEightdHasText(next.d2_problem) ? next.d2_problem : traceOpsEightdBuildProblemText(model);
-    next.d3_containment = traceOpsEightdHasText(next.d3_containment) ? next.d3_containment : traceOpsEightdBuildContainmentText(model);
-    next.d4_root_cause = traceOpsEightdHasText(next.d4_root_cause) ? next.d4_root_cause : traceOpsEightdBuildOccurrenceText(model);
-    next.d4_escape_point = traceOpsEightdHasText(next.d4_escape_point) ? next.d4_escape_point : traceOpsEightdBuildEscapeText(model);
-    next.d5_pca = traceOpsEightdHasText(next.d5_pca) ? next.d5_pca : traceOpsEightdBuildPcaText(model);
-    next.d6_validation = traceOpsEightdHasText(next.d6_validation) ? next.d6_validation : traceOpsEightdBuildVerificationText(model);
-    next.d7_prevention = traceOpsEightdHasText(next.d7_prevention) ? next.d7_prevention : traceOpsEightdBuildPreventionText(model);
-    next.d8_closure = traceOpsEightdHasText(next.d8_closure) ? next.d8_closure : traceOpsEightdBuildClosureText(model, next.status || 'Draft');
+    next.meta = traceOpsEightdEnsureMeta(next.meta);
+    var manual = next.meta.manual_fields || {};
+
+    next.d1_team = manual.d1_team
+      ? (next.d1_team || '')
+      : traceOpsEightdBuildTeamText(model);
+
+    next.d1_escalation = manual.d1_escalation
+      ? (next.d1_escalation || '')
+      : traceOpsEightdJoinParagraphs([
+          'Owner: ' + ((model.owners && model.owners[0]) || next.owner_email || 'Pending'),
+          'Escalation path: Quality -> Process -> Production -> Materials / Kitting -> Maintenance',
+          'Release authority must be explicit whenever hold / release, customer risk, or control-gap validation is involved.'
+        ]);
+
+    next.d2_problem = manual.d2_problem
+      ? (next.d2_problem || '')
+      : traceOpsEightdBuildProblemText(model);
+
+    next.d2_traceability = manual.d2_traceability
+      ? (next.d2_traceability || '')
+      : traceOpsEightdJoinParagraphs([
+          model.serialRange ? ('Serial range: ' + model.serialRange) : '',
+          model.lotBatch ? ('Lot / batch: ' + model.lotBatch) : '',
+          model.buildWindow ? ('Build window: ' + model.buildWindow) : '',
+          'Line / station: ' + [model.line || 'N/D', model.station || 'N/D'].join(' · '),
+          'Trace path: ' + (model.tracePath || 'No linked events.')
+        ]);
+
+    next.d2_5w2h = manual.d2_5w2h
+      ? (next.d2_5w2h || '')
+      : traceOpsEightdJoinParagraphs([
+          'What: ' + (model.defect || 'N/D'),
+          'Where: ' + [model.line || 'N/D', model.station || 'N/D'].join(' / '),
+          'When: ' + (model.detectionWindow || 'N/D'),
+          'Who: ' + ((model.owners && model.owners.join(' | ')) || next.owner_email || 'Pending'),
+          'How many: ' + (model.serialRange || model.impact || 'Under validation'),
+          'Impact: ' + (model.impact || 'Operational and quality impact under review.')
+        ]);
+
+    next.bad_part_notes = manual.bad_part_notes
+      ? (next.bad_part_notes || '')
+      : (next.bad_part_notes || 'Incorrect setup / wrong installed condition.');
+
+    next.good_part_notes = manual.good_part_notes
+      ? (next.good_part_notes || '')
+      : (next.good_part_notes || 'Reference condition with correct P/N, correct feeder position, and expected installed state.');
+
+    next.d3_containment = manual.d3_containment
+      ? (next.d3_containment || '')
+      : traceOpsEightdBuildContainmentText(model);
+
+    next.d4_root_cause = manual.d4_root_cause
+      ? (next.d4_root_cause || '')
+      : traceOpsEightdBuildOccurrenceText(model);
+
+    next.d4_escape_point = manual.d4_escape_point
+      ? (next.d4_escape_point || '')
+      : traceOpsEightdBuildEscapeText(model);
+
+    next.d5_pca = manual.d5_pca
+      ? (next.d5_pca || '')
+      : traceOpsEightdBuildPcaText(model);
+
+    next.d6_validation = manual.d6_validation
+      ? (next.d6_validation || '')
+      : traceOpsEightdBuildVerificationText(model);
+
+    next.d7_prevention = manual.d7_prevention
+      ? (next.d7_prevention || '')
+      : traceOpsEightdBuildPreventionText(model);
+
+    next.d8_closure = manual.d8_closure
+      ? (next.d8_closure || '')
+      : traceOpsEightdBuildClosureText(model, next.status || 'Draft');
+
+    next.appendix_notes = manual.appendix_notes
+      ? (next.appendix_notes || '')
+      : traceOpsEightdJoinParagraphs([
+          'Use actual source evidence only.',
+          'Keep each statement tied to one visible proof point.',
+          'Do not convert draft text into evidence; the evidence must remain source-linked.'
+        ]);
+
     return next;
   }
 
@@ -6285,9 +6400,15 @@ function App() {
       source_snapshot: Object.assign({}, source, { meta_files: traceOpsNormalizeMetaFiles((source && source.meta_files) || []) }),
       source_rcca_updated_at: (source && source.updated_at) || '',
       source_evidence_fingerprint: traceOpsRccaFingerprint(source),
-      meta: Object.assign({}, (source && source.meta) || {}, (existing && existing.meta) || {}, {
-        evidence: (existing && existing.meta && existing.meta.evidence) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || [])
-      }),
+      meta: Object.assign(
+        {},
+        (source && source.meta) || {},
+        (existing && existing.meta) || {},
+        {
+          evidence: (existing && existing.meta && existing.meta.evidence) || traceOpsBuildEvidenceMetaFromFiles((source && source.meta_files) || []),
+          manual_fields: traceOpsEightdNormalizeManualFields(existing && existing.meta && existing.meta.manual_fields)
+        }
+      ),
       bad_part_images: (existing && existing.bad_part_images) || (traceOpsBuildEvidenceDisplayMetaFromFiles((source && source.meta_files) || []).bad_part || []).join('\n'),
       good_part_images: (existing && existing.good_part_images) || (traceOpsBuildEvidenceDisplayMetaFromFiles((source && source.meta_files) || []).good_part || []).join('\n'),
       evidence_images: (existing && existing.evidence_images) || (traceOpsBuildEvidenceDisplayMetaFromFiles((source && source.meta_files) || []).general || []).join('\n'),
@@ -6295,7 +6416,13 @@ function App() {
       correlation_notes: (existing && existing.correlation_notes) || '',
       evidence_checklist: (existing && existing.evidence_checklist) || '',
       d1_team: (existing && existing.d1_team) || '',
+      d1_escalation: (existing && existing.d1_escalation) || '',
       d2_problem: (existing && existing.d2_problem) || '',
+      d2_traceability: (existing && existing.d2_traceability) || '',
+      d2_5w2h: (existing && existing.d2_5w2h) || '',
+      bad_part_notes: (existing && existing.bad_part_notes) || '',
+      good_part_notes: (existing && existing.good_part_notes) || '',
+      appendix_notes: (existing && existing.appendix_notes) || '',
       d3_containment: (existing && existing.d3_containment) || '',
       d4_root_cause: (existing && existing.d4_root_cause) || '',
       d4_escape_point: (existing && existing.d4_escape_point) || '',
@@ -6325,6 +6452,8 @@ function App() {
       updated_at: new Date().toISOString()
     });
     var currentMeta = Object.assign({}, draftToSave.meta || {});
+    currentMeta = traceOpsEightdEnsureMeta(currentMeta);
+    currentMeta.manual_fields = traceOpsEightdNormalizeManualFields(currentMeta.manual_fields);
     var existingEvidence = Object.assign({}, currentMeta.evidence || {});
     currentMeta.evidence = {
       bad_part: traceOpsMergeEvidenceLists(existingEvidence.bad_part || [], draftToSave.bad_part_images || [], draftToSave.bad_part_image || [], draftToSave.bad_part_evidence || []),
@@ -6385,6 +6514,12 @@ function App() {
     setEightdDetail(draft);
   }
 
+  function traceOpsEightdDraftValue(primary, fallback, finalFallback){
+    if (traceOpsEightdHasText(primary)) return primary;
+    if (traceOpsEightdHasText(fallback)) return fallback;
+    return finalFallback || '';
+  }
+
   function traceOpsBuildEightdHtml(draft) {
     var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
     var model = traceOpsEightdBuildModel((normalized && normalized.source_snapshot) || normalized || {}, traceOpsEightdCollectLinkedEvents((normalized && (normalized.linked_event_ids || normalized.event_ids)) || []));
@@ -6393,6 +6528,42 @@ function App() {
       return `<section class="fx-card${variant ? ' ' + variant : ''}"><div class="fx-label">${esc(title)}</div><div class="fx-copy">${esc(body || 'Pending')}</div></section>`;
     }
     var linkedEvents = model.linked;
+    var d1EscalationText = traceOpsEightdDraftValue(
+      normalized.d1_escalation,
+      '',
+      'Escalation path pending.'
+    );
+
+    var d2TraceabilityText = traceOpsEightdDraftValue(
+      normalized.d2_traceability,
+      normalized.data_anchor,
+      'Traceability details pending.'
+    );
+
+    var d25w2hText = traceOpsEightdDraftValue(
+      normalized.d2_5w2h,
+      '',
+      '5W2H delimitation pending.'
+    );
+
+    var badPartText = traceOpsEightdDraftValue(
+      normalized.bad_part_notes,
+      normalized.bad_part,
+      normalized.complaint_anchor || model.complaintAnchor || 'Incorrect setup / failure condition.'
+    );
+
+    var goodPartText = traceOpsEightdDraftValue(
+      normalized.good_part_notes,
+      normalized.good_part,
+      'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.'
+    );
+
+    var appendixNotesText = traceOpsEightdDraftValue(
+      normalized.appendix_notes,
+      '',
+      'Appendix notes pending.'
+    );
+
     var timelineRows = linkedEvents.length ? linkedEvents.slice(0,10).map(function(item){
       var stage = item && (item.tipo_evento || item.area_involucrada || item.linea_estacion || 'Event');
       var when = [item && item.fecha || '', item && item.hora || ''].join(' ').trim();
@@ -6518,8 +6689,19 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
     <div class="section-band three">
       ${block('D1 Team', normalized.d1_team)}
+      ${block('D1 Escalation', d1EscalationText)}
+      ${block('D2 Traceability', d2TraceabilityText)}
+    </div>
+
+    <div class="section-band three">
       ${block('D2 Problem Description', normalized.d2_problem)}
+      ${block('5W2H Problem Delimitation', d25w2hText)}
       ${block('D3 Containment Actions', normalized.d3_containment)}
+    </div>
+
+    <div class="section-band">
+      ${block('Bad part / situation', badPartText, 'soft')}
+      ${block('Good part / situation', goodPartText, 'soft')}
     </div>
 
     <div class="section-band">
@@ -6545,9 +6727,10 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       <div class="sub">Use this page to export a one-look traceability summary for Quality review, PPT or PDF release.</div>
     </div>
 
-    <div class="section-band">
+    <div class="section-band three">
       ${block('Evidence Summary', normalized.evidence_summary || 'Pending evidence summary.')}
       ${block('Correlation Notes', normalized.correlation_notes || 'Pending correlation notes.')}
+      ${block('Appendix Notes', appendixNotesText || 'Pending appendix notes.')}
     </div>
 
     <div class="table-card" style="margin-bottom:14px">
@@ -7971,6 +8154,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     return slide;
   }
 
+  function traceOpsPptDraftField(primary, fallback, finalFallback, limit){
+    var txt = traceOpsEightdDraftValue(primary, fallback, finalFallback || 'Pending');
+    return traceOpsPptWrap(txt, limit || 180);
+  }
+
   async function traceOpsPptBuildTeamProblemSlide(pptx, normalized, model){
     var slide = pptx.addSlide();
     traceOpsPptApplyShell(slide, 'D1 Team + D2 Problem Description', 'Foxconn standard D1 / D2 required fields', 1, (normalized.status || 'Draft'));
@@ -7993,6 +8181,41 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       ['BU Manager', normalized.bu_manager || 'Pending', normalized.bu_manager_email || 'Pending']
     ];
 
+    var d1EscalationText = traceOpsPptDraftField(
+      normalized.d1_escalation,
+      '',
+      'Escalation path pending.',
+      220
+    );
+
+    var d2TraceabilityText = traceOpsPptDraftField(
+      normalized.d2_traceability,
+      normalized.data_anchor,
+      'Traceability details pending.',
+      260
+    );
+
+    var d25w2hText = traceOpsPptDraftField(
+      normalized.d2_5w2h,
+      '',
+      '5W2H delimitation pending.',
+      260
+    );
+
+    var badPartText = traceOpsPptDraftField(
+      normalized.bad_part_notes,
+      normalized.bad_part || normalized.complaint_anchor || model.complaintAnchor,
+      'Incorrect setup / failure condition.',
+      180
+    );
+
+    var goodPartText = traceOpsPptDraftField(
+      normalized.good_part_notes,
+      normalized.good_part,
+      'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.',
+      180
+    );
+
     slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(
       traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(roles)),
@@ -8005,16 +8228,28 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       {x:0.42, y:4.52, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.05, margin:0.05, rowH:0.28, colW:[1.78,1.42,1.82], fit:'shrink'}
     );
 
+    traceOpsPptBox(slide, 0.42, 6.72, 5.10, 0.34, 'FAFCFF');
+    slide.addText(
+      traceOpsPptWrap(d1EscalationText, 220),
+      {x:0.56, y:6.82, w:4.80, h:0.12, fontFace:'Segoe UI', fontSize:7.8, color:'102A43', margin:0, fit:'shrink'}
+    );
+
     slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     var traceRows = [
       ['Model', normalized.modelo || model.model || 'Pending', 'SKU Version', normalized.revision || 'Pending'],
       ['Line', normalized.linea || model.line || 'Pending', 'Station', normalized.station || model.station || 'Pending'],
-      ['Supplier / Lot', normalized.supplier_lot || 'Pending', 'Serial / Batch', normalized.serial_batch || 'Pending'],
-      ['Date code', normalized.date_code || 'Pending', 'Component P/N', normalized.component_pn || 'Pending']
+      ['Supplier / Lot', normalized.supplier_lot || normalized.lot_batch || 'Pending', 'Serial / Batch', normalized.serial_batch || normalized.serial_range || 'Pending'],
+      ['Date code', normalized.date_code || normalized.build_window || 'Pending', 'Component P/N', normalized.component_pn || normalized.defecto_smt || 'Pending']
     ];
     slide.addTable(
       traceOpsPptSafeTable([[{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(traceRows)),
       {x:5.74, y:1.96, w:7.16, h:1.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.4, margin:0.05, rowH:0.22, colW:[1.18,2.28,1.18,2.28], fit:'shrink'}
+    );
+
+    traceOpsPptBox(slide, 5.74, 3.38, 7.16, 0.26, 'FAFCFF');
+    slide.addText(
+      traceOpsPptWrap(d2TraceabilityText, 260),
+      {x:5.90, y:3.46, w:6.84, h:0.12, fontFace:'Segoe UI', fontSize:7.7, color:'102A43', margin:0, fit:'shrink'}
     );
 
     slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.50, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
@@ -8030,6 +8265,12 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.2, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], fit:'shrink'}
     );
 
+    traceOpsPptBox(slide, 5.74, 5.30, 7.16, 0.20, 'FAFCFF');
+    slide.addText(
+      traceOpsPptWrap(d25w2hText, 260),
+      {x:5.90, y:5.36, w:6.84, h:0.10, fontFace:'Segoe UI', fontSize:7.6, color:'102A43', margin:0, fit:'shrink'}
+    );
+
     traceOpsPptLine(slide, 5.74, 5.46, 12.90, 5.46, 'DCE9E2', 1.0);
     slide.addText(traceOpsPptSafe('Bad part / situation', 40), {x:5.74, y:5.56, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.6, bold:true, color:'5F766C'});
     slide.addText(traceOpsPptSafe('Good part / situation', 40), {x:9.38, y:5.56, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.6, bold:true, color:'5F766C'});
@@ -8037,8 +8278,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     traceOpsPptBox(slide, 5.74, 5.80, 3.42, 1.34, 'FDF0EE', 'F0C4BE');
     traceOpsPptBox(slide, 9.48, 5.80, 3.42, 1.34, 'EEF6FF', 'B8DECE');
 
-    slide.addText(traceOpsPptWrap(normalized.bad_part || normalized.complaint_anchor || model.complaintAnchor || 'Incorrect setup / failure condition.', 128), {x:5.90, y:5.98, w:1.18, h:0.86, fontFace:'Segoe UI', fontSize:8.0, color:'102A43', margin:0.03, fit:'shrink'});
-    slide.addText(traceOpsPptWrap(normalized.good_part || 'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.', 128), {x:9.64, y:5.98, w:1.18, h:0.86, fontFace:'Segoe UI', fontSize:8.0, color:'102A43', margin:0.03, fit:'shrink'});
+    slide.addText(badPartText, {x:5.90, y:5.98, w:1.18, h:0.86, fontFace:'Segoe UI', fontSize:8.0, color:'102A43', margin:0.03, fit:'shrink'});
+    slide.addText(goodPartText, {x:9.64, y:5.98, w:1.18, h:0.86, fontFace:'Segoe UI', fontSize:8.0, color:'102A43', margin:0.03, fit:'shrink'});
 
     var badImg = await traceOpsPptPickEvidenceImage(normalized, 'bad');
     var goodImg = await traceOpsPptPickEvidenceImage(normalized, 'good');
@@ -8238,16 +8479,33 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     await traceOpsPptRenderEvidencePanel(slide, {x:11.72, y:1.92, w:1.24, h:1.10, label:'Good part', caption:'Reference view', tone:'good', imageData:appendixGood});
 
     var evidenceRows = traceOpsPptDetailedEventRows(normalized, model);
+    var appendixNotesText = traceOpsPptDraftField(
+      normalized.appendix_notes,
+      '',
+      'Appendix notes pending.',
+      220
+    );
 
     slide.addTable(traceOpsPptSafeTable([
       [{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],
       [traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 150), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 150)]
     ]), {
-      x:0.42, y:3.36, w:8.90, h:0.76,
+      x:0.42, y:3.36, w:8.86, h:0.76,
       border:{type:'solid', pt:1, color:'DCE9E2'},
       fill:'FFFFFF', color:'102A43',
-      fontFace:'Segoe UI', fontSize:8.3,
-      margin:0.04, rowH:[0.18,0.48], colW:[4.38,4.34], fit:'shrink'
+      fontFace:'Segoe UI', fontSize:8.1,
+      margin:0.04, rowH:[0.18,0.48], colW:[4.36,4.30], fit:'shrink'
+    });
+
+    slide.addTable(traceOpsPptSafeTable([
+      [{text:'Appendix notes',options:{bold:true}}],
+      [appendixNotesText]
+    ]), {
+      x:9.52, y:3.36, w:3.38, h:0.76,
+      border:{type:'solid', pt:1, color:'DCE9E2'},
+      fill:'FFFFFF', color:'102A43',
+      fontFace:'Segoe UI', fontSize:8.1,
+      margin:0.04, rowH:[0.18,0.48], colW:[3.18], fit:'shrink'
     });
 
     slide.addText(traceOpsPptSafe('Traceability mapping', 40), {x:0.42, y:4.34, w:2.2, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
@@ -8959,7 +9217,7 @@ function exportEightdPpt(draft) {
 
   function exportEightdHtml(draft) {
     if (!draft) return;
-    var normalized = Object.assign({}, draft);
+    var normalized = traceOpsEightdHydrateDraftFields(Object.assign({}, draft || {}));
     var filename = String(normalized.eightd_id || normalized.source_rcca_id || 'TraceOps_8D_Draft').replace(/[^A-Za-z0-9_-]+/g,'_') + '.html';
     var html = traceOpsBuildEightdHtml(normalized);
 
@@ -10545,7 +10803,119 @@ function replaceMetaFiles(nextFiles){
         setForm(refreshed);
       }
     }, [sourceRcca && sourceRcca.rcca_id, sourceRcca && sourceRcca.updated_at, traceOpsMetaFilesFingerprint(sourceRcca && sourceRcca.meta_files)]);
-    function upd(k,v){ var next = Object.assign({}, form); next[k] = v; var ready = traceOpsComputeEightdReadiness(next); next.readiness_score = ready.overallScore; next.structure_readiness_score = ready.structureScore; next.evidence_readiness_score = ready.evidenceScore; next.case_maturity_score = ready.overallScore; next.missing_fields = ready.structureMissing; next.escalation_blockers = ready.blockers; next.can_promote = ready.canPromote; next.draft_stage = ready.stage; setForm(next); }
+    function applyDraftReadiness(next){
+      var ready = traceOpsComputeEightdReadiness(next);
+      next.readiness_score = ready.overallScore;
+      next.structure_readiness_score = ready.structureScore;
+      next.evidence_readiness_score = ready.evidenceScore;
+      next.case_maturity_score = ready.overallScore;
+      next.missing_fields = ready.structureMissing;
+      next.escalation_blockers = ready.blockers;
+      next.can_promote = ready.canPromote;
+      next.draft_stage = ready.stage;
+      return next;
+    }
+
+    function upd(k, v, opts){
+      var next = Object.assign({}, form);
+      next.meta = traceOpsEightdEnsureMeta(next.meta);
+      next[k] = v;
+
+      if (!(opts && opts.fromSource)) {
+        next.meta.manual_fields[k] = true;
+      }
+      if (opts && opts.clearManual) {
+        delete next.meta.manual_fields[k];
+      }
+
+      setForm(applyDraftReadiness(next));
+    }
+
+    function refreshDraftFieldFromRcca(key){
+      if (!sourceRcca || !sourceRcca.rcca_id) return;
+
+      var seed = Object.assign({}, form);
+      seed.meta = traceOpsEightdEnsureMeta(seed.meta);
+      delete seed.meta.manual_fields[key];
+
+      var refreshed = traceOpsBuildEightdDraftFromRcca(sourceRcca, seed);
+      setForm(applyDraftReadiness(refreshed));
+    }
+
+    function renderDraftOverlayField(sec){
+      var key = sec[0];
+      var title = sec[1];
+      var subtitle = sec[2];
+      var value = form[key] || "";
+      var manual = traceOpsEightdFieldIsManual(form, key);
+      var tall = key==="d2_problem" || key==="d4_root_cause" || key==="d2_traceability" || key==="d2_5w2h";
+      var rows = mobile ? (tall ? 5 : 3) : (tall ? 6 : 4);
+
+      return (
+        <div key={key} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+          <div style={{padding:mobile?"11px 12px":"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+              <div style={{minWidth:0,flex:1}}>
+                <div style={{fontSize:mobile?12.5:12.5,fontWeight:800,color:"#1A1714",lineHeight:1.2}}>{title}</div>
+                <div style={{fontSize:mobile?9.5:10,color:"#8A8580",marginTop:2,lineHeight:1.35}}>{subtitle}</div>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                <span style={{
+                  fontSize:9,
+                  fontWeight:800,
+                  borderRadius:999,
+                  padding:"4px 8px",
+                  background:manual ? "#F5F0FE" : "#EAF2FF",
+                  color:manual ? "#6B2DA8" : "#1F3A5F",
+                  border:"1px solid " + (manual ? "#DBCDF8" : "#C7DBF7")
+                }}>
+                  {manual ? "Edited in 8D" : "Auto from RCCA"}
+                </span>
+                {sourceRcca && (
+                  <button
+                    onClick={function(){ refreshDraftFieldFromRcca(key); }}
+                    style={{
+                      background:"#fff",
+                      border:"1px solid #DDDBD7",
+                      borderRadius:999,
+                      padding:"4px 10px",
+                      fontSize:9.5,
+                      fontWeight:800,
+                      color:"#6A6560",
+                      cursor:"pointer"
+                    }}
+                  >
+                    Refresh field
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          <div style={{padding:mobile?10:12}}>
+            <textarea
+              value={value}
+              rows={rows}
+              onChange={function(e){ upd(key, e.target.value); }}
+              style={{
+                width:"100%",
+                border:"1.5px solid " + (manual ? "#CDBAF7" : "#DDDBD7"),
+                borderRadius:10,
+                padding:mobile?"10px":"10px 12px",
+                fontSize:mobile?11.5:12,
+                color:"#1A1714",
+                outline:"none",
+                resize:"vertical",
+                fontFamily:"inherit",
+                lineHeight:1.55,
+                minHeight:mobile?80:"auto",
+                background: manual ? "#FCFAFF" : "#fff"
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
     function togglePanel(key){ var next = Object.assign({}, collapsed); next[key] = !next[key]; setCollapsed(next); }
     var readiness = traceOpsComputeEightdReadiness(form);
     var linkedEvents = traceOpsCollectLinkedEventsByIds(form.linked_event_ids || []);
@@ -10560,6 +10930,14 @@ function replaceMetaFiles(nextFiles){
       ["d6_validation","D6 Validation","Metodo de validacion, resultados y recurrencia."],
       ["d7_prevention","D7 Prevention / Yokoten","Prevencion, leccion aprendida, reapplication."],
       ["d8_closure","D8 Closure","Cierre ejecutivo, efectividad y aprobacion."],
+    ];
+    var supplementalSectionDefs = [
+      ["d1_escalation","D1 Escalation","Ruta de escalacion, release authority y ownership complementario del equipo."],
+      ["d2_traceability","D2 Traceability","Serial range, lote, build window, line/station y trace path."],
+      ["d2_5w2h","5W2H problem delimitation","What, where, when, who, how many e impacto."],
+      ["bad_part_notes","Bad part / situation","Condicion bad part descrita para el 8D."],
+      ["good_part_notes","Good part / situation","Condicion good part / referencia esperada."],
+      ["appendix_notes","Appendix notes","Notas visibles para export HTML/PPT sin tocar el RCCA base."]
     ];
     function badge(bg,color,text){
       return <span style={{fontSize:9.5,fontWeight:700,background:bg,color:color,borderRadius:999,padding:mobile?"4px 8px":"4px 8px",display:"inline-flex",alignItems:"center"}}>{text}</span>;
@@ -10649,16 +11027,24 @@ function replaceMetaFiles(nextFiles){
             {mobile&&<div style={{display:"flex",flexDirection:"column",gap:12}}>{sourcePanel}{missingPanel}{eventsPanel}</div>}
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
               {sectionDefs.map(function(sec){
-                return <div key={sec[0]} style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
-                  <div style={{padding:mobile?"11px 12px":"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
-                    <div style={{fontSize:mobile?12.5:12.5,fontWeight:800,color:"#1A1714",lineHeight:1.2}}>{sec[1]}</div>
-                    <div style={{fontSize:mobile?9.5:10,color:"#8A8580",marginTop:2,lineHeight:1.35}}>{sec[2]}</div>
-                  </div>
-                  <div style={{padding:mobile?10:12}}>
-                    <textarea value={form[sec[0]] || ""} rows={mobile?(sec[0]==="d2_problem"||sec[0]==="d4_root_cause"?5:3):(sec[0]==="d2_problem"||sec[0]==="d4_root_cause"?6:4)} onChange={function(e){upd(sec[0], e.target.value);}} style={{width:"100%",border:"1.5px solid #DDDBD7",borderRadius:10,padding:mobile?"10px":"10px 12px",fontSize:mobile?11.5:12,color:"#1A1714",outline:"none",resize:"vertical",fontFamily:"inherit",lineHeight:1.55,minHeight:mobile?80:"auto"}} />
-                  </div>
-                </div>;
+                return renderDraftOverlayField(sec);
               })}
+
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden"}}>
+                  <div style={{padding:mobile?"11px 12px":"12px 14px",background:"#F8F7F5",borderBottom:"1px solid #EEECEA"}}>
+                    <div style={{fontSize:mobile?12.5:12.5,fontWeight:800,color:"#1A1714"}}>8D Complementary Fields</div>
+                    <div style={{fontSize:mobile?9.5:10,color:"#8A8580",marginTop:2,lineHeight:1.35}}>
+                      Estos campos enriquecen el Draft 8D sin cargar ni alterar el RCCA simple.
+                    </div>
+                  </div>
+                  <div style={{padding:mobile?10:12,display:"flex",flexDirection:"column",gap:12}}>
+                    {supplementalSectionDefs.map(function(sec){
+                      return renderDraftOverlayField(sec);
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
             {!mobile&&<div style={{display:"flex",flexDirection:"column",gap:12}}>{sourcePanel}{missingPanel}{eventsPanel}</div>}
           </div>
