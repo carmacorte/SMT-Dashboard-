@@ -7300,6 +7300,54 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     return traceOpsEightdJoinParagraphs(parts);
   }
 
+
+  function traceOpsPptAppendixCheckpointRows(normalized, model){
+    var evidenceRefs = Array.isArray(model && model.evidenceRefs) ? model.evidenceRefs : [];
+    var symptomText = ''
+      + ((model && model.complaintAnchor) || '')
+      + ' ' + ((normalized && normalized.complaint_anchor) || '')
+      + ' ' + ((model && model.issueTitle) || '');
+    var evidenceSummary = traceOpsPptEvidenceSummaryText(normalized, model);
+    var correlationText = traceOpsPptCorrelationText(normalized, model);
+    var hasGolden = evidenceRefs.length > 1 || /golden|good part|reference/i.test(evidenceSummary + ' ' + correlationText);
+    var hasCompare = evidenceRefs.length > 0 || /installed|removed|bad part|good part|comparison/i.test(evidenceSummary + ' ' + correlationText);
+    var hasSerialTrace = /serial|batch|lot|trace/i.test(evidenceSummary + ' ' + correlationText);
+    var hasControlGap = /control|escape|gap|trigger|detection/i.test(correlationText + ' ' + ((model && model.escapeSummary) || ''));
+    var hasActionProof = Array.isArray(model && model.actions) && model.actions.length > 0;
+    return [
+      [
+        'Customer symptom',
+        traceOpsEightdHasText(symptomText) ? 'Available' : 'Pending',
+        'Keep observable customer or internal symptom visible'
+      ],
+      [
+        'Golden reference',
+        hasGolden ? 'Available' : 'Review',
+        'Maintain expected-good condition even if pending'
+      ],
+      [
+        'Installed vs removed state comparison',
+        hasCompare ? 'Available' : 'Review',
+        'Do not suppress comparison checkpoint'
+      ],
+      [
+        'Serial / batch trace',
+        hasSerialTrace ? 'Available' : 'Pending',
+        'Preserve lot or serial trace status'
+      ],
+      [
+        'Control gap explanation',
+        hasControlGap ? 'Available' : 'Pending',
+        'State why earlier control did not trigger'
+      ],
+      [
+        'Corrective action proof',
+        hasActionProof ? 'Under validation' : 'Pending',
+        'Closure requires post-action proof'
+      ]
+    ];
+  }
+
   function traceOpsPptBuildActionRows(normalized, model){
     var baseText = [
       normalized && normalized.d5_pca || '',
@@ -8192,13 +8240,16 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     slide.addText('Trace validation (live checkpoints)', {x:0.42, y:3.14, w:2.8, h:0.12, fontFace:'Segoe UI', fontSize:7.6, color:'6B7280', margin:0});
 
     var evidenceRows = traceOpsPptDetailedEventRows(normalized, model);
+    var checkpointRows = (typeof traceOpsPptAppendixCheckpointRows === 'function'
+      ? traceOpsPptAppendixCheckpointRows(normalized, model)
+      : []);
     var firstEvidence = (Array.isArray(evidenceRows) && evidenceRows.length ? evidenceRows[0] : ['Pending','Pending','Pending','Pending','Pending','Pending','TraceOps']);
 
     traceOpsPptBox(slide, 0.42, 3.28, 12.48, 0.34, 'FAFCFF');
     traceOpsPptPanelTitle(slide, 'Visible trace row', 0.58, 3.36, 1.4);
     slide.addText(traceOpsPptWrap('Line: ' + String(firstEvidence[1] || model.line || 'Pending') + ' | Station: ' + String(firstEvidence[2] || model.station || 'Pending') + ' | Equipment / Tester: ' + String(firstEvidence[3] || model.station || 'Pending') + ' | Result: ' + String(firstEvidence[5] || model.traceResult || 'Pending'), 180), {x:1.92, y:3.36, w:10.70, h:0.11, fontFace:'Segoe UI', fontSize:7.8, color:'102A43', margin:0, fit:'shrink'});
 
-    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}]].concat(traceOpsPptAppendixCheckpointRows(normalized, model))), {x:0.42, y:3.68, w:12.48, h:0.46, border:{type:'solid', pt:1, color:'2A4D73'}, fill:'2A4D73', color:'FFFFFF', fontFace:'Segoe UI', fontSize:7.2, margin:0.025, rowH:[0.12,0.065,0.065,0.065,0.065,0.065,0.065], colW:[2.70,1.78,7.90], fit:'shrink'});
+    slide.addTable(traceOpsPptSafeTable([[{text:'Checkpoint',options:{bold:true}},{text:'Status',options:{bold:true}},{text:'Rule',options:{bold:true}}]].concat(Array.isArray(checkpointRows) ? checkpointRows : [])), {x:0.42, y:3.68, w:12.48, h:0.46, border:{type:'solid', pt:1, color:'2A4D73'}, fill:'2A4D73', color:'FFFFFF', fontFace:'Segoe UI', fontSize:7.2, margin:0.025, rowH:[0.12,0.065,0.065,0.065,0.065,0.065,0.065], colW:[2.70,1.78,7.90], fit:'shrink'});
 
     slide.addTable(traceOpsPptSafeTable([[{text:'Evidence summary',options:{bold:true}},{text:'Correlation notes',options:{bold:true}}],[traceOpsPptWrap(traceOpsPptEvidenceSummaryText(normalized, model), 150), traceOpsPptWrap(traceOpsPptCorrelationText(normalized, model), 150)]]), {x:0.42, y:4.32, w:8.90, h:0.70, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.2, margin:0.04, rowH:[0.18,0.44], colW:[4.38,4.34], fit:'shrink'});
 
