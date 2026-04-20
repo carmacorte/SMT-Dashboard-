@@ -8275,44 +8275,52 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
       return [item.role || 'Pending', item.name || 'Pending', item.email || 'Pending'];
     });
 
-    var d2TraceabilityText = traceOpsPptDraftField(
-      normalized.d2_traceability,
-      normalized.data_anchor,
-      'Traceability details pending.',
-      260
-    );
-
-    var d25w2hText = traceOpsPptDraftField(
-      normalized.d2_5w2h,
-      '',
-      '5W2H delimitation pending.',
-      260
-    );
-
     var badPartText = traceOpsPptDraftField(
       normalized.bad_part_notes,
       normalized.bad_part || normalized.complaint_anchor || model.complaintAnchor,
       'Incorrect setup / failure condition.',
-      180
+      160
     );
 
     var goodPartText = traceOpsPptDraftField(
       normalized.good_part_notes,
       normalized.good_part,
       'Correct P/N loaded at all designated positions. Positive part-number verification required before run start.',
+      160
+    );
+
+    var traceSummary = traceOpsPptDraftField(
+      normalized.d2_traceability,
+      normalized.data_anchor,
+      'Traceability details pending.',
       180
     );
+
+    var problemStatement = traceOpsPptDraftField(
+      normalized.d2_problem,
+      normalized.complaint_anchor || model.complaintAnchor,
+      'Problem statement pending.',
+      200
+    );
+
+    var howMany = (normalized.how_many || ('Total units processed: ' + (normalized.total_units || 'Pending') + ' | Clean units: ' + (normalized.clean_units || 'Pending') + ' | Risk units: ' + (normalized.risk_units || 'Pending')));
+    var conciseDefect = normalized.defecto_smt || model.defect || normalized.failure_mode || 'Pending';
+    var conciseWhere = [normalized.linea || model.line || 'Pending', normalized.station || model.station || 'Pending'].join(' / ');
+    var conciseWho = normalized.owner_name || normalized.reporta || normalized.owner_email || (model.owners && model.owners[0]) || 'Pending';
+    var conciseHow = normalized.process_path || normalized.process_step || model.station || 'Pending';
+    var conciseWhy = normalized.technical_why || normalized.occurrence_driver || 'Pending';
+    var conciseMechanism = traceOpsEightdShort(model.pattern || normalized.technical_interpretation || 'Pending', 80);
 
     slide.addText(traceOpsPptSafe('D1 Team', 30), {x:0.42, y:1.68, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(
       traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(roles)),
-      {x:0.42, y:1.96, w:5.10, h:2.10, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.6, margin:0.05, rowH:0.28, colW:[0.78,1.62,2.50], fit:'shrink'}
+      {x:0.42, y:1.96, w:5.10, h:2.06, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.5, margin:0.05, rowH:0.28, colW:[0.78,1.62,2.50], fit:'shrink'}
     );
 
-    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.24, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Escalation', 30), {x:0.42, y:4.18, w:1.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     slide.addTable(
       traceOpsPptSafeTable([[{text:'Role',options:{bold:true}},{text:'Name',options:{bold:true}},{text:'E-mail',options:{bold:true}}]].concat(escalation)),
-      {x:0.42, y:4.52, w:5.10, h:2.44, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.2, margin:0.05, rowH:0.28, colW:[0.78,1.62,2.50], fit:'shrink'}
+      {x:0.42, y:4.46, w:5.10, h:2.02, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.1, margin:0.05, rowH:0.28, colW:[0.78,1.62,2.50], fit:'shrink'}
     );
 
     slide.addText(traceOpsPptSafe('D2 Traceability', 30), {x:5.74, y:1.68, w:2.0, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
@@ -8324,48 +8332,40 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     ];
     slide.addTable(
       traceOpsPptSafeTable([[{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'Field',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(traceRows)),
-      {x:5.74, y:1.96, w:7.16, h:1.38, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.4, margin:0.05, rowH:0.22, colW:[1.18,2.28,1.18,2.28], fit:'shrink'}
+      {x:5.74, y:1.96, w:7.16, h:1.12, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:7.9, margin:0.045, rowH:0.20, colW:[1.18,2.28,1.18,2.28], fit:'shrink'}
     );
 
-    traceOpsPptBox(slide, 5.74, 3.38, 7.16, 0.26, 'FAFCFF');
-    slide.addText(
-      traceOpsPptWrap(d2TraceabilityText, 260),
-      {x:5.90, y:3.46, w:6.84, h:0.12, fontFace:'Segoe UI', fontSize:7.7, color:'102A43', margin:0, fit:'shrink'}
-    );
+    traceOpsPptBox(slide, 5.74, 3.14, 7.16, 0.28, 'FAFCFF');
+    slide.addText(traceSummary, {x:5.90, y:3.20, w:6.84, h:0.14, fontFace:'Segoe UI', fontSize:7.1, color:'102A43', margin:0.01, fit:'shrink'});
 
-    slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.50, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
-    var howMany = (normalized.how_many || ('Total units processed: ' + (normalized.total_units || 'Pending') + ' | Clean units: ' + (normalized.clean_units || 'Pending') + ' | Risk units: ' + (normalized.risk_units || 'Pending') + ' | Clean yield: ' + (normalized.clean_yield || 'Pending') + ' | OJT / touch rate: ' + (normalized.touch_rate || 'Pending')));
+    slide.addText(traceOpsPptSafe('5W2H problem delimitation', 40), {x:5.74, y:3.54, w:2.8, h:0.18, fontFace:'Segoe UI', fontSize:11, bold:true, color:'5F766C'});
     var problemRows = [
-      ['Who', normalized.reporta || normalized.owner_name || 'Pending', 'How', normalized.process_path || (normalized.station || model.station || 'Pending')],
-      ['What', normalized.complaint_anchor || model.complaintAnchor || 'Pending', 'How many', howMany],
-      ['Where', [normalized.linea || model.line || 'Pending', normalized.station || model.station || 'Pending'].join(' · '), 'Why', normalized.technical_why || 'Pending'],
-      ['When', normalized.detection_window || model.detectionWindow || 'Pending', 'Mechanism', traceOpsEightdShort(model.pattern || normalized.technical_interpretation || 'Pending', 100)]
+      ['Who', conciseWho, 'How', conciseHow],
+      ['What', conciseDefect, 'How many', howMany],
+      ['Where', conciseWhere, 'Why', conciseWhy],
+      ['When', normalized.detection_window || model.detectionWindow || 'Pending', 'Mechanism', conciseMechanism]
     ];
     slide.addTable(
       traceOpsPptSafeTable([[{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}},{text:'5W2H',options:{bold:true}},{text:'Value',options:{bold:true}}]].concat(problemRows)),
-      {x:5.74, y:3.78, w:7.16, h:1.54, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:8.2, margin:0.04, rowH:0.23, colW:[0.84,2.62,0.84,2.62], fit:'shrink'}
+      {x:5.74, y:3.82, w:7.16, h:1.28, border:{type:'solid', pt:1, color:'DCE9E2'}, fill:'FFFFFF', color:'102A43', fontFace:'Segoe UI', fontSize:7.9, margin:0.04, rowH:0.20, colW:[0.84,2.62,0.84,2.62], fit:'shrink'}
     );
 
-    traceOpsPptBox(slide, 5.74, 5.30, 7.16, 0.20, 'FAFCFF');
-    slide.addText(
-      traceOpsPptWrap(d25w2hText, 260),
-      {x:5.90, y:5.36, w:6.84, h:0.10, fontFace:'Segoe UI', fontSize:7.6, color:'102A43', margin:0, fit:'shrink'}
-    );
+    traceOpsPptBox(slide, 5.74, 5.16, 7.16, 0.26, 'FAFCFF');
+    slide.addText(problemStatement, {x:5.90, y:5.22, w:6.84, h:0.14, fontFace:'Segoe UI', fontSize:7.1, color:'102A43', margin:0.01, fit:'shrink'});
 
-    traceOpsPptLine(slide, 5.74, 5.46, 12.90, 5.46, 'DCE9E2', 1.0);
-    slide.addText(traceOpsPptSafe('Bad part / situation', 40), {x:5.74, y:5.56, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.6, bold:true, color:'5F766C'});
-    slide.addText(traceOpsPptSafe('Good part / situation', 40), {x:9.38, y:5.56, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.6, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Bad part / situation', 40), {x:5.74, y:5.50, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.2, bold:true, color:'5F766C'});
+    slide.addText(traceOpsPptSafe('Good part / situation', 40), {x:9.38, y:5.50, w:2.3, h:0.16, fontFace:'Segoe UI', fontSize:10.2, bold:true, color:'5F766C'});
 
-    traceOpsPptBox(slide, 5.74, 5.80, 3.42, 1.34, 'FDF0EE', 'F0C4BE');
-    traceOpsPptBox(slide, 9.48, 5.80, 3.42, 1.34, 'EEF6FF', 'B8DECE');
+    traceOpsPptBox(slide, 5.74, 5.72, 3.42, 1.18, 'FDF0EE', 'F0C4BE');
+    traceOpsPptBox(slide, 9.48, 5.72, 3.42, 1.18, 'EEF6FF', 'B8DECE');
 
-    slide.addText(badPartText, {x:5.90, y:5.98, w:1.18, h:0.86, fontFace:'Segoe UI', fontSize:8.0, color:'102A43', margin:0.03, fit:'shrink'});
-    slide.addText(goodPartText, {x:9.64, y:5.98, w:1.18, h:0.86, fontFace:'Segoe UI', fontSize:8.0, color:'102A43', margin:0.03, fit:'shrink'});
+    slide.addText(badPartText, {x:5.90, y:5.88, w:1.08, h:0.74, fontFace:'Segoe UI', fontSize:7.8, color:'102A43', margin:0.03, fit:'shrink'});
+    slide.addText(goodPartText, {x:9.64, y:5.88, w:1.08, h:0.74, fontFace:'Segoe UI', fontSize:7.8, color:'102A43', margin:0.03, fit:'shrink'});
 
     var badImg = await traceOpsPptPickEvidenceImage(normalized, 'bad');
     var goodImg = await traceOpsPptPickEvidenceImage(normalized, 'good');
-    await traceOpsPptRenderEvidencePanel(slide, {x:7.12, y:5.96, w:1.86, h:1.08, label:'Bad part', caption:'Incorrect setup', tone:'bad', imageData:badImg});
-    await traceOpsPptRenderEvidencePanel(slide, {x:10.86, y:5.96, w:1.86, h:1.08, label:'Good part', caption:'Ideal condition', tone:'good', imageData:goodImg});
+    await traceOpsPptRenderEvidencePanel(slide, {x:7.06, y:5.86, w:1.94, h:0.96, label:'Bad part', caption:'Incorrect setup', tone:'bad', imageData:badImg});
+    await traceOpsPptRenderEvidencePanel(slide, {x:10.80, y:5.86, w:1.94, h:0.96, label:'Good part', caption:'Ideal condition', tone:'good', imageData:goodImg});
 
     return slide;
   }
