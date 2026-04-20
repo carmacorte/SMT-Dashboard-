@@ -5419,12 +5419,10 @@ function App() {
   }
 
   async function traceOpsSafeCloudCall(promiseFactory, timeoutMs) {
-    if (cloudCooldownRef.current) {
-      var cooldownErr = new Error("cloud_cooldown");
-      cooldownErr.isCloudCooldown = true;
-      throw cooldownErr;
-    }
     var ms = Math.max(1500, Number(timeoutMs || 5000));
+    if (cloudCooldownRef.current) {
+      try { console.warn("[TraceOps] Cloud in cooldown, retrying softly..."); } catch(_) {}
+    }
     try {
       return await Promise.race([
         Promise.resolve().then(promiseFactory),
@@ -5439,9 +5437,15 @@ function App() {
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
       var raw = String((cloudErr && (cloudErr.originalMessage || cloudErr.message)) || err || "").toLowerCase();
-      var shouldCooldown = !!(cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) || raw.indexOf("timeout") >= 0 || raw.indexOf("504") >= 0 || raw.indexOf("connection terminated") >= 0 || raw.indexOf("failed to fetch") >= 0 || raw.indexOf("networkerror") >= 0 || raw.indexOf("too many concurrent requests") >= 0;
-      if (shouldCooldown) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+      var isHardNetworkError = !!(cloudErr && cloudErr.isNetworkFallback) || raw.indexOf("failed to fetch") >= 0 || raw.indexOf("networkerror") >= 0 || raw.indexOf("load failed") >= 0;
+      var isSoftError = !!(cloudErr && cloudErr.isCloudTimeout) || raw.indexOf("timeout") >= 0 || raw.indexOf("504") >= 0 || raw.indexOf("connection terminated") >= 0 || raw.indexOf("too many concurrent requests") >= 0;
+      if (isHardNetworkError) {
+        traceOpsTriggerCloudCooldown("Sin conexión real");
+      } else if (isSoftError) {
+        setCloudStatus("Servidor lento · reintentando");
+        setRealtimeStatus("DEGRADED");
+      } else {
+        setCloudStatus("Error controlado");
       }
       throw cloudErr;
     }
@@ -5461,28 +5465,6 @@ function App() {
     };
     return map[realtimeStatus] || { label: "Estado realtime: " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
   })();
-
-  var authPanelHint = (function(){
-    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) {
-      return "Modo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos.";
-    }
-    if (!authReady) {
-      return "Supabase esta configurado. Verificando si ya existe una sesion activa en este navegador...";
-    }
-    if (authUser && authUser.email) {
-      return "Sesion iniciada. Tus RCCA manuales pueden sincronizarse entre PC y celular con esta misma cuenta.";
-    }
-    if (authMode === "signup") {
-      return "Paso 1: crea tu cuenta. Paso 2: confirma tu correo si el proyecto lo solicita. Paso 3: vuelve a Entrar para activar Supabase.";
-    }
-    return "Supabase esta listo, pero primero debes iniciar sesion para leer o subir RCCA a la nube. Sin sesion, TraceOps trabaja solo en modo local.";
-  })();
-
-  var authPanelTone = (!authUser && window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())
-    ? { color: "#FFE7A8", background: "rgba(184,120,32,.16)", border: "1px solid rgba(184,120,32,.28)" }
-    : { color: "rgba(255,255,255,.62)", background: "transparent", border: "none" };
-
-  var authPrimaryLabel = syncBusy ? "Procesando..." : (authMode === "signup" ? "Crear cuenta" : "Iniciar sesion y sincronizar");
 
   React.useEffect(function(){
     try {
@@ -5678,7 +5660,12 @@ function App() {
         return;
       }
       await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signIn(email, password); }, 7000);
-      var currentUser = await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 5000);
+      var currentUser = null;
+      try {
+        currentUser = await window.TraceOpsCloud.getUser();
+      } catch (_) {
+        currentUser = null;
+      }
       traceOpsClearCloudCooldown();
       setAuthUser(currentUser || null);
       setCloudStatus("Sesion activa");
@@ -5692,10 +5679,13 @@ function App() {
       var low = String(msg || "").toLowerCase();
       setAuthErrMsg(msg);
       if (cloudErr && cloudErr.isCloudCooldown) {
-        setCloudStatus("Nube saturada · trabajando local");
-        setRealtimeStatus("LOCAL_ONLY");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || low.indexOf("cloud_timeout") >= 0 || low.indexOf("504") >= 0 || low.indexOf("connection terminated") >= 0 || low.indexOf("too many concurrent requests") >= 0)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+        setCloudStatus("Reconectando nube...");
+        setRealtimeStatus("DEGRADED");
+      } else if (cloudErr && cloudErr.isNetworkFallback) {
+        traceOpsTriggerCloudCooldown("Sin conexión real");
+      } else if (cloudErr && (cloudErr.isCloudTimeout || low.indexOf("cloud_timeout") >= 0 || low.indexOf("504") >= 0 || low.indexOf("connection terminated") >= 0 || low.indexOf("too many concurrent requests") >= 0)) {
+        setCloudStatus("Servidor lento · reintenta");
+        setRealtimeStatus("DEGRADED");
       } else if (cloudErr && cloudErr.isTransientAuthLock) {
         setCloudStatus("Sesion ocupada · reintentando");
         setRealtimeStatus("DISCONNECTED");
@@ -5812,8 +5802,11 @@ function App() {
         if (cloudErr && cloudErr.isTransientAuthLock) {
           setCloudStatus("Sesion ocupada · reintentando");
           setRealtimeStatus("DISCONNECTED");
-        } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) {
-          traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+        } else if (cloudErr && cloudErr.isNetworkFallback) {
+          traceOpsTriggerCloudCooldown("Sin conexión real");
+        } else if (cloudErr && cloudErr.isCloudTimeout) {
+          setCloudStatus("Servidor lento · reintentando");
+          setRealtimeStatus("DEGRADED");
         } else {
           setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
           setRealtimeStatus("ERROR");
@@ -5826,7 +5819,7 @@ function App() {
       runAuthFlow(user);
     });
 
-    traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 5000).then(function(user){
+    window.TraceOpsCloud.getUser().then(function(user){
       return runAuthFlow(user);
     }).catch(function(err){
       var cloudErr = traceOpsNormalizeCloudError(err);
@@ -5834,10 +5827,9 @@ function App() {
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
       if (cloudErr && cloudErr.isTransientAuthLock) {
         setCloudStatus("Sesion ocupada · reintentando");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || cloudErr.isCloudCooldown)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
       } else {
-        setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
+        setCloudStatus("Sin sesión en nube");
+        setRealtimeStatus("DEGRADED");
       }
     });
 
@@ -11789,11 +11781,11 @@ function replaceMetaFiles(nextFiles){
         <div className="sidebar-section">
           <div className="sidebar-section-title">Cuenta y sincronizacion RCCA</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            <div style={{fontSize:10,lineHeight:1.5,color:authPanelTone.color,padding:window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()&&!authUser?"8px 10px":"0",border:authPanelTone.border,borderRadius:10,background:authPanelTone.background}}>
-              {authPanelHint}
+            <div style={{fontSize:10,lineHeight:1.5,color:"rgba(255,255,255,.62)"}}>
+              {window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Inicia sesion para ver en PC y celular las RCCA manuales con la misma cuenta.":"Modo local activo. Agrega TRACEOPS_SUPABASE para sincronizar entre dispositivos."}
             </div>
             <div style={{fontSize:10,lineHeight:1.4,color:syncBusy?"#CDE7C5":"rgba(255,255,255,.5)",padding:"8px 10px",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,background:"rgba(255,255,255,.03)"}}>
-              {authUser && authUser.email ? ("Sesion: " + authUser.email + " · " + cloudStatus) : (!authReady ? "Inicializando nube..." : (window.TraceOpsCloud&&window.TraceOpsCloud.isConfigured()?"Supabase listo · inicia sesion para conectar":cloudStatus))}
+              {authUser && authUser.email ? ("Sesión: " + authUser.email + " · " + cloudStatus) : (!authReady ? "Inicializando nube..." : cloudStatus)}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:8,fontSize:10,fontWeight:700,color:realtimeUi.color,background:realtimeUi.bg,border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:"8px 10px"}}>
               <span style={{display:"inline-block",width:8,height:8,borderRadius:99,background:realtimeUi.color}}></span>
@@ -11808,11 +11800,8 @@ function replaceMetaFiles(nextFiles){
                 <input aria-label="Correo electrónico" className="sidebar-api-input" type="email" placeholder="correo@empresa.com" value={authEmail} onChange={function(e){setAuthEmail(e.target.value);}}/>
                 <input aria-label="Contraseña" className="sidebar-api-input" type="password" placeholder="Contrasena" value={authPassword} onChange={function(e){setAuthPassword(e.target.value);}}/>
                 <button className="sidebar-btn active" onClick={handleAuthSubmit} disabled={syncBusy} style={{justifyContent:"center",opacity:syncBusy ? .65 : 1}}>
-                  {authPrimaryLabel}
+                  {syncBusy?"Procesando...":(authMode==="signup"?"Crear cuenta y sincronizar":"Entrar y sincronizar")}
                 </button>
-                <div style={{fontSize:9.5,lineHeight:1.45,color:"rgba(255,255,255,.42)",padding:"2px 2px 0"}}>
-                  {authMode==="signup"?"Crear cuenta no activa la nube por si sola. Despues de registrarte, confirma tu correo si aplica y luego usa Entrar.":"Este boton autentica tu cuenta y entonces habilita lectura, subida y sincronizacion con Supabase."}
-                </div>
               </>
             )}
             {authUser&&(
