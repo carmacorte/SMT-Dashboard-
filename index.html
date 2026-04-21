@@ -5593,6 +5593,7 @@ function App() {
       var merged = mergeRccaRecords(opts.baseList || rccaList, remoteItems);
       await persistRccaLocal(merged);
       setCloudStatus(remoteItems.length ? ("Sincronizado · " + remoteItems.length + " RCCA") : "Sesion activa · nube vacia");
+      setAuthErrMsg("");
       return remoteItems;
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
@@ -5771,7 +5772,10 @@ function App() {
         refreshCloudRcca();
       }, function(status){
         var next = String(status || "UNKNOWN").toUpperCase();
-        if (next === "SUBSCRIBED") setRealtimeStatus("CONNECTED");
+        if (next === "SUBSCRIBED") {
+          setRealtimeStatus("CONNECTED");
+          setAuthErrMsg("");
+        }
         else if (next === "CHANNEL_ERROR" || next === "TIMED_OUT") setRealtimeStatus("ERROR");
         else if (next === "CLOSED") setRealtimeStatus(authUser ? "DISCONNECTED" : "LOCAL_ONLY");
         else if (next === "UNKNOWN") setRealtimeStatus("CONNECTING");
@@ -5865,6 +5869,7 @@ function App() {
         try { startRealtime(user); } catch(_) {}
         setCloudStatus("Sincronizado");
         setRealtimeStatus("CONNECTED");
+        setAuthErrMsg("");
       } catch (e) {
         traceOpsTriggerCloudCooldown("Reintento fallido");
       }
