@@ -5394,19 +5394,26 @@ function App() {
   var cloudCooldownRef = React.useRef(false);
   var cloudCooldownTimerRef = React.useRef(null);
   var cloudRetryHookRef = React.useRef(null);
+  var cloudSoftFailCountRef = React.useRef(0);
+  var cloudBootstrapSyncRef = React.useRef(false);
+
+  function traceOpsResetSoftCloudFailures() {
+    cloudSoftFailCountRef.current = 0;
+  }
 
   function traceOpsClearCloudCooldown() {
     try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
     cloudCooldownTimerRef.current = null;
     cloudCooldownRef.current = false;
     cloudModeRef.current = "OK";
+    traceOpsResetSoftCloudFailures();
   }
 
   function traceOpsTriggerCloudCooldown(reasonLabel) {
     try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
     cloudCooldownRef.current = true;
     cloudModeRef.current = "DEGRADED";
-    setCloudStatus(reasonLabel || "Nube saturada · trabajando local");
+    setCloudStatus(reasonLabel || "Servidor lento · trabajando local");
     setRealtimeStatus("LOCAL_ONLY");
     cloudCooldownTimerRef.current = setTimeout(function(){
       cloudCooldownRef.current = false;
@@ -5424,13 +5431,50 @@ function App() {
     }, 12000);
   }
 
+  function traceOpsHandleSoftCloudIssue(reasonLabel, options) {
+    options = options || {};
+    var nextCount = (cloudSoftFailCountRef.current || 0) + 1;
+    cloudSoftFailCountRef.current = nextCount;
+    if (options.forceCooldown || nextCount >= 2) {
+      traceOpsTriggerCloudCooldown(reasonLabel || "Servidor lento · trabajando local");
+      return true;
+    }
+    cloudModeRef.current = "DEGRADED";
+    setCloudStatus(reasonLabel || "Servidor lento · intentando sincronizar");
+    setRealtimeStatus(authUser ? "DISCONNECTED" : "LOCAL_ONLY");
+    return false;
+  }
+
+  async function traceOpsRunPostLoginSync(baseList) {
+    var activeUser = authUser || window.authUser || null;
+    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured()) || !activeUser) return false;
+    if (cloudBootstrapSyncRef.current) return false;
+    cloudBootstrapSyncRef.current = true;
+    var seedList = Array.isArray(baseList) ? baseList.slice() : (Array.isArray(rccaList) ? rccaList.slice() : []);
+    try {
+      setCloudStatus(seedList.length ? "Sesion activa · sincronizando..." : "Sesion activa · cargando nube...");
+      if (seedList.length) {
+        try {
+          await traceOpsSafeCloudCall(function(){ return syncAllLocalToCloud(seedList); }, 15000);
+        } catch (_) {}
+      }
+      try {
+        await traceOpsSafeCloudCall(function(){ return refreshCloudRcca({ baseList: seedList }); }, 12000);
+        traceOpsResetSoftCloudFailures();
+      } catch (_) {}
+      return true;
+    } finally {
+      cloudBootstrapSyncRef.current = false;
+    }
+  }
+
   async function traceOpsSafeCloudCall(promiseFactory, timeoutMs) {
-    var ms = Math.max(1500, Number(timeoutMs || 5000));
+    var ms = Math.max(2500, Number(timeoutMs || 12000));
     if (cloudCooldownRef.current) {
       try { console.warn("[TraceOps] Cloud in cooldown, retrying softly..."); } catch(_) {}
     }
     try {
-      return await Promise.race([
+      var result = await Promise.race([
         Promise.resolve().then(promiseFactory),
         new Promise(function(_, reject){
           setTimeout(function(){
@@ -5440,6 +5484,8 @@ function App() {
           }, ms);
         })
       ]);
+      traceOpsResetSoftCloudFailures();
+      return result;
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
       var raw = String((cloudErr && (cloudErr.originalMessage || cloudErr.message)) || err || "").toLowerCase();
@@ -5448,7 +5494,8 @@ function App() {
       if (isHardNetworkError) {
         traceOpsTriggerCloudCooldown("Sin conexión real");
       } else if (isSoftError) {
-        traceOpsTriggerCloudCooldown("Servidor lento · trabajando local");
+        cloudErr.isCloudSoftIssue = true;
+        traceOpsHandleSoftCloudIssue("Servidor lento · intentando sincronizar");
       } else {
         setCloudStatus("Error controlado");
       }
@@ -5600,8 +5647,10 @@ function App() {
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
       if (cloudErr && cloudErr.isTransientAuthLock) {
         setCloudStatus("Sesion ocupada · reintentando");
-      } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout || cloudErr.isCloudCooldown)) {
-        traceOpsTriggerCloudCooldown("Nube saturada · trabajando local");
+      } else if (cloudErr && cloudErr.isNetworkFallback) {
+        traceOpsTriggerCloudCooldown("Sin conexión real");
+      } else if (cloudErr && (cloudErr.isCloudTimeout || cloudErr.isCloudCooldown || cloudErr.isCloudSoftIssue)) {
+        traceOpsHandleSoftCloudIssue("Servidor lento · intentando sincronizar", { forceCooldown: !!(cloudErr && cloudErr.isCloudCooldown) });
       } else {
         setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
       }
@@ -5613,7 +5662,8 @@ function App() {
   }
 
   async function syncAllLocalToCloud(baseList) {
-    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured()) || !authUser) return;
+    var activeUser = authUser || window.authUser || null;
+    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured()) || !activeUser) return;
     var items = baseList || rccaList;
     if (!items.length) {
       setCloudStatus("Sesion activa · sin RCCA por subir");
@@ -5628,7 +5678,13 @@ function App() {
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
-      setCloudStatus(cloudErr && cloudErr.isNetworkFallback ? "Modo local · pendiente de sincronizacion" : "Pendiente de sincronizacion");
+      if (cloudErr && cloudErr.isNetworkFallback) {
+        traceOpsTriggerCloudCooldown("Sin conexión real");
+      } else if (cloudErr && (cloudErr.isCloudTimeout || cloudErr.isCloudSoftIssue)) {
+        traceOpsHandleSoftCloudIssue("Servidor lento · sincronización pendiente");
+      } else {
+        setCloudStatus("Pendiente de sincronizacion");
+      }
       return false;
     } finally {
       setSyncBusy(false);
@@ -5659,26 +5715,24 @@ function App() {
     try {
       setCloudStatus(authMode === "signup" ? "Creando cuenta..." : "Conectando...");
       if (authMode === "signup") {
-        await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signUp(email, password); }, 7000);
+        await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signUp(email, password); }, 15000);
         setCloudStatus("Cuenta creada · revisa confirmacion");
         setAuthErrMsg("Si el proyecto requiere confirmacion por correo, valida tu email antes de sincronizar.");
         setRealtimeStatus("LOCAL_ONLY");
         return;
       }
-      await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signIn(email, password); }, 7000);
-      var currentUser = null;
-      try {
-        currentUser = await window.TraceOpsCloud.getUser();
-      } catch (_) {
-        currentUser = null;
-      }
+      await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.signIn(email, password); }, 15000);
+      var currentUser = await traceOpsSafeCloudCall(function(){ return window.TraceOpsCloud.getUser(); }, 12000);
       traceOpsClearCloudCooldown();
+      traceOpsResetSoftCloudFailures();
+      window.authUser = currentUser || null;
       setAuthUser(currentUser || null);
-      setCloudStatus("Sesion activa");
+      setCloudStatus("Sesion activa · sincronización en segundo plano");
       setRealtimeStatus(currentUser && currentUser.id ? "DISCONNECTED" : "LOCAL_ONLY");
-      try { await syncAllLocalToCloud(rccaList); } catch(_) {}
-      try { await refreshCloudRcca({ baseList: rccaList }); } catch(_) {}
       setAuthPassword("");
+      setTimeout(function(){
+        try { traceOpsRunPostLoginSync(rccaList); } catch(_) {}
+      }, 250);
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
       var msg = cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr || "");
@@ -5686,12 +5740,11 @@ function App() {
       setAuthErrMsg(msg);
       if (cloudErr && cloudErr.isCloudCooldown) {
         setCloudStatus("Reconectando nube...");
-        setRealtimeStatus("DEGRADED");
+        setRealtimeStatus("DISCONNECTED");
       } else if (cloudErr && cloudErr.isNetworkFallback) {
         traceOpsTriggerCloudCooldown("Sin conexión real");
-      } else if (cloudErr && (cloudErr.isCloudTimeout || low.indexOf("cloud_timeout") >= 0 || low.indexOf("504") >= 0 || low.indexOf("connection terminated") >= 0 || low.indexOf("too many concurrent requests") >= 0)) {
-        setCloudStatus("Servidor lento · reintenta");
-        setRealtimeStatus("DEGRADED");
+      } else if (cloudErr && (cloudErr.isCloudTimeout || cloudErr.isCloudSoftIssue || low.indexOf("cloud_timeout") >= 0 || low.indexOf("504") >= 0 || low.indexOf("connection terminated") >= 0 || low.indexOf("too many concurrent requests") >= 0)) {
+        traceOpsHandleSoftCloudIssue("Servidor lento · reintentando sesión");
       } else if (cloudErr && cloudErr.isTransientAuthLock) {
         setCloudStatus("Sesion ocupada · reintentando");
         setRealtimeStatus("DISCONNECTED");
@@ -5708,32 +5761,17 @@ function App() {
       try {
         console.warn("[TraceOps][AuthSubmit]", {
           mode: authMode,
+          email: email,
           message: msg,
-          originalMessage: cloudErr && cloudErr.originalMessage ? cloudErr.originalMessage : null,
-          networkFallback: !!(cloudErr && cloudErr.isNetworkFallback),
-          transientAuthLock: !!(cloudErr && cloudErr.isTransientAuthLock),
+          timeout: !!(cloudErr && cloudErr.isCloudTimeout),
+          network: !!(cloudErr && cloudErr.isNetworkFallback),
           cooldown: !!(cloudErr && cloudErr.isCloudCooldown),
-          ua: navigator.userAgent
+          softIssue: !!(cloudErr && cloudErr.isCloudSoftIssue)
         });
-      } catch (_) {}
+      } catch(_) {}
     } finally {
       setSyncBusy(false);
-    }
-  }
-
-  async function handleSignOut() {
-    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) return;
-    setSyncBusy(true);
-    try {
-      await window.TraceOpsCloud.signOut();
-      setAuthUser(null);
-      setCloudStatus("Modo local");
-      setAuthErrMsg("");
-    } catch (err) {
-      var cloudErr = traceOpsNormalizeCloudError(err);
-      setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
-    } finally {
-      setSyncBusy(false);
+      setAuthReady(true);
     }
   }
 
@@ -5792,9 +5830,12 @@ function App() {
 
         if (user) {
           traceOpsClearCloudCooldown();
-          setCloudStatus("Sesion activa");
+          traceOpsResetSoftCloudFailures();
+          setCloudStatus("Sesion activa · sincronización en segundo plano");
           setRealtimeStatus("DISCONNECTED");
-          try { await traceOpsSafeCloudCall(function(){ return refreshCloudRcca(); }, 5000); } catch(_) {}
+          setTimeout(function(){
+            try { traceOpsRunPostLoginSync(rccaList); } catch(_) {}
+          }, 250);
           await new Promise(function(resolve){ setTimeout(resolve, 150); });
           startRealtime(user);
           try {
@@ -5822,8 +5863,8 @@ function App() {
           setRealtimeStatus("DISCONNECTED");
         } else if (cloudErr && cloudErr.isNetworkFallback) {
           traceOpsTriggerCloudCooldown("Sin conexión real");
-        } else if (cloudErr && cloudErr.isCloudTimeout) {
-          traceOpsTriggerCloudCooldown("Servidor lento · trabajando local");
+        } else if (cloudErr && (cloudErr.isCloudTimeout || cloudErr.isCloudSoftIssue)) {
+          traceOpsHandleSoftCloudIssue("Servidor lento · intentando sincronizar", { forceCooldown: false });
         } else {
           setCloudStatus("Error nube: " + (cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr)));
           setRealtimeStatus("ERROR");
@@ -5847,8 +5888,10 @@ function App() {
         if (cloudErr && cloudErr.isTransientAuthLock) {
           setCloudStatus("Sesion ocupada · reintentando");
           setRealtimeStatus("DISCONNECTED");
-        } else if (cloudErr && (cloudErr.isNetworkFallback || cloudErr.isCloudTimeout)) {
-          traceOpsTriggerCloudCooldown(cloudErr.isNetworkFallback ? "Sin conexión real" : "Servidor lento · trabajando local");
+        } else if (cloudErr && cloudErr.isNetworkFallback) {
+          traceOpsTriggerCloudCooldown("Sin conexión real");
+        } else if (cloudErr && (cloudErr.isCloudTimeout || cloudErr.isCloudSoftIssue)) {
+          traceOpsHandleSoftCloudIssue("Servidor lento · intentando sincronizar", { forceCooldown: false });
         } else {
           setCloudStatus("Sin sesion en nube");
           setRealtimeStatus("LOCAL_ONLY");
@@ -5865,7 +5908,7 @@ function App() {
           setRealtimeStatus("LOCAL_ONLY");
           return;
         }
-        await refreshCloudRcca();
+        await traceOpsRunPostLoginSync(rccaList);
         try { startRealtime(user); } catch(_) {}
         setCloudStatus("Sincronizado");
         setRealtimeStatus("CONNECTED");
