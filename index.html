@@ -10421,7 +10421,7 @@ function exportEightdPpt(draft) {
   var mxH=Math.max.apply(null,byHora.map(function(x){return x.n;}).concat([1]));
   var tipoColor={Calidad:"#2F6FB3",Proceso:"#2F6FB3",Material:"#B87820",Sistema:"#6B2DA8",Produccion:"#1A7A3C",Seguridad:"#C0392B","N/D":"#8A8580"};
   function horaToTurno(hh){var h=parseInt(hh);if(h>=6&&h<15)return"1T";if(h>=15)return"2T";return"3T";}
-  var turnoColor={"1T":"#2F6FB3","2T":"#2F6FB3","3T":"#6B2DA8"};
+  var turnoColor={"1T":"#1E8A64","2T":"#2F6FB3","3T":"#6B2DA8"};
   var hmMap={};
   ev.forEach(function(e){
     if(!e.hora)return;var hParsed=parseInt(e.hora.split(":")[0]);if(isNaN(hParsed))return;
@@ -12807,7 +12807,7 @@ function replaceMetaFiles(nextFiles){
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
               <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Timeline de comportamiento de planta</h3><span style={{fontSize:10,color:"#8A8580"}}>Eventos por hora</span></div>
-                <div style={{display:"flex",gap:8}}>{[["1T","#2F6FB3"],["2T","#2F6FB3"],["3T","#6B2DA8"]].map(function(t){return<span key={t[0]} style={{fontSize:9,fontWeight:600,color:t[1],background:t[1]+"18",border:"1px solid "+t[1]+"30",borderRadius:99,padding:"2px 8px"}}>{t[0]}</span>;})}</div>
+                <div style={{display:"flex",gap:8}}>{[["1T","#1E8A64"],["2T","#2F6FB3"],["3T","#6B2DA8"]].map(function(t){return<span key={t[0]} style={{fontSize:9,fontWeight:600,color:t[1],background:t[1]+"18",border:"1px solid "+t[1]+"30",borderRadius:99,padding:"2px 8px"}}>{t[0]}</span>;})}</div>
               </div>
               <div style={{padding:"16px 20px"}}>
                 {byHora.map(function(x,i){var pct=(x.n/mxH)*100;var tc=turnoColor[horaToTurno(x.h)]||"#2F6FB3";var domTipo="N/D";var domCount=0;Object.keys(x.tipos).forEach(function(t){if(x.tipos[t]>domCount){domCount=x.tipos[t];domTipo=t;}});return(
@@ -12820,7 +12820,7 @@ function replaceMetaFiles(nextFiles){
                   </div>
                 );})}
                 <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #EEECEA",display:"flex",gap:16,flexWrap:"wrap"}}>
-                  <span style={{fontSize:10,color:"#8A8580"}}>Turnos:</span><span style={{fontSize:10,color:"#2F6FB3",fontWeight:600}}>1T 06:00-15:14</span><span style={{fontSize:10,color:"#2F6FB3",fontWeight:600}}>2T 15:15-23:59</span><span style={{fontSize:10,color:"#6B2DA8",fontWeight:600}}>3T 00:00-05:59</span>
+                  <span style={{fontSize:10,color:"#8A8580"}}>Turnos:</span><span style={{fontSize:10,color:"#1E8A64",fontWeight:600}}>1T 06:00-15:14</span><span style={{fontSize:10,color:"#2F6FB3",fontWeight:600}}>2T 15:15-23:59</span><span style={{fontSize:10,color:"#6B2DA8",fontWeight:600}}>3T 00:00-05:59</span>
                 </div>
                 <div style={{marginTop:10,background:"#F0F5EE",border:"1px solid #C8D8B8",borderRadius:8,padding:"8px 12px"}}><span style={{fontSize:10.5,color:"#2F6FB3",fontWeight:600}}>Pico: {byHora.reduce(function(a,b){return a.n>=b.n?a:b;},byHora[0]).h}:00h - {byHora.length} horas con actividad</span></div>
               </div>
@@ -12835,7 +12835,7 @@ function replaceMetaFiles(nextFiles){
               </div>
               <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:220}}>
-                  <thead><tr><th style={{padding:"8px 12px",textAlign:"center",background:"#F8F7F5",fontWeight:600,color:"#8A8580",fontSize:10,textTransform:"uppercase",borderBottom:"1.5px solid #DDDBD7",width:48}}>Hora</th>{[["3T","#6B2DA8"],["1T","#1F3A5F"],["2T","#2F6FB3"]].map(function(t){return<th key={t[0]} style={{padding:"8px 14px",textAlign:"center",background:"#F8F7F5",fontWeight:700,color:t[1],fontSize:11,borderBottom:"1.5px solid #DDDBD7"}}>{t[0]}</th>;})}</tr></thead>
+                  <thead><tr><th style={{padding:"8px 12px",textAlign:"center",background:"#F8F7F5",fontWeight:600,color:"#8A8580",fontSize:10,textTransform:"uppercase",borderBottom:"1.5px solid #DDDBD7",width:48}}>Hora</th>{[["3T","#6B2DA8"],["1T","#1E8A64"],["2T","#2F6FB3"]].map(function(t){return<th key={t[0]} style={{padding:"8px 14px",textAlign:"center",background:"#F8F7F5",fontWeight:700,color:t[1],fontSize:11,borderBottom:"1.5px solid #DDDBD7"}}>{t[0]}</th>;})}</tr></thead>
                   <tbody>
                     {hmRows.map(function(row,i){
                       function cell(val,bc){var pct=val/hmMax;var bg=val===0?"#F8F7F5":"rgba("+(bc==="green"?"30,92,72":bc==="purple"?"107,45,168":"41,82,163")+","+(0.1+pct*0.85)+")";var tc2=val===0?"#DDDBD7":pct>0.5?"#fff":(bc==="green"?"#1F3A5F":bc==="purple"?"#6B2DA8":"#2F6FB3");return<td style={{padding:"7px 14px",textAlign:"center",background:bg,color:tc2,fontWeight:val>0?700:400,fontSize:12,borderBottom:"1px solid #EEECEA"}}>{val>0?val:""}</td>;}
@@ -12845,7 +12845,7 @@ function replaceMetaFiles(nextFiles){
                 </table>
               </div>
               <div style={{padding:"10px 20px",borderTop:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",gap:16,flexWrap:"wrap"}}>
-                {[{label:"3T",val:hmRows.reduce(function(a,r){return a+r.t3;},0),c:"#6B2DA8"},{label:"1T",val:hmRows.reduce(function(a,r){return a+r.t1;},0),c:"#1F3A5F"},{label:"2T",val:hmRows.reduce(function(a,r){return a+r.t2;},0),c:"#2F6FB3"}].map(function(s){return<div key={s.label} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:2,background:s.c}}/><span style={{fontSize:10.5,fontWeight:600,color:s.c}}>{s.label}</span><span style={{fontSize:10.5,color:"#8A8580"}}>{s.val} evento{s.val!==1?"s":""}</span></div>;})}</div>
+                {[{label:"3T",val:hmRows.reduce(function(a,r){return a+r.t3;},0),c:"#6B2DA8"},{label:"1T",val:hmRows.reduce(function(a,r){return a+r.t1;},0),c:"#1E8A64"},{label:"2T",val:hmRows.reduce(function(a,r){return a+r.t2;},0),c:"#2F6FB3"}].map(function(s){return<div key={s.label} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:2,background:s.c}}/><span style={{fontSize:10.5,fontWeight:600,color:s.c}}>{s.label}</span><span style={{fontSize:10.5,color:"#8A8580"}}>{s.val} evento{s.val!==1?"s":""}</span></div>;})}</div>
             </div>
           )}
 
