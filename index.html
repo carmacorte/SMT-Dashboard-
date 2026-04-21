@@ -5793,6 +5793,15 @@ function App() {
           try { await traceOpsSafeCloudCall(function(){ return refreshCloudRcca(); }, 5000); } catch(_) {}
           await new Promise(function(resolve){ setTimeout(resolve, 150); });
           startRealtime(user);
+          try {
+            setTimeout(function(){
+              try {
+                if (cloudRetryHookRef.current && typeof cloudRetryHookRef.current === "function") {
+                  cloudRetryHookRef.current();
+                }
+              } catch(_) {}
+            }, 800);
+          } catch(_) {}
         } else {
           stopRealtime();
           setCloudStatus("Sin sesion en nube");
@@ -5843,9 +5852,22 @@ function App() {
       }
     }
 
-    cloudRetryHookRef.current = function(){
-      try { setCloudStatus("Reintentando conexion..."); } catch(_) {}
-      attemptCloudBootstrap();
+    cloudRetryHookRef.current = async function(){
+      try {
+        setCloudStatus("Reintentando conexion...");
+        var user = await window.TraceOpsCloud.getUser();
+        if (!user) {
+          setCloudStatus("Sin sesion en nube");
+          setRealtimeStatus("LOCAL_ONLY");
+          return;
+        }
+        await refreshCloudRcca();
+        try { startRealtime(user); } catch(_) {}
+        setCloudStatus("Sincronizado");
+        setRealtimeStatus("CONNECTED");
+      } catch (e) {
+        traceOpsTriggerCloudCooldown("Reintento fallido");
+      }
     };
 
     attemptCloudBootstrap();
