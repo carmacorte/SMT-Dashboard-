@@ -12099,126 +12099,139 @@ function replaceMetaFiles(nextFiles){
   }
 
   function renderMaintenanceCapture(){
-    try {
-      var mf = maintenanceForm || traceOpsEmptyMaintenanceRecord();
-      var mobile = false;
-      try { mobile = !!isMobile(); } catch(_) { mobile = (window.innerWidth || 0) <= 900; }
-      var gridCols = mobile ? "1fr" : "repeat(3,minmax(0,1fr))";
-      var labelStyle = {display:"block",fontSize:"10px",fontWeight:700,textTransform:"uppercase",color:"#6A6560",marginBottom:4};
-      var cardPad = mobile ? "14px" : "18px 20px";
-      var fullSpan = {gridColumn: mobile ? "auto" : "span 3"};
-      return (
-        <div className="tcard">
-          <div className="tcard-hdr">
-            <h3>Maintenance Record Capture</h3>
-          </div>
-          <div style={{padding:cardPad}}>
-            <div style={{display:"grid",gridTemplateColumns:gridCols,gap:12}}>
-              <div>
-                <label style={labelStyle}>Date</label>
-                <input type="date" value={mf.date||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {date:e.target.value}));}} className="api-input"/>
-              </div>
-              <div>
-                <label style={labelStyle}>Time</label>
-                <input type="time" value={mf.time||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {time:e.target.value}));}} className="api-input"/>
-              </div>
-              <div>
-                <label style={labelStyle}>Shift</label>
-                <select value={mf.shift||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {shift:e.target.value}));}} className="api-input">
-                  <option value="">Select</option>
-                  <option value="1st">1st</option>
-                  <option value="2nd">2nd</option>
-                  <option value="3rd">3rd</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={labelStyle}>Line</label>
-                <input type="text" value={mf.line||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {line:e.target.value}));}} className="api-input"/>
-              </div>
-              <div>
-                <label style={labelStyle}>Machine</label>
-                <input type="text" value={mf.machine||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {machine:e.target.value}));}} className="api-input"/>
-              </div>
-              <div>
-                <label style={labelStyle}>Station</label>
-                <input type="text" value={mf.station||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {station:e.target.value}));}} className="api-input"/>
-              </div>
-
-              <div>
-                <label style={labelStyle}>Asset ID</label>
-                <input type="text" value={mf.assetId||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {assetId:e.target.value}));}} className="api-input"/>
-              </div>
-              <div>
-                <label style={labelStyle}>Part Replaced</label>
-                <input type="text" value={mf.partReplaced||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {partReplaced:e.target.value}));}} className="api-input"/>
-              </div>
-              <div>
-                <label style={labelStyle}>Part Number</label>
-                <input type="text" value={mf.partNumber||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {partNumber:e.target.value}));}} className="api-input"/>
-              </div>
-
-              <div style={fullSpan}>
-                <label style={labelStyle}>Symptom</label>
-                <textarea value={mf.symptom||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {symptom:e.target.value}));}} className="api-input" rows="3"></textarea>
-              </div>
-
-              <div>
-                <label style={labelStyle}>Failure Mode</label>
-                <input type="text" value={mf.failureMode||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {failureMode:e.target.value}));}} className="api-input"/>
-              </div>
-              <div>
-                <label style={labelStyle}>Technician</label>
-                <input type="text" value={mf.technician||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {technician:e.target.value}));}} className="api-input"/>
-              </div>
-              <div>
-                <label style={labelStyle}>Downtime (min)</label>
-                <input type="number" value={mf.downtimeMin||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {downtimeMin:e.target.value}));}} className="api-input"/>
-              </div>
-
-              <div style={fullSpan}>
-                <label style={labelStyle}>Action Taken</label>
-                <textarea value={mf.actionTaken||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {actionTaken:e.target.value}));}} className="api-input" rows="3"></textarea>
-              </div>
-
-              <div>
-                <label style={labelStyle}>Recurrence</label>
-                <select value={mf.recurrence||"No"} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {recurrence:e.target.value}));}} className="api-input">
-                  <option value="No">No</option>
-                  <option value="Yes">Yes</option>
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Status</label>
-                <select value={mf.status||"Open"} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {status:e.target.value}));}} className="api-input">
-                  <option value="Open">Open</option>
-                  <option value="Monitoring">Monitoring</option>
-                  <option value="Closed">Closed</option>
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Linked RCCA</label>
-                <input type="text" value={mf.linkedRccaId||""} onChange={function(e){setMaintenanceForm(Object.assign({}, mf, {linkedRccaId:e.target.value}));}} className="api-input"/>
-              </div>
-            </div>
-
-            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
-              <button className="saas-header-btn primary" onClick={saveMaintenanceRecord}>Save Record</button>
-              <button className="saas-header-btn" onClick={function(){setMaintenanceForm(traceOpsEmptyMaintenanceRecord());}}>Reset</button>
-            </div>
-          </div>
-        </div>
-      );
-    } catch (err) {
-      console.error("Maintenance capture render error:", err);
-      return (
-        <div className="tcard">
-          <div className="tcard-hdr"><h3>Maintenance Record Capture</h3></div>
-          <div style={{padding:"18px 20px",color:"#C0392B",fontSize:12}}>Capture section could not be rendered.</div>
-        </div>
-      );
+    var mf = maintenanceForm || {
+      date: new Date().toISOString().slice(0,10),
+      time: "",
+      shift: "",
+      line: "",
+      machine: "",
+      station: "",
+      assetId: "",
+      partReplaced: "",
+      partNumber: "",
+      symptom: "",
+      failureMode: "",
+      technician: "",
+      downtimeMin: "",
+      actionTaken: "",
+      recurrence: "No",
+      status: "Open",
+      linkedRccaId: ""
+    };
+    var mobile = false;
+    try { mobile = (window.innerWidth || 0) <= 900; } catch(_) { mobile = false; }
+    var labelStyle = {display:"block",fontSize:"10px",fontWeight:700,textTransform:"uppercase",color:"#6A6560",marginBottom:4};
+    var inputStyle = {width:"100%"};
+    var cardPad = mobile ? "14px" : "18px 20px";
+    var gridStyle = {display:"grid",gridTemplateColumns:(mobile ? "1fr" : "repeat(3,minmax(0,1fr))"),gap:12};
+    var fullSpan = mobile ? {} : {gridColumn:"span 3"};
+    function updateMaintenanceField(key, value){
+      setMaintenanceForm(Object.assign({}, mf, (function(){ var o={}; o[key]=value; return o; })()));
     }
+    return (
+      <div className="tcard">
+        <div className="tcard-hdr">
+          <h3>Maintenance Record Capture</h3>
+        </div>
+        <div style={{padding:cardPad}}>
+          <div style={gridStyle}>
+            <div>
+              <label style={labelStyle}>Date</label>
+              <input style={inputStyle} type="date" value={mf.date||""} onChange={function(e){updateMaintenanceField("date", e.target.value);}} className="api-input" />
+            </div>
+            <div>
+              <label style={labelStyle}>Time</label>
+              <input style={inputStyle} type="time" value={mf.time||""} onChange={function(e){updateMaintenanceField("time", e.target.value);}} className="api-input" />
+            </div>
+            <div>
+              <label style={labelStyle}>Shift</label>
+              <select style={inputStyle} value={mf.shift||""} onChange={function(e){updateMaintenanceField("shift", e.target.value);}} className="api-input">
+                <option value="">Select</option>
+                <option value="1st">1st</option>
+                <option value="2nd">2nd</option>
+                <option value="3rd">3rd</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Line</label>
+              <input style={inputStyle} type="text" value={mf.line||""} onChange={function(e){updateMaintenanceField("line", e.target.value);}} className="api-input" />
+            </div>
+            <div>
+              <label style={labelStyle}>Machine</label>
+              <input style={inputStyle} type="text" value={mf.machine||""} onChange={function(e){updateMaintenanceField("machine", e.target.value);}} className="api-input" />
+            </div>
+            <div>
+              <label style={labelStyle}>Station</label>
+              <input style={inputStyle} type="text" value={mf.station||""} onChange={function(e){updateMaintenanceField("station", e.target.value);}} className="api-input" />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Asset ID</label>
+              <input style={inputStyle} type="text" value={mf.assetId||""} onChange={function(e){updateMaintenanceField("assetId", e.target.value);}} className="api-input" />
+            </div>
+            <div>
+              <label style={labelStyle}>Part Replaced</label>
+              <input style={inputStyle} type="text" value={mf.partReplaced||""} onChange={function(e){updateMaintenanceField("partReplaced", e.target.value);}} className="api-input" />
+            </div>
+            <div>
+              <label style={labelStyle}>Part Number</label>
+              <input style={inputStyle} type="text" value={mf.partNumber||""} onChange={function(e){updateMaintenanceField("partNumber", e.target.value);}} className="api-input" />
+            </div>
+
+            <div style={fullSpan}>
+              <label style={labelStyle}>Symptom</label>
+              <textarea style={inputStyle} value={mf.symptom||""} onChange={function(e){updateMaintenanceField("symptom", e.target.value);}} className="api-input" rows="3"></textarea>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Failure Mode</label>
+              <input style={inputStyle} type="text" value={mf.failureMode||""} onChange={function(e){updateMaintenanceField("failureMode", e.target.value);}} className="api-input" />
+            </div>
+            <div>
+              <label style={labelStyle}>Technician</label>
+              <input style={inputStyle} type="text" value={mf.technician||""} onChange={function(e){updateMaintenanceField("technician", e.target.value);}} className="api-input" />
+            </div>
+            <div>
+              <label style={labelStyle}>Downtime (min)</label>
+              <input style={inputStyle} type="number" value={mf.downtimeMin||""} onChange={function(e){updateMaintenanceField("downtimeMin", e.target.value);}} className="api-input" />
+            </div>
+
+            <div style={fullSpan}>
+              <label style={labelStyle}>Action Taken</label>
+              <textarea style={inputStyle} value={mf.actionTaken||""} onChange={function(e){updateMaintenanceField("actionTaken", e.target.value);}} className="api-input" rows="3"></textarea>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Recurrence</label>
+              <select style={inputStyle} value={mf.recurrence||"No"} onChange={function(e){updateMaintenanceField("recurrence", e.target.value);}} className="api-input">
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Status</label>
+              <select style={inputStyle} value={mf.status||"Open"} onChange={function(e){updateMaintenanceField("status", e.target.value);}} className="api-input">
+                <option value="Open">Open</option>
+                <option value="Monitoring">Monitoring</option>
+                <option value="Closed">Closed</option>
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Linked RCCA</label>
+              <input style={inputStyle} type="text" value={mf.linkedRccaId||""} onChange={function(e){updateMaintenanceField("linkedRccaId", e.target.value);}} className="api-input" />
+            </div>
+          </div>
+
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
+            <button className="saas-header-btn primary" onClick={saveMaintenanceRecord}>Save Record</button>
+            <button className="saas-header-btn" onClick={function(){setMaintenanceForm(traceOpsEmptyMaintenanceRecord());}}>Reset</button>
+          </div>
+        </div>
+      </div>
+    );
   }
+
 
 
   function renderMaintenanceLog(){
