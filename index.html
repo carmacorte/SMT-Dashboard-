@@ -5006,6 +5006,64 @@ function App() {
   var dragArr = _useState(false); var drag = dragArr[0]; var setDrag = dragArr[1];
   var sbArr = _useState(window.innerWidth > 900); var sidebarOpen = sbArr[0]; var setSidebarOpen = sbArr[1];
   var langArr = _useState(localStorage.getItem("traceops_lang") || "en"); var lang = langArr[0]; var setLang = langArr[1];
+  var MAINT_KEY = "traceops_maintenance_log_v1";
+
+  var maintenanceTabArr = _useState("log"); 
+  var maintenanceTab = maintenanceTabArr[0]; 
+  var setMaintenanceTab = maintenanceTabArr[1];
+
+  var maintenanceRecordsArr = _useState([]);
+  var maintenanceRecords = maintenanceRecordsArr[0];
+  var setMaintenanceRecords = maintenanceRecordsArr[1];
+
+  var maintenanceFilterArr = _useState({
+    line: "ALL",
+    machine: "ALL",
+    status: "ALL",
+    recurrence: "ALL",
+    from: "",
+    to: ""
+  });
+  var maintenanceFilters = maintenanceFilterArr[0];
+  var setMaintenanceFilters = maintenanceFilterArr[1];
+
+  function traceOpsEmptyMaintenanceRecord(){
+    return {
+      id: "",
+      date: new Date().toISOString().slice(0,10),
+      time: "",
+      shift: "",
+      line: "",
+      machine: "",
+      station: "",
+      equipmentType: "",
+      assetId: "",
+      partReplaced: "",
+      partNumber: "",
+      supplier: "",
+      symptom: "",
+      failureMode: "",
+      rootCauseNote: "",
+      actionTaken: "",
+      technician: "",
+      verifiedBy: "",
+      downtimeMin: "",
+      recurrence: "No",
+      status: "Open",
+      sourceType: "Manual",
+      sourceRef: "",
+      linkedEventId: "",
+      linkedRccaId: "",
+      impactToQuality: "No",
+      impactToOutput: "No",
+      evidence: [],
+      notes: ""
+    };
+  }
+
+  var maintenanceFormArr = _useState(traceOpsEmptyMaintenanceRecord());
+  var maintenanceForm = maintenanceFormArr[0];
+  var setMaintenanceForm = maintenanceFormArr[1];
   var isMobile = function(){ return window.innerWidth <= 900; };
   var translations = {
     en: {
@@ -5018,10 +5076,10 @@ function App() {
       cloudRcca: "RCCA Cloud",
       localRcca: "Local RCCA",
       heroEyebrow: "Operational Intelligence for Manufacturing Teams",
-      heroSubtitle: "Supervisors can export end-of-shift chats in minutes and turn scattered floor updates into structured incidents, visible priorities, reusable RCCA memory, and 8D-ready technical drafts — without sacrificing productive floor time.",
+      heroSubtitle: "Supervisors can export end-of-shift chats in minutes and turn scattered floor updates into structured incidents, visible priorities, reusable RCCA memory, maintenance history logs, and 8D-ready technical drafts — without sacrificing productive floor time.",
       contextKicker: "Built from inside the operation",
       contextTitle: "Your operation already has the information. It just does not stay together.",
-      contextSubtitle: "Upload a WhatsApp export, email thread, or operational message history. TraceOps helps supervisors convert scattered operational updates into structured incidents, visible priorities, reusable RCCA memory, and 8D-ready technical drafts.",
+      contextSubtitle: "Upload a WhatsApp export, email thread, or operational message history. TraceOps helps supervisors convert scattered operational updates into structured incidents, visible priorities, reusable RCCA memory, maintenance history logs, and 8D-ready technical drafts.",
       loadZip: "Load ZIP now",
       uploadTitle: "Start with your WhatsApp export",
       uploadSubtitle: "Drop the ZIP here or click to select it",
@@ -5041,10 +5099,10 @@ function App() {
       cloudRcca: "RCCA en nube",
       localRcca: "RCCA local",
       heroEyebrow: "Inteligencia operativa para equipos de manufactura",
-      heroSubtitle: "Los supervisores pueden exportar chats de fin de turno en minutos y convertir actualizaciones dispersas del piso en incidentes estructurados, prioridades visibles, memoria RCCA reutilizable y borradores técnicos listos para 8D, sin sacrificar tiempo productivo.",
+      heroSubtitle: "Los supervisores pueden exportar chats de fin de turno en minutos y convertir actualizaciones dispersas del piso en incidentes estructurados, prioridades visibles, memoria RCCA reutilizable, bitácoras de mantenimiento y borradores técnicos listos para 8D, sin sacrificar tiempo productivo.",
       contextKicker: "Construido desde adentro de la operación",
       contextTitle: "Tu operación ya tiene la información. Lo que falta es mantenerla unida.",
-      contextSubtitle: "Carga una exportación de WhatsApp, un hilo de correo o un historial de mensajes operativos. TraceOps ayuda a los supervisores a convertir actualizaciones operativas dispersas en incidentes estructurados, prioridades visibles, memoria RCCA reutilizable y borradores técnicos listos para 8D.",
+      contextSubtitle: "Carga una exportación de WhatsApp, un hilo de correo o un historial de mensajes operativos. TraceOps ayuda a los supervisores a convertir actualizaciones operativas dispersas en incidentes estructurados, prioridades visibles, memoria RCCA reutilizable, bitácoras de mantenimiento y borradores técnicos listos para 8D.",
       loadZip: "Cargar ZIP ahora",
       uploadTitle: "Comenzar con export de WhatsApp",
       uploadSubtitle: "Suelta aquí el ZIP o haz clic para seleccionarlo",
@@ -5064,10 +5122,10 @@ function App() {
       cloudRcca: "云端 RCCA",
       localRcca: "本地 RCCA",
       heroEyebrow: "面向制造团队的运营智能",
-      heroSubtitle: "主管可以在几分钟内导出交班聊天，并将分散的现场更新转化为结构化事件、可见优先级、可复用的 RCCA 记忆以及可直接用于 8D 的技术草稿，同时不牺牲产线有效时间。",
+      heroSubtitle: "主管可以在几分钟内导出交班聊天，并将分散的现场更新转化为结构化事件、可见优先级、可复用的 RCCA 记忆、维护履历日志以及可直接用于 8D 的技术草稿，同时不牺牲产线有效时间。",
       contextKicker: "源自一线运营内部",
       contextTitle: "你的运营已经拥有信息，缺少的是把它们留在一起。",
-      contextSubtitle: "上传 WhatsApp 导出、邮件线程或运营消息记录。TraceOps 帮助主管将分散的运营更新转化为结构化事件、可见优先级、可复用的 RCCA 记忆以及可直接用于 8D 的技术草稿。",
+      contextSubtitle: "上传 WhatsApp 导出、邮件线程或运营消息记录。TraceOps 帮助主管将分散的运营更新转化为结构化事件、可见优先级、可复用的 RCCA 记忆、维护履历日志以及可直接用于 8D 的技术草稿。",
       loadZip: "立即加载 ZIP",
       uploadTitle: "从 WhatsApp 导出开始",
       uploadSubtitle: "将 ZIP 拖到这里，或点击进行选择",
@@ -10421,7 +10479,7 @@ function exportEightdPpt(draft) {
   var mxH=Math.max.apply(null,byHora.map(function(x){return x.n;}).concat([1]));
   var tipoColor={Calidad:"#2F6FB3",Proceso:"#2F6FB3",Material:"#B87820",Sistema:"#6B2DA8",Produccion:"#1A7A3C",Seguridad:"#C0392B","N/D":"#8A8580"};
   function horaToTurno(hh){var h=parseInt(hh);if(h>=6&&h<15)return"1T";if(h>=15)return"2T";return"3T";}
-  var turnoColor={"1T":"#1E8A64","2T":"#2F6FB3","3T":"#6B2DA8"};
+  var turnoColor={"1T":"#2F6FB3","2T":"#2F6FB3","3T":"#6B2DA8"};
   var hmMap={};
   ev.forEach(function(e){
     if(!e.hora)return;var hParsed=parseInt(e.hora.split(":")[0]);if(isNaN(hParsed))return;
@@ -10463,81 +10521,20 @@ function exportEightdPpt(draft) {
     );
   }
 
-  function traceOpsCurrentRccaDateStampLocal(){
-    var d = new Date();
-    var mm = String((d.getMonth() || 0) + 1).padStart(2, "0");
-    var dd = String(d.getDate() || 1).padStart(2, "0");
-    var yyyy = String(d.getFullYear() || "");
-    return mm + dd + yyyy;
-  }
-
-  function traceOpsNormalizeBuCodeLocal(value){
-    var raw = String(value || "").toUpperCase();
-    var compact = raw.replace(/[^A-Z]/g, "");
-    if (!compact) return "";
-    if (compact === "FIELDWORK" || compact === "FIELDWORKS" || compact === "FW" || compact === "FWBU") return "FWBU";
-    if (compact === "UABU" || compact === "UA") return "UABU";
-    if (compact === "CVEBU" || compact === "CVE") return "CVEBU";
-    if (compact === "CRBU" || compact === "CR") return "CRBU";
-    if (compact === "NGFWBU" || compact === "NGFW") return "NGFWBU";
-    return compact.slice(0, 8);
-  }
-
-  function traceOpsInferProductCodeLocal(text){
-    var raw = String(text || "").toUpperCase();
-    if (!raw) return "RC";
-    if (/WESTMINSTER/.test(raw) || /WE[A-Z0-9-]*/.test(raw)) return "WE";
-    if (/WARWICK/.test(raw) || /WA[A-Z0-9-]*/.test(raw)) return "WA";
-    if (/LANCER/.test(raw) || /LC[A-Z0-9-]*/.test(raw)) return "LC";
-    var compact = raw.replace(/[^A-Z0-9]/g, "");
-    return compact.slice(0, 2) || "RC";
-  }
-
-  function traceOpsInferBuCodeLocal(text){
-    var raw = String(text || "").toUpperCase();
-    if (!raw) return "";
-    if (/FIELD\s*WORKS?/.test(raw) || /FWBU/.test(raw)) return "FWBU";
-    if (/UABU/.test(raw)) return "UABU";
-    if (/CVEBU/.test(raw) || /CVE/.test(raw)) return "CVEBU";
-    if (/CRBU/.test(raw) || /CR/.test(raw)) return "CRBU";
-    if (/NGFWBU/.test(raw) || /NGFW/.test(raw)) return "NGFWBU";
-    return "";
-  }
-
-  function traceOpsBuildRccaSuffixLocal(baseId){
-    var used = {};
-    (Array.isArray(rccaList) ? rccaList : []).forEach(function(item){
-      var id = String((item && item.rcca_id) || "").trim().toUpperCase();
-      if (!id || id.indexOf(baseId + "-") !== 0) return;
-      var suffix = id.slice((baseId + "-").length);
-      if (/^[0-9][A-Z]$/.test(suffix)) used[suffix] = true;
-    });
-    var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    for (var tens = 0; tens <= 9; tens++) {
-      for (var i = 0; i < letters.length; i++) {
-        var candidate = String(tens) + letters.charAt(i);
-        if (!used[candidate]) return candidate;
-      }
-    }
-    return "9Z";
-  }
-
   function genRccaId(eventIds,evList){
-    var firstId = eventIds && eventIds.length > 0 ? eventIds[0] : null;
-    var evData = firstId ? (evList || []).find(function(e){ return e.id === firstId; }) : null;
-    var contextParts = [
-      String((evData && evData.modelo) || ""),
-      String((evData && evData.evento_detectado_full) || (evData && evData.evento_detectado) || ""),
-      String((evData && evData.engineer_findings_full) || (evData && evData.engineer_findings) || ""),
-      String((evData && evData.linea_estacion) || ""),
-      String((evData && evData.tipo_evento) || "")
-    ];
-    var contextText = contextParts.join(" ").trim();
-    var productCode = traceOpsInferProductCodeLocal(contextText || String((evData && evData.modelo) || ""));
-    var buCode = traceOpsNormalizeBuCodeLocal(traceOpsInferBuCodeLocal(contextText) || "FWBU") || "FWBU";
-    var dateStamp = traceOpsCurrentRccaDateStampLocal();
-    var baseId = [productCode, buCode, dateStamp].join("-");
-    return baseId + "-" + traceOpsBuildRccaSuffixLocal(baseId);
+    var parts=["RCCA"];
+    var firstId=eventIds&&eventIds.length>0?eventIds[0]:null;
+    if(firstId){
+      parts.push(firstId.replace("EVT-","E").replace("-",""));
+      var evData=evList.find(function(e){return e.id===firstId;});
+      if(evData){
+        if(evData.defecto_smt&&evData.defecto_smt!=="N/A") parts.push(evData.defecto_smt.split(" ")[0].slice(0,6).toUpperCase());
+        else if(evData.tipo_evento) parts.push(evData.tipo_evento.slice(0,4).toUpperCase());
+        if(evData.linea_estacion&&evData.linea_estacion!=="N/D") parts.push(evData.linea_estacion.replace(/[^A-Za-z0-9]/g,"").slice(0,5).toUpperCase());
+        if(evData.fecha){var dp=evData.fecha.split("/");if(dp.length===3)parts.push(dp[2].slice(2)+dp[1]+dp[0]);}
+      }
+    }else{parts.push(String(Date.now()).slice(-6));}
+    return parts.join("-");
   }
 
 
@@ -11868,6 +11865,452 @@ function replaceMetaFiles(nextFiles){
     );
   }
 
+  React.useEffect(function(){
+    try {
+      var raw = localStorage.getItem(MAINT_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setMaintenanceRecords(parsed);
+    } catch(_) {}
+  }, []);
+
+  React.useEffect(function(){
+    try { localStorage.setItem(MAINT_KEY, JSON.stringify(maintenanceRecords || [])); } catch(_) {}
+  }, [maintenanceRecords]);
+
+  function traceOpsGenerateMaintenanceId(){
+    var now = new Date();
+    var y = now.getFullYear();
+    var m = String(now.getMonth()+1).padStart(2,"0");
+    var d = String(now.getDate()).padStart(2,"0");
+    var hh = String(now.getHours()).padStart(2,"0");
+    var mm = String(now.getMinutes()).padStart(2,"0");
+    var ss = String(now.getSeconds()).padStart(2,"0");
+    return "MNT-" + y + m + d + "-" + hh + mm + ss;
+  }
+
+  function saveMaintenanceRecord(){
+    var row = Object.assign({}, maintenanceForm || {});
+    if (!row.machine && !row.partReplaced && !row.symptom) {
+      alert("Completa al menos Machine, Part Replaced o Symptom.");
+      return;
+    }
+    if (!row.id) row.id = traceOpsGenerateMaintenanceId();
+
+    setMaintenanceRecords(function(prev){
+      var list = Array.isArray(prev) ? prev.slice() : [];
+      var ix = list.findIndex(function(x){ return String(x.id||"") === String(row.id||""); });
+      if (ix >= 0) list[ix] = row;
+      else list.unshift(row);
+      return list;
+    });
+
+    setMaintenanceForm(traceOpsEmptyMaintenanceRecord());
+    setMaintenanceTab("log");
+  }
+
+  function editMaintenanceRecord(id){
+    var row = (maintenanceRecords || []).find(function(x){ return String(x.id||"") === String(id||""); });
+    if (!row) return;
+    setMaintenanceForm(Object.assign({}, row));
+    setMaintenanceTab("capture");
+    try {
+      var el = document.getElementById("maintenance-section");
+      if (el) el.scrollIntoView({behavior:"smooth"});
+    } catch(_) {}
+  }
+
+  function deleteMaintenanceRecord(id){
+    if (!window.confirm("Eliminar este registro de mantenimiento?")) return;
+    setMaintenanceRecords(function(prev){
+      return (prev || []).filter(function(x){ return String(x.id||"") !== String(id||""); });
+    });
+  }
+
+  function clearMaintenanceLog(){
+    if (!window.confirm("Borrar toda la bitácora de mantenimiento?")) return;
+    setMaintenanceRecords([]);
+  }
+
+  function escalateMaintenanceToRcca(row){
+    if (!row) return;
+    setRccaForm({
+      event_ids: row.linkedEventId ? [row.linkedEventId] : [],
+      modelo: row.machine || row.equipmentType || "",
+      linea: row.line || row.station || "",
+      fecha: row.date || new Date().toISOString().slice(0,10),
+      problema: [
+        row.machine ? ("Machine: " + row.machine) : "",
+        row.partReplaced ? ("Part: " + row.partReplaced) : "",
+        row.partNumber ? ("P/N: " + row.partNumber) : "",
+        row.symptom ? ("Symptom: " + row.symptom) : "",
+        row.failureMode ? ("Failure mode: " + row.failureMode) : ""
+      ].filter(Boolean).join(" | ")
+    });
+    try {
+      var el = document.getElementById("rcca-section");
+      if (el) el.scrollIntoView({behavior:"smooth"});
+    } catch(_) {}
+  }
+
+  function filteredMaintenanceRecords(){
+    return (maintenanceRecords || []).filter(function(r){
+      if (maintenanceFilters.line !== "ALL" && String(r.line||"") !== String(maintenanceFilters.line||"")) return false;
+      if (maintenanceFilters.machine !== "ALL" && String(r.machine||"") !== String(maintenanceFilters.machine||"")) return false;
+      if (maintenanceFilters.status !== "ALL" && String(r.status||"") !== String(maintenanceFilters.status||"")) return false;
+      if (maintenanceFilters.recurrence !== "ALL" && String(r.recurrence||"") !== String(maintenanceFilters.recurrence||"")) return false;
+      if (maintenanceFilters.from && String(r.date||"") < String(maintenanceFilters.from)) return false;
+      if (maintenanceFilters.to && String(r.date||"") > String(maintenanceFilters.to)) return false;
+      return true;
+    });
+  }
+
+  function maintenanceUnique(field){
+    var map = {};
+    (maintenanceRecords || []).forEach(function(r){
+      var v = String((r && r[field]) || "").trim();
+      if (v) map[v] = true;
+    });
+    return Object.keys(map).sort();
+  }
+
+  function maintenanceKpis(){
+    var rows = filteredMaintenanceRecords();
+    var totalDowntime = rows.reduce(function(acc, r){
+      return acc + (parseFloat(r.downtimeMin || 0) || 0);
+    }, 0);
+    var recurrentCases = rows.filter(function(r){ return String(r.recurrence||"") === "Yes"; }).length;
+    var openCases = rows.filter(function(r){ return String(r.status||"") === "Open"; }).length;
+    var uniqueMachines = {};
+    rows.forEach(function(r){
+      var m = String(r.machine || "").trim();
+      if (m) uniqueMachines[m] = true;
+    });
+    return {
+      totalEvents: rows.length,
+      totalDowntime: totalDowntime,
+      recurrentCases: recurrentCases,
+      openCases: openCases,
+      uniqueMachines: Object.keys(uniqueMachines).length
+    };
+  }
+
+  async function exportMaintenanceXlsx(){
+    try {
+      await window.ensureExcelTools();
+      var wb = new ExcelJS.Workbook();
+      wb.creator = "TraceOps by SMTintel";
+      wb.created = new Date();
+
+      var ws = wb.addWorksheet("Maintenance_Log");
+      ws.columns = [
+        { header:"ID", key:"id", width:20 },
+        { header:"Date", key:"date", width:14 },
+        { header:"Time", key:"time", width:10 },
+        { header:"Shift", key:"shift", width:10 },
+        { header:"Line", key:"line", width:12 },
+        { header:"Machine", key:"machine", width:18 },
+        { header:"Station", key:"station", width:16 },
+        { header:"EquipmentType", key:"equipmentType", width:16 },
+        { header:"AssetID", key:"assetId", width:16 },
+        { header:"PartReplaced", key:"partReplaced", width:22 },
+        { header:"PartNumber", key:"partNumber", width:18 },
+        { header:"Supplier", key:"supplier", width:16 },
+        { header:"Symptom", key:"symptom", width:30 },
+        { header:"FailureMode", key:"failureMode", width:24 },
+        { header:"ActionTaken", key:"actionTaken", width:30 },
+        { header:"Technician", key:"technician", width:18 },
+        { header:"VerifiedBy", key:"verifiedBy", width:18 },
+        { header:"DowntimeMin", key:"downtimeMin", width:14 },
+        { header:"Recurrence", key:"recurrence", width:12 },
+        { header:"Status", key:"status", width:12 },
+        { header:"ImpactToQuality", key:"impactToQuality", width:16 },
+        { header:"ImpactToOutput", key:"impactToOutput", width:16 },
+        { header:"LinkedRCCA", key:"linkedRccaId", width:20 },
+        { header:"Notes", key:"notes", width:28 }
+      ];
+
+      (filteredMaintenanceRecords() || []).forEach(function(r){
+        ws.addRow(r);
+      });
+
+      ws.getRow(1).font = { name:"Segoe UI", size:10, bold:true };
+      ws.getRow(1).alignment = { vertical:"middle", horizontal:"center" };
+      ws.views = [{state:"frozen",ySplit:1}];
+
+      var buf = await wb.xlsx.writeBuffer();
+      var blob = new Blob([buf], {
+        type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "traceops_maintenance_log_" + new Date().toISOString().slice(0,10) + ".xlsx";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 800);
+    } catch(err) {
+      console.error(err);
+      alert("No se pudo exportar Maintenance Log.");
+    }
+  }
+
+  function renderMaintenanceCapture(){
+    return (
+      <div className="tcard">
+        <div className="tcard-hdr">
+          <h3>Maintenance Record Capture</h3>
+        </div>
+        <div style={{padding:"18px 20px"}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:12}}>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Date</label>
+              <input type="date" value={maintenanceForm.date||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {date:e.target.value}));}} className="api-input"/>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Time</label>
+              <input type="time" value={maintenanceForm.time||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {time:e.target.value}));}} className="api-input"/>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Shift</label>
+              <select value={maintenanceForm.shift||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {shift:e.target.value}));}} className="api-input">
+                <option value="">Select</option>
+                <option value="1st">1st</option>
+                <option value="2nd">2nd</option>
+                <option value="3rd">3rd</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Line</label>
+              <input type="text" value={maintenanceForm.line||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {line:e.target.value}));}} className="api-input"/>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Machine</label>
+              <input type="text" value={maintenanceForm.machine||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {machine:e.target.value}));}} className="api-input"/>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Station</label>
+              <input type="text" value={maintenanceForm.station||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {station:e.target.value}));}} className="api-input"/>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Asset ID</label>
+              <input type="text" value={maintenanceForm.assetId||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {assetId:e.target.value}));}} className="api-input"/>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Part Replaced</label>
+              <input type="text" value={maintenanceForm.partReplaced||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {partReplaced:e.target.value}));}} className="api-input"/>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Part Number</label>
+              <input type="text" value={maintenanceForm.partNumber||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {partNumber:e.target.value}));}} className="api-input"/>
+            </div>
+
+            <div style={{gridColumn:isMobile()?"auto":"span 3"}}>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Symptom</label>
+              <textarea value={maintenanceForm.symptom||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {symptom:e.target.value}));}} className="api-input" rows="2"/>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Failure Mode</label>
+              <input type="text" value={maintenanceForm.failureMode||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {failureMode:e.target.value}));}} className="api-input"/>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Technician</label>
+              <input type="text" value={maintenanceForm.technician||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {technician:e.target.value}));}} className="api-input"/>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Downtime (min)</label>
+              <input type="number" value={maintenanceForm.downtimeMin||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {downtimeMin:e.target.value}));}} className="api-input"/>
+            </div>
+
+            <div style={{gridColumn:isMobile()?"auto":"span 3"}}>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Action Taken</label>
+              <textarea value={maintenanceForm.actionTaken||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {actionTaken:e.target.value}));}} className="api-input" rows="2"/>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Recurrence</label>
+              <select value={maintenanceForm.recurrence||"No"} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {recurrence:e.target.value}));}} className="api-input">
+                <option>No</option>
+                <option>Yes</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Status</label>
+              <select value={maintenanceForm.status||"Open"} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {status:e.target.value}));}} className="api-input">
+                <option>Open</option>
+                <option>Monitoring</option>
+                <option>Closed</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500">Linked RCCA</label>
+              <input type="text" value={maintenanceForm.linkedRccaId||""} onChange={function(e){setMaintenanceForm(Object.assign({}, maintenanceForm, {linkedRccaId:e.target.value}));}} className="api-input"/>
+            </div>
+          </div>
+
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
+            <button className="saas-header-btn primary" onClick={saveMaintenanceRecord}>Save Record</button>
+            <button className="saas-header-btn" onClick={function(){setMaintenanceForm(traceOpsEmptyMaintenanceRecord());}}>Reset</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMaintenanceLog(){
+    var rows = filteredMaintenanceRecords();
+    return (
+      <div className="tcard">
+        <div className="tcard-hdr">
+          <h3>Maintenance History Log</h3>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button className="table-reset-btn" onClick={exportMaintenanceXlsx}>Export XLSX</button>
+            {maintenanceRecords.length>0 && <button className="table-reset-btn" onClick={clearMaintenanceLog}>Clear all</button>}
+          </div>
+        </div>
+
+        <div style={{padding:"12px 16px",borderBottom:"1px solid #EEECEA",background:"#FBFCFE",display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(6,minmax(0,1fr))",gap:10}}>
+          <select className="api-input" value={maintenanceFilters.line} onChange={function(e){setMaintenanceFilters(Object.assign({}, maintenanceFilters, {line:e.target.value}));}}>
+            <option value="ALL">All lines</option>
+            {maintenanceUnique("line").map(function(v){ return <option key={v} value={v}>{v}</option>; })}
+          </select>
+          <select className="api-input" value={maintenanceFilters.machine} onChange={function(e){setMaintenanceFilters(Object.assign({}, maintenanceFilters, {machine:e.target.value}));}}>
+            <option value="ALL">All machines</option>
+            {maintenanceUnique("machine").map(function(v){ return <option key={v} value={v}>{v}</option>; })}
+          </select>
+          <select className="api-input" value={maintenanceFilters.status} onChange={function(e){setMaintenanceFilters(Object.assign({}, maintenanceFilters, {status:e.target.value}));}}>
+            <option value="ALL">All status</option>
+            <option value="Open">Open</option>
+            <option value="Monitoring">Monitoring</option>
+            <option value="Closed">Closed</option>
+          </select>
+          <select className="api-input" value={maintenanceFilters.recurrence} onChange={function(e){setMaintenanceFilters(Object.assign({}, maintenanceFilters, {recurrence:e.target.value}));}}>
+            <option value="ALL">All recurrence</option>
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
+          <input className="api-input" type="date" value={maintenanceFilters.from||""} onChange={function(e){setMaintenanceFilters(Object.assign({}, maintenanceFilters, {from:e.target.value}));}}/>
+          <input className="api-input" type="date" value={maintenanceFilters.to||""} onChange={function(e){setMaintenanceFilters(Object.assign({}, maintenanceFilters, {to:e.target.value}));}}/>
+        </div>
+
+        <div className="tscroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Shift</th>
+                <th>Line</th>
+                <th>Machine</th>
+                <th>Asset ID</th>
+                <th>Part Replaced</th>
+                <th>P/N</th>
+                <th>Symptom</th>
+                <th>Action Taken</th>
+                <th>Technician</th>
+                <th>Downtime</th>
+                <th>Recurrence</th>
+                <th>Status</th>
+                <th>RCCA</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length===0 ? (
+                <tr>
+                  <td colSpan="15" style={{textAlign:"center",padding:"24px 12px",color:"#8A8580"}}>No maintenance records yet.</td>
+                </tr>
+              ) : rows.map(function(row){
+                return (
+                  <tr key={row.id}>
+                    <td>{row.date||""}</td>
+                    <td>{row.shift||""}</td>
+                    <td>{row.line||""}</td>
+                    <td>{row.machine||""}</td>
+                    <td>{row.assetId||""}</td>
+                    <td>{row.partReplaced||""}</td>
+                    <td>{row.partNumber||""}</td>
+                    <td>{row.symptom||""}</td>
+                    <td>{row.actionTaken||""}</td>
+                    <td>{row.technician||""}</td>
+                    <td>{row.downtimeMin ? (row.downtimeMin + " min") : ""}</td>
+                    <td><span className={"badge " + (row.recurrence==="Yes"?"ba":"bb")}>{row.recurrence||"No"}</span></td>
+                    <td><span className={"badge " + (row.status==="Closed"?"bb":(row.status==="Monitoring"?"bm":"ba"))}>{row.status||"Open"}</span></td>
+                    <td>{row.linkedRccaId||"—"}</td>
+                    <td>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        <button className="traceops-material-btn" onClick={function(){editMaintenanceRecord(row.id);}}>Edit</button>
+                        <button className="traceops-material-btn" onClick={function(){escalateMaintenanceToRcca(row);}}>Escalate</button>
+                        <button className="traceops-material-btn" onClick={function(){deleteMaintenanceRecord(row.id);}}>Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMaintenanceDashboard(){
+    var k = maintenanceKpis();
+    return (
+      <div>
+        <div className="traceops-kpi-strip" style={{marginBottom:16}}>
+          <div className="traceops-kpi-card"><div className="traceops-kpi-label">Total events</div><div className="traceops-kpi-value">{k.totalEvents}</div><div className="traceops-kpi-meta"><span>records in filter</span></div></div>
+          <div className="traceops-kpi-card"><div className="traceops-kpi-label">Downtime</div><div className="traceops-kpi-value warn">{k.totalDowntime}</div><div className="traceops-kpi-meta"><span>minutes accumulated</span></div></div>
+          <div className="traceops-kpi-card"><div className="traceops-kpi-label">Recurrent cases</div><div className="traceops-kpi-value fail">{k.recurrentCases}</div><div className="traceops-kpi-meta"><span>flagged Yes</span></div></div>
+          <div className="traceops-kpi-card"><div className="traceops-kpi-label">Open cases</div><div className="traceops-kpi-value info">{k.openCases}</div><div className="traceops-kpi-meta"><span>status open</span></div></div>
+          <div className="traceops-kpi-card"><div className="traceops-kpi-label">Machines</div><div className="traceops-kpi-value pass">{k.uniqueMachines}</div><div className="traceops-kpi-meta"><span>unique affected</span></div></div>
+        </div>
+
+        <div className="tcard">
+          <div className="tcard-hdr"><h3>Maintenance dashboard summary</h3></div>
+          <div style={{padding:"18px 20px",color:"#5F766C",fontSize:12,lineHeight:1.6}}>
+            Este bloque queda listo para crecer a Pareto por máquina, top partes reemplazadas, recurrencia y downtime por línea.
+            En esta fusión inicial ya conserva la bitácora estructurada, filtros y exportación XLSX.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMaintenanceSection(){
+    return (
+      <div id="maintenance-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+        <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+          <div>
+            <h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Maintenance Log</h3>
+            <span style={{fontSize:10,color:"#8A8580"}}>Machine history, part replacements and recurrence tracking</span>
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            <span style={{fontSize:9.5,color:"#2F6FB3",fontWeight:700,background:"#EAF2FF",borderRadius:999,padding:"4px 9px"}}>{maintenanceRecords.length} records</span>
+            <button onClick={function(){setMaintenanceForm(traceOpsEmptyMaintenanceRecord());setMaintenanceTab("capture");}} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:7,padding:"6px 14px",fontSize:11,fontWeight:600,cursor:"pointer"}}>+ New record</button>
+          </div>
+        </div>
+
+        <div className="traceops-tabs" style={{margin:"12px 16px 0"}}>
+          <button className={"traceops-tab"+(maintenanceTab==="log"?" active":"")} onClick={function(){setMaintenanceTab("log");}}>Log</button>
+          <button className={"traceops-tab"+(maintenanceTab==="capture"?" active":"")} onClick={function(){setMaintenanceTab("capture");}}>Capture</button>
+          <button className={"traceops-tab"+(maintenanceTab==="dashboard"?" active":"")} onClick={function(){setMaintenanceTab("dashboard");}}>Dashboard</button>
+        </div>
+
+        <div style={{padding:"12px 16px 16px"}}>
+          {maintenanceTab==="log" && renderMaintenanceLog()}
+          {maintenanceTab==="capture" && renderMaintenanceCapture()}
+          {maintenanceTab==="dashboard" && renderMaintenanceDashboard()}
+        </div>
+      </div>
+    );
+  }
+
   return(
     <div>
       {/* Sidebar */}
@@ -11937,6 +12380,7 @@ function replaceMetaFiles(nextFiles){
             <button className={"sidebar-btn"+(state==="idle"?" active":"")} onClick={function(){if(state!=="idle")reset();if(isMobile())setSidebarOpen(false);window.scrollTo({top:0,behavior:"smooth"});}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Inicio</button>
             <button className={"sidebar-btn"+(state==="done"?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("results-section");if(el){el.scrollIntoView({behavior:"smooth"});}else if(state!=="done"){window.scrollTo({top:0,behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Resultados</button>
             <button className={"sidebar-btn"+(false?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("rcca-section");if(el){el.scrollIntoView({behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>RCCA</button>
+            <button className={"sidebar-btn"+(false?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("maintenance-section");if(el){el.scrollIntoView({behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 7l3-3 3 3-3 3-3-3"/><path d="M2 20l7-7"/><path d="M9 13l3 3"/><path d="M9 13l-3-3"/><path d="M12 16l8-8"/></svg>Maintenance Log</button>
             <button className={"sidebar-btn"+(false?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("eightd-section");if(el){el.scrollIntoView({behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3h6l1 2h4v16H4V5h4l1-2z"/><path d="M9 10h6"/><path d="M9 14h6"/><path d="M9 18h4"/></svg>8D Drafts</button>
           </div>
         </div>
@@ -12868,7 +13312,7 @@ function replaceMetaFiles(nextFiles){
             <div style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
               <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>Timeline de comportamiento de planta</h3><span style={{fontSize:10,color:"#8A8580"}}>Eventos por hora</span></div>
-                <div style={{display:"flex",gap:8}}>{[["1T","#1E8A64"],["2T","#2F6FB3"],["3T","#6B2DA8"]].map(function(t){return<span key={t[0]} style={{fontSize:9,fontWeight:600,color:t[1],background:t[1]+"18",border:"1px solid "+t[1]+"30",borderRadius:99,padding:"2px 8px"}}>{t[0]}</span>;})}</div>
+                <div style={{display:"flex",gap:8}}>{[["1T","#2F6FB3"],["2T","#2F6FB3"],["3T","#6B2DA8"]].map(function(t){return<span key={t[0]} style={{fontSize:9,fontWeight:600,color:t[1],background:t[1]+"18",border:"1px solid "+t[1]+"30",borderRadius:99,padding:"2px 8px"}}>{t[0]}</span>;})}</div>
               </div>
               <div style={{padding:"16px 20px"}}>
                 {byHora.map(function(x,i){var pct=(x.n/mxH)*100;var tc=turnoColor[horaToTurno(x.h)]||"#2F6FB3";var domTipo="N/D";var domCount=0;Object.keys(x.tipos).forEach(function(t){if(x.tipos[t]>domCount){domCount=x.tipos[t];domTipo=t;}});return(
@@ -12881,7 +13325,7 @@ function replaceMetaFiles(nextFiles){
                   </div>
                 );})}
                 <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #EEECEA",display:"flex",gap:16,flexWrap:"wrap"}}>
-                  <span style={{fontSize:10,color:"#8A8580"}}>Turnos:</span><span style={{fontSize:10,color:"#1E8A64",fontWeight:600}}>1T 06:00-15:14</span><span style={{fontSize:10,color:"#2F6FB3",fontWeight:600}}>2T 15:15-23:59</span><span style={{fontSize:10,color:"#6B2DA8",fontWeight:600}}>3T 00:00-05:59</span>
+                  <span style={{fontSize:10,color:"#8A8580"}}>Turnos:</span><span style={{fontSize:10,color:"#2F6FB3",fontWeight:600}}>1T 06:00-15:14</span><span style={{fontSize:10,color:"#2F6FB3",fontWeight:600}}>2T 15:15-23:59</span><span style={{fontSize:10,color:"#6B2DA8",fontWeight:600}}>3T 00:00-05:59</span>
                 </div>
                 <div style={{marginTop:10,background:"#F0F5EE",border:"1px solid #C8D8B8",borderRadius:8,padding:"8px 12px"}}><span style={{fontSize:10.5,color:"#2F6FB3",fontWeight:600}}>Pico: {byHora.reduce(function(a,b){return a.n>=b.n?a:b;},byHora[0]).h}:00h - {byHora.length} horas con actividad</span></div>
               </div>
@@ -12896,7 +13340,7 @@ function replaceMetaFiles(nextFiles){
               </div>
               <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:220}}>
-                  <thead><tr><th style={{padding:"8px 12px",textAlign:"center",background:"#F8F7F5",fontWeight:600,color:"#8A8580",fontSize:10,textTransform:"uppercase",borderBottom:"1.5px solid #DDDBD7",width:48}}>Hora</th>{[["3T","#6B2DA8"],["1T","#1E8A64"],["2T","#2F6FB3"]].map(function(t){return<th key={t[0]} style={{padding:"8px 14px",textAlign:"center",background:"#F8F7F5",fontWeight:700,color:t[1],fontSize:11,borderBottom:"1.5px solid #DDDBD7"}}>{t[0]}</th>;})}</tr></thead>
+                  <thead><tr><th style={{padding:"8px 12px",textAlign:"center",background:"#F8F7F5",fontWeight:600,color:"#8A8580",fontSize:10,textTransform:"uppercase",borderBottom:"1.5px solid #DDDBD7",width:48}}>Hora</th>{[["3T","#6B2DA8"],["1T","#1F3A5F"],["2T","#2F6FB3"]].map(function(t){return<th key={t[0]} style={{padding:"8px 14px",textAlign:"center",background:"#F8F7F5",fontWeight:700,color:t[1],fontSize:11,borderBottom:"1.5px solid #DDDBD7"}}>{t[0]}</th>;})}</tr></thead>
                   <tbody>
                     {hmRows.map(function(row,i){
                       function cell(val,bc){var pct=val/hmMax;var bg=val===0?"#F8F7F5":"rgba("+(bc==="green"?"30,92,72":bc==="purple"?"107,45,168":"41,82,163")+","+(0.1+pct*0.85)+")";var tc2=val===0?"#DDDBD7":pct>0.5?"#fff":(bc==="green"?"#1F3A5F":bc==="purple"?"#6B2DA8":"#2F6FB3");return<td style={{padding:"7px 14px",textAlign:"center",background:bg,color:tc2,fontWeight:val>0?700:400,fontSize:12,borderBottom:"1px solid #EEECEA"}}>{val>0?val:""}</td>;}
@@ -12906,7 +13350,7 @@ function replaceMetaFiles(nextFiles){
                 </table>
               </div>
               <div style={{padding:"10px 20px",borderTop:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",gap:16,flexWrap:"wrap"}}>
-                {[{label:"3T",val:hmRows.reduce(function(a,r){return a+r.t3;},0),c:"#6B2DA8"},{label:"1T",val:hmRows.reduce(function(a,r){return a+r.t1;},0),c:"#1E8A64"},{label:"2T",val:hmRows.reduce(function(a,r){return a+r.t2;},0),c:"#2F6FB3"}].map(function(s){return<div key={s.label} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:2,background:s.c}}/><span style={{fontSize:10.5,fontWeight:600,color:s.c}}>{s.label}</span><span style={{fontSize:10.5,color:"#8A8580"}}>{s.val} evento{s.val!==1?"s":""}</span></div>;})}</div>
+                {[{label:"3T",val:hmRows.reduce(function(a,r){return a+r.t3;},0),c:"#6B2DA8"},{label:"1T",val:hmRows.reduce(function(a,r){return a+r.t1;},0),c:"#1F3A5F"},{label:"2T",val:hmRows.reduce(function(a,r){return a+r.t2;},0),c:"#2F6FB3"}].map(function(s){return<div key={s.label} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:2,background:s.c}}/><span style={{fontSize:10.5,fontWeight:600,color:s.c}}>{s.label}</span><span style={{fontSize:10.5,color:"#8A8580"}}>{s.val} evento{s.val!==1?"s":""}</span></div>;})}</div>
             </div>
           )}
 
@@ -12988,6 +13432,8 @@ function replaceMetaFiles(nextFiles){
               </div>
             </div>
           )}
+
+          {renderMaintenanceSection()}
 
           <div id="rcca-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
             <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
