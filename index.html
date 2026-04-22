@@ -7404,36 +7404,18 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     while (top.length < 3) top.push({label:'Category', items:['Evidence pending']});
     while (bottom.length < 3) bottom.push({label:'Category', items:['Evidence pending']});
 
-    function drawLineSafe(x1, y1, x2, y2, pt){
-      var left = Math.min(x1, x2);
-      var topY = Math.min(y1, y2);
-      slide.addShape(_traceOpsPptxRef.ShapeType.line, {
-        x:left,
-        y:topY,
-        w:Math.abs(x2 - x1),
-        h:Math.abs(y2 - y1),
-        line:{color:'4A90E2', pt:pt || 1.2}
-      });
-    }
-
     var centerY = y + (h / 2);
-    var spineStartX = x + 0.56;
-    var spineEndX = x + w - 0.72;
-    drawLineSafe(spineStartX, centerY, spineEndX - 0.04, centerY, 1.8);
-    slide.addShape(_traceOpsPptxRef.ShapeType.chevron, {x:spineEndX - 0.16, y:centerY - 0.22, w:0.52, h:0.44, line:{color:'4A90E2', pt:1}, fill:{color:'4A90E2'}});
+    slide.addShape(_traceOpsPptxRef.ShapeType.line, {x:x + 0.56, y:centerY, w:w - 1.22, h:0, line:{color:'4A90E2', pt:1.8}});
+    slide.addShape(_traceOpsPptxRef.ShapeType.chevron, {x:x + w - 0.72, y:centerY - 0.22, w:0.52, h:0.44, line:{color:'4A90E2', pt:1}, fill:{color:'4A90E2'}});
 
     var ribs = [1.48, 3.16, 4.84];
     for (var i = 0; i < 3; i++) {
       var topItem = top[i] || {label:'Category', items:['Evidence pending']};
       var bottomItem = bottom[i] || {label:'Category', items:['Evidence pending']};
       var ax = x + ribs[i];
-      var topJointX = ax - 0.68;
-      var topJointY = centerY - 0.64;
-      var bottomJointX = ax - 0.68;
-      var bottomJointY = centerY + 0.64;
 
-      drawLineSafe(ax, centerY, topJointX, topJointY, 1.2);
-      drawLineSafe(ax, centerY, bottomJointX, bottomJointY, 1.2);
+      slide.addShape(_traceOpsPptxRef.ShapeType.line, {x:ax, y:centerY, w:-0.68, h:-0.64, line:{color:'4A90E2', pt:1.2}});
+      slide.addShape(_traceOpsPptxRef.ShapeType.line, {x:ax, y:centerY, w:-0.68, h:0.64, line:{color:'4A90E2', pt:1.2}});
 
       slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:ax - 1.14, y:y + 0.12, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
       slide.addText(traceOpsPptSafe(topItem.label, 26), {x:ax - 1.06, y:y + 0.20, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
@@ -10481,20 +10463,81 @@ function exportEightdPpt(draft) {
     );
   }
 
-  function genRccaId(eventIds,evList){
-    var parts=["RCCA"];
-    var firstId=eventIds&&eventIds.length>0?eventIds[0]:null;
-    if(firstId){
-      parts.push(firstId.replace("EVT-","E").replace("-",""));
-      var evData=evList.find(function(e){return e.id===firstId;});
-      if(evData){
-        if(evData.defecto_smt&&evData.defecto_smt!=="N/A") parts.push(evData.defecto_smt.split(" ")[0].slice(0,6).toUpperCase());
-        else if(evData.tipo_evento) parts.push(evData.tipo_evento.slice(0,4).toUpperCase());
-        if(evData.linea_estacion&&evData.linea_estacion!=="N/D") parts.push(evData.linea_estacion.replace(/[^A-Za-z0-9]/g,"").slice(0,5).toUpperCase());
-        if(evData.fecha){var dp=evData.fecha.split("/");if(dp.length===3)parts.push(dp[2].slice(2)+dp[1]+dp[0]);}
+  function traceOpsCurrentRccaDateStampLocal(){
+    var d = new Date();
+    var mm = String((d.getMonth() || 0) + 1).padStart(2, "0");
+    var dd = String(d.getDate() || 1).padStart(2, "0");
+    var yyyy = String(d.getFullYear() || "");
+    return mm + dd + yyyy;
+  }
+
+  function traceOpsNormalizeBuCodeLocal(value){
+    var raw = String(value || "").toUpperCase();
+    var compact = raw.replace(/[^A-Z]/g, "");
+    if (!compact) return "";
+    if (compact === "FIELDWORK" || compact === "FIELDWORKS" || compact === "FW" || compact === "FWBU") return "FWBU";
+    if (compact === "UABU" || compact === "UA") return "UABU";
+    if (compact === "CVEBU" || compact === "CVE") return "CVEBU";
+    if (compact === "CRBU" || compact === "CR") return "CRBU";
+    if (compact === "NGFWBU" || compact === "NGFW") return "NGFWBU";
+    return compact.slice(0, 8);
+  }
+
+  function traceOpsInferProductCodeLocal(text){
+    var raw = String(text || "").toUpperCase();
+    if (!raw) return "RC";
+    if (/WESTMINSTER/.test(raw) || /WE[A-Z0-9-]*/.test(raw)) return "WE";
+    if (/WARWICK/.test(raw) || /WA[A-Z0-9-]*/.test(raw)) return "WA";
+    if (/LANCER/.test(raw) || /LC[A-Z0-9-]*/.test(raw)) return "LC";
+    var compact = raw.replace(/[^A-Z0-9]/g, "");
+    return compact.slice(0, 2) || "RC";
+  }
+
+  function traceOpsInferBuCodeLocal(text){
+    var raw = String(text || "").toUpperCase();
+    if (!raw) return "";
+    if (/FIELD\s*WORKS?/.test(raw) || /FWBU/.test(raw)) return "FWBU";
+    if (/UABU/.test(raw)) return "UABU";
+    if (/CVEBU/.test(raw) || /CVE/.test(raw)) return "CVEBU";
+    if (/CRBU/.test(raw) || /CR/.test(raw)) return "CRBU";
+    if (/NGFWBU/.test(raw) || /NGFW/.test(raw)) return "NGFWBU";
+    return "";
+  }
+
+  function traceOpsBuildRccaSuffixLocal(baseId){
+    var used = {};
+    (Array.isArray(rccaList) ? rccaList : []).forEach(function(item){
+      var id = String((item && item.rcca_id) || "").trim().toUpperCase();
+      if (!id || id.indexOf(baseId + "-") !== 0) return;
+      var suffix = id.slice((baseId + "-").length);
+      if (/^[0-9][A-Z]$/.test(suffix)) used[suffix] = true;
+    });
+    var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    for (var tens = 0; tens <= 9; tens++) {
+      for (var i = 0; i < letters.length; i++) {
+        var candidate = String(tens) + letters.charAt(i);
+        if (!used[candidate]) return candidate;
       }
-    }else{parts.push(String(Date.now()).slice(-6));}
-    return parts.join("-");
+    }
+    return "9Z";
+  }
+
+  function genRccaId(eventIds,evList){
+    var firstId = eventIds && eventIds.length > 0 ? eventIds[0] : null;
+    var evData = firstId ? (evList || []).find(function(e){ return e.id === firstId; }) : null;
+    var contextParts = [
+      String((evData && evData.modelo) || ""),
+      String((evData && evData.evento_detectado_full) || (evData && evData.evento_detectado) || ""),
+      String((evData && evData.engineer_findings_full) || (evData && evData.engineer_findings) || ""),
+      String((evData && evData.linea_estacion) || ""),
+      String((evData && evData.tipo_evento) || "")
+    ];
+    var contextText = contextParts.join(" ").trim();
+    var productCode = traceOpsInferProductCodeLocal(contextText || String((evData && evData.modelo) || ""));
+    var buCode = traceOpsNormalizeBuCodeLocal(traceOpsInferBuCodeLocal(contextText) || "FWBU") || "FWBU";
+    var dateStamp = traceOpsCurrentRccaDateStampLocal();
+    var baseId = [productCode, buCode, dateStamp].join("-");
+    return baseId + "-" + traceOpsBuildRccaSuffixLocal(baseId);
   }
 
 
