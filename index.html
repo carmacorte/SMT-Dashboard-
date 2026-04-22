@@ -1851,25 +1851,37 @@ window.TraceOpsCloud = (function(){
   }
 
   function getClient(){
-    if (!isConfigured()) return null;
-    if (!window.__traceopsSupabaseClient) {
+    try {
+      if (!window.supabase || typeof window.supabase.createClient !== "function") {
+        console.warn("[TraceOps] Supabase library not available");
+        return null;
+      }
       var c = cfg();
-      window.__traceopsSupabaseClient = window.supabase.createClient(c.url, c.anonKey, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
-        },
-        global: {
-          fetch: function(url, options) {
-            return fetch(url, options).catch(function(err){
-              throw traceOpsNormalizeCloudError(err);
-            });
+      if (!c.enabled || !c.url || !c.anonKey) {
+        console.warn("[TraceOps] Supabase config missing or disabled");
+        return null;
+      }
+      if (!window.__traceopsSupabaseClient) {
+        window.__traceopsSupabaseClient = window.supabase.createClient(c.url, c.anonKey, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+          },
+          global: {
+            fetch: function(url, options) {
+              return fetch(url, options).catch(function(err){
+                throw traceOpsNormalizeCloudError(err);
+              });
+            }
           }
-        }
-      });
+        });
+      }
+      return window.__traceopsSupabaseClient;
+    } catch (err) {
+      console.error("[TraceOps] Supabase init failed:", err);
+      return null;
     }
-    return window.__traceopsSupabaseClient;
   }
 
   async function getUser(){
