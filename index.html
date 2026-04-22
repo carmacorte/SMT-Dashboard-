@@ -6218,14 +6218,14 @@ function App() {
     var line = src.linea || (firstEv && firstEv.linea_estacion) || 'N/D';
     var station = src.estacion_dominante || stations[0] || 'N/D';
     var defect = src.defecto_dominante || defects[0] || 'N/A';
-    var pattern = src.patron_detectado || 'No pattern formally captured yet.';
+    var pattern = src.patron_detectado || 'Pattern under technical review; formal statement pending.';
     var impact = src.alcance_exposicion || impacts[0] || 'Operational and quality impact under review.';
-    var tracePath = linked.length ? linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).join(' -> ') : 'No linked events.';
-    var complaintAnchor = src.problema || src.titulo_corto || (firstEv && (firstEv.evento_detectado_full || firstEv.evento_detectado)) || 'Complaint anchor pending.';
+    var tracePath = linked.length ? linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).join(' -> ') : 'Event linkage pending; case summary used for traceability.';
+    var complaintAnchor = src.problema || src.titulo_corto || (firstEv && (firstEv.evento_detectado_full || firstEv.evento_detectado)) || 'Complaint anchor requires customer-observed symptom.';
     var occurrenceSummary = traceOpsEightdHasText(src.causa_raiz)
-      ? ('Probable occurrence mechanism supported by current evidence: ' + src.causa_raiz)
+      ? ('Confirmed occurrence mechanism based on current evidence: ' + src.causa_raiz)
       : (traceOpsEightdHasText(src.hipotesis)
-          ? ('Working hypothesis under validation: ' + src.hipotesis + ' No confirmed root cause has been validated yet.')
+          ? ('Working hypothesis under validation: ' + src.hipotesis + ' Final occurrence confirmation remains open.')
           : 'Occurrence mechanism is still under investigation; no confirmed root cause is available yet.');
     var escapeSummary = traceOpsEightdHasText(src.escape_point || src.punto_escape)
       ? ('Confirmed escape point: ' + (src.escape_point || src.punto_escape))
@@ -6264,6 +6264,10 @@ function App() {
       lotBatch: src.lot_batch || src.lote_afectado || '',
       serialRange: src.serial_range || src.seriales_afectados || '',
       buildWindow: src.build_window || detectionWindow,
+      skuVersion: src.sku_version || src.sku || '',
+      componentPn: src.component_pn || src.component_part_number || src.part_number || '',
+      supplierLot: src.supplier_lot || src.supplier_batch || '',
+      dateCode: src.date_code || src.datecode || '',
       materialAffected: src.material_afectado || '',
       exposure: src.alcance_exposicion || '',
       customerImpact: src.impacto_cliente || '',
@@ -6569,6 +6573,10 @@ function App() {
     next.data_anchor = next.data_anchor || traceOpsEightdJoinParagraphs([
       model.serialRange ? ('Serial range: ' + model.serialRange) : '',
       model.lotBatch ? ('Lot / batch: ' + model.lotBatch) : '',
+      model.supplierLot ? ('Supplier / lot: ' + model.supplierLot) : '',
+      model.skuVersion ? ('SKU version: ' + model.skuVersion) : '',
+      model.componentPn ? ('Component P/N: ' + model.componentPn) : '',
+      model.dateCode ? ('Date code: ' + model.dateCode) : '',
       model.buildWindow ? ('Build window: ' + model.buildWindow) : '',
       'Line / station: ' + [model.line, model.station].join(' · '),
       'Defect SMT: ' + model.defect,
@@ -6606,11 +6614,16 @@ function App() {
     next.d2_traceability = manual.d2_traceability
       ? (next.d2_traceability || '')
       : traceOpsEightdJoinParagraphs([
-          model.serialRange ? ('Serial range: ' + model.serialRange) : '',
+          model.model && model.model !== 'N/D' ? ('Model: ' + model.model) : '',
+          model.skuVersion ? ('SKU version: ' + model.skuVersion) : '',
+          model.serialRange ? ('Serial / batch: ' + model.serialRange) : '',
           model.lotBatch ? ('Lot / batch: ' + model.lotBatch) : '',
+          model.supplierLot ? ('Supplier / lot: ' + model.supplierLot) : '',
+          model.componentPn ? ('Component P/N: ' + model.componentPn) : '',
+          model.dateCode ? ('Date code: ' + model.dateCode) : '',
           model.buildWindow ? ('Build window: ' + model.buildWindow) : '',
           'Line / station: ' + [model.line || 'N/D', model.station || 'N/D'].join(' · '),
-          'Trace path: ' + (model.tracePath || 'No linked events.')
+          'Trace path: ' + (model.tracePath || 'Event linkage pending; case summary used for traceability.')
         ]);
 
     next.d2_5w2h = manual.d2_5w2h
@@ -6626,11 +6639,11 @@ function App() {
 
     next.bad_part_notes = manual.bad_part_notes
       ? (next.bad_part_notes || '')
-      : (next.bad_part_notes || 'Incorrect setup / wrong installed condition.');
+      : (next.bad_part_notes || ('Observed bad condition: ' + (model.complaintAnchor || model.defect || 'installed-state deviation under review.')));
 
     next.good_part_notes = manual.good_part_notes
       ? (next.good_part_notes || '')
-      : (next.good_part_notes || 'Reference condition with correct P/N, correct feeder position, and expected installed state.');
+      : (next.good_part_notes || ('Reference condition: clean build path, correct P/N, correct feeder position, and expected installed-state behavior for ' + (model.model || 'the affected model') + '.'));
 
     next.d3_containment = manual.d3_containment
       ? (next.d3_containment || '')
@@ -6880,7 +6893,7 @@ function App() {
       var obs = item && (item.evento_detectado_full || item.evento_detectado || item.defecto_smt || item.impacto || '');
       var src = item && (item.reporta || item.sender || item.area_involucrada || 'TraceOps');
       return `<tr><td>${esc(stage)}</td><td>${esc(when || 'N/D')}</td><td>${esc(traceOpsEightdShort(obs || 'Pending', 220))}</td><td>${esc(src || 'TraceOps')}</td></tr>`;
-    }).join('') : `<tr><td>Build</td><td>N/D</td><td>No linked events</td><td>TraceOps</td></tr>`;
+    }).join('') : `<tr><td>Build</td><td>N/D</td><td>Event linkage pending</td><td>TraceOps</td></tr>`;
     var evidenceRows = linkedEvents.length ? linkedEvents.slice(0,12).map(function(item){
       var step = item && (item.linea_estacion || item.tipo_evento || item.area_involucrada || 'Event');
       var ts = [item && item.fecha || '', item && item.hora || ''].join(' ').trim();
@@ -7512,8 +7525,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     var top = Array.isArray(categories) ? categories.slice(0, 3) : [];
     var bottom = Array.isArray(categories) ? categories.slice(3, 6) : [];
-    while (top.length < 3) top.push({label:'Category', items:['Evidence pending']});
-    while (bottom.length < 3) bottom.push({label:'Category', items:['Evidence pending']});
+    while (top.length < 3) top.push({label:'Category', items:['Reference evidence required']});
+    while (bottom.length < 3) bottom.push({label:'Category', items:['Reference evidence required']});
 
     function drawLineSafe(x1, y1, x2, y2, pt){
       var left = Math.min(x1, x2);
@@ -7535,8 +7548,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
     var ribs = [1.48, 3.16, 4.84];
     for (var i = 0; i < 3; i++) {
-      var topItem = top[i] || {label:'Category', items:['Evidence pending']};
-      var bottomItem = bottom[i] || {label:'Category', items:['Evidence pending']};
+      var topItem = top[i] || {label:'Category', items:['Reference evidence required']};
+      var bottomItem = bottom[i] || {label:'Category', items:['Reference evidence required']};
       var ax = x + ribs[i];
       var topJointX = ax - 0.68;
       var topJointY = centerY - 0.64;
@@ -7548,11 +7561,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
       slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:ax - 1.14, y:y + 0.12, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
       slide.addText(traceOpsPptSafe(topItem.label, 26), {x:ax - 1.06, y:y + 0.20, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
-      slide.addText(traceOpsPptWrap(((topItem.items && topItem.items[0]) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + 0.46, w:1.42, h:0.34, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
+      slide.addText(traceOpsPptWrap(((topItem.items && topItem.items[0]) || 'Reference evidence required'), 74), {x:ax - 1.12, y:y + 0.46, w:1.42, h:0.34, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
 
       slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:ax - 1.14, y:y + h - 0.42, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FAFCFF'}});
       slide.addText(traceOpsPptSafe(bottomItem.label, 26), {x:ax - 1.06, y:y + h - 0.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
-      slide.addText(traceOpsPptWrap(((bottomItem.items && bottomItem.items[0]) || 'Evidence pending'), 74), {x:ax - 1.12, y:y + h - 0.78, w:1.42, h:0.26, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
+      slide.addText(traceOpsPptWrap(((bottomItem.items && bottomItem.items[0]) || 'Reference evidence required'), 74), {x:ax - 1.12, y:y + h - 0.78, w:1.42, h:0.26, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
     }
 
     slide.addText('Probable\nCause', {x:x + w - 1.24, y:centerY - 0.30, w:0.54, h:0.40, fontFace:'Arial', fontSize:8.8, bold:true, color:'4A90E2', margin:0, align:'center', valign:'mid'});
@@ -7676,7 +7689,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   async function traceOpsPptRenderEvidencePanel(slide, opts){
     var x = opts.x, y = opts.y, w = opts.w, h = opts.h;
     var label = opts.label || 'Evidence';
-    var caption = opts.caption || 'Evidence pending';
+    var caption = opts.caption || 'Reference evidence required';
     var tone = opts.tone || 'neutral';
     var imageData = opts.imageData || null;
     var fills = { bad:['FDF0EE','F0C4BE','C0392B'], good:['EEF6FF','B8DECE','1A7A3C'], neutral:['FFFFFF','DCE9E2','5F766C'] };
@@ -7692,7 +7705,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         slide.addText('Image unavailable', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
       }
     } else {
-      slide.addText('Evidence pending', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
+      slide.addText('Reference evidence required', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
     }
     slide.addText(traceOpsPptSafe(caption, 36), {x:x+0.10, y:y+h-0.16, w:w-0.20, h:0.10, fontFace:'Segoe UI', fontSize:7.2, bold:true, color:palette[2], align:'center', margin:0, fit:'shrink'});
   }
@@ -7753,7 +7766,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         used[k] = true;
         return true;
       });
-      if (!items.length) items = ['Evidence pending'];
+      if (!items.length) items = ['Reference evidence required'];
       return items.slice(0, 1);
     }
 
@@ -7772,7 +7785,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     if (model.findings && model.findings.length) bullets = bullets.concat(model.findings.slice(0, 2));
     if (traceOpsEightdHasText(model.pattern)) bullets.push('Pattern: ' + model.pattern);
     if (traceOpsEightdHasText(normalized && normalized.evidence_summary)) bullets.push('Evidence: ' + normalized.evidence_summary);
-    if (!bullets.length) bullets.push('Evidence pending linkage to the trace path.');
+    if (!bullets.length) bullets.push('Reference evidence required linkage to the trace path.');
     return bullets.slice(0, 4);
   }
 
@@ -7820,7 +7833,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var parts = [];
     if (traceOpsEightdHasText(model.occurrenceSummary)) parts.push('Occurrence pattern: ' + model.occurrenceSummary);
     if (traceOpsEightdHasText(model.escapeSummary)) parts.push('Escape logic: ' + model.escapeSummary);
-    if (model.tracePath && model.tracePath !== 'No linked events.') parts.push('Trace path: ' + model.tracePath + '.');
+    if (model.tracePath && model.tracePath !== 'Event linkage pending; case summary used for traceability.') parts.push('Trace path: ' + model.tracePath + '.');
     if (!parts.length) parts.push('Correlation pending. Connect one visible variation, one missed control and one measurable symptom.');
     return traceOpsEightdJoinParagraphs(parts);
   }
@@ -8316,11 +8329,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         readiness: String(readinessMeta.score || 0) + '%'
       },
       statusRows: [
-        ['Incident Detection', evList.length ? 'Completed' : 'Pending', evList.length ? ('Events structured: ' + evList.length) : 'No linked events'],
+        ['Incident Detection', evList.length ? 'Completed' : 'Pending', evList.length ? ('Events structured: ' + evList.length) : 'Event linkage pending'],
         ['Findings Review', findingsCount ? 'In Progress' : 'Pending', findingsCount ? (findingsCount + ' technical findings linked') : 'Engineer findings missing'],
         ['RCCA Maturity', normalized.status || 'Draft', linkedRcca === 'Yes' ? ('Linked to ' + normalized.source_rcca_id) : 'No RCCA linked'],
         ['8D Draft Readiness', String(readinessMeta.score || 0) + '%', readinessMeta.completed + '/8 mandatory sections completed'],
-        ['Evidence Coverage', evidenceStatus, evidenceCount ? (String(evidenceCount) + ' evidence refs linked') : 'Evidence pending'],
+        ['Evidence Coverage', evidenceStatus, evidenceCount ? (String(evidenceCount) + ' evidence refs linked') : 'Reference evidence required'],
         ['Traceability Coverage', traceStatus, traceStatus === 'Good' ? 'Core trace fields available' : 'Appendix still needs stronger trace mapping']
       ],
       readinessRows: [
@@ -8546,7 +8559,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var howMany = normalized.how_many || ('Total units processed: ' + (normalized.total_units || 'Pending') + ' | Clean units: ' + (normalized.clean_units || 'Pending') + ' | Risk units: ' + (normalized.risk_units || 'Pending'));
     var problemStatement = traceOpsEightdShort(cleanProblem(normalized.d2_problem || normalized.complaint_anchor || model.complaintAnchor || 'Problem statement pending.'), 150);
     var buildWindow = normalized.build_window || model.detectionWindow || 'Pending';
-    var tracePath = normalized.trace_path || model.tracePath || 'No linked events.';
+    var tracePath = normalized.trace_path || model.tracePath || 'Event linkage pending; case summary used for traceability.';
 
     var traceRows = [
       ['Model', pptShort(normalized.modelo || model.model || 'Pending', 42), 'SKU Version', pptShort(normalized.revision || 'A0', 18)],
