@@ -2198,7 +2198,7 @@ function traceOpsPptExecutiveRiskLinesLocal(d) {
 
   if (exposure) arr.push('Exposure window: ' + exposure);
   if (impact) arr.push('Estimated impact: ' + impact);
-  arr.push('Primary risk: ' + (d.defect || d.failureMode || d.problem || 'N/D') + ' @ ' + (d.station || 'N/D'));
+  arr.push('Primary risk: ' + (d.defect || d.failureMode || d.problem || 'Issue under review') + ' @ ' + (d.station || 'To be confirmed'));
   return arr.join('\n');
 }
 
@@ -2239,7 +2239,7 @@ function traceOpsPptDrawExecKpiLocal(slide, x, y, w, h, label, value, meta) {
     fill:{color:'FFFFFF'}, line:{color:'D9E6F7', pt:1}
   });
   slide.addText(label, { x:x+0.12, y:y+0.08, w:w-0.24, h:0.18, fontFace:'Segoe UI', fontSize:9, bold:true, color:'5F766C', breakLine:false });
-  slide.addText(String(value || 'N/D'), { x:x+0.12, y:y+0.28, w:w-0.24, h:0.34, fontFace:'Segoe UI', fontSize:18, bold:true, color:'102A43', breakLine:false, fit:'shrink' });
+  slide.addText(String(value || 'To be confirmed'), { x:x+0.12, y:y+0.28, w:w-0.24, h:0.34, fontFace:'Segoe UI', fontSize:18, bold:true, color:'102A43', breakLine:false, fit:'shrink' });
   slide.addText(meta || '', { x:x+0.12, y:y+h-0.24, w:w-0.24, h:0.16, fontFace:'Segoe UI', fontSize:7.5, color:'5F766C', breakLine:false, fit:'shrink' });
 }
 
@@ -2254,7 +2254,7 @@ function addExecutiveDashboardSlide(ppt, d) {
     breakLine:false, fit:'shrink'
   });
 
-  slide.addText((d.model || 'N/D') + ' | ' + (d.line || 'N/D') + ' | ' + (d.station || 'N/D') + ' | ' + (d.window || 'N/D'), {
+  slide.addText((d.model || 'To be confirmed') + ' | ' + (d.line || 'To be confirmed') + ' | ' + (d.station || 'To be confirmed') + ' | ' + (d.window || 'To be confirmed'), {
     x:0.45, y:1.06, w:8.8, h:0.2, fontFace:'Segoe UI', fontSize:10, color:'5F766C', breakLine:false, fit:'shrink'
   });
 
@@ -2306,7 +2306,7 @@ function buildExecutiveDashboardPptModelLocal(src) {
   var hdr = qd.header || {};
   var read = qd.readiness || {};
   var risk = qd.risk || {};
-  var defect = hdr.primaryIssue || obj.defect || obj.failureMode || obj.problem || 'N/D';
+  var defect = hdr.primaryIssue || obj.defect || obj.failureMode || obj.problem || 'Issue under review';
   var actionsList = [];
   if (Array.isArray(obj.actionsList)) actionsList = obj.actionsList.slice(0,3);
   if (!actionsList.length && Array.isArray(obj.actions)) {
@@ -2319,10 +2319,10 @@ function buildExecutiveDashboardPptModelLocal(src) {
   var maturity = readinessFn ? readinessFn(obj) : { overallScore: 0, evidenceScore: 0, stage: (obj.reportStatus || obj.status || 'Draft') };
   return {
     title: obj.title || obj.caseTitle || defect,
-    model: obj.model || obj.product || hdr.model || obj.modelo || 'N/D',
-    line: hdr.line || obj.line || obj.linea || 'N/D',
-    station: hdr.station || obj.station || obj.estacion_dominante || 'N/D',
-    window: hdr.window || obj.window || obj.detectionWindow || obj.fecha || 'N/D',
+    model: obj.model || obj.product || hdr.model || obj.modelo || 'To be confirmed',
+    line: hdr.line || obj.line || obj.linea || 'To be confirmed',
+    station: hdr.station || obj.station || obj.estacion_dominante || 'To be confirmed',
+    window: hdr.window || obj.window || obj.detectionWindow || obj.fecha || 'To be confirmed',
     openItems: (obj.pendingValidations != null ? obj.pendingValidations : (read.pendingValidations != null ? read.pendingValidations : (k.openItems != null ? k.openItems : (obj.openItems != null ? obj.openItems : 0)))),
     readiness8d: String(maturity.overallScore) + '%',
     evidenceBadge: maturity.evidenceScore >= 85 ? 'Complete' : (maturity.evidenceScore >= 60 ? 'Partial' : 'Weak'),
@@ -6197,6 +6197,28 @@ function App() {
     return linked.slice().sort(function(a,b){ return traceOpsEightdDateMs(a) - traceOpsEightdDateMs(b); });
   }
 
+  function traceOpsEightdIsWeakPlaceholder(value){
+    var v = String(value || '').trim();
+    if (!v) return true;
+    return /^(?:N\/D|N\/A|Pending|TBD|To be defined|Sin dato)$/i.test(v);
+  }
+
+  function traceOpsEightdCleanValue(value, fallback){
+    return traceOpsEightdIsWeakPlaceholder(value) ? String(fallback || '') : String(value || '').trim();
+  }
+
+  function traceOpsEightdSmartTracePath(src, linked, line, station){
+    if (Array.isArray(linked) && linked.length) {
+      return linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).join(' -> ');
+    }
+    var parts = ['Build'];
+    if (!traceOpsEightdIsWeakPlaceholder(line)) parts.push(line);
+    if (!traceOpsEightdIsWeakPlaceholder(station) && station !== line) parts.push(station);
+    parts.push('Complaint');
+    parts.push('RCCA');
+    return parts.join(' -> ');
+  }
+
   function traceOpsEightdBuildModel(sourceLike, linkedEvents) {
     var src = sourceLike || {};
     var linked = linkedEvents || [];
@@ -6211,27 +6233,31 @@ function App() {
     var evidenceRefs = traceOpsEightdUnique(linked.map(function(item){ return item && item.id ? (item.id + ' · ' + [item.fecha || '', item.hora || ''].join(' ').trim()) : ''; }));
     var owners = traceOpsEightdUnique([src.owner_email || '', src.responsable || ''].concat(linked.map(function(item){ return item && (item.reporta || item.responsable_sugerido || item.sender) ? (item.reporta || item.responsable_sugerido || item.sender) : ''; })));
     var areas = traceOpsEightdUnique(['Quality'].concat(linked.map(function(item){ return item && (item.area_involucrada || item.tipo_evento || '') ? (item.area_involucrada || item.tipo_evento) : ''; })));
-    var firstDate = src.primera_deteccion || (firstEv && firstEv.fecha) || src.fecha || '';
-    var lastDate = src.ultima_deteccion || (lastEv && lastEv.fecha) || src.fecha || '';
-    var detectionWindow = firstDate || lastDate ? [firstDate || 'N/D', lastDate || firstDate || 'N/D'].join(' -> ') : 'N/D';
-    var model = src.modelo || (firstEv && firstEv.modelo) || 'N/D';
-    var line = src.linea || (firstEv && firstEv.linea_estacion) || 'N/D';
-    var station = src.estacion_dominante || stations[0] || 'N/D';
-    var defect = src.defecto_dominante || defects[0] || 'N/A';
-    var pattern = src.patron_detectado || 'Pattern under technical review; formal statement pending.';
-    var impact = src.alcance_exposicion || impacts[0] || 'Operational and quality impact under review.';
-    var tracePath = linked.length ? linked.map(function(item){ return item.id || item.tipo_evento || 'Event'; }).join(' -> ') : 'Event linkage pending; case summary used for traceability.';
-    var complaintAnchor = src.problema || src.titulo_corto || (firstEv && (firstEv.evento_detectado_full || firstEv.evento_detectado)) || 'Complaint anchor requires customer-observed symptom.';
+    var firstDate = traceOpsEightdCleanValue(src.primera_deteccion || (firstEv && firstEv.fecha) || src.fecha || '', '');
+    var lastDate = traceOpsEightdCleanValue(src.ultima_deteccion || (lastEv && lastEv.fecha) || src.fecha || '', '');
+    var detectionWindow = firstDate || lastDate ? [firstDate || lastDate || 'To be confirmed', lastDate || firstDate || 'To be confirmed'].join(' -> ') : 'To be confirmed';
+    var model = traceOpsEightdCleanValue(src.modelo || (firstEv && firstEv.modelo) || '', 'To be confirmed');
+    var line = traceOpsEightdCleanValue(src.linea || (firstEv && firstEv.linea_estacion) || '', 'To be confirmed');
+    var station = traceOpsEightdCleanValue(src.station || src.estacion || src.estacion_dominante || stations[0] || '', line !== 'To be confirmed' ? line : 'To be confirmed');
+    var defect = traceOpsEightdCleanValue(src.defecto_smt || src.defecto_dominante || src.failure_mode || src.failureMode || defects[0] || '', 'Issue under review');
+    var pattern = traceOpsEightdCleanValue(src.patron_detectado || '', 'Pattern under technical review; formal statement pending.');
+    var impact = traceOpsEightdCleanValue(src.alcance_exposicion || impacts[0] || '', 'Operational and quality impact under review.');
+    var tracePath = traceOpsEightdSmartTracePath(src, linked, line, station);
+    var complaintAnchor = traceOpsEightdCleanValue(src.complaint_anchor || src.problema || src.titulo_corto || (firstEv && (firstEv.evento_detectado_full || firstEv.evento_detectado)) || '', 'Complaint anchor requires customer-observed symptom.');
     var occurrenceSummary = traceOpsEightdHasText(src.causa_raiz)
       ? ('Confirmed occurrence mechanism based on current evidence: ' + src.causa_raiz)
       : (traceOpsEightdHasText(src.hipotesis)
           ? ('Working hypothesis under validation: ' + src.hipotesis + ' Final occurrence confirmation remains open.')
           : 'Occurrence mechanism is still under investigation; no confirmed root cause is available yet.');
-    var escapeSummary = traceOpsEightdHasText(src.escape_point || src.punto_escape)
-      ? ('Confirmed escape point: ' + (src.escape_point || src.punto_escape))
-      : (traceOpsEightdHasText(src.estacion_dominante || station)
-          ? ('Escape point not yet confirmed. Current trace suggests a detection gap around ' + (src.estacion_dominante || station) + ' and requires control review against the actual failure mode.')
-          : 'Escape point not yet confirmed. Control gap analysis is still pending.');
+    var expectedControl = traceOpsEightdCleanValue(src.expected_detection_control || src.expected_control || src.control_esperado || '', '');
+    var escapePoint = traceOpsEightdCleanValue(src.escape_point || src.punto_escape || '', '');
+    var escapeSummary = escapePoint
+      ? ('Confirmed escape point: ' + escapePoint)
+      : (expectedControl
+          ? ('Escape remains under validation. Expected detection control: ' + expectedControl + '. Control-gap confirmation is still required against the real failure signature.')
+          : (!traceOpsEightdIsWeakPlaceholder(station)
+              ? ('Escape remains under validation. Current trace suggests a detection gap around ' + station + ' and requires control review against the actual failure mode.')
+              : 'Escape remains under validation. Control-gap analysis is still pending.'));
     return {
       source: src,
       linked: linked,
@@ -6622,17 +6648,17 @@ function App() {
           model.componentPn ? ('Component P/N: ' + model.componentPn) : '',
           model.dateCode ? ('Date code: ' + model.dateCode) : '',
           model.buildWindow ? ('Build window: ' + model.buildWindow) : '',
-          'Line / station: ' + [model.line || 'N/D', model.station || 'N/D'].join(' · '),
-          'Trace path: ' + (model.tracePath || 'Event linkage pending; case summary used for traceability.')
+          'Line / station: ' + [model.line || 'To be confirmed', model.station || 'To be confirmed'].join(' · '),
+          'Trace path: ' + (model.tracePath || 'Build -> Complaint -> RCCA')
         ]);
 
     next.d2_5w2h = manual.d2_5w2h
       ? (next.d2_5w2h || '')
       : traceOpsEightdJoinParagraphs([
-          'What: ' + (model.defect || 'N/D'),
-          'Where: ' + [model.line || 'N/D', model.station || 'N/D'].join(' / '),
-          'When: ' + (model.detectionWindow || 'N/D'),
-          'Who: ' + ((model.owners && model.owners.join(' | ')) || next.owner_email || 'Pending'),
+          'What: ' + (model.defect || 'Issue under review'),
+          'Where: ' + [model.line || 'To be confirmed', model.station || 'To be confirmed'].join(' / '),
+          'When: ' + (model.detectionWindow || 'To be confirmed'),
+          'Who: ' + ((model.owners && model.owners.join(' | ')) || next.owner_email || 'To be confirmed'),
           'How many: ' + (model.serialRange || model.impact || 'Under validation'),
           'Impact: ' + (model.impact || 'Operational and quality impact under review.')
         ]);
@@ -6840,14 +6866,14 @@ function App() {
     var model = traceOpsEightdBuildModel((normalized && normalized.source_snapshot) || normalized || {}, traceOpsEightdCollectLinkedEvents((normalized && (normalized.linked_event_ids || normalized.event_ids)) || []));
     function esc(v){ return traceOpsEightdEsc(v); }
     function block(title, body, variant){
-      return `<section class="fx-card${variant ? ' ' + variant : ''}"><div class="fx-label">${esc(title)}</div><div class="fx-copy">${esc(body || 'Pending')}</div></section>`;
+      return `<section class="fx-card${variant ? ' ' + variant : ''}"><div class="fx-label">${esc(title)}</div><div class="fx-copy">${esc(body || 'To be confirmed')}</div></section>`;
     }
     var linkedEvents = model.linked;
     var d1TeamMembers = traceOpsEightdSeedTeamMembers(model, normalized.d1_team_members);
     var d1EscalationMembers = traceOpsEightdSeedEscalationMembers(d1TeamMembers, normalized.d1_escalation_members);
     function teamTableCard(title, members, summary){
       var rows = (Array.isArray(members) ? members : []).map(function(item){
-        return `<tr><td>${esc(item.role || 'Pending')}</td><td>${esc(item.name || 'Pending')}</td><td>${esc(item.email || 'Pending')}</td></tr>`;
+        return `<tr><td>${esc(item.role || 'To be confirmed')}</td><td>${esc(item.name || 'To be confirmed')}</td><td>${esc(item.email || 'To be confirmed')}</td></tr>`;
       }).join('');
       return `<section class="fx-card"><div class="fx-label">${esc(title)}</div><table><thead><tr><th>Role</th><th>Name</th><th>E-mail</th></tr></thead><tbody>${rows}</tbody></table>${summary ? `<div class="note" style="margin-top:12px">${esc(summary)}</div>` : ''}</section>`;
     }
@@ -6893,7 +6919,7 @@ function App() {
       var obs = item && (item.evento_detectado_full || item.evento_detectado || item.defecto_smt || item.impacto || '');
       var src = item && (item.reporta || item.sender || item.area_involucrada || 'TraceOps');
       return `<tr><td>${esc(stage)}</td><td>${esc(when || 'N/D')}</td><td>${esc(traceOpsEightdShort(obs || 'Pending', 220))}</td><td>${esc(src || 'TraceOps')}</td></tr>`;
-    }).join('') : `<tr><td>Build</td><td>N/D</td><td>Event linkage pending</td><td>TraceOps</td></tr>`;
+    }).join('') : `<tr><td>Build</td><td>To be confirmed</td><td>Trace reconstruction pending</td><td>TraceOps</td></tr>`;
     var evidenceRows = linkedEvents.length ? linkedEvents.slice(0,12).map(function(item){
       var step = item && (item.linea_estacion || item.tipo_evento || item.area_involucrada || 'Event');
       var ts = [item && item.fecha || '', item && item.hora || ''].join(' ').trim();
@@ -6902,14 +6928,14 @@ function App() {
       var source = item && (item.id || item.reporta || item.sender || 'TraceOps');
       var why = item && (item.accion_requerida || item.impacto || 'Supports the trace path');
       return `<tr><td>${esc(step)}</td><td>${esc(ts || 'N/D')}</td><td>${esc(result || 'Observed')}</td><td>${esc(traceOpsEightdShort(observation, 180) || 'Pending')}</td><td>${esc(source || 'TraceOps')}</td><td>${esc(traceOpsEightdShort(why, 120) || 'Supports the trace path')}</td></tr>`;
-    }).join('') : `<tr><td>SMT Print</td><td>N/D</td><td>Pending</td><td>No evidence linked</td><td>TraceOps</td><td>Starting condition</td></tr>`;
+    }).join('') : `<tr><td>Build</td><td>To be confirmed</td><td>Observed</td><td>Evidence linkage pending</td><td>TraceOps</td><td>Starting condition</td></tr>`;
     var dataAnchor = normalized.data_anchor || traceOpsEightdJoinParagraphs([
       normalized.serial_range ? ('Serial range: ' + normalized.serial_range) : '',
       normalized.lot_batch ? ('Lot / batch: ' + normalized.lot_batch) : '',
       normalized.build_window ? ('Build window: ' + normalized.build_window) : '',
       'Line / station: ' + [normalized.linea || model.line, normalized.station || model.station].join(' · '),
       'Defect SMT: ' + (normalized.defecto_smt || model.defect),
-      'Trace path: ' + (normalized.trace_path || model.tracePath)
+      'Trace path: ' + (normalized.trace_path || model.tracePath || 'Build -> Complaint -> RCCA')
     ]);
     return `<!DOCTYPE html>
 <html lang="es">
@@ -7065,9 +7091,9 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     </div>
 
     <div class="section-band three">
-      ${block('Evidence Summary', normalized.evidence_summary || 'Pending evidence summary.')}
-      ${block('Correlation Notes', normalized.correlation_notes || 'Pending correlation notes.')}
-      ${block('Appendix Notes', appendixNotesText || 'Pending appendix notes.')}
+      ${block('Evidence Summary', normalized.evidence_summary || 'Evidence summary pending source linkage.')}
+      ${block('Correlation Notes', normalized.correlation_notes || 'Correlation notes pending source linkage.')}
+      ${block('Appendix Notes', appendixNotesText || 'Appendix notes pending source linkage.')}
     </div>
 
     <div class="table-card" style="margin-bottom:14px">
@@ -7325,7 +7351,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   function traceOpsPptEventRows(draft){
     var linked = traceOpsGetEightdLinkedEventsForExport(draft);
     if (!linked.length) {
-      return [["SMT Print","N/D","Pending","No linked evidence","TraceOps","Starting condition"]];
+      return [["Build","To be confirmed","Observed","Evidence linkage pending","TraceOps","Starting condition"]];
     }
     return linked.slice(0,10).map(function(item){
       return [
@@ -7341,7 +7367,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
   function traceOpsPptSplitBullets(value, maxItems, maxLen){
     var txt = traceOpsPptWrap(value, maxLen || 900);
-    if (!txt) return ['Pending'];
+    if (!txt) return ['To be confirmed'];
     var parts = String(txt)
       .replace(/\r/g, '\n')
       .replace(/([.!?;])\s+/g, '$1\n')
@@ -7525,8 +7551,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     if (!_traceOpsPptxRef || !_traceOpsPptxRef.ShapeType) return;
     var top = Array.isArray(categories) ? categories.slice(0, 3) : [];
     var bottom = Array.isArray(categories) ? categories.slice(3, 6) : [];
-    while (top.length < 3) top.push({label:'Category', items:['Reference evidence required']});
-    while (bottom.length < 3) bottom.push({label:'Category', items:['Reference evidence required']});
+    while (top.length < 3) top.push({label:'Category', items:['Reference evidence to be attached']});
+    while (bottom.length < 3) bottom.push({label:'Category', items:['Reference evidence to be attached']});
 
     function drawLineSafe(x1, y1, x2, y2, pt){
       var left = Math.min(x1, x2);
@@ -7548,8 +7574,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
     var ribs = [1.48, 3.16, 4.84];
     for (var i = 0; i < 3; i++) {
-      var topItem = top[i] || {label:'Category', items:['Reference evidence required']};
-      var bottomItem = bottom[i] || {label:'Category', items:['Reference evidence required']};
+      var topItem = top[i] || {label:'Category', items:['Reference evidence to be attached']};
+      var bottomItem = bottom[i] || {label:'Category', items:['Reference evidence to be attached']};
       var ax = x + ribs[i];
       var topJointX = ax - 0.68;
       var topJointY = centerY - 0.64;
@@ -7561,11 +7587,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
       slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:ax - 1.14, y:y + 0.12, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FFFFFF'}});
       slide.addText(traceOpsPptSafe(topItem.label, 26), {x:ax - 1.06, y:y + 0.20, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
-      slide.addText(traceOpsPptWrap(((topItem.items && topItem.items[0]) || 'Reference evidence required'), 74), {x:ax - 1.12, y:y + 0.46, w:1.42, h:0.34, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
+      slide.addText(traceOpsPptWrap(((topItem.items && topItem.items[0]) || 'Reference evidence to be attached'), 74), {x:ax - 1.12, y:y + 0.46, w:1.42, h:0.34, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
 
       slide.addShape((_traceOpsPptxRef && _traceOpsPptxRef.ShapeType && _traceOpsPptxRef.ShapeType.rect ? _traceOpsPptxRef.ShapeType.rect : "rect"), {x:ax - 1.14, y:y + h - 0.42, w:1.48, h:0.30, rectRadius:0.04, line:{color:'DCE9E2', pt:1}, fill:{color:'FAFCFF'}});
       slide.addText(traceOpsPptSafe(bottomItem.label, 26), {x:ax - 1.06, y:y + h - 0.34, w:1.30, h:0.10, fontFace:'Arial', fontSize:8.2, bold:true, color:'2F6FB3', align:'center', margin:0, fit:'shrink'});
-      slide.addText(traceOpsPptWrap(((bottomItem.items && bottomItem.items[0]) || 'Reference evidence required'), 74), {x:ax - 1.12, y:y + h - 0.78, w:1.42, h:0.26, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
+      slide.addText(traceOpsPptWrap(((bottomItem.items && bottomItem.items[0]) || 'Reference evidence to be attached'), 74), {x:ax - 1.12, y:y + h - 0.78, w:1.42, h:0.26, fontFace:'Arial', fontSize:7.8, color:'102A43', margin:0, fit:'shrink', align:'center'});
     }
 
     slide.addText('Probable\nCause', {x:x + w - 1.24, y:centerY - 0.30, w:0.54, h:0.40, fontFace:'Arial', fontSize:8.8, bold:true, color:'4A90E2', margin:0, align:'center', valign:'mid'});
@@ -7689,7 +7715,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   async function traceOpsPptRenderEvidencePanel(slide, opts){
     var x = opts.x, y = opts.y, w = opts.w, h = opts.h;
     var label = opts.label || 'Evidence';
-    var caption = opts.caption || 'Reference evidence required';
+    var caption = opts.caption || 'Reference evidence to be attached';
     var tone = opts.tone || 'neutral';
     var imageData = opts.imageData || null;
     var fills = { bad:['FDF0EE','F0C4BE','C0392B'], good:['EEF6FF','B8DECE','1A7A3C'], neutral:['FFFFFF','DCE9E2','5F766C'] };
@@ -7705,7 +7731,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         slide.addText('Image unavailable', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
       }
     } else {
-      slide.addText('Reference evidence required', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
+      slide.addText('Reference evidence to be attached', {x:innerX+0.10, y:innerY + (innerH/2) - 0.08, w:innerW-0.20, h:0.16, fontFace:'Segoe UI', fontSize:8.6, color:'8A8580', align:'center', margin:0});
     }
     slide.addText(traceOpsPptSafe(caption, 36), {x:x+0.10, y:y+h-0.16, w:w-0.20, h:0.10, fontFace:'Segoe UI', fontSize:7.2, bold:true, color:palette[2], align:'center', margin:0, fit:'shrink'});
   }
@@ -7766,7 +7792,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         used[k] = true;
         return true;
       });
-      if (!items.length) items = ['Reference evidence required'];
+      if (!items.length) items = ['Reference evidence to be attached'];
       return items.slice(0, 1);
     }
 
@@ -7785,7 +7811,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     if (model.findings && model.findings.length) bullets = bullets.concat(model.findings.slice(0, 2));
     if (traceOpsEightdHasText(model.pattern)) bullets.push('Pattern: ' + model.pattern);
     if (traceOpsEightdHasText(normalized && normalized.evidence_summary)) bullets.push('Evidence: ' + normalized.evidence_summary);
-    if (!bullets.length) bullets.push('Reference evidence required linkage to the trace path.');
+    if (!bullets.length) bullets.push('Reference evidence to be attached linkage to the trace path.');
     return bullets.slice(0, 4);
   }
 
@@ -7833,7 +7859,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var parts = [];
     if (traceOpsEightdHasText(model.occurrenceSummary)) parts.push('Occurrence pattern: ' + model.occurrenceSummary);
     if (traceOpsEightdHasText(model.escapeSummary)) parts.push('Escape logic: ' + model.escapeSummary);
-    if (model.tracePath && model.tracePath !== 'Event linkage pending; case summary used for traceability.') parts.push('Trace path: ' + model.tracePath + '.');
+    if (model.tracePath && model.tracePath !== 'Build -> Complaint -> RCCA') parts.push('Trace path: ' + model.tracePath + '.');
     if (!parts.length) parts.push('Correlation pending. Connect one visible variation, one missed control and one measurable symptom.');
     return traceOpsEightdJoinParagraphs(parts);
   }
@@ -8333,7 +8359,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         ['Findings Review', findingsCount ? 'In Progress' : 'Pending', findingsCount ? (findingsCount + ' technical findings linked') : 'Engineer findings missing'],
         ['RCCA Maturity', normalized.status || 'Draft', linkedRcca === 'Yes' ? ('Linked to ' + normalized.source_rcca_id) : 'No RCCA linked'],
         ['8D Draft Readiness', String(readinessMeta.score || 0) + '%', readinessMeta.completed + '/8 mandatory sections completed'],
-        ['Evidence Coverage', evidenceStatus, evidenceCount ? (String(evidenceCount) + ' evidence refs linked') : 'Reference evidence required'],
+        ['Evidence Coverage', evidenceStatus, evidenceCount ? (String(evidenceCount) + ' evidence refs linked') : 'Reference evidence to be attached'],
         ['Traceability Coverage', traceStatus, traceStatus === 'Good' ? 'Core trace fields available' : 'Appendix still needs stronger trace mapping']
       ],
       readinessRows: [
@@ -8460,7 +8486,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var tileGap = 0.16;
     var labels1 = [
       ['8D title', normalized.eightd_title || normalized.source_title || normalized.complaint_anchor || 'TraceOps 8D Draft'],
-      ['RCCA ID', normalized.source_rcca_id || 'N/D'],
+      ['RCCA ID', normalized.source_rcca_id || 'To be confirmed'],
       ['Report status', normalized.status || 'Draft'],
       ['Readiness', String(readinessMeta.score || 0) + '%']
     ];
@@ -8491,7 +8517,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 
     traceOpsPptGlassBox(slide, 4.62, 4.90, 4.08, 1.12, {fillColor:'FFFFFF', transparency:74, lineColor:'DDEAE3', linePt:0.8, lineTransparency:28});
     slide.addText(traceOpsPptSafe('Trace path', 80), {x:4.78, y:5.02, w:1.6, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'E5F0EC', margin:0, fit:'shrink'});
-    slide.addText(traceOpsPptWrap(normalized.trace_path || model.tracePath || 'Event linkage pending; case summary used for traceability.', 150), {x:4.78, y:5.28, w:3.70, h:0.56, fontFace:'Segoe UI', fontSize:10.8, color:'FFFFFF', margin:0, fit:'shrink'});
+    slide.addText(traceOpsPptWrap(normalized.trace_path || model.tracePath || 'Build -> Complaint -> RCCA', 150), {x:4.78, y:5.28, w:3.70, h:0.56, fontFace:'Segoe UI', fontSize:10.8, color:'FFFFFF', margin:0, fit:'shrink'});
 
     traceOpsPptGlassBox(slide, 8.82, 4.90, 4.08, 1.12, {fillColor:'FFFFFF', transparency:74, lineColor:'DDEAE3', linePt:0.8, lineTransparency:28});
     slide.addText(traceOpsPptSafe('Linked RCCA / evidence', 80), {x:8.98, y:5.02, w:2.2, h:0.18, fontFace:'Arial', fontSize:10.5, bold:true, color:'E5F0EC', margin:0, fit:'shrink'});
@@ -8559,7 +8585,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     var howMany = normalized.how_many || ('Total units processed: ' + (normalized.total_units || 'Pending') + ' | Clean units: ' + (normalized.clean_units || 'Pending') + ' | Risk units: ' + (normalized.risk_units || 'Pending'));
     var problemStatement = traceOpsEightdShort(cleanProblem(normalized.d2_problem || normalized.complaint_anchor || model.complaintAnchor || 'Problem statement pending.'), 150);
     var buildWindow = normalized.build_window || model.detectionWindow || 'Pending';
-    var tracePath = normalized.trace_path || model.tracePath || 'Event linkage pending; case summary used for traceability.';
+    var tracePath = normalized.trace_path || model.tracePath || 'Build -> Complaint -> RCCA';
 
     var traceRows = [
       ['Model', pptShort(normalized.modelo || model.model || 'Pending', 42), 'SKU Version', pptShort(normalized.revision || 'A0', 18)],
