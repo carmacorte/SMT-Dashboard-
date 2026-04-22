@@ -5490,6 +5490,15 @@ function App() {
   var cloudCooldownTimerRef = React.useRef(null);
   var cloudRetryHookRef = React.useRef(null);
 
+  function traceOpsShouldClearRetryStatus(statusText) {
+    var low = String(statusText || "").toLowerCase();
+    return low.indexOf("reintentando conexion") >= 0 ||
+      low.indexOf("reintentando conexión") >= 0 ||
+      low.indexOf("reintento fallido") >= 0 ||
+      low.indexOf("sesion ocupada") >= 0 ||
+      low.indexOf("sesión ocupada") >= 0;
+  }
+
   function traceOpsClearCloudCooldown() {
     try { if (cloudCooldownTimerRef.current) clearTimeout(cloudCooldownTimerRef.current); } catch(_) {}
     cloudCooldownTimerRef.current = null;
@@ -5565,6 +5574,13 @@ function App() {
     };
     return map[realtimeStatus] || { label: "Estado realtime: " + String(realtimeStatus || "desconocido"), color: "#6A6560", bg: "#F3F1EE" };
   })();
+
+  React.useEffect(function(){
+    if (!authUser) return;
+    if (realtimeStatus !== "CONNECTED" && realtimeStatus !== "SUBSCRIBED") return;
+    if (!traceOpsShouldClearRetryStatus(cloudStatus)) return;
+    setCloudStatus("Sincronizado");
+  }, [authUser, realtimeStatus, cloudStatus]);
 
   React.useEffect(function(){
     try {
