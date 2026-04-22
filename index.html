@@ -12138,8 +12138,8 @@ function replaceMetaFiles(nextFiles){
     };
     var mobile = false;
     try { mobile = (window.innerWidth || 0) <= 900; } catch(_) { mobile = false; }
-    var labelStyle = {display:"block",fontSize:"10px",fontWeight:700,textTransform:"uppercase",color:"#6A6560",marginBottom:4};
-    var inputStyle = {width:"100%"};
+    var labelStyle = {display:"block",fontSize:"10px",fontWeight:700,textTransform:"uppercase",color:"#6A6560",marginBottom:4,fontFamily:"Inter,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif",letterSpacing:".02em"};
+    var inputStyle = {width:"100%",fontFamily:"Inter,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"};
     var cardPad = mobile ? "14px" : "18px 20px";
     var gridStyle = {display:"grid",gridTemplateColumns:(mobile ? "1fr" : "repeat(3,minmax(0,1fr))"),gap:12};
     var fullSpan = mobile ? {} : {gridColumn:"span 3"};
