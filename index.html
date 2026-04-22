@@ -2117,6 +2117,10 @@ async function signUp(email, password){
 
 
 
+function isMobile(){
+  try { return (window.innerWidth || 0) <= 900; } catch(_) { return false; }
+}
+
 function traceOpsPptShapeRectSafeLocal() {
   try {
     if (window.PptxGenJS && window.PptxGenJS.ShapeType) {
@@ -5075,6 +5079,8 @@ function App() {
   }
 
   var maintenanceFormArr = _useState(traceOpsEmptyMaintenanceRecord());
+  var maintenanceForm = maintenanceFormArr[0];
+  var setMaintenanceForm = maintenanceFormArr[1];
   var translations = {
     en: {
       brandSubtitle: "Operational Intelligence for Manufacturing Teams",
@@ -12387,7 +12393,7 @@ function replaceMetaFiles(nextFiles){
 
         <div style={{padding:"12px 16px 16px"}}>
           {maintenanceTab==="log" && renderMaintenanceLog()}
-          {maintenanceTab==="capture" && renderMaintenanceCapture()}
+          {maintenanceTab==="capture" ? renderMaintenanceCapture() : null}
           {maintenanceTab==="dashboard" && renderMaintenanceDashboard()}
         </div>
       </div>
