@@ -5046,6 +5046,10 @@ function App() {
   var isMobile = function(){ return window.innerWidth <= 900; };
   var MAINT_KEY = "traceops_maintenance_log_v1";
 
+  var activeModuleArr = _useState("rcca");
+  var activeModule = activeModuleArr[0];
+  var setActiveModule = activeModuleArr[1];
+
   var maintenanceTabArr = _useState("log"); 
   var maintenanceTab = maintenanceTabArr[0]; 
   var setMaintenanceTab = maintenanceTabArr[1];
@@ -6844,6 +6848,7 @@ function App() {
 
   function openEightdDraftFromRcca(rcca, forceRefresh) {
     if (!rcca || !rcca.rcca_id) return;
+    setActiveModule("8d");
     var existing = eightdList.find(function(item){ return item.source_rcca_id === rcca.rcca_id; });
     var currentFingerprint = traceOpsRccaFingerprint(rcca);
     var needsRefresh = !!(existing && existing.source_evidence_fingerprint !== currentFingerprint);
@@ -10470,6 +10475,7 @@ function exportEightdPpt(draft) {
     }, 80);
   }
   function traceOpsStartRccaFromMaterial(item){
+    setActiveModule("rcca");
     setRccaForm({
       event_ids:[item.id],
       modelo:item.modelo||"",
@@ -12047,6 +12053,7 @@ function replaceMetaFiles(nextFiles){
     var row = (maintenanceRecords || []).find(function(x){ return String(x.id||"") === String(id||""); });
     if (!row) return;
     setMaintenanceForm(Object.assign({}, row));
+    setActiveModule("maintenance");
     setMaintenanceTab("capture");
     try {
       var el = document.getElementById("maintenance-section");
@@ -12068,6 +12075,7 @@ function replaceMetaFiles(nextFiles){
 
   function escalateMaintenanceToRcca(row){
     if (!row) return;
+    setActiveModule("rcca");
     setRccaForm({
       event_ids: row.linkedEventId ? [row.linkedEventId] : [],
       modelo: row.machine || row.equipmentType || "",
@@ -12476,6 +12484,59 @@ function replaceMetaFiles(nextFiles){
     );
   }
 
+  function scrollToSection(sectionId){
+    try {
+      var el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({behavior:"smooth", block:"start"});
+        return true;
+      }
+    } catch(_) {}
+    return false;
+  }
+
+  function openModule(moduleKey){
+    setActiveModule(moduleKey);
+    if (isMobile()) setSidebarOpen(false);
+    setTimeout(function(){
+      if (!scrollToSection("module-workspace")) scrollToSection("results-section");
+    }, 60);
+  }
+
+  function renderModuleIcon(kind){
+    if (kind === "rcca") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>;
+    if (kind === "maintenance") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 7l3-3 3 3-3 3-3-3"/><path d="M2 20l7-7"/><path d="M9 13l3 3"/><path d="M9 13l-3-3"/><path d="M12 16l8-8"/></svg>;
+    return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3h6l1 2h4v16H4V5h4l1-2z"/><path d="M9 10h6"/><path d="M9 14h6"/><path d="M9 18h4"/></svg>;
+  }
+
+  var moduleNavItems = [
+    {
+      key: "rcca",
+      label: "RCCA",
+      shortLabel: "Root cause memory and corrective action history",
+      count: rccaList.length,
+      anchorId: "rcca-section",
+      tone: { bg:"#F5F0FE", border:"#DBCDF8", color:"#6B2DA8" }
+    },
+    {
+      key: "8d",
+      label: "8D",
+      shortLabel: "Structured discipline drafts generated from RCCA",
+      count: eightdList.length,
+      anchorId: "eightd-section",
+      tone: { bg:"#EAF2FF", border:"#C7DBF7", color:"#1F3A5F" }
+    },
+    {
+      key: "maintenance",
+      label: "Maintenance Log",
+      shortLabel: "Machine history, part replacement and recurrence tracking",
+      count: maintenanceRecords.length,
+      anchorId: "maintenance-section",
+      tone: { bg:"#EEF6FF", border:"#D8E6FB", color:"#145A28" }
+    }
+  ];
+  var activeModuleMeta = moduleNavItems.find(function(item){ return item.key === activeModule; }) || moduleNavItems[0];
+
   function PickerThumb(props){
     var fname=props.fname;var srcArr=_useState(_imgCache[fname]||null);var src=srcArr[0];var setSrc=srcArr[1];var queuedRef=_useRef(false);
     React.useEffect(function(){var alive=true;if(src||queuedRef.current)return;queuedRef.current=true;enqueueLoad(fname,function(url){if(alive)setSrc(url);});return function(){alive=false;};}, [fname,src]);
@@ -12583,9 +12644,21 @@ function replaceMetaFiles(nextFiles){
           <div style={{display:"flex",flexDirection:"column",gap:3}}>
             <button className={"sidebar-btn"+(state==="idle"?" active":"")} onClick={function(){if(state!=="idle")reset();if(isMobile())setSidebarOpen(false);window.scrollTo({top:0,behavior:"smooth"});}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Inicio</button>
             <button className={"sidebar-btn"+(state==="done"?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("results-section");if(el){el.scrollIntoView({behavior:"smooth"});}else if(state!=="done"){window.scrollTo({top:0,behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Resultados</button>
-            <button className={"sidebar-btn"+(false?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("rcca-section");if(el){el.scrollIntoView({behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>RCCA</button>
-            <button className={"sidebar-btn"+(false?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("maintenance-section");if(el){el.scrollIntoView({behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 7l3-3 3 3-3 3-3-3"/><path d="M2 20l7-7"/><path d="M9 13l3 3"/><path d="M9 13l-3-3"/><path d="M12 16l8-8"/></svg>Maintenance Log</button>
-            <button className={"sidebar-btn"+(false?" active":"")} onClick={function(){if(isMobile())setSidebarOpen(false);var el=document.getElementById("eightd-section");if(el){el.scrollIntoView({behavior:"smooth"});}}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3h6l1 2h4v16H4V5h4l1-2z"/><path d="M9 10h6"/><path d="M9 14h6"/><path d="M9 18h4"/></svg>8D Drafts</button>
+            {moduleNavItems.map(function(item){
+              return (
+                <button
+                  key={item.key}
+                  className={"sidebar-btn"+(state==="done"&&activeModule===item.key?" active":"")}
+                  onClick={function(){openModule(item.key);}}
+                >
+                  {renderModuleIcon(item.key)}
+                  <span style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%"}}>
+                    <span>{item.label}</span>
+                    <span style={{fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:999,background:state==="done"&&activeModule===item.key?"rgba(255,255,255,.10)":item.tone.bg,color:state==="done"&&activeModule===item.key?"#FFFFFF":item.tone.color,border:"1px solid "+(state==="done"&&activeModule===item.key?"rgba(255,255,255,.08)":item.tone.border)}}>{item.count}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="sidebar-section">
@@ -13637,9 +13710,63 @@ function replaceMetaFiles(nextFiles){
             </div>
           )}
 
-          {renderMaintenanceSection()}
+          <div id="module-workspace" style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:22,overflow:"hidden",marginBottom:18,boxShadow:"0 2px 12px rgba(20,32,51,.04)"}}>
+            <div style={{padding:"18px 20px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:14,flexWrap:"wrap"}}>
+              <div style={{minWidth:0,flex:1}}>
+                <div style={{fontSize:10,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",color:"#5F766C",marginBottom:6}}>Module workspace</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#102A43",letterSpacing:"-.03em",lineHeight:1.05}}>{activeModuleMeta.label}</div>
+                <div style={{fontSize:12,color:"#5F766C",marginTop:6,maxWidth:720,lineHeight:1.55}}>{activeModuleMeta.shortLabel}</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:activeModuleMeta.tone.bg,color:activeModuleMeta.tone.color,border:"1px solid "+activeModuleMeta.tone.border}}>{activeModuleMeta.count} registros</span>
+                <span style={{fontSize:10,color:"#5F766C"}}>{moduleNavItems.length} modulos activos</span>
+              </div>
+            </div>
 
-          <div id="rcca-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+            <div style={{padding:"14px 16px 0"}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:10}}>
+                {moduleNavItems.map(function(item){
+                  var active = activeModule === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={function(){openModule(item.key);}}
+                      style={{
+                        border:"1px solid " + (active ? item.tone.border : "#D9E6F7"),
+                        background:active ? item.tone.bg : "#FFFFFF",
+                        color:active ? item.tone.color : "#102A43",
+                        borderRadius:18,
+                        padding:"14px 15px",
+                        cursor:"pointer",
+                        textAlign:"left",
+                        display:"flex",
+                        alignItems:"flex-start",
+                        justifyContent:"space-between",
+                        gap:12,
+                        boxShadow:active ? "0 10px 24px rgba(20,32,51,.06)" : "none"
+                      }}
+                    >
+                      <span style={{display:"flex",gap:10,minWidth:0,flex:1}}>
+                        <span style={{width:36,height:36,borderRadius:12,background:active ? "#FFFFFF" : "#F7FAFF",border:"1px solid " + (active ? item.tone.border : "#D9E6F7"),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                          {renderModuleIcon(item.key)}
+                        </span>
+                        <span style={{minWidth:0,flex:1}}>
+                          <span style={{display:"block",fontSize:13,fontWeight:800,lineHeight:1.2}}>{item.label}</span>
+                          <span style={{display:"block",fontSize:10.5,color:active ? item.tone.color : "#5F766C",lineHeight:1.45,marginTop:4}}>{item.shortLabel}</span>
+                        </span>
+                      </span>
+                      <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:active ? "#FFFFFF" : item.tone.bg,color:item.tone.color,border:"1px solid "+item.tone.border,flexShrink:0}}>{item.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{padding:"16px 16px 16px"}}>
+              {activeModule==="maintenance" && renderMaintenanceSection()}
+
+          {activeModule==="rcca" && <div id="rcca-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
             <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
               <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>RCCA Memory</h3><span style={{fontSize:10,color:"#8A8580"}}>Antecedentes de causa raiz</span></div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -13676,9 +13803,9 @@ function replaceMetaFiles(nextFiles){
                 </div>
               )}
             </div>
-          </div>
+          </div>}
 
-          <div id="eightd-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+          {activeModule==="8d" && <div id="eightd-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
             <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
               <div><h3 style={{fontSize:13.5,fontWeight:700,color:"#1A1714",marginBottom:2}}>8D Drafts</h3><span style={{fontSize:10,color:"#8A8580"}}>Borradores generados a partir de RCCA</span></div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
@@ -13742,6 +13869,8 @@ function replaceMetaFiles(nextFiles){
                   )}
                 </div>
               )}
+            </div>
+          </div>}
             </div>
           </div>
 
