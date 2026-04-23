@@ -2708,23 +2708,44 @@ function parseEmlHeaders(lines) {
   return { headers: headers, bodyStart: i };
 }
 
+function scoreEmailBodyCandidateLocal(text, flavor) {
+  var s = String(text || '').trim();
+  if (!s) return -999999;
+  var score = Math.min(s.length, 4000);
+  if (/\b(linea|línea|station|feeder|bga|socket|flux|material|aoi|smt|open|short|falla|defecto|component|misalign|hundimiento|repair|rework|paro)\b/i.test(s)) score += 500;
+  if (/\b(aviso de confidencialidad|confidentiality notice|disclaimer|lotus notes|ibm notes|image\d+\.gif)\b/i.test(s)) score -= 1200;
+  if (/\b(from|to|cc|bcc|subject|sent|date):/i.test(s) && s.length < 500) score -= 350;
+  if ((flavor || '') === 'html') score += 80;
+  if ((flavor || '') === 'plain') score += 20;
+  return score;
+}
+
 function cleanEmailTextLocal(text) {
   if (!text) return '';
   var s = String(text);
-  s = s.replace(/\r/g, '\n');
+  s = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   s = s.replace(/\u00a0/g, ' ').replace(/[\u200B-\u200F\u202A-\u202E]/g, '');
   s = stripHtmlToText(s);
   s = decodeHtmlEntities(s);
-  s = s.replace(/^\s*(mime-version|content-type|content-transfer-encoding|content-disposition|x-[\w\-]+):.*$/gim, ' ');
+  s = s.replace(/^\s*(mime-version|content-type|content-transfer-encoding|content-disposition|content-id|x-[\w\-]+):.*$/gim, ' ');
   s = s.replace(/^--[\w=:\-\.\/\+]+\s*$/gim, ' ');
   s = s.replace(/\[(cid|image):[^\]]+\]/gi, ' ');
+  s = s.replace(/\b(?:image\d+\.gif|notes\.bmp|memo\.htm)\b/gi, ' ');
+  s = s.replace(/\n\s*(from|de|to|para|cc|bcc|subject|asunto|sent|date|fecha):\s*\n/gi, '\n');
   var cutPatterns = [
     /\n\s*-----Original Message-----[\s\S]*$/i,
+    /\n\s*Begin forwarded message:[\s\S]*$/i,
     /\n\s*From:\s.*\n\s*Sent:\s.*\n\s*To:\s.*[\s\S]*$/i,
     /\n\s*De:\s.*\n\s*Enviado el:\s.*\n\s*Para:\s.*[\s\S]*$/i,
+    /\n\s*(?:From|De):\s.+\n\s*(?:To|Para):\s.+\n\s*(?:Cc:\s.*\n)?\s*(?:Subject|Asunto):\s.+[\s\S]*$/i,
     /\n\s*On .*wrote:[\s\S]*$/i,
     /\n\s*El .*escribi[oó]:[\s\S]*$/i,
-    /\n\s*________________________________[\s\S]*$/i
+    /\n\s*________________________________[\s\S]*$/i,
+    /\n\s*-----\s*Forwarded by .*?[\s\S]*$/i,
+    /\n\s*(?:From|De):\s.*?\/NSG\/FOXCONN.*[\s\S]*$/i,
+    /\n\s*Forwarded by\b[\s\S]*$/i,
+    /\n\s*IBM Notes[\s\S]*$/i,
+    /\n\s*Lotus Notes[\s\S]*$/i
   ];
   for (var i = 0; i < cutPatterns.length; i++) {
     if (cutPatterns[i].test(s)) {
@@ -2740,8 +2761,9 @@ function cleanEmailTextLocal(text) {
   s = s.replace(/\s*\n\s*/g, '\n');
   var lines = s.split(/\n+/).map(function(line){ return line.trim(); }).filter(function(line){
     if (!line) return false;
-    if (/^(from|to|cc|bcc|subject|sent|date|de|para|asunto|enviado):\s*$/i.test(line)) return false;
+    if (/^(from|to|cc|bcc|subject|sent|date|de|para|asunto|enviado|fecha):\s*$/i.test(line)) return false;
     if (/^(--|__)+$/.test(line)) return false;
+    if (/^(image\d+\.gif|notes\.bmp|memo\.htm)$/i.test(line)) return false;
     return true;
   });
   s = lines.join('\n').trim();
@@ -2752,36 +2774,64 @@ function cleanEmailTextLocal(text) {
 
 function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
   var rawBody = lines.slice(bodyStart).join('\n');
-  var ct = (contentType || '').toLowerCase();
-  var boundaryM = ct.match(/boundary="?([^";]+)"?/i);
+  var ctRaw = String(contentType || '');
+  var ct = ctRaw.toLowerCase();
+  var boundaryM = ctRaw.match(/boundary="?([^";]+)"?/i);
   if (boundaryM) {
     var boundary = boundaryM[1].trim();
     var safeBoundary = boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    var re = new RegExp('--' + safeBoundary);
-    var parts = rawBody.split(re);
+    var re = new RegExp('(?:^|\\n)--' + safeBoundary + '(?:--)?(?=\\n|$)', 'g');
+    var normalizedBody = '\n' + rawBody.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    var segments = normalizedBody.split(re);
     var bestText = '';
     var bestHtml = '';
-    for (var pi = 0; pi < parts.length; pi++) {
-      var part = parts[pi];
-      if (!part || /^\s*--\s*$/.test(part)) continue;
-      var partLines = part.replace(/^\s+/, '').split(/\r?\n/);
+    var bestTextScore = -999999;
+    var bestHtmlScore = -999999;
+    for (var pi = 0; pi < segments.length; pi++) {
+      var part = segments[pi];
+      if (!part || /^\s*$/.test(part) || /^\s*--\s*$/.test(part)) continue;
+      var partLines = part.replace(/^\s+/, '').split(/\n/);
       var partInfo = parseEmlHeaders(partLines);
-      var partCt = (partInfo.headers['content-type'] || '').toLowerCase();
-      var partEnc = (partInfo.headers['content-transfer-encoding'] || '').toLowerCase().trim();
+      var partCtRaw = String(partInfo.headers['content-type'] || '');
+      var partCt = partCtRaw.toLowerCase();
+      var partEnc = String(partInfo.headers['content-transfer-encoding'] || '').toLowerCase().trim();
       var payload = decodeEmlEncoding(partLines.slice(partInfo.bodyStart).join('\n').trim(), partEnc);
       if (partCt.indexOf('multipart/') >= 0) {
-        var nested = extractEmlBodyText(partLines, partInfo.bodyStart, partCt, partEnc);
-        if (nested && !bestText) bestText = nested;
+        var nested = extractEmlBodyText(partLines, partInfo.bodyStart, partCtRaw, partEnc);
+        var nestedScore = scoreEmailBodyCandidateLocal(nested, 'nested');
+        if (nestedScore > bestTextScore) {
+          bestText = nested;
+          bestTextScore = nestedScore;
+        }
+        continue;
+      }
+      if (partCt.indexOf('message/rfc822') >= 0) {
+        var nestedMsg = parseEmlToMsg(payload, 'embedded.eml');
+        var nestedText = nestedMsg && nestedMsg.text ? nestedMsg.text : cleanEmailTextLocal(payload);
+        var embeddedScore = scoreEmailBodyCandidateLocal(nestedText, 'embedded');
+        if (embeddedScore > bestTextScore) {
+          bestText = nestedText;
+          bestTextScore = embeddedScore;
+        }
         continue;
       }
       if (partCt.indexOf('text/plain') >= 0) {
         var cleanPlain = cleanEmailTextLocal(payload);
-        if (cleanPlain && cleanPlain.length > bestText.length) bestText = cleanPlain;
+        var plainScore = scoreEmailBodyCandidateLocal(cleanPlain, 'plain');
+        if (plainScore > bestTextScore) {
+          bestText = cleanPlain;
+          bestTextScore = plainScore;
+        }
       } else if (partCt.indexOf('text/html') >= 0) {
         var cleanHtml = cleanEmailTextLocal(payload);
-        if (cleanHtml && cleanHtml.length > bestHtml.length) bestHtml = cleanHtml;
+        var htmlScore = scoreEmailBodyCandidateLocal(cleanHtml, 'html');
+        if (htmlScore > bestHtmlScore) {
+          bestHtml = cleanHtml;
+          bestHtmlScore = htmlScore;
+        }
       }
     }
+    if (bestHtmlScore >= bestTextScore && bestHtml) return bestHtml;
     if (bestText) return bestText;
     if (bestHtml) return bestHtml;
   }
@@ -2791,7 +2841,8 @@ function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
 
 function parseEmlToMsg(rawText, sourceName) {
   if (!rawText || !rawText.trim()) return null;
-  var lines = String(rawText).split(/\r?\n/);
+  rawText = String(rawText).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  var lines = rawText.split(/\n/);
   var info = parseEmlHeaders(lines);
   var h = info.headers;
 
@@ -3151,26 +3202,13 @@ async function analyzeWithAI(msgs, apiKey) {
 
   function buildLocalResult(msgs, candidates, clusters) {
     function padId(n){ return "EVT-" + String(n).padStart(3, "0"); }
-    function isMechanicalMisalignmentContext(text){
-      var raw = String(text || "");
-      var t = normalizeLocal(raw);
-      if (!/(misalign|desalinead)/.test(t)) return false;
-      return /(machine|maquina|equipment|equipo|oven|horno|spindle|nozzle|boquilla|feeder|rail|conveyor|transportador|clamp|camera|camara|sensor|motor|gantry|head|eje|offset|calibraci|calibration|setup|ajuste|fixture|tooling|perfil|profile|printer|impresora|pick\s*and\s*place|placement head)/.test(t);
-    }
-    function isComponentMisalignmentContext(text){
-      var raw = String(text || "");
-      var t = normalizeLocal(raw);
-      if (!/(misalign|desalinead)/.test(t)) return false;
-      if (isMechanicalMisalignmentContext(raw)) return false;
-      return /(component|componente|pcb|board|tarjeta|placement|colocad|montad|socket|dimm|bga|lead|pin|pad|paste|polaridad|orientation|u\d+|r\d+|c\d+|q\d+|ic\d+)/.test(t) || /\b(?:u|r|c|q|ic)\d{1,4}\b/i.test(raw);
-    }
     function detectDefecto(text){
       var t = normalizeLocal(text);
       if (/missing material|faltante|falta material/.test(t)) return "Missing material";
       if (/wrong part|material mix|mezcla de material|wrong component/.test(t)) return "Wrong component";
       if (/short|bridge|corto|puente/.test(t)) return "Short / bridge";
       if (/open|abierto/.test(t)) return "Open";
-      if (isComponentMisalignmentContext(text)) return "Misaligned component";
+      if (/misalign|desalinead/.test(t)) return "Misaligned component";
       if (/socket|dimm|bga|u\d+|r\d+|c\d+/.test(t)) return "Hallazgo tecnico";
       return "N/A";
     }
@@ -3278,7 +3316,7 @@ async function analyzeWithAI(msgs, apiKey) {
     }
     var resumen = {
       periodo: allDates.length ? (isoToDisp(allDates[0]) + " a " + isoToDisp(allDates[allDates.length - 1])) : "",
-      grupo: traceOpsGetRuntimeSite().groupLabel,
+      grupo: "Planta",
       total_eventos: eventos.length,
       alertas_criticas: eventos.filter(function(e){ return e.prioridad === "Critica"; }).slice(0,5).map(function(e){ return e.id + " - " + e.linea_estacion + " - " + String(e.evento_detectado || "").slice(0,60); }),
       acciones_pendientes: eventos.filter(function(e){ return e.estatus !== "Cerrado"; }).slice(0,5).map(function(e){ return e.id + " - " + String(e.accion_requerida || "").slice(0,60); }),
@@ -4440,7 +4478,7 @@ async function buildXlsx(result) {
   var directorio = result.directorio || [];
 
   var wb = new ExcelJS.Workbook();
-  wb.creator = "TraceOps by " + traceOpsGetRuntimeSite().company + " - " + traceOpsGetRuntimeSite().label;
+  wb.creator = "TraceOps by SMTintel - ALDA";
   wb.created = new Date();
 
   var C = {
@@ -4609,7 +4647,7 @@ async function buildXlsx(result) {
   var wsDash = wb.addWorksheet("Dashboard_Base");
   wsDash.mergeCells("A1:E1");
   var dt = wsDash.getCell("A1");
-  dt.value = "Dashboard TraceOps - " + traceOpsGetRuntimeSite().company + " by " + traceOpsGetRuntimeSite().label;
+  dt.value = "Dashboard TraceOps - SMTintel by ALDA";
   dt.fill = hFill(C.hBg); dt.font = hFont(13);
   wsDash.getRow(1).height = 22; wsDash.addRow([]);
   [["Total",ev.length],["Abiertos",ev.filter(function(e){return e.estatus==="Abierto";}).length],
@@ -4761,12 +4799,12 @@ function LogoSVG() {
       <circle cx="214" cy="194" r="2.5" fill="#4A90E2" opacity="0.8"/>
       <circle cx="94"  cy="204" r="2"   fill="#4A90E2" opacity="0.7"/>
       <circle cx="194" cy="204" r="2"   fill="#4A90E2" opacity="0.7"/>
-      <text x="144" y="238" fontFamily="'Arial Black','Helvetica Neue',Arial,sans-serif" fontSize="28" fontWeight="900" fill="#7A9E7E" textAnchor="middle" letterSpacing="6">{traceOpsGetRuntimeSite().label}</text>
+      <text x="144" y="238" fontFamily="'Arial Black','Helvetica Neue',Arial,sans-serif" fontSize="28" fontWeight="900" fill="#7A9E7E" textAnchor="middle" letterSpacing="6">ALDA</text>
       <text x="312" y="158" fontFamily="'Arial Black','Helvetica Neue',Arial,sans-serif" fontSize="88" fontWeight="900" fill="#1B4D20" letterSpacing="-2">Ops</text>
       <text x="430" y="158" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="88" fontWeight="300" fill="#2E6B32" letterSpacing="-1">Trace</text>
       <line x1="312" y1="176" x2="870" y2="176" stroke="url(#underline)" strokeWidth="2.5"/>
       <text x="314" y="202" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="18" fontWeight="400" fill="#5A8060" letterSpacing="0.5">Operational Intelligence for Manufacturing Teams</text>
-      <text x="314" y="224" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">by {traceOpsGetRuntimeSite().company} &#183; {traceOpsGetRuntimeSite().label}</text>
+      <text x="314" y="224" fontFamily="'Arial','Helvetica Neue',Arial,sans-serif" fontSize="13" fontWeight="300" fill="#8AA88D" letterSpacing="1.5">by SMTintel &#183; ALDA</text>
     </svg>
   );
 }
@@ -5036,72 +5074,6 @@ function traceOpsDownloadCsv(filename, rows){
 }
 
 const TRACEOPS_NIGHT_OPS_HERO = 'hero-night-ops.jpeg';
-
-var TRACEOPS_DEFAULT_SITES = [
-  {
-    key: "alda",
-    label: "ALDA",
-    code: "ALDA",
-    company: "SMTintel",
-    groupLabel: "Planta ALDA",
-    tagline: "Primary manufacturing site"
-  }
-];
-
-function traceOpsNormalizeSiteKey(value) {
-  var key = String(value || "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
-  return key || "default";
-}
-
-function traceOpsGetConfiguredSites() {
-  var raw = Array.isArray(window.TRACEOPS_SITES) && window.TRACEOPS_SITES.length ? window.TRACEOPS_SITES : TRACEOPS_DEFAULT_SITES;
-  return raw.map(function(site, idx){
-    var normalized = Object.assign({}, site || {});
-    normalized.key = traceOpsNormalizeSiteKey(normalized.key || normalized.code || normalized.label || ("site-" + (idx + 1)));
-    normalized.label = String(normalized.label || normalized.code || normalized.key || ("Site " + (idx + 1))).trim();
-    normalized.code = String(normalized.code || normalized.label || normalized.key).trim().toUpperCase();
-    normalized.company = String(normalized.company || "SMTintel").trim();
-    normalized.groupLabel = String(normalized.groupLabel || ("Planta " + normalized.label)).trim();
-    normalized.tagline = String(normalized.tagline || normalized.groupLabel).trim();
-    return normalized;
-  });
-}
-
-function traceOpsResolveSite(siteKey, siteList) {
-  var sites = Array.isArray(siteList) && siteList.length ? siteList : traceOpsGetConfiguredSites();
-  var normalizedKey = traceOpsNormalizeSiteKey(siteKey);
-  var match = sites.find(function(site){ return site.key === normalizedKey; });
-  return match || sites[0];
-}
-
-function traceOpsScopedStorageKey(baseKey, siteKey) {
-  return String(baseKey || "") + "__site__" + traceOpsNormalizeSiteKey(siteKey);
-}
-
-function traceOpsAttachSiteMeta(record, site) {
-  if (!record || typeof record !== "object") return record;
-  var activeSite = traceOpsResolveSite(site && site.key ? site.key : site);
-  return Object.assign({}, record, {
-    site_key: activeSite.key,
-    site_label: activeSite.label,
-    site_code: activeSite.code
-  });
-}
-
-function traceOpsFilterRecordsBySite(list, siteKey) {
-  var normalizedKey = traceOpsNormalizeSiteKey(siteKey);
-  return (Array.isArray(list) ? list : []).filter(function(item){
-    if (!item || typeof item !== "object") return false;
-    var itemKey = traceOpsNormalizeSiteKey(item.site_key || "");
-    if (!itemKey || itemKey === "default") return normalizedKey === "alda";
-    return itemKey === normalizedKey;
-  });
-}
-
-function traceOpsGetRuntimeSite() {
-  return traceOpsResolveSite(window.__TRACEOPS_ACTIVE_SITE && window.__TRACEOPS_ACTIVE_SITE.key ? window.__TRACEOPS_ACTIVE_SITE.key : "");
-}
-
 function App() {
   var stateArr = _useState("idle");
   var state = stateArr[0]; var setState = stateArr[1];
@@ -5123,17 +5095,7 @@ function App() {
   var sbArr = _useState(window.innerWidth > 900); var sidebarOpen = sbArr[0]; var setSidebarOpen = sbArr[1];
   var langArr = _useState(localStorage.getItem("traceops_lang") || "en"); var lang = langArr[0]; var setLang = langArr[1];
   var isMobile = function(){ return window.innerWidth <= 900; };
-  var availableSites = traceOpsGetConfiguredSites();
-  var activeSiteArr = _useState(function(){
-    try {
-      return traceOpsResolveSite(localStorage.getItem("traceops_active_site"), availableSites).key;
-    } catch(_) {
-      return traceOpsResolveSite("", availableSites).key;
-    }
-  });
-  var activeSiteKey = activeSiteArr[0]; var setActiveSiteKey = activeSiteArr[1];
-  var activeSite = traceOpsResolveSite(activeSiteKey, availableSites);
-  var MAINT_KEY = traceOpsScopedStorageKey("traceops_maintenance_log_v1", activeSite.key);
+  var MAINT_KEY = "traceops_maintenance_log_v1";
 
   var activeModuleArr = _useState("rcca");
   var activeModule = activeModuleArr[0];
@@ -5217,18 +5179,7 @@ function App() {
       chipsHero: ["Incident detection","Engineer findings","RCCA memory","Yokoten","Operational log"],
       chipsContext: ["WhatsApp export","EML / MBOX","Operational Log","Root Cause Archive","Evidence in context"],
       footerTagline: "Operational Intelligence for Manufacturing Teams",
-      langLabel: "Language",
-      siteLabel: "Site",
-      siteSwitchHint: "Data, drafts and history are isolated by active site.",
-      moduleWorkspace: "Module workspace",
-      moduleWorkspaceActive: "active modules",
-      moduleWorkspaceRecords: "records",
-      moduleRccaLabel: "RCCA",
-      moduleRccaDesc: "Root cause memory and corrective action history",
-      module8dLabel: "8D",
-      module8dDesc: "Structured discipline drafts generated from RCCA",
-      moduleMaintenanceLabel: "Maintenance Log",
-      moduleMaintenanceDesc: "Machine history, part replacement and recurrence tracking"
+      langLabel: "Language"
     },
     es: {
       brandSubtitle: "Inteligencia operativa para equipos de manufactura",
@@ -5251,18 +5202,7 @@ function App() {
       chipsHero: ["Detección de incidentes","Hallazgos técnicos","Memoria RCCA","Yokoten","Bitácora operativa"],
       chipsContext: ["Export de WhatsApp","EML / MBOX","Bitácora operativa","Archivo de causa raíz","Evidencia en contexto"],
       footerTagline: "Inteligencia operativa para equipos de manufactura",
-      langLabel: "Idioma",
-      siteLabel: "Site",
-      siteSwitchHint: "Los datos, borradores e historial se separan por site activo.",
-      moduleWorkspace: "Workspace modular",
-      moduleWorkspaceActive: "modulos activos",
-      moduleWorkspaceRecords: "registros",
-      moduleRccaLabel: "RCCA",
-      moduleRccaDesc: "Memoria de causa raíz e historial de acciones correctivas",
-      module8dLabel: "8D",
-      module8dDesc: "Borradores estructurados generados a partir de RCCA",
-      moduleMaintenanceLabel: "Maintenance Log",
-      moduleMaintenanceDesc: "Historial de máquina, reemplazo de partes y seguimiento de recurrencia"
+      langLabel: "Idioma"
     },
     zh: {
       brandSubtitle: "面向制造团队的运营智能",
@@ -5285,18 +5225,7 @@ function App() {
       chipsHero: ["事件检测","工程发现","RCCA 记忆","横展","运营日志"],
       chipsContext: ["WhatsApp 导出","EML / MBOX","运营日志","根因档案","证据关联"],
       footerTagline: "面向制造团队的运营智能",
-      langLabel: "语言",
-      siteLabel: "Site",
-      siteSwitchHint: "数据、草稿和历史会按当前 site 隔离。",
-      moduleWorkspace: "模块工作区",
-      moduleWorkspaceActive: "活动模块",
-      moduleWorkspaceRecords: "条记录",
-      moduleRccaLabel: "RCCA",
-      moduleRccaDesc: "根因记忆与纠正措施历史",
-      module8dLabel: "8D",
-      module8dDesc: "基于 RCCA 生成的结构化 8D 草稿",
-      moduleMaintenanceLabel: "Maintenance Log",
-      moduleMaintenanceDesc: "设备历史、换件记录与重复发生跟踪"
+      langLabel: "语言"
     }
   };
   function t(key){
@@ -5396,7 +5325,7 @@ function App() {
     function onResize(){ if (window.innerWidth > 900) setSidebarOpen(true); }
     window.addEventListener("resize", onResize);
     return function(){ window.removeEventListener("resize", onResize); };
-  }, [RCCA_KEY]);
+  }, []);
 
   React.useEffect(function(){
     try { localStorage.setItem("traceops_lang", lang); } catch(_) {}
@@ -5404,21 +5333,9 @@ function App() {
   }, [lang]);
 
   React.useEffect(function(){
-    try { localStorage.setItem("traceops_active_site", activeSite.key); } catch(_) {}
-    try { window.__TRACEOPS_ACTIVE_SITE = activeSite; } catch(_) {}
-  }, [activeSite.key]);
-
-  React.useEffect(function(){
     try {
-      var saved = sessionStorage.getItem(LAST_RESULT_KEY);
-      if (!saved) {
-        setState("idle");
-        setResult(null);
-        setXlsxBytes(null);
-        setApiUsage(null);
-        setMsgStats(null);
-        return;
-      }
+      var saved = sessionStorage.getItem("traceops_last_result");
+      if (!saved) return;
       var payload = JSON.parse(saved);
       var savedResult = payload && payload.result ? payload.result : payload;
       var savedStats = payload && payload.msgStats ? payload.msgStats : null;
@@ -5428,14 +5345,7 @@ function App() {
       setState("done");
       buildXlsx(savedResult).then(function(bytes){ setXlsxBytes(bytes); }).catch(function(){});
     } catch(e){}
-  }, [LAST_RESULT_KEY]);
-
-  React.useEffect(function(){
-    setRccaForm(null);
-    setRccaDetail(null);
-    setEightdDetail(null);
-    setLightbox(null);
-  }, [activeSite.key]);
+  }, []);
 
   var pfArr = _useState(""); var personaFiltro = pfArr[0]; var setPersonaFiltro = pfArr[1];
   var materialGapArr = _useState("all"); var materialGapFilter = materialGapArr[0]; var setMaterialGapFilter = materialGapArr[1];
@@ -5447,10 +5357,9 @@ function App() {
   var lbArr = _useState(null); var lightbox = lbArr[0]; var setLightbox = lbArr[1];
   var galPageArr = _useState(0); var galPage = galPageArr[0]; var setGalPage = galPageArr[1];
   var GAL_PAGE_SIZE = 48;
-  var LAST_RESULT_KEY = traceOpsScopedStorageKey("traceops_last_result", activeSite.key);
-  var RCCA_KEY = traceOpsScopedStorageKey("traceops_rcca", activeSite.key);
-  var RCCA_DRAFT_KEY = traceOpsScopedStorageKey("traceops_rcca_form_draft_v1", activeSite.key);
-  var EIGHTD_KEY = traceOpsScopedStorageKey("traceops_8d_drafts_v1", activeSite.key);
+  var RCCA_KEY = "traceops_rcca";
+  var RCCA_DRAFT_KEY = "traceops_rcca_form_draft_v1";
+  var EIGHTD_KEY = "traceops_8d_drafts_v1";
   function readRccaDraft(){
     try { var raw = localStorage.getItem(RCCA_DRAFT_KEY); return raw ? JSON.parse(raw) : null; } catch(_) { return null; }
   }
@@ -5729,18 +5638,12 @@ function App() {
   }, [authUser, realtimeStatus, cloudStatus]);
 
   React.useEffect(function(){
-    if (!(window.TraceOpsCloud && window.TraceOpsCloud.isConfigured())) return;
-    if (!authUser) return;
-    refreshCloudRcca({ baseList: rccaList });
-  }, [activeSite.key, authUser && authUser.id]);
-
-  React.useEffect(function(){
     try {
       var draft = readRccaDraft();
       if (!draft || !draft.form || !isFreshRccaDraft(draft)) return;
       setRccaForm(Object.assign({}, draft.form, { __restored_draft: true }));
     } catch(_) {}
-  }, [RCCA_DRAFT_KEY]);
+  }, []);
 
   React.useEffect(function(){
     var active = true;
@@ -5757,11 +5660,11 @@ function App() {
       try {
         var raw = localStorage.getItem(RCCA_KEY);
         var parsed = raw ? JSON.parse(raw) : [];
-        if (active) setRccaList(Array.isArray(parsed) ? parsed : []);
-      } catch(_) { if (active) setRccaList([]); }
+        if (active && Array.isArray(parsed) && parsed.length) setRccaList(parsed);
+      } catch(_) {}
     })();
     return function(){ active = false; };
-  }, [RCCA_KEY]);
+  }, []);
 
   React.useEffect(function(){
     var active = true;
@@ -5778,11 +5681,11 @@ function App() {
       try {
         var raw = localStorage.getItem(EIGHTD_KEY);
         var parsed = raw ? JSON.parse(raw) : [];
-        if (active) setEightdList(Array.isArray(parsed) ? parsed : []);
-      } catch(_) { if (active) setEightdList([]); }
+        if (active && Array.isArray(parsed) && parsed.length) setEightdList(parsed);
+      } catch(_) {}
     })();
     return function(){ active = false; };
-  }, [EIGHTD_KEY]);
+  }, []);
 
   function mergeRccaRecords(localItems, remoteItems) {
     var map = {};
@@ -5853,12 +5756,11 @@ function App() {
     try {
       setSyncBusy(true);
       var remoteItems = await window.TraceOpsCloud.listRcca();
-      var remoteScoped = traceOpsFilterRecordsBySite(remoteItems, activeSite.key);
-      var merged = mergeRccaRecords(opts.baseList || rccaList, remoteScoped);
+      var merged = mergeRccaRecords(opts.baseList || rccaList, remoteItems);
       await persistRccaLocal(merged);
-      setCloudStatus(remoteScoped.length ? ("Sincronizado · " + remoteScoped.length + " RCCA · " + activeSite.label) : ("Sesion activa · nube vacia · " + activeSite.label));
+      setCloudStatus(remoteItems.length ? ("Sincronizado · " + remoteItems.length + " RCCA") : "Sesion activa · nube vacia");
       setAuthErrMsg("");
-      return remoteScoped;
+      return remoteItems;
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
@@ -5888,7 +5790,7 @@ function App() {
       for (var i = 0; i < items.length; i++) {
         await window.TraceOpsCloud.upsertRcca(items[i]);
       }
-      setCloudStatus("Sincronizado · " + items.length + " RCCA · " + activeSite.label);
+      setCloudStatus("Sincronizado · " + items.length + " RCCA");
     } catch (err) {
       var cloudErr = traceOpsNormalizeCloudError(err);
       setAuthErrMsg(cloudErr && cloudErr.message ? cloudErr.message : String(cloudErr));
@@ -6155,8 +6057,7 @@ function App() {
 
   async function saveRcca(rcca) {
     var existingLocal = (Array.isArray(rccaList) ? rccaList.find(function(x){ return x && x.rcca_id === rcca.rcca_id; }) : null) || null;
-    var payload = traceOpsAttachSiteMeta(Object.assign({}, rcca), activeSite);
-    var normalized = traceOpsMergeRccaPayload(existingLocal, Object.assign({}, payload, {
+    var normalized = traceOpsMergeRccaPayload(existingLocal, Object.assign({}, rcca, {
       source: rcca.source || "manual",
       updated_at: new Date().toISOString(),
       owner_email: authUser && authUser.email ? authUser.email : (rcca.owner_email || "")
@@ -6961,7 +6862,7 @@ function App() {
       draftToSave.source_rcca_updated_at = (draftToSave.source_snapshot && draftToSave.source_snapshot.updated_at) || draftToSave.source_rcca_updated_at || '';
       draftToSave.source_evidence_fingerprint = traceOpsRccaFingerprint(draftToSave.source_snapshot);
     }
-    var normalized = traceOpsEightdHydrateDraftFields(traceOpsAttachSiteMeta(draftToSave, activeSite));
+    var normalized = traceOpsEightdHydrateDraftFields(draftToSave);
     var readiness = traceOpsComputeEightdReadiness(normalized);
     normalized.readiness_score = readiness.overallScore;
     normalized.structure_readiness_score = readiness.structureScore;
@@ -10034,26 +9935,16 @@ function exportEightdPpt(draft) {
       .sort(function(a,b){ return b.score-a.score; })
       .slice(0,3);
   }
-  var HIST_KEY = traceOpsScopedStorageKey("traceops_history", activeSite.key);
+  var HIST_KEY = "traceops_history";
   var HIST_MAX = 10;
   var histArr = _useState(function(){
     try { var raw=localStorage.getItem(HIST_KEY); return raw?JSON.parse(raw):[]; } catch(_){ return []; }
   });
   var history = histArr[0]; var setHistory = histArr[1];
 
-  React.useEffect(function(){
-    try {
-      var raw = localStorage.getItem(HIST_KEY);
-      setHistory(raw ? JSON.parse(raw) : []);
-    } catch(_) {
-      setHistory([]);
-    }
-  }, [HIST_KEY]);
-
   function saveToHistory(res, stats, fileName, durationSecs) {
     var entry = {
       id:Date.now(), savedAt:new Date().toISOString(), fileName:fileName||"chat.zip",
-      site_key: activeSite.key, site_label: activeSite.label,
       periodo:res.resumen?res.resumen.periodo:"", grupo:res.resumen?res.resumen.grupo:"",
       totalEventos:res.eventos?res.eventos.length:0,
       criticos:res.eventos?res.eventos.filter(function(e){return e.prioridad==="Critica";}).length:0,
@@ -10078,7 +9969,7 @@ function exportEightdPpt(draft) {
     var usage=entry.apiUsage||traceOpsUsageFromResult(entry.result)||null;
     setResult(entry.result); setMsgStats(restoredStats); setApiUsage(usage); setEvImgs({}); setState("done");
     buildXlsx(entry.result).then(function(bytes){setXlsxBytes(bytes);}).catch(function(){setXlsxBytes(null);});
-        try{sessionStorage.setItem(LAST_RESULT_KEY,JSON.stringify({result:entry.result,msgStats:restoredStats}));}catch(e){}
+    try{sessionStorage.setItem("traceops_last_result",JSON.stringify({result:entry.result,msgStats:restoredStats}));}catch(e){}
   }
   var fileRef = _useRef();
   var fileNameRef = _useRef("chat.zip");
@@ -10153,7 +10044,7 @@ function exportEightdPpt(draft) {
         var cachedBytes=await buildXlsx(cachedResult);
         var totalSecsCached=Math.floor((Date.now()-startTimeRef.current)/1000);
         setProg(100);setResult(cachedResult);setXlsxBytes(cachedBytes);setState("done");
-        try{sessionStorage.setItem(LAST_RESULT_KEY,JSON.stringify({result:cachedResult,msgStats:statsPayload}));}catch(e){}
+        try{sessionStorage.setItem("traceops_last_result",JSON.stringify({result:cachedResult,msgStats:statsPayload}));}catch(e){}
         saveToHistory(cachedResult,statsPayload,fileNameRef.current,totalSecsCached);
         return;
       }
@@ -10169,7 +10060,7 @@ function exportEightdPpt(draft) {
       var bytes=await buildXlsx(res);
       var totalSecs=Math.floor((Date.now()-startTimeRef.current)/1000);
       setProg(100);setResult(res);setXlsxBytes(bytes);setState("done");
-      try{sessionStorage.setItem(LAST_RESULT_KEY,JSON.stringify({result:res,msgStats:statsPayload}));}catch(e){}
+      try{sessionStorage.setItem("traceops_last_result",JSON.stringify({result:res,msgStats:statsPayload}));}catch(e){}
       saveToHistory(res,statsPayload,fileNameRef.current,totalSecs);
     }catch(e){setErrMsg(e.message||String(e));setState("error");}
   }
@@ -10184,7 +10075,7 @@ function exportEightdPpt(draft) {
   }
 
   function reset(){
-    try{sessionStorage.removeItem(LAST_RESULT_KEY);}catch(e){}
+    try{sessionStorage.removeItem("traceops_last_result");}catch(e){}
     setState("idle");setResult(null);setXlsxBytes(null);setApiUsage(null);
     setProg(0);setProgStep(0);setMsgStats(null);setErrMsg("");setPersonaFiltro("");
     setZipImgNames([]);setImgMeta({});setEvImgs({});setLightbox(null);setGalPage(0);
@@ -10870,8 +10761,7 @@ function exportEightdPpt(draft) {
     var productCode = traceOpsInferProductCodeLocal(contextText || String((evData && evData.modelo) || ""));
     var buCode = traceOpsNormalizeBuCodeLocal(traceOpsInferBuCodeLocal(contextText) || "FWBU") || "FWBU";
     var dateStamp = traceOpsCurrentRccaDateStampLocal();
-    var siteCode = String((activeSite && activeSite.code) || "SITE").replace(/[^A-Za-z0-9]+/g, "").toUpperCase() || "SITE";
-    var baseId = [siteCode, productCode, buCode, dateStamp].join("-");
+    var baseId = [productCode, buCode, dateStamp].join("-");
     return baseId + "-" + traceOpsBuildRccaSuffixLocal(baseId);
   }
 
@@ -12169,18 +12059,15 @@ function replaceMetaFiles(nextFiles){
   React.useEffect(function(){
     try {
       var raw = localStorage.getItem(MAINT_KEY);
-      if (!raw) {
-        setMaintenanceRecords([]);
-        return;
-      }
+      if (!raw) return;
       var parsed = JSON.parse(raw);
-      setMaintenanceRecords(Array.isArray(parsed) ? parsed : []);
-    } catch(_) { setMaintenanceRecords([]); }
-  }, [MAINT_KEY]);
+      if (Array.isArray(parsed)) setMaintenanceRecords(parsed);
+    } catch(_) {}
+  }, []);
 
   React.useEffect(function(){
     try { localStorage.setItem(MAINT_KEY, JSON.stringify(maintenanceRecords || [])); } catch(_) {}
-  }, [maintenanceRecords, MAINT_KEY]);
+  }, [maintenanceRecords]);
 
   function traceOpsGenerateMaintenanceId(){
     var now = new Date();
@@ -12190,11 +12077,11 @@ function replaceMetaFiles(nextFiles){
     var hh = String(now.getHours()).padStart(2,"0");
     var mm = String(now.getMinutes()).padStart(2,"0");
     var ss = String(now.getSeconds()).padStart(2,"0");
-    return "MNT-" + activeSite.code + "-" + y + m + d + "-" + hh + mm + ss;
+    return "MNT-" + y + m + d + "-" + hh + mm + ss;
   }
 
   function saveMaintenanceRecord(){
-    var row = traceOpsAttachSiteMeta(Object.assign({}, maintenanceForm || {}), activeSite);
+    var row = Object.assign({}, maintenanceForm || {});
     if (!row.machine && !row.partReplaced && !row.symptom) {
       alert("Completa al menos Machine, Part Replaced o Symptom.");
       return;
@@ -12676,24 +12563,24 @@ function replaceMetaFiles(nextFiles){
   var moduleNavItems = [
     {
       key: "rcca",
-      label: t("moduleRccaLabel"),
-      shortLabel: t("moduleRccaDesc"),
+      label: "RCCA",
+      shortLabel: "Root cause memory and corrective action history",
       count: rccaList.length,
       anchorId: "rcca-section",
       tone: { bg:"#F5F0FE", border:"#DBCDF8", color:"#6B2DA8" }
     },
     {
       key: "8d",
-      label: t("module8dLabel"),
-      shortLabel: t("module8dDesc"),
+      label: "8D",
+      shortLabel: "Structured discipline drafts generated from RCCA",
       count: eightdList.length,
       anchorId: "eightd-section",
       tone: { bg:"#EAF2FF", border:"#C7DBF7", color:"#1F3A5F" }
     },
     {
       key: "maintenance",
-      label: t("moduleMaintenanceLabel"),
-      shortLabel: t("moduleMaintenanceDesc"),
+      label: "Maintenance Log",
+      shortLabel: "Machine history, part replacement and recurrence tracking",
       count: maintenanceRecords.length,
       anchorId: "maintenance-section",
       tone: { bg:"#EEF6FF", border:"#D8E6FB", color:"#145A28" }
@@ -12754,14 +12641,6 @@ function replaceMetaFiles(nextFiles){
           <div className="sidebar-section-title">API Key</div>
           <input aria-label="API Key de OpenAI o Anthropic" className="sidebar-api-input" type="password" placeholder="Pega tu API key aqui" value={apiKey} onChange={function(e){saveKey(e.target.value);}}/>
           <div className="sidebar-api-note">Opcional. Sin key se usa modo local; con key se intenta IA. Si IA falla, vuelve a local.</div>
-        </div>
-
-        <div className="sidebar-section">
-          <div className="sidebar-section-title">{t("siteLabel")}</div>
-          <select className="sidebar-api-input" value={activeSite.key} onChange={function(e){setActiveSiteKey(e.target.value);}}>
-            {availableSites.map(function(site){ return <option key={site.key} value={site.key}>{site.label}</option>; })}
-          </select>
-          <div className="sidebar-api-note">{t("siteSwitchHint")}</div>
         </div>
 
         <div className="sidebar-section">
@@ -12850,7 +12729,7 @@ function replaceMetaFiles(nextFiles){
         </div>
 
         <div className="sidebar-footer">
-          <p>TraceOps by {activeSite.company} - {activeSite.label}<br/>{t("footerTagline")}</p>
+          <p>TraceOps by SMTintel - ALDA<br/>{t("footerTagline")}</p>
         </div>
       </div>
 
@@ -12868,12 +12747,6 @@ function replaceMetaFiles(nextFiles){
           </div>
         </div>
         <div className="saas-topbar-actions">
-          <div className="saas-header-pill" title={t("siteLabel")} style={{gap:8}}>
-            <span className="hide-mobile">{t("siteLabel")}</span>
-            <select value={activeSite.key} onChange={function(e){setActiveSiteKey(e.target.value);}} style={{border:"none",background:"transparent",color:"inherit",fontSize:10.5,fontWeight:700,outline:"none",cursor:"pointer"}}>
-              {availableSites.map(function(site){ return <option key={site.key} value={site.key} style={{color:"#1A1714"}}>{site.label}</option>; })}
-            </select>
-          </div>
           <div className="saas-header-pill" title={t("langLabel")} style={{gap:6,padding:"6px 8px"}}>
             <span className="hide-mobile" style={{fontSize:10,fontWeight:700,color:"#6A6560",marginRight:2}}>{t("langLabel")}</span>
             <button type="button" onClick={function(){setLang("en");}} style={{border:"none",background:lang==="en"?"#1F3A5F":"transparent",color:lang==="en"?"#fff":"#6A6560",borderRadius:999,padding:"4px 8px",fontSize:10,fontWeight:700,cursor:"pointer"}}>EN</button>
@@ -13141,7 +13014,6 @@ function replaceMetaFiles(nextFiles){
               <div className="traceops-context-title">{lang==="zh"?"当前分析上下文":"Contexto actual del analisis"}</div>
               <div className="traceops-context-subtitle">{lang==="zh"?"把窗口、引擎、消息量、证据和导出状态集中在一个主面板里，避免重复摘要。":"Concentra ventana, motor, volumen de mensajes, evidencia y export en un solo panel maestro para evitar bloques repetidos."}</div>
               <div className="traceops-context-chips">
-                <span><strong>{t("siteLabel")}:</strong>&nbsp;{activeSite.label}</span>
                 <span><strong>{lang==="zh"?"范围":"Rango"}:</strong>&nbsp;{analysisRangeLabel||"N/D"}</span>
                 {requestedWindowLabel&&<span><strong>{lang==="zh"?"请求":"Solicitada"}:</strong>&nbsp;{requestedWindowLabel}</span>}
                 {requestedWindowDiffers&&<span><strong>{lang==="zh"?"含数据":"Con datos"}:</strong>&nbsp;{actualWindowLabel}</span>}
@@ -13892,13 +13764,13 @@ function replaceMetaFiles(nextFiles){
           <div id="module-workspace" style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:22,overflow:"hidden",marginBottom:18,boxShadow:"0 2px 12px rgba(20,32,51,.04)"}}>
             <div style={{padding:"18px 20px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:14,flexWrap:"wrap"}}>
               <div style={{minWidth:0,flex:1}}>
-                <div style={{fontSize:10,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",color:"#5F766C",marginBottom:6}}>{t("moduleWorkspace")}</div>
+                <div style={{fontSize:10,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",color:"#5F766C",marginBottom:6}}>Module workspace</div>
                 <div style={{fontSize:22,fontWeight:800,color:"#102A43",letterSpacing:"-.03em",lineHeight:1.05}}>{activeModuleMeta.label}</div>
                 <div style={{fontSize:12,color:"#5F766C",marginTop:6,maxWidth:720,lineHeight:1.55}}>{activeModuleMeta.shortLabel}</div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:activeModuleMeta.tone.bg,color:activeModuleMeta.tone.color,border:"1px solid "+activeModuleMeta.tone.border}}>{activeModuleMeta.count} {t("moduleWorkspaceRecords")}</span>
-                <span style={{fontSize:10,color:"#5F766C"}}>{moduleNavItems.length} {t("moduleWorkspaceActive")}</span>
+                <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:activeModuleMeta.tone.bg,color:activeModuleMeta.tone.color,border:"1px solid "+activeModuleMeta.tone.border}}>{activeModuleMeta.count} registros</span>
+                <span style={{fontSize:10,color:"#5F766C"}}>{moduleNavItems.length} modulos activos</span>
               </div>
             </div>
 
@@ -14312,7 +14184,7 @@ function replaceMetaFiles(nextFiles){
           )}
 
           <div className="foot">
-            <p><strong>TraceOps</strong> by {activeSite.company} - {activeSite.label} - {new Date().toLocaleDateString("es-MX")}</p>
+            <p><strong>TraceOps</strong> by SMTintel - ALDA - {new Date().toLocaleDateString("es-MX")}</p>
             <button className="dlbtn" style={{padding:"8px 16px",fontSize:12}} onClick={download}>Descargar Excel</button>
           </div>
         </div>
