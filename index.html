@@ -5097,7 +5097,7 @@ function App() {
   var isMobile = function(){ return window.innerWidth <= 900; };
   var MAINT_KEY = "traceops_maintenance_log_v1";
 
-  var activeModuleArr = _useState("rcca");
+  var activeModuleArr = _useState("nccapa");
   var activeModule = activeModuleArr[0];
   var setActiveModule = activeModuleArr[1];
 
@@ -5159,7 +5159,7 @@ function App() {
   var setMaintenanceForm = maintenanceFormArr[1];
   var translations = {
     en: {
-      brandSubtitle: "Operational Intelligence for Manufacturing Teams",
+      brandSubtitle: "Operational Quality Intelligence with NC/CAPA discipline",
       startExport: "Start with your WhatsApp export",
       startExportShort: "Export ZIP",
       recentAnalyses: "See recent analyses",
@@ -5167,22 +5167,22 @@ function App() {
       downloadXlsx: "Download XLSX log",
       cloudRcca: "RCCA Cloud",
       localRcca: "Local RCCA",
-      heroEyebrow: "Operational Intelligence for Manufacturing Teams",
-      heroSubtitle: "Supervisors can export end-of-shift chats in minutes and turn scattered floor updates into structured incidents, visible priorities, reusable RCCA memory, and 8D-ready technical drafts — without sacrificing productive floor time.",
+      heroEyebrow: "Operational quality control tower for manufacturing teams",
+      heroSubtitle: "TraceOps starts from the real operational conversation and now evolves it into a disciplined NC/CAPA flow with containment, ownership, approvals, and effectiveness follow-up.",
       contextKicker: "Built from inside the operation",
-      contextTitle: "Your operation already has the information. It just does not stay together.",
-      contextSubtitle: "Upload a WhatsApp export, email thread, or operational message history. TraceOps helps supervisors convert scattered operational updates into structured incidents, visible priorities, reusable RCCA memory, and 8D-ready technical drafts.",
+      contextTitle: "Your operation already has the signals. The next step is formal quality control.",
+      contextSubtitle: "Upload a WhatsApp export, email thread, or operational message history. TraceOps turns scattered updates into structured incidents and then scales them into NC/CAPA records with traceability, CAPA planning, approvals, and closure control.",
       loadZip: "Load ZIP now",
       uploadTitle: "Start with your WhatsApp export",
       uploadSubtitle: "Drop the ZIP here or click to select it",
       selectFile: "Select file",
-      chipsHero: ["Incident detection","Engineer findings","RCCA memory","Yokoten","Operational log"],
-      chipsContext: ["WhatsApp export","EML / MBOX","Operational Log","Root Cause Archive","Evidence in context"],
-      footerTagline: "Operational Intelligence for Manufacturing Teams",
+      chipsHero: ["NC capture","CAPA execution","RCCA memory","8D readiness","Quality governance"],
+      chipsContext: ["WhatsApp export","EML / MBOX","Containment","Evidence in context","Closure gates"],
+      footerTagline: "Operational Quality Intelligence with NC/CAPA discipline",
       langLabel: "Language"
     },
     es: {
-      brandSubtitle: "Inteligencia operativa para equipos de manufactura",
+      brandSubtitle: "Inteligencia operativa de calidad con disciplina NC/CAPA",
       startExport: "Comenzar con export de WhatsApp",
       startExportShort: "Exportar ZIP",
       recentAnalyses: "Ver análisis recientes",
@@ -5190,18 +5190,18 @@ function App() {
       downloadXlsx: "Descargar bitácora XLSX",
       cloudRcca: "RCCA en nube",
       localRcca: "RCCA local",
-      heroEyebrow: "Inteligencia operativa para equipos de manufactura",
-      heroSubtitle: "Los supervisores pueden exportar chats de fin de turno en minutos y convertir actualizaciones dispersas del piso en incidentes estructurados, prioridades visibles, memoria RCCA reutilizable y borradores técnicos listos para 8D, sin sacrificar tiempo productivo.",
+      heroEyebrow: "Control tower de calidad para equipos de manufactura",
+      heroSubtitle: "TraceOps parte de la conversacion operativa real y ahora evoluciona hacia un flujo NC/CAPA con contencion, ownership, aprobaciones y seguimiento de efectividad.",
       contextKicker: "Construido desde adentro de la operación",
-      contextTitle: "Tu operación ya tiene la información. Lo que falta es mantenerla unida.",
-      contextSubtitle: "Carga una exportación de WhatsApp, un hilo de correo o un historial de mensajes operativos. TraceOps ayuda a los supervisores a convertir actualizaciones operativas dispersas en incidentes estructurados, prioridades visibles, memoria RCCA reutilizable y borradores técnicos listos para 8D.",
+      contextTitle: "Tu operacion ya tiene las senales. El siguiente paso es control de calidad formal.",
+      contextSubtitle: "Carga una exportacion de WhatsApp, un hilo de correo o un historial de mensajes operativos. TraceOps convierte actualizaciones dispersas en incidentes estructurados y luego los escala a registros NC/CAPA con trazabilidad, plan de accion, aprobaciones y control de cierre.",
       loadZip: "Cargar ZIP ahora",
       uploadTitle: "Comenzar con export de WhatsApp",
       uploadSubtitle: "Suelta aquí el ZIP o haz clic para seleccionarlo",
       selectFile: "Seleccionar archivo",
-      chipsHero: ["Detección de incidentes","Hallazgos técnicos","Memoria RCCA","Yokoten","Bitácora operativa"],
-      chipsContext: ["Export de WhatsApp","EML / MBOX","Bitácora operativa","Archivo de causa raíz","Evidencia en contexto"],
-      footerTagline: "Inteligencia operativa para equipos de manufactura",
+      chipsHero: ["Captura NC","Ejecucion CAPA","Memoria RCCA","Listo para 8D","Gobernanza de calidad"],
+      chipsContext: ["Export de WhatsApp","EML / MBOX","Contencion","Evidencia en contexto","Compuertas de cierre"],
+      footerTagline: "Inteligencia operativa de calidad con disciplina NC/CAPA",
       langLabel: "Idioma"
     },
     zh: {
@@ -10464,6 +10464,94 @@ function exportEightdPpt(draft) {
     "Close pending RCCA follow-up",
     "Complete missing evidence linkage"
   ]);
+  function traceOpsNcSeverityLocal(item){
+    if (!item) return "Media";
+    if (item.prioridad === "Critica" || item.prioridad === "Alta") return "Alta";
+    if (item.prioridad === "Baja") return "Baja";
+    return "Media";
+  }
+  function traceOpsNcCaseIdLocal(item, idx){
+    var raw = String((item && item.id) || "").replace(/[^0-9]/g, "");
+    var suffix = raw ? raw.slice(-4) : String(24017 + (idx || 0));
+    return "NC-" + suffix.padStart(5, "0");
+  }
+  function traceOpsNcOwnerLocal(item){
+    return (item && item.responsable_sugerido && String(item.responsable_sugerido).trim()) || "QA Owner pendiente";
+  }
+  function traceOpsNcStatusLocal(item){
+    var state = String((item && item.estado_historia) || "").trim();
+    if (state === "Cerrado") return "Closed";
+    if (state === "Validado") return "Validation";
+    if (state === "Corregido") return "Action";
+    if (state === "Contenido") return "Contained";
+    return "Open";
+  }
+  var ncCapaCases = ev.slice(0, Math.min(6, ev.length)).map(function(item, idx){
+    var ageDays = ageDaysLocal(item);
+    var severity = traceOpsNcSeverityLocal(item);
+    var owner = traceOpsNcOwnerLocal(item);
+    return {
+      id: traceOpsNcCaseIdLocal(item, idx),
+      sourceId: item.id,
+      title: item.evento_detectado || item.defecto_smt || "No conformidad sin descripcion",
+      model: item.modelo || "Modelo N/D",
+      area: item.linea_estacion || "Linea / estacion N/D",
+      lot: item.lote || item.wo || item.batch || "Lote pendiente",
+      owner: owner,
+      severity: severity,
+      risk: severity === "Alta" ? "Cliente / severidad alta" : (item.prioridad === "Media" ? "Operacion en seguimiento" : "Control interno"),
+      status: traceOpsNcStatusLocal(item),
+      overdue: ageDays >= 4,
+      ageDays: ageDays,
+      customerProtectionRequired: severity === "Alta" || /cliente|customer/i.test(String(item.evento_detectado || "")),
+      evidenceCount: (evImgs[item.id] || []).length,
+      finding: item.engineer_findings || item.hallazgo_ingenieria || "Pendiente de analisis tecnico",
+      containment: item.accion_ejecutada || item.contencion || "Definir contencion inmediata y hold del lote",
+      detectedOn: item.fecha || "N/D"
+    };
+  });
+  var ncPrimaryCase = ncCapaCases[0] || {
+    id:"NC-24017",
+    sourceId:"",
+    title:"Wrong component at feeder release",
+    model:"Modelo N/D",
+    area:"Linea / estacion N/D",
+    lot:"Lote pendiente",
+    owner:"QA Owner pendiente",
+    severity:"Alta",
+    risk:"Cliente / severidad alta",
+    status:"Open",
+    overdue:false,
+    ageDays:0,
+    customerProtectionRequired:true,
+    evidenceCount:0,
+    finding:"Pendiente de analisis tecnico",
+    containment:"Definir contencion inmediata",
+    detectedOn:"N/D"
+  };
+  var ncOpenCount = ncCapaCases.filter(function(item){ return item.status !== "Closed"; }).length;
+  var ncHighSeverityCount = ncCapaCases.filter(function(item){ return item.severity === "Alta"; }).length;
+  var ncOverdueCount = ncCapaCases.filter(function(item){ return item.overdue; }).length;
+  var ncValidationCount = ncCapaCases.filter(function(item){ return item.status === "Validation"; }).length;
+  var ncValidatedClosureRate = ncCapaCases.length ? Math.round((ncCapaCases.filter(function(item){ return item.status === "Closed"; }).length / ncCapaCases.length) * 100) : 0;
+  var ncPriorityRows = ncCapaCases.slice(0,3);
+  var ncCapaActionPlan = [
+    { action:"Aislar lote y proteger cliente para " + ncPrimaryCase.id, owner:ncPrimaryCase.owner, due:"< 24h", status:ncPrimaryCase.overdue ? "Overdue" : "On track", effect:"Contencion" },
+    { action:"Confirmar causa raiz y punto de escape con evidencia tecnica", owner:"Ingenieria de proceso", due:"48h", status:findingsEventCount>0 ? "In progress" : "Pending", effect:"Ocurrencia / Escape" },
+    { action:"Implementar accion correctiva permanente y actualizar estandar", owner:linkedVisibleRccaCount>0 ? "Owner RCCA" : "QA + Produccion", due:"5 dias", status:linkedVisibleRccaCount>0 ? "Planned" : "Blocked", effect:"Sistema" },
+    { action:"Validar efectividad 30/60 dias y definir Yokoten", owner:"QA Manager", due:"30-60 dias", status:mandatoryReadyCount>0 ? "Validation" : "Pending", effect:"Efectividad / Replicacion" }
+  ];
+  var ncApprovalRows = [
+    { role:"Owner CAPA", name:ncPrimaryCase.owner, status:ncOverdueCount>0 ? "At risk" : "Approved" },
+    { role:"Ingenieria", name:"Proceso / QE", status:findingsEventCount>0 ? "Approved" : "Pending" },
+    { role:"QA Manager", name:"Calidad", status:mandatoryReadyCount>0 ? "Pending review" : "Blocked" }
+  ];
+  var ncFocusAreas = [
+    ncOverdueCount>0 ? (ncOverdueCount + " caso(s) vencido(s) requieren escalacion") : "No hay casos vencidos en la ventana visible",
+    ncHighSeverityCount>0 ? (ncHighSeverityCount + " NC de severidad alta siguen visibles") : "Sin NC de severidad alta visibles",
+    (mandatoryReadyCount>0 ? mandatoryReadyCount : 0) + " expediente(s) con base para validacion D6",
+    linkedVisibleRccaCount>0 ? (linkedVisibleRccaCount + " RCCA vinculadas aceleran el CAPA") : "Falta vincular RCCA para madurez de cierre"
+  ];
 
 
   var materialStagesOrdered=[
@@ -12555,12 +12643,21 @@ function replaceMetaFiles(nextFiles){
   }
 
   function renderModuleIcon(kind){
+    if (kind === "nccapa") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3h6l1 2h4v16H4V5h4l1-2z"/><path d="M9 10h6"/><path d="M9 14h6"/><path d="M9 18h4"/><path d="M17 10l2 2 3-3"/></svg>;
     if (kind === "rcca") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>;
     if (kind === "maintenance") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 7l3-3 3 3-3 3-3-3"/><path d="M2 20l7-7"/><path d="M9 13l3 3"/><path d="M9 13l-3-3"/><path d="M12 16l8-8"/></svg>;
     return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3h6l1 2h4v16H4V5h4l1-2z"/><path d="M9 10h6"/><path d="M9 14h6"/><path d="M9 18h4"/></svg>;
   }
 
   var moduleNavItems = [
+    {
+      key: "nccapa",
+      label: "NC/CAPA",
+      shortLabel: "Control tower de calidad con no conformidad, plan CAPA y cierre auditable",
+      count: ncOpenCount,
+      anchorId: "nccapa-section",
+      tone: { bg:"#EEF6FF", border:"#CFE0FB", color:"#145A28" }
+    },
     {
       key: "rcca",
       label: "RCCA",
@@ -13775,7 +13872,7 @@ function replaceMetaFiles(nextFiles){
             </div>
 
             <div style={{padding:"14px 16px 0"}}>
-              <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat("+moduleNavItems.length+",minmax(0,1fr))",gap:10}}>
                 {moduleNavItems.map(function(item){
                   var active = activeModule === item.key;
                   return (
@@ -13815,6 +13912,154 @@ function replaceMetaFiles(nextFiles){
             </div>
 
             <div style={{padding:"16px 16px 16px"}}>
+              {activeModule==="nccapa" && <div id="nccapa-section" style={{display:"flex",flexDirection:"column",gap:14,marginBottom:14}}>
+                <div style={{background:"linear-gradient(135deg,#102A43 0%,#1F3A5F 100%)",borderRadius:18,padding:"18px 20px",color:"#fff",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:14,flexWrap:"wrap"}}>
+                  <div style={{minWidth:0,flex:1}}>
+                    <div style={{fontSize:10,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",opacity:.72,marginBottom:8}}>TraceOps evolution</div>
+                    <div style={{fontSize:24,fontWeight:800,lineHeight:1.05,maxWidth:620}}>NC/CAPA Control Tower</div>
+                    <div style={{fontSize:12.5,lineHeight:1.6,opacity:.82,maxWidth:760,marginTop:8}}>La lectura operativa de TraceOps ahora aterriza en un modulo de calidad con compuertas de contencion, analisis, accion, verificacion y cierre formal. La idea es no quedarse en incidentes visibles, sino empujar ownership, evidencia y efectividad.</div>
+                  </div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{ncOpenCount} NC activas</span>
+                    <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{ncOverdueCount} CAPA vencidas</span>
+                    <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{ncValidationCount} en validacion</span>
+                  </div>
+                </div>
+
+                <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(4,minmax(0,1fr))",gap:10}}>
+                  <div style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#5F766C",textTransform:"uppercase"}}>NC abiertas</div><div style={{fontSize:28,fontWeight:800,color:"#102A43",marginTop:6}}>{ncOpenCount}</div><div style={{fontSize:11,color:"#5F766C",marginTop:5}}>{ncHighSeverityCount} de severidad alta</div></div>
+                  <div style={{background:"#fff",border:"1px solid #F5E4A0",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#B87820",textTransform:"uppercase"}}>CAPA vencidas</div><div style={{fontSize:28,fontWeight:800,color:"#B87820",marginTop:6}}>{ncOverdueCount}</div><div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Escalacion por aging y bloqueo</div></div>
+                  <div style={{background:"#fff",border:"1px solid #DBCDF8",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#6B2DA8",textTransform:"uppercase"}}>En validacion</div><div style={{fontSize:28,fontWeight:800,color:"#6B2DA8",marginTop:6}}>{ncValidationCount}</div><div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Pendientes de evidencia D6</div></div>
+                  <div style={{background:"#fff",border:"1px solid #CFE0FB",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Cierre validado</div><div style={{fontSize:28,fontWeight:800,color:"#1F3A5F",marginTop:6}}>{ncValidatedClosureRate}%</div><div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Ventana visible actual</div></div>
+                </div>
+
+                <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.15fr .85fr",gap:14}}>
+                  <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
+                    <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+                      <div><div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Dashboard ejecutivo de calidad</div><div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Vista diaria para priorizar cartera NC/CAPA y riesgos de recurrencia</div></div>
+                      <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#EAF2FF",color:"#1F3A5F",border:"1px solid #CFE0FB"}}>{ncPriorityRows.length} prioridades visibles</span>
+                    </div>
+                    <div style={{padding:"12px 16px"}}>
+                      <table className="toq-mini-table">
+                        <thead><tr><th>Caso</th><th>Area</th><th>Riesgo</th><th>Owner</th><th>Estado</th></tr></thead>
+                        <tbody>
+                          {ncPriorityRows.map(function(item){
+                            return <tr key={item.id}><td>{item.id}</td><td>{item.area}</td><td>{item.risk}</td><td>{item.owner}</td><td>{item.overdue ? "Overdue" : item.status}</td></tr>;
+                          })}
+                        </tbody>
+                      </table>
+                      <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(2,minmax(0,1fr))",gap:10,marginTop:12}}>
+                        <div style={{background:"#F8FBFF",border:"1px solid #D9E6F7",borderRadius:12,padding:"12px 13px"}}>
+                          <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Alertas inteligentes</div>
+                          <div style={{fontSize:11.5,color:"#364A63",lineHeight:1.55,marginTop:6}}>{ncFocusAreas.join(" · ")}</div>
+                        </div>
+                        <div style={{background:"#FBF8FF",border:"1px solid #E3D8FB",borderRadius:12,padding:"12px 13px"}}>
+                          <div style={{fontSize:10,fontWeight:800,color:"#6B2DA8",textTransform:"uppercase"}}>Compuertas minimas</div>
+                          <div style={{fontSize:11.5,color:"#4D4762",lineHeight:1.55,marginTop:6}}>No permitir cierre si falta lote afectado, evidencia de implementacion, validacion D6 o aprobacion QA.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
+                    <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
+                      <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Detalle de no conformidad</div>
+                      <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>{ncPrimaryCase.id} · {ncPrimaryCase.title}</div>
+                    </div>
+                    <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        <span style={{fontSize:9.5,fontWeight:800,padding:"4px 8px",borderRadius:999,background:ncPrimaryCase.severity==="Alta"?"#FDF0EE":"#FEF9E8",color:ncPrimaryCase.severity==="Alta"?"#C0392B":"#B87820"}}>{ncPrimaryCase.severity}</span>
+                        <span style={{fontSize:9.5,fontWeight:800,padding:"4px 8px",borderRadius:999,background:"#EAF2FF",color:"#1F3A5F"}}>{ncPrimaryCase.status}</span>
+                        <span style={{fontSize:9.5,fontWeight:800,padding:"4px 8px",borderRadius:999,background:"#F5F0FE",color:"#6B2DA8"}}>{ncPrimaryCase.model}</span>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>
+                        <div style={{background:"#F8F7F5",border:"1px solid #E7E2DB",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:9,color:"#8A8580",fontWeight:800,textTransform:"uppercase"}}>Area</div><div style={{fontSize:12.5,fontWeight:700,color:"#1A1714",marginTop:4}}>{ncPrimaryCase.area}</div></div>
+                        <div style={{background:"#F8F7F5",border:"1px solid #E7E2DB",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:9,color:"#8A8580",fontWeight:800,textTransform:"uppercase"}}>Lote</div><div style={{fontSize:12.5,fontWeight:700,color:"#1A1714",marginTop:4}}>{ncPrimaryCase.lot}</div></div>
+                        <div style={{background:"#F8F7F5",border:"1px solid #E7E2DB",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:9,color:"#8A8580",fontWeight:800,textTransform:"uppercase"}}>Owner</div><div style={{fontSize:12.5,fontWeight:700,color:"#1A1714",marginTop:4}}>{ncPrimaryCase.owner}</div></div>
+                        <div style={{background:"#F8F7F5",border:"1px solid #E7E2DB",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:9,color:"#8A8580",fontWeight:800,textTransform:"uppercase"}}>Deteccion</div><div style={{fontSize:12.5,fontWeight:700,color:"#1A1714",marginTop:4}}>{ncPrimaryCase.detectedOn}</div></div>
+                      </div>
+                      <div style={{background:"#FEF9E8",border:"1px solid #F5E4A0",borderRadius:12,padding:"12px 13px"}}>
+                        <div style={{fontSize:10,fontWeight:800,color:"#B87820",textTransform:"uppercase"}}>Contencion inmediata</div>
+                        <div style={{fontSize:11.5,color:"#5E4A17",lineHeight:1.55,marginTop:6}}>{ncPrimaryCase.containment}</div>
+                      </div>
+                      <div style={{background:"#F8FBFF",border:"1px solid #D9E6F7",borderRadius:12,padding:"12px 13px"}}>
+                        <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Trazabilidad y evidencia</div>
+                        <div style={{fontSize:11.5,color:"#364A63",lineHeight:1.55,marginTop:6}}>Fuente {ncPrimaryCase.sourceId || "N/D"} · {ncPrimaryCase.evidenceCount} evidencia(s) vinculada(s) · {ncPrimaryCase.customerProtectionRequired ? "Proteccion de cliente obligatoria" : "Proteccion de cliente no requerida por ahora"}.</div>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(2,minmax(0,1fr))",gap:8}}>
+                        {[
+                          {label:"Contencion evidenciada", ok:ncPrimaryCase.evidenceCount>0},
+                          {label:"Lote afectado identificado", ok:ncPrimaryCase.lot!=="Lote pendiente"},
+                          {label:"Causa raiz documentada", ok:!!findingsEventCount},
+                          {label:"Validacion D6 completa", ok:mandatoryReadyCount>0}
+                        ].map(function(item){
+                          return <div key={item.label} style={{border:"1px solid "+(item.ok?"#CFE7D3":"#F1D0CB"),background:item.ok?"#F4FBF5":"#FFF6F4",borderRadius:10,padding:"10px 11px",fontSize:10.5,fontWeight:700,color:item.ok?"#145A28":"#A43B2E"}}>{item.ok?"OK":"Open"} · {item.label}</div>;
+                        })}
+                      </div>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                        <button onClick={function(){setRccaForm({event_ids:ncPrimaryCase.sourceId?[ncPrimaryCase.sourceId]:[],modelo:ncPrimaryCase.model,linea:ncPrimaryCase.area,fecha:new Date().toISOString().slice(0,10),problema:ncPrimaryCase.title});setActiveModule("rcca");}} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:8,padding:"8px 12px",fontSize:10.5,fontWeight:700,cursor:"pointer"}}>Crear / vincular RCCA</button>
+                        <button onClick={function(){setActiveModule("8d");}} style={{background:"#F5F0FE",color:"#6B2DA8",border:"1px solid #DBCDF8",borderRadius:8,padding:"8px 12px",fontSize:10.5,fontWeight:700,cursor:"pointer"}}>Revisar 8D</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.15fr .85fr",gap:14}}>
+                  <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
+                    <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
+                      <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Plan CAPA y verificacion</div>
+                      <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Acciones, owners, fecha compromiso, evidencia y matriz de efectividad</div>
+                    </div>
+                    <div style={{padding:"12px 16px"}}>
+                      <table className="toq-mini-table">
+                        <thead><tr><th>Accion</th><th>Owner</th><th>Compromiso</th><th>Estado</th><th>Impacto</th></tr></thead>
+                        <tbody>
+                          {ncCapaActionPlan.map(function(item){
+                            return <tr key={item.action}><td>{item.action}</td><td>{item.owner}</td><td>{item.due}</td><td>{item.status}</td><td>{item.effect}</td></tr>;
+                          })}
+                        </tbody>
+                      </table>
+                      <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:8,marginTop:12}}>
+                        {[
+                          {label:"Ocurrencia",value:findingsEventCount>0?"Causa raiz ya visible":"Pendiente",tone:findingsEventCount>0?"#145A28":"#B87820"},
+                          {label:"Escape",value:linkedEvidenceCount>0?"Evidencia ligada":"Sin evidencia suficiente",tone:linkedEvidenceCount>0?"#1F3A5F":"#B87820"},
+                          {label:"Sistema",value:linkedVisibleRccaCount>0?"RCCA / estandar disponible":"Actualizar documento / WI",tone:linkedVisibleRccaCount>0?"#6B2DA8":"#B87820"}
+                        ].map(function(item){
+                          return <div key={item.label} style={{background:"#F8F7F5",border:"1px solid #E7E2DB",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:9,color:"#8A8580",fontWeight:800,textTransform:"uppercase"}}>{item.label}</div><div style={{fontSize:12,fontWeight:800,color:item.tone,marginTop:5,lineHeight:1.4}}>{item.value}</div></div>;
+                        })}
+                      </div>
+                    </div>
+                  </section>
+
+                  <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
+                    <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
+                      <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Cierre, aprobacion y KPI</div>
+                      <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Gobernanza para impedir cierres prematuros</div>
+                    </div>
+                    <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:12}}>
+                      <table className="toq-mini-table">
+                        <thead><tr><th>Rol</th><th>Nombre</th><th>Estatus</th></tr></thead>
+                        <tbody>
+                          {ncApprovalRows.map(function(item){
+                            return <tr key={item.role}><td>{item.role}</td><td>{item.name}</td><td>{item.status}</td></tr>;
+                          })}
+                        </tbody>
+                      </table>
+                      <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(2,minmax(0,1fr))",gap:8}}>
+                        <div style={{background:"#F8FBFF",border:"1px solid #D9E6F7",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:9,color:"#8A8580",fontWeight:800,textTransform:"uppercase"}}>Tiempo a contencion</div><div style={{fontSize:18,fontWeight:800,color:"#1F3A5F",marginTop:4}}>{ncHighSeverityCount>0?"< 24h meta":"24-48h visible"}</div></div>
+                        <div style={{background:"#F8FBFF",border:"1px solid #D9E6F7",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:9,color:"#8A8580",fontWeight:800,textTransform:"uppercase"}}>Tiempo a cierre</div><div style={{fontSize:18,fontWeight:800,color:"#1F3A5F",marginTop:4}}>{ncOverdueCount>0?"Fuera de objetivo":"Dentro de ventana"}</div></div>
+                        <div style={{background:"#FBF8FF",border:"1px solid #E3D8FB",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:9,color:"#8A8580",fontWeight:800,textTransform:"uppercase"}}>Efectividad 60d</div><div style={{fontSize:18,fontWeight:800,color:"#6B2DA8",marginTop:4}}>{mandatoryReadyCount>0?"Seguimiento activo":"Aun sin ventana minima"}</div></div>
+                        <div style={{background:"#FFF9EE",border:"1px solid #F5E4A0",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:9,color:"#8A8580",fontWeight:800,textTransform:"uppercase"}}>Recurrencia</div><div style={{fontSize:18,fontWeight:800,color:"#B87820",marginTop:4}}>{criticalEventCount>1?"Vigilar modelos similares":"Sin patron fuerte visible"}</div></div>
+                      </div>
+                      <div style={{background:"#FDF7F4",border:"1px solid #F1D0CB",borderRadius:12,padding:"12px 13px"}}>
+                        <div style={{fontSize:10,fontWeight:800,color:"#A43B2E",textTransform:"uppercase"}}>Bloqueo de cierre</div>
+                        <div style={{fontSize:11.5,color:"#6E4038",lineHeight:1.55,marginTop:6}}>No habilitar aprobacion final si falta D6, evidencia de implementacion, owner responsable o monitoreo de recurrencia. Si aparece recurrencia post-cierre, el caso debe reabrirse o vincular una nueva NC.</div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>}
+
               {activeModule==="maintenance" && renderMaintenanceSection()}
 
           {activeModule==="rcca" && <div id="rcca-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
