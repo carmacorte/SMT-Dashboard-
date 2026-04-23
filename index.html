@@ -2708,23 +2708,44 @@ function parseEmlHeaders(lines) {
   return { headers: headers, bodyStart: i };
 }
 
+function scoreEmailBodyCandidateLocal(text, flavor) {
+  var s = String(text || '').trim();
+  if (!s) return -999999;
+  var score = Math.min(s.length, 4000);
+  if (/\b(linea|línea|station|feeder|bga|socket|flux|material|aoi|smt|open|short|falla|defecto|component|misalign|hundimiento|repair|rework|paro)\b/i.test(s)) score += 500;
+  if (/\b(aviso de confidencialidad|confidentiality notice|disclaimer|lotus notes|ibm notes|image\d+\.gif)\b/i.test(s)) score -= 1200;
+  if (/\b(from|to|cc|bcc|subject|sent|date):/i.test(s) && s.length < 500) score -= 350;
+  if ((flavor || '') === 'html') score += 80;
+  if ((flavor || '') === 'plain') score += 20;
+  return score;
+}
+
 function cleanEmailTextLocal(text) {
   if (!text) return '';
   var s = String(text);
-  s = s.replace(/\r/g, '\n');
+  s = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   s = s.replace(/\u00a0/g, ' ').replace(/[\u200B-\u200F\u202A-\u202E]/g, '');
   s = stripHtmlToText(s);
   s = decodeHtmlEntities(s);
-  s = s.replace(/^\s*(mime-version|content-type|content-transfer-encoding|content-disposition|x-[\w\-]+):.*$/gim, ' ');
+  s = s.replace(/^\s*(mime-version|content-type|content-transfer-encoding|content-disposition|content-id|x-[\w\-]+):.*$/gim, ' ');
   s = s.replace(/^--[\w=:\-\.\/\+]+\s*$/gim, ' ');
   s = s.replace(/\[(cid|image):[^\]]+\]/gi, ' ');
+  s = s.replace(/\b(?:image\d+\.gif|notes\.bmp|memo\.htm)\b/gi, ' ');
+  s = s.replace(/\n\s*(from|de|to|para|cc|bcc|subject|asunto|sent|date|fecha):\s*\n/gi, '\n');
   var cutPatterns = [
     /\n\s*-----Original Message-----[\s\S]*$/i,
+    /\n\s*Begin forwarded message:[\s\S]*$/i,
     /\n\s*From:\s.*\n\s*Sent:\s.*\n\s*To:\s.*[\s\S]*$/i,
     /\n\s*De:\s.*\n\s*Enviado el:\s.*\n\s*Para:\s.*[\s\S]*$/i,
+    /\n\s*(?:From|De):\s.+\n\s*(?:To|Para):\s.+\n\s*(?:Cc:\s.*\n)?\s*(?:Subject|Asunto):\s.+[\s\S]*$/i,
     /\n\s*On .*wrote:[\s\S]*$/i,
     /\n\s*El .*escribi[oó]:[\s\S]*$/i,
-    /\n\s*________________________________[\s\S]*$/i
+    /\n\s*________________________________[\s\S]*$/i,
+    /\n\s*-----\s*Forwarded by .*?[\s\S]*$/i,
+    /\n\s*(?:From|De):\s.*?\/NSG\/FOXCONN.*[\s\S]*$/i,
+    /\n\s*Forwarded by\b[\s\S]*$/i,
+    /\n\s*IBM Notes[\s\S]*$/i,
+    /\n\s*Lotus Notes[\s\S]*$/i
   ];
   for (var i = 0; i < cutPatterns.length; i++) {
     if (cutPatterns[i].test(s)) {
@@ -2740,8 +2761,9 @@ function cleanEmailTextLocal(text) {
   s = s.replace(/\s*\n\s*/g, '\n');
   var lines = s.split(/\n+/).map(function(line){ return line.trim(); }).filter(function(line){
     if (!line) return false;
-    if (/^(from|to|cc|bcc|subject|sent|date|de|para|asunto|enviado):\s*$/i.test(line)) return false;
+    if (/^(from|to|cc|bcc|subject|sent|date|de|para|asunto|enviado|fecha):\s*$/i.test(line)) return false;
     if (/^(--|__)+$/.test(line)) return false;
+    if (/^(image\d+\.gif|notes\.bmp|memo\.htm)$/i.test(line)) return false;
     return true;
   });
   s = lines.join('\n').trim();
@@ -2752,36 +2774,64 @@ function cleanEmailTextLocal(text) {
 
 function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
   var rawBody = lines.slice(bodyStart).join('\n');
-  var ct = (contentType || '').toLowerCase();
-  var boundaryM = ct.match(/boundary="?([^";]+)"?/i);
+  var ctRaw = String(contentType || '');
+  var ct = ctRaw.toLowerCase();
+  var boundaryM = ctRaw.match(/boundary="?([^";]+)"?/i);
   if (boundaryM) {
     var boundary = boundaryM[1].trim();
     var safeBoundary = boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    var re = new RegExp('--' + safeBoundary);
-    var parts = rawBody.split(re);
+    var re = new RegExp('(?:^|\\n)--' + safeBoundary + '(?:--)?(?=\\n|$)', 'g');
+    var normalizedBody = '\n' + rawBody.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    var segments = normalizedBody.split(re);
     var bestText = '';
     var bestHtml = '';
-    for (var pi = 0; pi < parts.length; pi++) {
-      var part = parts[pi];
-      if (!part || /^\s*--\s*$/.test(part)) continue;
-      var partLines = part.replace(/^\s+/, '').split(/\r?\n/);
+    var bestTextScore = -999999;
+    var bestHtmlScore = -999999;
+    for (var pi = 0; pi < segments.length; pi++) {
+      var part = segments[pi];
+      if (!part || /^\s*$/.test(part) || /^\s*--\s*$/.test(part)) continue;
+      var partLines = part.replace(/^\s+/, '').split(/\n/);
       var partInfo = parseEmlHeaders(partLines);
-      var partCt = (partInfo.headers['content-type'] || '').toLowerCase();
-      var partEnc = (partInfo.headers['content-transfer-encoding'] || '').toLowerCase().trim();
+      var partCtRaw = String(partInfo.headers['content-type'] || '');
+      var partCt = partCtRaw.toLowerCase();
+      var partEnc = String(partInfo.headers['content-transfer-encoding'] || '').toLowerCase().trim();
       var payload = decodeEmlEncoding(partLines.slice(partInfo.bodyStart).join('\n').trim(), partEnc);
       if (partCt.indexOf('multipart/') >= 0) {
-        var nested = extractEmlBodyText(partLines, partInfo.bodyStart, partCt, partEnc);
-        if (nested && !bestText) bestText = nested;
+        var nested = extractEmlBodyText(partLines, partInfo.bodyStart, partCtRaw, partEnc);
+        var nestedScore = scoreEmailBodyCandidateLocal(nested, 'nested');
+        if (nestedScore > bestTextScore) {
+          bestText = nested;
+          bestTextScore = nestedScore;
+        }
+        continue;
+      }
+      if (partCt.indexOf('message/rfc822') >= 0) {
+        var nestedMsg = parseEmlToMsg(payload, 'embedded.eml');
+        var nestedText = nestedMsg && nestedMsg.text ? nestedMsg.text : cleanEmailTextLocal(payload);
+        var embeddedScore = scoreEmailBodyCandidateLocal(nestedText, 'embedded');
+        if (embeddedScore > bestTextScore) {
+          bestText = nestedText;
+          bestTextScore = embeddedScore;
+        }
         continue;
       }
       if (partCt.indexOf('text/plain') >= 0) {
         var cleanPlain = cleanEmailTextLocal(payload);
-        if (cleanPlain && cleanPlain.length > bestText.length) bestText = cleanPlain;
+        var plainScore = scoreEmailBodyCandidateLocal(cleanPlain, 'plain');
+        if (plainScore > bestTextScore) {
+          bestText = cleanPlain;
+          bestTextScore = plainScore;
+        }
       } else if (partCt.indexOf('text/html') >= 0) {
         var cleanHtml = cleanEmailTextLocal(payload);
-        if (cleanHtml && cleanHtml.length > bestHtml.length) bestHtml = cleanHtml;
+        var htmlScore = scoreEmailBodyCandidateLocal(cleanHtml, 'html');
+        if (htmlScore > bestHtmlScore) {
+          bestHtml = cleanHtml;
+          bestHtmlScore = htmlScore;
+        }
       }
     }
+    if (bestHtmlScore >= bestTextScore && bestHtml) return bestHtml;
     if (bestText) return bestText;
     if (bestHtml) return bestHtml;
   }
@@ -2791,7 +2841,8 @@ function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
 
 function parseEmlToMsg(rawText, sourceName) {
   if (!rawText || !rawText.trim()) return null;
-  var lines = String(rawText).split(/\r?\n/);
+  rawText = String(rawText).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  var lines = rawText.split(/\n/);
   var info = parseEmlHeaders(lines);
   var h = info.headers;
 
