@@ -2720,8 +2720,10 @@ function scoreEmailBodyCandidateLocal(text, flavor) {
   return score;
 }
 
-function cleanEmailTextLocal(text) {
+function cleanEmailTextLocal(text, options) {
   if (!text) return '';
+  var opts = options || {};
+  var preserveBreaks = !!opts.preserveBreaks;
   var s = String(text);
   s = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   s = s.replace(/\u00a0/g, ' ').replace(/[\u200B-\u200F\u202A-\u202E]/g, '');
@@ -2767,12 +2769,12 @@ function cleanEmailTextLocal(text) {
     return true;
   });
   s = lines.join('\n').trim();
-  s = s.replace(/\n/g, ' ');
+  if (!preserveBreaks) s = s.replace(/\n/g, ' ');
   s = s.replace(/\s{2,}/g, ' ').trim();
   return s;
 }
 
-function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
+function extractEmlBodyText(lines, bodyStart, contentType, encoding, options) {
   var rawBody = lines.slice(bodyStart).join('\n');
   var ctRaw = String(contentType || '');
   var ct = ctRaw.toLowerCase();
@@ -2797,7 +2799,7 @@ function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
       var partEnc = String(partInfo.headers['content-transfer-encoding'] || '').toLowerCase().trim();
       var payload = decodeEmlEncoding(partLines.slice(partInfo.bodyStart).join('\n').trim(), partEnc);
       if (partCt.indexOf('multipart/') >= 0) {
-        var nested = extractEmlBodyText(partLines, partInfo.bodyStart, partCtRaw, partEnc);
+        var nested = extractEmlBodyText(partLines, partInfo.bodyStart, partCtRaw, partEnc, options);
         var nestedScore = scoreEmailBodyCandidateLocal(nested, 'nested');
         if (nestedScore > bestTextScore) {
           bestText = nested;
@@ -2807,7 +2809,7 @@ function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
       }
       if (partCt.indexOf('message/rfc822') >= 0) {
         var nestedMsg = parseEmlToMsg(payload, 'embedded.eml');
-        var nestedText = nestedMsg && nestedMsg.text ? nestedMsg.text : cleanEmailTextLocal(payload);
+        var nestedText = nestedMsg && nestedMsg.text ? nestedMsg.text : cleanEmailTextLocal(payload, options);
         var embeddedScore = scoreEmailBodyCandidateLocal(nestedText, 'embedded');
         if (embeddedScore > bestTextScore) {
           bestText = nestedText;
@@ -2816,14 +2818,14 @@ function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
         continue;
       }
       if (partCt.indexOf('text/plain') >= 0) {
-        var cleanPlain = cleanEmailTextLocal(payload);
+        var cleanPlain = cleanEmailTextLocal(payload, options);
         var plainScore = scoreEmailBodyCandidateLocal(cleanPlain, 'plain');
         if (plainScore > bestTextScore) {
           bestText = cleanPlain;
           bestTextScore = plainScore;
         }
       } else if (partCt.indexOf('text/html') >= 0) {
-        var cleanHtml = cleanEmailTextLocal(payload);
+        var cleanHtml = cleanEmailTextLocal(payload, options);
         var htmlScore = scoreEmailBodyCandidateLocal(cleanHtml, 'html');
         if (htmlScore > bestHtmlScore) {
           bestHtml = cleanHtml;
@@ -2836,7 +2838,7 @@ function extractEmlBodyText(lines, bodyStart, contentType, encoding) {
     if (bestHtml) return bestHtml;
   }
   var decoded = decodeEmlEncoding(rawBody.trim(), encoding);
-  return cleanEmailTextLocal(decoded);
+  return cleanEmailTextLocal(decoded, options);
 }
 
 function parseEmlToMsg(rawText, sourceName) {
@@ -2870,6 +2872,7 @@ function parseEmlToMsg(rawText, sourceName) {
   var normalizedSubject = normalizeEmailSubjectLocal(rawSubject);
   var threadKey = extractEmailThreadKeyLocal(h);
   var body = extractEmlBodyText(lines, info.bodyStart, h['content-type'] || '', h['content-transfer-encoding'] || '');
+  var bodyStructured = extractEmlBodyText(lines, info.bodyStart, h['content-type'] || '', h['content-transfer-encoding'] || '', { preserveBreaks: true });
   var text = ((subject ? '[' + subject + '] ' : '') + body).replace(/\s+/g, ' ').trim();
   if (!text || text.trim().length < 12) return null;
   if (text.length > 8000) text = text.slice(0, 8000) + '...';
@@ -2885,6 +2888,7 @@ function parseEmlToMsg(rawText, sourceName) {
     source: 'email',
     subject: subject,
     subjectNormalized: normalizedSubject,
+    bodyStructured: String(bodyStructured || '').trim(),
     threadKey: threadKey,
     sourceFile: sourceName || '',
     messageId: String(h['message-id'] || '').trim(),
@@ -3404,6 +3408,83 @@ async function analyzeWithAI(msgs, apiKey) {
     return signals >= 1 || hasOpsPhrase;
   }
 
+  function traceOpsSplitEmailOperationalSegmentsLocal(msg) {
+    var raw = String(
+      (msg && msg.bodyStructured) ||
+      (msg && msg.text) ||
+      ""
+    ).trim();
+    if (!raw) return [];
+
+    var text = raw
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .replace(/\u2022/g, "\n• ")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/([:;])\s+(?=(?:caso|case|issue|evento|problema|modelo|linea|línea|station|estacion|socket|flux|material|aoi|ict|spi)\b)/gi, "$1\n")
+      .replace(/\n\s*(?=(?:caso|case|issue|evento|problema)\s*\d+\b)/gi, "\n\n")
+      .replace(/\n\s*(?=(?:modelo|model|linea|línea|station|estacion)\s*[:#-])/gi, "\n\n");
+
+    var chunks = text
+      .split(/\n{2,}/)
+      .map(function(part) { return String(part || "").trim(); })
+      .filter(Boolean);
+
+    var segments = [];
+    chunks.forEach(function(chunk) {
+      var normalizedChunk = chunk
+        .replace(/\n\s*(?:[-*•]+|\d+[.)])\s*/g, "\n")
+        .replace(/\n\s+/g, "\n")
+        .trim();
+
+      var lines = normalizedChunk
+        .split(/\n+/)
+        .map(function(line) { return String(line || "").trim(); })
+        .filter(Boolean);
+
+      if (lines.length > 1 && traceOpsLooksOperationalEventLocal(normalizedChunk) && Boolean(detectTypeLocal(normalizedChunk))) {
+        segments.push(normalizedChunk);
+      } else if (lines.length > 1) {
+        lines.forEach(function(line) {
+          if (line.length < 18) return;
+          segments.push(line);
+        });
+      } else if (normalizedChunk) {
+        segments.push(normalizedChunk);
+      }
+    });
+
+    segments = uniqLocal(segments.map(function(segment) {
+      var cleanedSegment = String(segment || "")
+        .replace(/^[^\n]{0,120}---\d{2}\/\d{2}\/\d{4}[^-]{0,80}---/i, " ")
+        .replace(/^(?:buen[oa]s?\s+dias|buen[oa]s?\s+tardes|hola)\b[:, ]*/i, " ")
+        .replace(/^caso\s*\d+\s+[^\n]{0,120}?(?=\s+(?:se reporta|el mayor|debido|cabe mencionar|este afecta|el problema))/i, " ")
+        .replace(/\bsend by\b[\s\S]*$/i, " ")
+        .replace(/\bcel\s*:\s*[\d\s\-()+]{7,}\b/gi, " ");
+      var s = cleanEmailTextLocal(cleanedSegment);
+      if (!s) return "";
+      return s;
+    }).filter(Boolean));
+
+    var operational = segments.filter(function(segment) {
+      if (/^(from|to|cc|bcc|date|sent|subject|asunto|de|para|fecha|enviado)\s*:/i.test(segment)) return false;
+      if (/^(send by|cel\s*:|ext\.\s*\d+|mba\b|foxconn\b.*manufactura)/i.test(segment)) return false;
+      if (/^(buen[oa]s?\s+dias|buen[oa]s?\s+tardes|hola|gracias|quedo en espera|de antemano gracias)\b/i.test(segment)) return false;
+      if (/^[^ ]+---\d{2}\/\d{2}\/\d{4}/i.test(segment)) return false;
+      if (/^caso\s*\d+\b/i.test(segment) && segment.length < 110) return false;
+      if (segment.length < 45 && traceOpsOperationalSignalCountLocal(segment) < 2) return false;
+      return !isNoiseLocal(segment)
+        && !traceOpsIsHardExcludedEventLocal(segment)
+        && !traceOpsIsSoftExcludedEventLocal(segment)
+        && traceOpsLooksOperationalEventLocal(segment)
+        && Boolean(detectTypeLocal(segment));
+    });
+
+    if (operational.length > 1) return operational;
+    if (operational.length === 1 && operational[0] !== String(msg && msg.text || '').trim()) return operational;
+    return [];
+  }
+
 
   function traceOpsInferEstadoHistoriaLocal(ev) {
     var est = String((ev && ev.estatus) || "").toLowerCase();
@@ -3444,26 +3525,37 @@ async function analyzeWithAI(msgs, apiKey) {
 
   function candidateDetectorLocal(msgs) {
     return msgs
-      .filter(function(m) {
-        return !isNoiseLocal(m.text)
-          && !traceOpsIsHardExcludedEventLocal(m.text)
-          && !traceOpsIsSoftExcludedEventLocal(m.text)
-          && traceOpsLooksOperationalEventLocal(m.text);
-      })
-      .map(function(m) {
-        return {
-          dateIso: m.dateIso,
-          timeStr: m.timeStr,
-          sender: m.sender,
-          text: m.text,
-          turno: m.turno,
-          source: m.source || '',
-          threadKey: m.threadKey || '',
-          threadTitle: m.subject || m.subjectNormalized || '',
-          sourceFile: m.sourceFile || '',
-          type: detectTypeLocal(m.text),
-          __traceops_signal_count: traceOpsOperationalSignalCountLocal(m.text)
-        };
+      .flatMap(function(m) {
+        var candidateTexts = [];
+        if (m && m.source === 'email') {
+          candidateTexts = traceOpsSplitEmailOperationalSegmentsLocal(m);
+        }
+        if (!candidateTexts.length) candidateTexts = [m.text];
+
+        return candidateTexts
+          .filter(function(text) {
+            return !isNoiseLocal(text)
+              && !traceOpsIsHardExcludedEventLocal(text)
+              && !traceOpsIsSoftExcludedEventLocal(text)
+              && traceOpsLooksOperationalEventLocal(text);
+          })
+          .map(function(text, idx) {
+            return {
+              dateIso: m.dateIso,
+              timeStr: m.timeStr,
+              sender: m.sender,
+              text: text,
+              turno: m.turno,
+              source: m.source || '',
+              threadKey: m.threadKey || '',
+              threadTitle: m.subject || m.subjectNormalized || '',
+              sourceFile: m.sourceFile || '',
+              type: detectTypeLocal(text),
+              __traceops_signal_count: traceOpsOperationalSignalCountLocal(text),
+              __traceops_parent_email: m.source === 'email',
+              __traceops_segment_index: idx
+            };
+          });
       })
       .filter(function(m) { return Boolean(m.type); });
   }
