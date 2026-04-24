@@ -5800,6 +5800,14 @@ function traceOpsYieldFlowFmt(value, digits){
   if (!isFinite(n)) n = 0;
   return n.toLocaleString("en-US", { minimumFractionDigits: digits || 0, maximumFractionDigits: digits || 0 });
 }
+function traceOpsYieldFlowFmtHoursDays(value, digits){
+  if (value == null || value === "" || !isFinite(Number(value))) return "N/D";
+  var h = Number(value);
+  var d = h / 24;
+  var hText = traceOpsYieldFlowFmt(h, digits == null ? 1 : digits) + " h";
+  var dText = traceOpsYieldFlowFmt(d, 1) + " d";
+  return hText + " (" + dText + ")";
+}
 
 function traceOpsYieldWeekSortValue(week){
   var raw = String(week || 'Imported');
@@ -13716,28 +13724,28 @@ function replaceMetaFiles(nextFiles){
             <div style={{fontSize:isMobile()?11.5:12.5,lineHeight:1.55,opacity:.84,maxWidth:isMobile()?"100%":800,marginTop:8}}>Visor ejecutivo local para responder: unidades que salen del proceso, causas, tiempo de reincorporacion y avance de WO desde SMT hasta Stocking/FT por BU.</div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:isMobile()?"flex-start":"flex-end",width:isMobile()?"100%":"auto"}}>
-            <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{yieldFlowModel.kpi.orders} WOs NGFW</span>
+            <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{yieldFlowModel.kpi.orders} WOs scope</span>
             <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.risk)} risk units</span>
-            <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.avgLeadHours,1)} h Stocking/FT</span>
+            <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgLeadHours,1)} Stocking/FT</span>
           </div>
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(4,minmax(0,1fr))",gap:10}}>
-          <div style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#5F766C",textTransform:"uppercase"}}>Work orders</div><div style={{fontSize:28,fontWeight:800,color:"#102A43",marginTop:6}}>{yieldFlowModel.kpi.orders}</div><div style={{fontSize:11,color:"#5F766C",marginTop:5}}>Base semanal filtrada a NGFW</div></div>
+          <div style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#5F766C",textTransform:"uppercase"}}>Work orders</div><div style={{fontSize:28,fontWeight:800,color:"#102A43",marginTop:6}}>{yieldFlowModel.kpi.orders}</div><div style={{fontSize:11,color:"#5F766C",marginTop:5}}>Base semanal del scope activo</div></div>
           <div style={{background:"#fff",border:"1px solid #CFE0FB",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Clean yield</div><div style={{fontSize:28,fontWeight:800,color:"#1F3A5F",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.yield,2)}%</div><div style={{fontSize:11,color:"#5F766C",marginTop:5}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.clean)} clean units</div></div>
           <div style={{background:"#fff",border:"1px solid #F5E4A0",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#B87820",textTransform:"uppercase"}}>OJT touch rate</div><div style={{fontSize:28,fontWeight:800,color:"#B87820",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.touch,2)}%</div><div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Promedio ponderado por volumen</div></div>
           <div style={{background:"#fff",border:"1px solid #F1D0CB",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#A43B2E",textTransform:"uppercase"}}>Risk units</div><div style={{fontSize:28,fontWeight:800,color:"#A43B2E",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.risk)}</div><div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Rework visible y touch OJT</div></div>
         </div>
 
         <div style={{background:"#FBFDFF",border:"1px dashed #C9DAF5",borderRadius:14,padding:"12px 14px",fontSize:11,color:"#5F766C",lineHeight:1.55}}>
-          Fuente actual: <span style={{fontWeight:800,color:"#102A43"}}>{TRACEOPS_YIELD_IMPORT_META.source}</span>. Modo local: el Excel importado no se conserva; al recargar vuelve a muestra/base. Para resetear manualmente: edita <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_FLOW_TRACKER</span>, <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_BY_WO_ROWS</span> y <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_RISK_SUMMARY_ROWS</span>.
+          Fuente Yield Flow: <span style={{fontWeight:800,color:"#102A43"}}>{TRACEOPS_YIELD_IMPORT_META.source}</span>. Modo local: el Excel importado no se conserva; al recargar vuelve a muestra/base. Para resetear manualmente: edita <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_FLOW_TRACKER</span>, <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_BY_WO_ROWS</span> y <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_RISK_SUMMARY_ROWS</span>.
         </div>
 
         <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
           <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
             <div>
               <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Filtros ejecutivos Yield Flow</div>
-              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Clasificacion por BU, modelo, SKU, semana Cisco y linea. Todo el modulo se recalcula con el mismo scope.</div>
+              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Clasificacion por BU, modelo, SKU, semana Cisco y linea. Todo el modulo se recalcula con el mismo scope, incluyendo tiempos y Pareto.</div>
             </div>
             <button type="button" onClick={resetYieldFilters} style={{border:"1px solid #C9DAF5",background:"#fff",color:"#1F3A5F",borderRadius:999,padding:"8px 12px",fontSize:11,fontWeight:800,cursor:"pointer"}}>Restablecer filtros</button>
           </div>
@@ -13773,12 +13781,12 @@ function replaceMetaFiles(nextFiles){
             </div>
             <div style={{border:"1px solid #D9E6F7",background:"#F7FAFF",borderRadius:14,padding:"14px"}}>
               <div style={{fontSize:10,fontWeight:900,color:"#1F3A5F",textTransform:"uppercase",letterSpacing:".06em"}}>Reincorporacion / seguimiento</div>
-              <div style={{fontSize:26,fontWeight:900,color:"#102A43",marginTop:8}}>{yieldFlowModel.kpi.avgReintegrationProxy!=null?traceOpsYieldFlowFmt(yieldFlowModel.kpi.avgReintegrationProxy,1)+" h":"N/D"}</div>
+              <div style={{fontSize:26,fontWeight:900,color:"#102A43",marginTop:8}}>{traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgReintegrationProxy,1)}</div>
               <div style={{fontSize:11,color:"#5F766C",lineHeight:1.45}}>Promedio ponderado por piezas del scope filtrado. Cambia con BU, modelo, SKU, semana Cisco y linea; si faltan timestamps queda N/D.</div>
             </div>
             <div style={{border:"1px solid #D7C5F7",background:"#FBF8FF",borderRadius:14,padding:"14px"}}>
               <div style={{fontSize:10,fontWeight:900,color:"#6B2DA8",textTransform:"uppercase",letterSpacing:".06em"}}>2. SMT a Stocking/FT</div>
-              <div style={{fontSize:26,fontWeight:900,color:"#102A43",marginTop:8}}>{yieldFlowModel.kpi.avgStockingHours!=null?traceOpsYieldFlowFmt(yieldFlowModel.kpi.avgStockingHours,1)+" h":(yieldFlowModel.kpi.avgFtHours!=null?traceOpsYieldFlowFmt(yieldFlowModel.kpi.avgFtHours,1)+" h":"N/D")}</div>
+              <div style={{fontSize:26,fontWeight:900,color:"#102A43",marginTop:8}}>{yieldFlowModel.kpi.avgStockingHours!=null?traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgStockingHours,1):(yieldFlowModel.kpi.avgFtHours!=null?traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgFtHours,1):"N/D")}</div>
               <div style={{fontSize:11,color:"#5F766C",lineHeight:1.45}}>Prioridad de calculo: FT si existe; si no, Stocking. Stocking actual: <b>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.stockingUnits)}</b> unidades.</div>
             </div>
           </div>
@@ -13844,7 +13852,7 @@ function replaceMetaFiles(nextFiles){
                       <div style={{fontSize:10,color:"#5F766C"}}>Clean <strong style={{color:"#145A28"}}>{traceOpsYieldFlowFmt(w.clean)}</strong></div>
                       <div style={{fontSize:10,color:"#5F766C"}}>Risk <strong style={{color:"#B87820"}}>{traceOpsYieldFlowFmt(w.risk)}</strong></div>
                       <div style={{fontSize:10,color:"#5F766C"}}>FT current <strong style={{color:"#1F3A5F"}}>{traceOpsYieldFlowFmt(w.ft)}</strong></div>
-                      <div style={{fontSize:10,color:"#5F766C"}}>Lead <strong style={{color:"#6B2DA8"}}>{w.avgLeadHours==null?"N/D":(traceOpsYieldFlowFmt(w.avgLeadHours,1)+" h")}</strong></div>
+                      <div style={{fontSize:10,color:"#5F766C"}}>Lead <strong style={{color:"#6B2DA8"}}>{traceOpsYieldFlowFmtHoursDays(w.avgLeadHours,1)}</strong></div>
                     </div>
                   </div>
                 );
@@ -13930,7 +13938,7 @@ function replaceMetaFiles(nextFiles){
                     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                       <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#EEF5FF",color:"#1F3A5F",border:"1px solid #DBE8FB"}}>SMT start {item.startSmt}</span>
                       <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#F5F0FE",color:"#6B2DA8",border:"1px solid #DBCDF8"}}>FT first pass {item.firstFunctional}</span>
-                      <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#FEF9E8",color:"#B87820",border:"1px solid #F5E4A0"}}>{leadHours==null?"Lead time N/D":(traceOpsYieldFlowFmt(leadHours,1)+" h total")}</span>
+                      <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#FEF9E8",color:"#B87820",border:"1px solid #F5E4A0"}}>{leadHours==null?"Lead time N/D":(traceOpsYieldFlowFmtHoursDays(leadHours,1)+" total")}</span>
                     </div>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:isMobile()?"repeat(2,minmax(0,1fr))":"repeat(11,minmax(0,1fr))",gap:8}}>
@@ -15524,7 +15532,7 @@ function replaceMetaFiles(nextFiles){
             </div>
           </div>
 
-          <div className="tcard">
+          {activeModule!=="yieldflow" && <div className="tcard">
             <div className="tcard-hdr">
               <h3>Bitacora de eventos ({ev.length})</h3>
               <div className="table-tools">
@@ -15571,13 +15579,13 @@ function replaceMetaFiles(nextFiles){
                 </tbody>
               </table>
             </div>
-          </div>
+          </div>}
 
-          {pend.length>0&&<div className="tcard" style={{marginTop:14}}><div className="tcard-hdr"><h3>Pendientes operativos ({pend.length})</h3></div><div className="plist">{pend.map(function(e,i){return<PendItem key={i} e={e}/>;})}</div></div>}
-          {rccaList.length>0&&<InvestigationCarousel cards={rccaList} allRcca={rccaList}/>}
+          {activeModule!=="yieldflow" && pend.length>0&&<div className="tcard" style={{marginTop:14}}><div className="tcard-hdr"><h3>Pendientes operativos ({pend.length})</h3></div><div className="plist">{pend.map(function(e,i){return<PendItem key={i} e={e}/>;})}</div></div>}
+          {activeModule!=="yieldflow" && rccaList.length>0&&<InvestigationCarousel cards={rccaList} allRcca={rccaList}/>}
 
           {/* ═══ HIPOCAMPO DIGITAL v3 ═══ */}
-          {ev.length > 0 && (
+          {activeModule!=="yieldflow" && ev.length > 0 && (
             <div style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:22,overflow:"hidden",marginTop:14,marginBottom:14,boxShadow:"0 2px 12px rgba(20,32,51,.04)"}}>
 
               {/* Hero aligned with main product language */}
