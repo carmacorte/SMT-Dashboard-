@@ -5635,7 +5635,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     var dbSfc = traceOpsYieldApplyDbModel(sku, family, "");
     sku = dbSfc.sku || sku;
     family = dbSfc.family || family;
-    var clean = { sn:sn, wo:wo, sku:sku, family:family, bu:dbSfc.bu, event:event, eventTime:eventTime, line:line, station:station };
+    var clean = { sn:sn, wo:wo, sku:sku, family:family, bu:dbSfc.bu, event:event, eventTime:eventTime, line:line, station:station, week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap) };
     if (sn) snToSfc[sn] = clean;
     if (wo) {
       if (!sfcByWo[wo]) sfcByWo[wo] = [];
@@ -5646,6 +5646,34 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
         if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
         if (!woMap[wo].line && line) woMap[wo].line=line;
       }
+    }
+  });
+
+  // SFC is the commanding data source for Yield Flow scope.
+  // DB Model is used only to enrich BU/model by SKU, and Station On Line only supplies WO start/time.
+  Object.keys(sfcByWo).forEach(function(wo){
+    var list = sfcByWo[wo] || [];
+    if (!list.length) return;
+    var rep = list.find(function(x){ return x.sku || x.family || x.line || x.week; }) || list[0] || {};
+    var dbRep = traceOpsYieldApplyDbModel(rep.sku || '', rep.family || '', rep.bu || '');
+    if (!woMap[wo]) {
+      woMap[wo] = {
+        wo: wo,
+        week: rep.week || 'Imported',
+        date: rep.eventTime ? String(rep.eventTime).slice(0,10) : '',
+        line: rep.line || '',
+        bu: dbRep.bu,
+        family: dbRep.family || rep.family || rep.sku || 'N/A',
+        sku: dbRep.sku || rep.sku || 'N/A',
+        startSmt: '',
+        qty: 0
+      };
+    } else {
+      if (rep.sku) woMap[wo].sku = dbRep.sku || rep.sku;
+      if (rep.family || dbRep.family) woMap[wo].family = dbRep.family || rep.family;
+      if (dbRep.bu) woMap[wo].bu = dbRep.bu;
+      if (rep.line) woMap[wo].line = rep.line;
+      if ((!woMap[wo].week || woMap[wo].week === 'Imported') && rep.week) woMap[wo].week = rep.week;
     }
   });
 
@@ -5682,7 +5710,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     }
   });
 
-  var rows = Object.keys(woMap).sort().map(function(wo){
+  var rows = Object.keys(sfcByWo).sort().map(function(wo){
     var meta=woMap[wo];
     var sfcList = sfcByWo[wo] || [];
     var total=sfcList.length || Number(meta.qty||0) || 0;
@@ -5721,7 +5749,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     repairList.forEach(function(rep){var st=rep.station||"Repair"; var key=st+"|"+rep.sn; if(recoverySeen[key]) return; recoverySeen[key]=true; if(!recoveryMap[st]) recoveryMap[st]={station:st,qty:0,totalHours:0,countHours:0,cause:rep.symptom||"Repair / debug"}; recoveryMap[st].qty+=1; var outOfFlowTime = rep.eventTime || meta.startSmt; if(rep.repairTime&&outOfFlowTime){var hrs=traceOpsYieldFlowHoursBetween(outOfFlowTime, rep.repairTime); if(hrs!=null){recoveryMap[st].totalHours+=hrs; recoveryMap[st].countHours+=1;}} if(rep.symptom&&recoveryMap[st].cause==="Repair / debug") recoveryMap[st].cause=rep.symptom;});
     var recoveryQueue=Object.keys(recoveryMap).map(function(k){var r=recoveryMap[k]; return {station:r.station, qty:r.qty, avgHours:r.countHours?r.totalHours/r.countHours:0, cause:r.cause};}).sort(function(a,b){return b.qty-a.qty;}).slice(0,3);
     if(!recoveryQueue.length&&row.risk) recoveryQueue.push({station:"Repair",qty:row.risk,avgHours:0,cause:"Repair records imported"});
-    return {skuno:row.sku,workOrder:wo,model:row.family,line:row.line,lotQty:row.total,startSmt:meta.startSmt||"N/D",firstFunctional:ftTimes[0]||"N/D",firstStocking:stockingTimes[0]||"N/D",completedByStation:completedByStation,defectsByStation:defectsByStation,recoveryQueue:recoveryQueue};
+    return {skuno:row.sku,sku:row.sku,workOrder:wo,wo:wo,model:row.family,family:row.family,bu:row.bu,week:row.week,line:row.line,lotQty:row.total,startSmt:meta.startSmt||"N/D",firstFunctional:ftTimes[0]||"N/D",firstStocking:stockingTimes[0]||"N/D",completedByStation:completedByStation,defectsByStation:defectsByStation,recoveryQueue:recoveryQueue};
   });
 
   if (rows.length) TRACEOPS_YIELD_BY_WO_ROWS = rows;
@@ -6017,13 +6045,12 @@ function traceOpsBuildYieldFlowModelLocal(filters){
     var db = traceOpsYieldApplyDbModel(r.sku, r.family, r.bu);
     return Object.assign({}, r, { sku: db.sku || r.sku, family: db.family || r.family, bu: db.bu, buLabel: db.bu });
   });
-  var modelOptions = TRACEOPS_YIELD_DB_MODEL_OPTIONS || [];
   var options = {
-    bu: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.buLabel; }).concat(modelOptions.map(function(m){ return m.bu; })).concat(["FIELDWORKS","NGFWBU"])).filter(function(x){ return x && x !== 'N/D'; }),
-    family: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.family; }).concat(modelOptions.map(function(m){ return m.family; }))),
-    sku: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.sku; }).concat(modelOptions.map(function(m){ return m.sku; }))),
-    week: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.week; })).sort(traceOpsYieldWeekSortDesc),
-    line: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.line; }))
+    bu: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.buLabel; })).filter(function(x){ return x && x !== 'N/D'; }),
+    family: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.family; })).filter(function(x){ return x && x !== 'N/A'; }),
+    sku: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.sku; })).filter(function(x){ return x && x !== 'N/A'; }),
+    week: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.week; })).filter(function(x){ return x && x !== 'Imported'; }).sort(traceOpsYieldWeekSortDesc),
+    line: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.line; })).filter(function(x){ return x && x !== 'N/D'; })
   };
 
   var rows = baseRows.filter(function(r){
@@ -6096,7 +6123,7 @@ function traceOpsBuildYieldFlowModelLocal(filters){
     var db = traceOpsYieldApplyDbModel(item.sku, item.family, item.bu);
     var famOk = !filters.family || filters.family === 'ALL' || String(db.family || '') === String(filters.family);
     var skuOk = !filters.sku || filters.sku === 'ALL' || String(db.sku || '') === String(filters.sku);
-    var rowKnown = !rows.length || activeSku[String(db.sku || '')] || activeFamily[String(db.family || '')];
+    var rowKnown = activeSku[String(db.sku || '')] || activeFamily[String(db.family || '')];
     var buOk = !filters.bu || filters.bu === 'ALL' || db.bu === filters.bu;
     return buOk && famOk && skuOk && rowKnown;
   }).map(function(item){ var db = traceOpsYieldApplyDbModel(item.sku, item.family, item.bu); return Object.assign({}, item, {sku:db.sku||item.sku, family:db.family||item.family, bu:db.bu}); });
@@ -13833,7 +13860,7 @@ function replaceMetaFiles(nextFiles){
           <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
             <div>
               <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Filtros ejecutivos Yield Flow</div>
-              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Clasificacion por BU, modelo, SKU, semana Cisco y linea. Todo el modulo se recalcula con el mismo scope, incluyendo tiempos y Pareto.</div>
+              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Filtros generados solo desde WOs/SN presentes en SFC. DB Model solo enriquece BU/modelo; no agrega modelos fuera del SFC.</div>
             </div>
             <button type="button" onClick={resetYieldFilters} style={{border:"1px solid #C9DAF5",background:"#fff",color:"#1F3A5F",borderRadius:999,padding:"8px 12px",fontSize:11,fontWeight:800,cursor:"pointer"}}>Restablecer filtros</button>
           </div>
@@ -13899,7 +13926,7 @@ function replaceMetaFiles(nextFiles){
             <div style={{background:"#FBFDFF",border:"1px solid #E7EEF9",borderRadius:12,padding:"11px 12px"}}>
               <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Datos jalados</div>
               <div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.5,marginTop:6}}>
-                WO/date/line/SKU desde Station On Line Report · BU/modelo/SKU desde DB Model · current event/SN desde SFC · defecto, referencia, PN y repair time desde Repair Record. Regla OJT: SN de SFC que existe en Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.
+                WO/date/line/SKU desde Station On Line Report · SFC manda el scope: SN, WO, current event y SKU/modelo disponible · DB Model solo enriquece BU/modelo por SKU · defecto, referencia, PN y repair time desde Repair Record. Regla OJT: SN de SFC que existe en Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.
                 {yieldImportState.summary && yieldImportState.summary.sheets ? " Hojas: " + yieldImportState.summary.sheets.map(function(x){return x.name+" ("+x.role+":"+x.rows+")";}).join(" · ") : ""}
               </div>
             </div>
