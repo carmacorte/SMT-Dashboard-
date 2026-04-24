@@ -6573,7 +6573,8 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
                 wo: rawWo,
                 sku: meta ? meta.sku : (x.sku || itemSku),
                 family: meta ? meta.family : (x.family || itemFamily),
-                bu: meta ? meta.buLabel : traceOpsYieldInferBU(x.bu || item.bu, itemFamily, itemSku),
+                // BU comes from active SFC/WO model identity; DB Model only enriches.
+                bu: traceOpsYieldInferBU(meta ? (meta.buLabel || meta.bu) : (x.bu || item.bu), meta ? meta.family : itemFamily, meta ? meta.sku : itemSku),
                 week: meta ? meta.week : x.week,
                 line: meta ? meta.line : x.line
             });
@@ -6601,8 +6602,13 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
         riskBySku[sku].risk += Number(item.risk || 0);
         riskBySku[sku].symptomMap[item.symptom || "Sin sintoma"] = (riskBySku[sku].symptomMap[item.symptom || "Sin sintoma"] || 0) + Number(item.risk || 0);
         (item.serials || []).forEach(function (x) { var snKey = traceOpsYieldCleanSn(x.sn || x.SN) || [x.wo, x.location, Math.random()].join('|'); if (!riskBySku[sku].serialMap[snKey])
-            riskBySku[sku].serialMap[snKey] = Object.assign({}, x, { sku: sku, family: item.family || x.family || 'N/A' }); });
+            riskBySku[sku].serialMap[snKey] = Object.assign({}, x, { sku: sku, family: item.family || x.family || 'N/A', bu: traceOpsYieldInferBU(x.bu || item.bu, item.family || x.family || 'N/A', sku) }); });
     });
+    function traceOpsYieldSerialRowsForSkuSymptom(serials, symptom) {
+        var target = traceOpsYieldNorm(symptom || "");
+        var filtered = (serials || []).filter(function (r) { return traceOpsYieldNorm(r.symptom || r.topSymptom || "") === target; });
+        return filtered.length ? filtered : (serials || []);
+    }
     var topRiskSku = Object.keys(riskBySku).map(function (key) {
         var row = riskBySku[key];
         var symptom = Object.keys(row.symptomMap).sort(function (a, b) { return row.symptomMap[b] - row.symptomMap[a]; })[0] || "Sin sintoma";
@@ -14874,6 +14880,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     }
     function renderYieldFlowSection() {
         var weeklyTrend = yieldFlowModel.weeklyTrend || [];
+        var stationFpy = yieldFlowModel.stationFpy || [];
         var maxWeeklyTotal = weeklyTrend.reduce(function (max, w) { return Math.max(max, Number(w.total || 0)); }, 0);
         var causeSummary = yieldFlowModel.causeSummary || [];
         var failurePareto = yieldFlowModel.failurePatterns || [];
@@ -14882,7 +14889,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         var trackerRowsView = hasSpecificYieldFilter ? (yieldFlowModel.trackerRows || []) : (yieldFlowModel.trackerRows || []).slice(0, 12);
         var hiddenTrackerRows = Math.max(0, (yieldFlowModel.trackerRows || []).length - trackerRowsView.length);
         var painCases = yieldFlowModel.topPainCases || [];
-        var stationFpy = yieldFlowModel.stationFpy || [];
         return (React.createElement("div", { id: "yieldflow-section", style: { display: "flex", flexDirection: "column", gap: 14, marginBottom: 14 } },
             React.createElement("div", { style: { background: "linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)", borderRadius: 18, padding: isMobile() ? "16px 14px" : "18px 20px", color: "#fff", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "minmax(0,1fr) auto", alignItems: "center", gap: isMobile() ? 10 : 14, overflow: "hidden" } },
                 React.createElement("div", { style: { minWidth: 0, width: "100%" } },
@@ -15281,7 +15287,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                     React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: "#102A43" } }, item.family),
                                     React.createElement("div", { style: { fontSize: 10, color: "#5F766C", marginTop: 3 } }, item.sku),
                                     React.createElement("div", { style: { fontSize: 10.5, color: "#6A6560", marginTop: 6, lineHeight: 1.45 } }, item.topSymptom),
-                                    item.serials && item.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: item.family + " · " + item.topSymptom, subtitle: "Seriales impactados por SKU", rows: item.serials }); }, style: { marginTop: 7, fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } },
+                                    item.serials && item.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: item.family + " · " + item.topSymptom, subtitle: "Seriales impactados por SKU", rows: traceOpsYieldSerialRowsForSkuSymptom(item.serials, item.topSymptom) }); }, style: { marginTop: 7, fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } },
                                         "Ver SN ",
                                         traceOpsYieldFlowFmt(item.serials.length)) : null),
                                 React.createElement("div", { style: { fontSize: 18, fontWeight: 800, color: "#A43B2E" } }, traceOpsYieldFlowFmt(item.risk))));
@@ -15575,7 +15581,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                             React.createElement("span", { style: { fontSize: 10, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB" } },
                                 traceOpsYieldFlowFmt((yieldSerialModal.rows || []).length),
                                 " SN"),
-                            React.createElement("button", { type: "button", onClick: function () { var text = (yieldSerialModal.rows || []).map(function (r) { return [r.sn, r.wo, r.sku, r.family, r.bu, r.symptom, r.location, r.station, r.week, r.line].join("\\t"); }).join("\\n"); try {
+                            React.createElement("button", { type: "button", onClick: function () { var text = (yieldSerialModal.rows || []).map(function (r) { return [r.sn, r.wo, r.sku, r.family, traceOpsYieldInferBU(r.bu, r.family, r.sku), r.symptom, r.location, r.station, r.week, r.line].join("\\t"); }).join("\\n"); try {
                                     navigator.clipboard && navigator.clipboard.writeText("SN\\tWO\\tSKU\\tFamily\\tBU\\tSymptom\\tReference\\tStation\\tCisco Week\\tLine\\n" + text);
                                 }
                                 catch (_) { } }, style: { border: "1px solid #CFE0FB", background: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 11, fontWeight: 800, color: "#1F3A5F", cursor: "pointer" } }, "Copiar tabla"),
@@ -15597,7 +15603,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                 React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } },
                                     React.createElement("div", { style: { fontWeight: 800, color: "#102A43" } }, r.sku || "N/D"),
                                     React.createElement("div", { style: { fontSize: 10, color: "#5F766C" } }, r.family || "N/D")),
-                                React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } }, r.bu || "N/D"),
+                                React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } }, traceOpsYieldInferBU(r.bu, r.family, r.sku) || "N/D"),
                                 React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } },
                                     React.createElement("div", { style: { fontWeight: 700, color: "#102A43" } }, r.symptom || "N/D"),
                                     React.createElement("div", { style: { fontSize: 10, color: "#5F766C" } },
