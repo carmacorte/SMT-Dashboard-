@@ -5270,29 +5270,6 @@ function traceOpsBuildYieldFlowModelLocal(){
   var weightedYield = totalUnits ? rows.reduce(function(sum, item){ return sum + (Number(item.yield || 0) * Number(item.total || 0)); }, 0) / totalUnits : 0;
   var weightedTouch = totalUnits ? rows.reduce(function(sum, item){ return sum + (Number(item.touch || 0) * Number(item.total || 0)); }, 0) / totalUnits : 0;
   var leadHours = trackerRows.map(function(item){ return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstFunctional); }).filter(function(v){ return v != null; });
-  var outOfFlowUnits = trackerRows.reduce(function(sum, item){
-    return sum + Object.keys(item.defectsByStation || {}).reduce(function(inner, key){
-      return inner + Number((item.defectsByStation || {})[key] || 0);
-    }, 0);
-  }, 0);
-  var recoveryRecords = [];
-  trackerRows.forEach(function(item){
-    (item.recoveryQueue || []).forEach(function(row){
-      recoveryRecords.push({
-        workOrder: item.workOrder,
-        model: item.model,
-        station: row.station,
-        qty: Number(row.qty || 0),
-        avgHours: Number(row.avgHours || 0),
-        cause: row.cause || ""
-      });
-    });
-  });
-  var recoveredUnits = recoveryRecords.reduce(function(sum, row){ return sum + row.qty; }, 0);
-  var avgRecoveryHours = recoveredUnits ? (recoveryRecords.reduce(function(sum, row){ return sum + (row.qty * row.avgHours); }, 0) / recoveredUnits) : 0;
-  var longestLeadRow = trackerRows.slice().sort(function(a, b){
-    return (traceOpsYieldFlowHoursBetween(b.startSmt, b.firstFunctional) || 0) - (traceOpsYieldFlowHoursBetween(a.startSmt, a.firstFunctional) || 0);
-  })[0] || null;
   var riskBySku = {};
   TRACEOPS_RISK_SUMMARY_ROWS.forEach(function(item){
     var sku = item.sku || "N/A";
@@ -5313,16 +5290,11 @@ function traceOpsBuildYieldFlowModelLocal(){
       risk: totalRisk,
       yield: weightedYield,
       touch: weightedTouch,
-      avgLeadHours: leadHours.length ? (leadHours.reduce(function(a,b){ return a+b; }, 0) / leadHours.length) : 0,
-      outOfFlowUnits: outOfFlowUnits,
-      recoveredUnits: recoveredUnits,
-      avgRecoveryHours: avgRecoveryHours
+      avgLeadHours: leadHours.length ? (leadHours.reduce(function(a,b){ return a+b; }, 0) / leadHours.length) : 0
     },
     rows: rows,
     trackerRows: trackerRows,
-    topRiskSku: topRiskSku,
-    recoveryRecords: recoveryRecords.slice().sort(function(a,b){ return b.qty - a.qty; }),
-    longestLeadRow: longestLeadRow
+    topRiskSku: topRiskSku
   };
 }
 
@@ -12857,6 +12829,7 @@ function replaceMetaFiles(nextFiles){
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             <span style={{fontSize:9.5,color:"#2F6FB3",fontWeight:700,background:"#EAF2FF",borderRadius:999,padding:"4px 9px"}}>{maintenanceRecords.length} records</span>
+            <button onClick={exportMaintenanceXlsx} style={{background:"#fff",color:"#1F3A5F",border:"1px solid #C7DBF7",borderRadius:7,padding:"6px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Export XLSX</button>
             <button onClick={function(){setMaintenanceForm(traceOpsEmptyMaintenanceRecord());setMaintenanceTab("capture");}} style={{background:"#1F3A5F",color:"#fff",border:"none",borderRadius:7,padding:"6px 14px",fontSize:11,fontWeight:600,cursor:"pointer"}}>+ New record</button>
           </div>
         </div>
@@ -12900,13 +12873,13 @@ function replaceMetaFiles(nextFiles){
   function renderYieldFlowSection(){
     return (
       <div id="yieldflow-section" style={{display:"flex",flexDirection:"column",gap:14,marginBottom:14}}>
-        <div style={{background:"linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)",borderRadius:18,padding:"18px 20px",color:"#fff",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:14,flexWrap:"wrap"}}>
-          <div style={{minWidth:0,flex:1}}>
+        <div style={{background:"linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)",borderRadius:18,padding:isMobile()?"16px 14px":"18px 20px",color:"#fff",display:"grid",gridTemplateColumns:isMobile()?"1fr":"minmax(0,1fr) auto",alignItems:"center",gap:isMobile()?10:14,overflow:"hidden"}}>
+          <div style={{minWidth:0,width:"100%"}}>
             <div style={{fontSize:10,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",opacity:.72,marginBottom:8}}>Yield intelligence</div>
-            <div style={{fontSize:24,fontWeight:800,lineHeight:1.05,maxWidth:680}}>Yield Flow para NGFW con avance real de SMT a prueba funcional</div>
-            <div style={{fontSize:12.5,lineHeight:1.6,opacity:.84,maxWidth:800,marginTop:8}}>Este modulo aterriza el seguimiento por work order dentro del lenguaje nativo de TraceOps: yield, touch rate, riesgo visible, estaciones con fuga y tiempo de reincorporacion hasta functional test.</div>
+            <div style={{fontSize:isMobile()?20:24,fontWeight:800,lineHeight:isMobile()?1.16:1.05,maxWidth:isMobile()?"100%":680,wordBreak:"normal",overflowWrap:"break-word"}}>Yield Flow NGFW: avance SMT a prueba funcional</div>
+            <div style={{fontSize:isMobile()?11.5:12.5,lineHeight:1.55,opacity:.84,maxWidth:isMobile()?"100%":800,marginTop:8}}>Seguimiento por work order con yield, touch rate, riesgo visible, estaciones con fuga y tiempo real de reincorporacion hasta FT.</div>
           </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:isMobile()?"flex-start":"flex-end",width:isMobile()?"100%":"auto"}}>
             <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{yieldFlowModel.kpi.orders} WOs NGFW</span>
             <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.risk)} risk units</span>
             <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.avgLeadHours,1)} h a FT</span>
@@ -12920,46 +12893,32 @@ function replaceMetaFiles(nextFiles){
           <div style={{background:"#fff",border:"1px solid #F1D0CB",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#A43B2E",textTransform:"uppercase"}}>Risk units</div><div style={{fontSize:28,fontWeight:800,color:"#A43B2E",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.risk)}</div><div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Rework visible y touch OJT</div></div>
         </div>
 
-        <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:10}}>
-          <div style={{background:"#fff",border:"1px solid #F5E4A0",borderRadius:14,padding:"14px 15px"}}>
-            <div style={{fontSize:9.5,fontWeight:800,color:"#B87820",textTransform:"uppercase"}}>Capa 1 · Salida de proceso</div>
-            <div style={{fontSize:24,fontWeight:800,color:"#B87820",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.outOfFlowUnits)}</div>
-            <div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Unidades identificadas fuera del flujo normal entre AOI, ICT y FT.</div>
-          </div>
-          <div style={{background:"#fff",border:"1px solid #CFE0FB",borderRadius:14,padding:"14px 15px"}}>
-            <div style={{fontSize:9.5,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Capa 2 · Reincorporacion</div>
-            <div style={{fontSize:24,fontWeight:800,color:"#1F3A5F",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.recoveredUnits)}</div>
-            <div style={{fontSize:11,color:"#5F766C",marginTop:5}}>Unidades regresadas a flujo con media de {traceOpsYieldFlowFmt(yieldFlowModel.kpi.avgRecoveryHours,1)} h por recuperacion.</div>
-          </div>
-          <div style={{background:"#fff",border:"1px solid #DBCDF8",borderRadius:14,padding:"14px 15px"}}>
-            <div style={{fontSize:9.5,fontWeight:800,color:"#6B2DA8",textTransform:"uppercase"}}>Capa 3 · Tiempo SMT a FT</div>
-            <div style={{fontSize:24,fontWeight:800,color:"#6B2DA8",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.avgLeadHours,1)} h</div>
-            <div style={{fontSize:11,color:"#5F766C",marginTop:5}}>{yieldFlowModel.longestLeadRow ? ("Mayor ventana actual: WO " + yieldFlowModel.longestLeadRow.workOrder + " · " + traceOpsYieldFlowFmt(traceOpsYieldFlowHoursBetween(yieldFlowModel.longestLeadRow.startSmt, yieldFlowModel.longestLeadRow.firstFunctional),1) + " h") : "Sin ventana calculable"}</div>
-          </div>
-        </div>
-
         <div style={{background:"#FBFDFF",border:"1px dashed #C9DAF5",borderRadius:14,padding:"12px 14px",fontSize:11,color:"#5F766C",lineHeight:1.55}}>
           Para resetear datos sin tocar el render: edita <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_FLOW_TRACKER</span>, <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_BY_WO_ROWS</span> y <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_RISK_SUMMARY_ROWS</span>.
         </div>
 
         <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
           <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
-            <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Capas de Shigeo en TraceOps</div>
-            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>La lectura ya no se queda en yield: separa fuga, reincorporacion y tiempo de cruce para gobernar el flujo.</div>
+            <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Capas operativas de Yield Flow</div>
+            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>La lectura separa salida de proceso, reincorporacion y tiempo SMT→FT sin transferir la ejecucion de reparaciones a calidad.</div>
           </div>
-          <div style={{padding:"12px 16px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:10}}>
-            <div style={{background:"#FFF9EE",border:"1px solid #F5E4A0",borderRadius:12,padding:"12px 13px"}}>
-              <div style={{fontSize:10,fontWeight:800,color:"#B87820",textTransform:"uppercase"}}>1. Piezas que salen del proceso</div>
-              <div style={{fontSize:11.5,color:"#5E4A17",lineHeight:1.55,marginTop:6}}>Ahora cada estacion puede marcar volumen fuera de flujo, para distinguir yield bajo por defecto real vs. yield bajo por acumulacion de cola y retrabajo.</div>
-            </div>
-            <div style={{background:"#F8FBFF",border:"1px solid #D9E6F7",borderRadius:12,padding:"12px 13px"}}>
-              <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>2. Como se reincorporan</div>
-              <div style={{fontSize:11.5,color:"#364A63",lineHeight:1.55,marginTop:6}}>La recuperacion ya tiene causa, cantidad y horas promedio. Eso permite ver si el cuello esta en debug, inspeccion o retest, no solo en la tasa final.</div>
-            </div>
-            <div style={{background:"#FBF8FF",border:"1px solid #E3D8FB",borderRadius:12,padding:"12px 13px"}}>
-              <div style={{fontSize:10,fontWeight:800,color:"#6B2DA8",textTransform:"uppercase"}}>3. Cuanto tardan hasta FT</div>
-              <div style={{fontSize:11.5,color:"#4D4762",lineHeight:1.55,marginTop:6}}>Cada WO puede registrar el cruce SMT→Functional Test para vigilar aging oculto. Esto responde directo al punto de Shigeo sobre el tiempo real de avance.</div>
-            </div>
+          <div style={{padding:"14px 18px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:10}}>
+            <div style={{background:"#FFF9EE",border:"1px solid #F5E4A0",borderRadius:14,padding:"13px 14px"}}><div style={{fontSize:10,fontWeight:800,color:"#B87820",textTransform:"uppercase"}}>1. Salida de proceso</div><div style={{fontSize:12,color:"#5F4A21",lineHeight:1.55,marginTop:8}}>Cada estacion marca volumen fuera de flujo para diferenciar defecto real contra acumulacion de cola, retrabajo o espera.</div></div>
+            <div style={{background:"#F7FAFF",border:"1px solid #D9E6F7",borderRadius:14,padding:"13px 14px"}}><div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>2. Reincorporacion</div><div style={{fontSize:12,color:"#35465F",lineHeight:1.55,marginTop:8}}>La recuperacion conserva causa, cantidad, estacion responsable y horas promedio para ubicar cuello de botella en debug, inspeccion, reparacion o retest.</div></div>
+            <div style={{background:"#FAF7FF",border:"1px solid #DBCDF8",borderRadius:14,padding:"13px 14px"}}><div style={{fontSize:10,fontWeight:800,color:"#6B2DA8",textTransform:"uppercase"}}>3. Tiempo hasta FT</div><div style={{fontSize:12,color:"#4D405F",lineHeight:1.55,marginTop:8}}>Cada WO registra cruce SMT→Functional Test para exponer aging oculto y tiempo real de avance antes de que se convierta en backlog.</div></div>
+          </div>
+        </section>
+
+        <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
+          <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
+            <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Gobernanza por rol</div>
+            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>El modulo debe orientar seguimiento y prioridad; no debe convertir a calidad en dueña de la reparacion.</div>
+          </div>
+          <div style={{padding:"14px 18px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(4,minmax(0,1fr))",gap:10}}>
+            <div style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"12px 13px",background:"#FBFDFF"}}><div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>PM / Project</div><div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.55,marginTop:7}}>Empuja prioridades con supervisores y areas soporte segun criticidad de componente, riesgo de WO y compromiso de salida.</div></div>
+            <div style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"12px 13px",background:"#FBFDFF"}}><div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Supervision / Produccion</div><div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.55,marginTop:7}}>Ejecuta reparacion, seguimiento, movimiento controlado, retest y reincorporacion de unidades al flujo.</div></div>
+            <div style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"12px 13px",background:"#FBFDFF"}}><div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Proceso / Test / Mantto</div><div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.55,marginTop:7}}>Confirma condicion tecnica, causa probable, debug, reparabilidad, estacion de fuga y disponibilidad para liberar el siguiente paso.</div></div>
+            <div style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"12px 13px",background:"#FBFDFF"}}><div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Calidad</div><div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.55,marginTop:7}}>Valida, evalua, rechaza cuando aplique, investiga, documenta, retroalimenta y previene recurrencia con evidencia trazable.</div></div>
           </div>
         </section>
 
@@ -13029,42 +12988,6 @@ function replaceMetaFiles(nextFiles){
               {yieldFlowModel.topRiskSku.map(function(item){
                 return <div key={item.sku} style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"10px 11px",background:"#FBFDFF"}}><div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}><div style={{minWidth:0,flex:1}}><div style={{fontSize:12,fontWeight:800,color:"#102A43"}}>{item.family}</div><div style={{fontSize:10,color:"#5F766C",marginTop:3}}>{item.sku}</div><div style={{fontSize:10.5,color:"#6A6560",marginTop:6,lineHeight:1.45}}>{item.topSymptom}</div></div><div style={{fontSize:18,fontWeight:800,color:"#A43B2E"}}>{traceOpsYieldFlowFmt(item.risk)}</div></div></div>;
               })}
-            </div>
-          </section>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.15fr .85fr",gap:14}}>
-          <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
-              <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Reincorporacion prioritaria</div>
-              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Vista operativa para atacar primero la recuperacion con mayor impacto.</div>
-            </div>
-            <div style={{padding:"12px 16px"}}>
-              <table className="toq-mini-table">
-                <thead><tr><th>WO</th><th>Model</th><th>Station</th><th>Qty</th><th>Avg h</th><th>Cause</th></tr></thead>
-                <tbody>
-                  {yieldFlowModel.recoveryRecords.slice(0, 6).map(function(item, idx){
-                    return <tr key={item.workOrder+"-"+item.station+"-"+idx}><td>{item.workOrder}</td><td>{item.model}</td><td>{item.station}</td><td>{traceOpsYieldFlowFmt(item.qty)}</td><td>{traceOpsYieldFlowFmt(item.avgHours,1)}</td><td>{item.cause}</td></tr>;
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
-              <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Lectura operativa</div>
-              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Interpretacion directa para el equipo de proceso y calidad.</div>
-            </div>
-            <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}}>
-              <div style={{background:"#FFF9EE",border:"1px solid #F5E4A0",borderRadius:12,padding:"12px 13px"}}>
-                <div style={{fontSize:10,fontWeight:800,color:"#B87820",textTransform:"uppercase"}}>Foco inmediato</div>
-                <div style={{fontSize:11.5,color:"#5E4A17",lineHeight:1.55,marginTop:6}}>Si la capa de salida de proceso crece mas rapido que la reincorporacion, el problema ya no es solo yield: es flujo detenido y backlog oculto.</div>
-              </div>
-              <div style={{background:"#F8FBFF",border:"1px solid #D9E6F7",borderRadius:12,padding:"12px 13px"}}>
-                <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Disciplina sugerida</div>
-                <div style={{fontSize:11.5,color:"#364A63",lineHeight:1.55,marginTop:6}}>Proceso/SMT debe capturar fuga por estacion; calidad debe validar reincorporacion; test debe confirmar el primer pase real en FT para que el tiempo no quede estimado.</div>
-              </div>
             </div>
           </section>
         </div>
