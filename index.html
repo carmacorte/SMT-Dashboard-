@@ -5587,9 +5587,18 @@ function traceOpsYieldSummarizeRisk(rows){
     var symptom = String(r.symptom || r.defect || "Sin sintoma");
     var location = String(r.location || r.reference || "N/D");
     var key = [sku,family,symptom,location].join("|");
-    if (!map[key]) map[key] = { bu: traceOpsYieldInferBU(r.bu, family, sku), sku: sku, family: family, symptom: symptom, location: location, risk: 0, _sns:{} };
+    if (!map[key]) map[key] = { bu: traceOpsYieldInferBU(r.bu, family, sku), sku: sku, family: family, symptom: symptom, location: location, risk: 0, serials: [], _sns:{} };
     var snKey = sn || ("row_" + Object.keys(map[key]._sns).length + "_" + Math.random());
-    if (!map[key]._sns[snKey]) { map[key]._sns[snKey] = true; map[key].risk += 1; }
+    if (!map[key]._sns[snKey]) {
+      map[key]._sns[snKey] = true;
+      map[key].risk += 1;
+      map[key].serials.push({
+        sn: sn || "N/D", wo: String(r.wo || r.workOrder || ""), sku: sku, family: family,
+        bu: traceOpsYieldInferBU(r.bu, family, sku), symptom: symptom, location: location,
+        station: String(r.station || r.currentEvent || ""), week: String(r.week || ""), line: String(r.line || ""),
+        event: String(r.event || r.currentEvent || "")
+      });
+    }
   });
   return Object.keys(map).map(function(k){ var row = map[k]; delete row._sns; return row; }).sort(function(a,b){ return b.risk - a.risk; });
 }
@@ -5765,6 +5774,9 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
       symptom: traceOpsYieldTopRootcauseFromRepairs(repList),
       location: traceOpsYieldFailLocationsFromRepairs(repList),
       station: sfc.station || traceOpsYieldClassifyStation(traceOpsYieldPick(repList[0] || {},["Station","Process","Area","Current Event","Evento"])),
+      event: sfc.event || "",
+      week: sfc.week || "",
+      line: sfc.line || "",
       risk: 1,
       bu: (sfc.bu || traceOpsYieldApplyDbModel(sfc.sku, sfc.family, "").bu)
     };
@@ -5942,18 +5954,27 @@ function traceOpsBuildYieldFlowCauseSummary(rows){
     var location = String(r.location || r.reference || '').trim();
     var family = String(r.family || r.model || '').trim();
     var sku = String(r.sku || '').trim();
-    if (!map[cause]) map[cause] = { cause: cause, risk: 0, refsMap: {}, familyMap: {}, skuMap: {} };
+    if (!map[cause]) map[cause] = { cause: cause, risk: 0, refsMap: {}, familyMap: {}, skuMap: {}, serialMap: {} };
     map[cause].risk += risk;
     if (location && location !== 'N/D') map[cause].refsMap[location] = (map[cause].refsMap[location] || 0) + risk;
     if (family) map[cause].familyMap[family] = (map[cause].familyMap[family] || 0) + risk;
     if (sku) map[cause].skuMap[sku] = (map[cause].skuMap[sku] || 0) + risk;
+    (r.serials || []).forEach(function(x){
+      var snKey = traceOpsYieldCleanSn(x.sn || x.SN) || [x.wo,x.sku,x.location,Math.random()].join('|');
+      if (!map[cause].serialMap[snKey]) map[cause].serialMap[snKey] = Object.assign({}, x, { symptom: cause });
+    });
+    if ((!r.serials || !r.serials.length) && (r.sn || r.SN)) {
+      var oneSn = traceOpsYieldCleanSn(r.sn || r.SN);
+      if (oneSn && !map[cause].serialMap[oneSn]) map[cause].serialMap[oneSn] = {sn:oneSn,wo:r.wo||'',sku:sku,family:family,symptom:cause,location:location,station:r.station||'',week:r.week||'',line:r.line||''};
+    }
   });
   var list = Object.keys(map).map(function(k){
     var row = map[k];
     var refs = Object.keys(row.refsMap).sort(function(a,b){ return row.refsMap[b] - row.refsMap[a]; }).slice(0, 4);
     var topFamilies = Object.keys(row.familyMap).sort(function(a,b){ return row.familyMap[b] - row.familyMap[a]; }).slice(0, 2);
     var topSkus = Object.keys(row.skuMap).sort(function(a,b){ return row.skuMap[b] - row.skuMap[a]; }).slice(0, 2);
-    return { cause: row.cause, risk: row.risk, refs: refs, topFamilies: topFamilies, topSkus: topSkus };
+    var serials = Object.keys(row.serialMap || {}).map(function(k){ return row.serialMap[k]; }).sort(function(a,b){ return String(a.sn||'').localeCompare(String(b.sn||'')); });
+    return { cause: row.cause, risk: row.risk, refs: refs, topFamilies: topFamilies, topSkus: topSkus, serials: serials };
   }).sort(function(a,b){ return b.risk - a.risk; });
 
   var total = list.reduce(function(sum, item){ return sum + Number(item.risk || 0); }, 0);
@@ -6031,7 +6052,8 @@ function traceOpsYieldBuildFailurePatterns(causeSummary){
       origin: tag.origin,
       refs: c.refs || [],
       topFamilies: c.topFamilies || [],
-      topSkus: c.topSkus || []
+      topSkus: c.topSkus || [],
+      serials: c.serials || []
     });
     return out;
   }, []).slice(0, 6);
@@ -6131,14 +6153,16 @@ function traceOpsBuildYieldFlowModelLocal(filters){
   var riskBySku = {};
   riskRows.forEach(function(item){
     var sku = item.sku || "N/A";
-    if (!riskBySku[sku]) riskBySku[sku] = { sku: sku, family: item.family || "N/A", risk: 0, symptomMap: {} };
+    if (!riskBySku[sku]) riskBySku[sku] = { sku: sku, family: item.family || "N/A", risk: 0, symptomMap: {}, serialMap: {} };
     riskBySku[sku].risk += Number(item.risk || 0);
     riskBySku[sku].symptomMap[item.symptom || "Sin sintoma"] = (riskBySku[sku].symptomMap[item.symptom || "Sin sintoma"] || 0) + Number(item.risk || 0);
+    (item.serials || []).forEach(function(x){ var snKey = traceOpsYieldCleanSn(x.sn || x.SN) || [x.wo,x.location,Math.random()].join('|'); if(!riskBySku[sku].serialMap[snKey]) riskBySku[sku].serialMap[snKey] = Object.assign({}, x, {sku: sku, family: item.family || x.family || 'N/A'}); });
   });
   var topRiskSku = Object.keys(riskBySku).map(function(key){
     var row = riskBySku[key];
     var symptom = Object.keys(row.symptomMap).sort(function(a,b){ return row.symptomMap[b] - row.symptomMap[a]; })[0] || "Sin sintoma";
-    return { sku: row.sku, family: row.family, risk: row.risk, topSymptom: symptom };
+    var serials = Object.keys(row.serialMap || {}).map(function(k){ return row.serialMap[k]; }).sort(function(a,b){ return String(a.sn||'').localeCompare(String(b.sn||'')); });
+    return { sku: row.sku, family: row.family, risk: row.risk, topSymptom: symptom, serials: serials };
   }).sort(function(a,b){ return b.risk - a.risk; }).slice(0, 6);
 
   var weeklyTrend = traceOpsBuildYieldFlowWeeklyTrend(rows, trackerRows);
@@ -6502,6 +6526,7 @@ function App() {
   var imgMetaArr = _useState({}); var imgMeta = imgMetaArr[0]; var setImgMeta = imgMetaArr[1];
   var evImgsArr = _useState({}); var evImgs = evImgsArr[0]; var setEvImgs = evImgsArr[1];
   var lbArr = _useState(null); var lightbox = lbArr[0]; var setLightbox = lbArr[1];
+  var yfSerialModalArr = _useState(null); var yieldSerialModal = yfSerialModalArr[0]; var setYieldSerialModal = yfSerialModalArr[1];
   var galPageArr = _useState(0); var galPage = galPageArr[0]; var setGalPage = galPageArr[1];
   var GAL_PAGE_SIZE = 48;
   var RCCA_KEY = "traceops_rcca";
@@ -13814,7 +13839,10 @@ function replaceMetaFiles(nextFiles){
     addSheet("Yield_by_WO", ["week","line","bu","family","sku","wo","yield","touch","total","clean","risk"], model.rows || []);
     addSheet("Weekly_Factory_Health", ["week","orders","total","clean","risk","ojtPct","ft","avgLeadHours"], model.weeklyTrend || []);
     addSheet("Top_Risk_SKU", ["family","sku","risk","topSymptom"], model.topRiskSku || []);
-    addSheet("Failure_Pareto", ["pattern","units","impact","cumulativePct","criticality","origin","refs"], (model.failurePatterns || []).map(function(x){ return Object.assign({}, x, {refs:(x.refs||[]).join(", ")}); }));
+    addSheet("Failure_Pareto", ["pattern","units","impact","cumulativePct","criticality","origin","refs","serialCount"], (model.failurePatterns || []).map(function(x){ return Object.assign({}, x, {refs:(x.refs||[]).join(", "), serialCount:(x.serials||[]).length}); }));
+    var serialEvidenceRows = [];
+    (model.failurePatterns || []).forEach(function(pat){ (pat.serials || []).forEach(function(r){ serialEvidenceRows.push({pattern:pat.pattern,sn:r.sn,wo:r.wo,sku:r.sku,family:r.family,bu:r.bu,symptom:r.symptom,location:r.location,station:r.station,week:r.week,line:r.line}); }); });
+    addSheet("Serial_Evidence", ["pattern","sn","wo","sku","family","bu","symptom","location","station","week","line"], serialEvidenceRows);
     addSheet("Tracker", ["model","skuno","workOrder","line","lotQty","startSmt","firstStocking","firstFunctional"], (model.trackerRows || []).map(function(t){ return {model:t.model,skuno:t.skuno,workOrder:t.workOrder,line:t.line,lotQty:t.lotQty,startSmt:String(t.startSmt||""),firstStocking:String(t.firstStocking||""),firstFunctional:String(t.firstFunctional||"")}; }));
     var buf = await wb.xlsx.writeBuffer();
     var blob = new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
@@ -13990,11 +14018,12 @@ function replaceMetaFiles(nextFiles){
                   return <div key={c.pattern} style={{marginBottom:11,paddingBottom:10,borderBottom:"1px solid #F1F4F8"}}>
                     <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}>
                       <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:10.5,fontWeight:700,color:"#102A43",lineHeight:1.35}}>{c.pattern}</div>
+                        <button type="button" onClick={function(){ if (c.serials && c.serials.length) setYieldSerialModal({title:c.pattern, subtitle:"Modo de falla / Pareto 80/20", rows:c.serials}); }} style={{fontSize:10.5,fontWeight:800,color:"#102A43",lineHeight:1.35,background:"transparent",border:"none",padding:0,textAlign:"left",cursor:(c.serials&&c.serials.length)?"pointer":"default",textDecoration:(c.serials&&c.serials.length)?"underline":"none",textDecorationColor:"#CFE0FB"}}>{c.pattern}</button>
                         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
                           <span style={{fontSize:9,fontWeight:800,padding:"3px 7px",borderRadius:999,background:"#FFF9EE",color:"#B87820",border:"1px solid #F5E4A0"}}>{traceOpsYieldFlowFmt(c.impact,1)}%</span>
                           <span style={{fontSize:9,fontWeight:800,padding:"3px 7px",borderRadius:999,background:"#EEF5FF",color:"#1F3A5F",border:"1px solid #D8E6FB"}}>acum {traceOpsYieldFlowFmt(c.cumulativePct,1)}%</span>
                           <span style={{fontSize:9,fontWeight:800,padding:"3px 7px",borderRadius:999,background:"#F8F3FF",color:"#6B2DA8",border:"1px solid #E2D6FA"}}>{c.origin}</span>
+                          {c.serials && c.serials.length ? <button type="button" onClick={function(){ setYieldSerialModal({title:c.pattern, subtitle:"Seriales impactados por modo de falla", rows:c.serials}); }} style={{fontSize:9,fontWeight:800,padding:"3px 7px",borderRadius:999,background:"#EAF2FF",color:"#1F3A5F",border:"1px solid #CFE0FB",cursor:"pointer"}}>Ver SN {traceOpsYieldFlowFmt(c.serials.length)}</button> : null}
                         </div>
                       </div>
                       <span style={{fontSize:11,fontWeight:800,color:"#A43B2E"}}>{traceOpsYieldFlowFmt(c.units)}</span>
@@ -14100,7 +14129,7 @@ function replaceMetaFiles(nextFiles){
             </div>
             <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
               {yieldFlowModel.topRiskSku.map(function(item){
-                return <div key={item.sku} style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"10px 11px",background:"#FBFDFF"}}><div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}><div style={{minWidth:0,flex:1}}><div style={{fontSize:12,fontWeight:800,color:"#102A43"}}>{item.family}</div><div style={{fontSize:10,color:"#5F766C",marginTop:3}}>{item.sku}</div><div style={{fontSize:10.5,color:"#6A6560",marginTop:6,lineHeight:1.45}}>{item.topSymptom}</div></div><div style={{fontSize:18,fontWeight:800,color:"#A43B2E"}}>{traceOpsYieldFlowFmt(item.risk)}</div></div></div>;
+                return <div key={item.sku} style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"10px 11px",background:"#FBFDFF"}}><div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}><div style={{minWidth:0,flex:1}}><div style={{fontSize:12,fontWeight:800,color:"#102A43"}}>{item.family}</div><div style={{fontSize:10,color:"#5F766C",marginTop:3}}>{item.sku}</div><div style={{fontSize:10.5,color:"#6A6560",marginTop:6,lineHeight:1.45}}>{item.topSymptom}</div>{item.serials&&item.serials.length?<button type="button" onClick={function(){setYieldSerialModal({title:item.family + " · " + item.topSymptom, subtitle:"Seriales impactados por SKU", rows:item.serials});}} style={{marginTop:7,fontSize:9,fontWeight:800,padding:"3px 7px",borderRadius:999,background:"#EAF2FF",color:"#1F3A5F",border:"1px solid #CFE0FB",cursor:"pointer"}}>Ver SN {traceOpsYieldFlowFmt(item.serials.length)}</button>:null}</div><div style={{fontSize:18,fontWeight:800,color:"#A43B2E"}}>{traceOpsYieldFlowFmt(item.risk)}</div></div></div>;
               })}
             </div>
           </section>
@@ -14343,7 +14372,18 @@ function replaceMetaFiles(nextFiles){
       {/* Main content */}
       <div className={"main-content"+((!sidebarOpen||isMobile())?" expanded":"")}>
 
-{lightbox&&(
+{yieldSerialModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.48)",zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={function(){setYieldSerialModal(null);}}>
+          <div style={{background:"#fff",borderRadius:18,maxWidth:920,width:"100%",maxHeight:"86vh",overflow:"hidden",boxShadow:"0 20px 70px rgba(0,0,0,.28)",border:"1px solid #D9E6F7"}} onClick={function(e){e.stopPropagation();}}>
+            <div style={{padding:"14px 18px",borderBottom:"1px solid #E7EEF9",background:"#F7FAFF",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+              <div style={{minWidth:0}}><div style={{fontSize:13,fontWeight:900,color:"#102A43"}}>Seriales impactados</div><div style={{fontSize:11,color:"#5F766C",marginTop:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{yieldSerialModal.subtitle || "Evidencia de trazabilidad"} - <b>{yieldSerialModal.title}</b></div></div>
+              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}><span style={{fontSize:10,fontWeight:800,padding:"5px 9px",borderRadius:999,background:"#EAF2FF",color:"#1F3A5F",border:"1px solid #CFE0FB"}}>{traceOpsYieldFlowFmt((yieldSerialModal.rows||[]).length)} SN</span><button type="button" onClick={function(){var text=(yieldSerialModal.rows||[]).map(function(r){return [r.sn,r.wo,r.sku,r.family,r.bu,r.symptom,r.location,r.station,r.week,r.line].join("\\t");}).join("\\n");try{navigator.clipboard&&navigator.clipboard.writeText("SN\\tWO\\tSKU\\tFamily\\tBU\\tSymptom\\tReference\\tStation\\tCisco Week\\tLine\\n"+text);}catch(_){}}} style={{border:"1px solid #CFE0FB",background:"#fff",borderRadius:999,padding:"7px 12px",fontSize:11,fontWeight:800,color:"#1F3A5F",cursor:"pointer"}}>Copiar tabla</button><button type="button" onClick={function(){setYieldSerialModal(null);}} style={{border:"1px solid #DDDBD7",background:"#fff",borderRadius:999,padding:"7px 12px",fontSize:11,fontWeight:800,color:"#6A6560",cursor:"pointer"}}>Cerrar</button></div>
+            </div>
+            <div style={{padding:16,overflow:"auto",maxHeight:"70vh"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}><thead><tr style={{background:"#F7FAFF",color:"#5F766C",textTransform:"uppercase",fontSize:9.5}}><th style={{textAlign:"left",padding:"8px 9px",borderBottom:"1px solid #E7EEF9"}}>SN</th><th style={{textAlign:"left",padding:"8px 9px",borderBottom:"1px solid #E7EEF9"}}>WO</th><th style={{textAlign:"left",padding:"8px 9px",borderBottom:"1px solid #E7EEF9"}}>SKU / Modelo</th><th style={{textAlign:"left",padding:"8px 9px",borderBottom:"1px solid #E7EEF9"}}>BU</th><th style={{textAlign:"left",padding:"8px 9px",borderBottom:"1px solid #E7EEF9"}}>Modo / Ref</th><th style={{textAlign:"left",padding:"8px 9px",borderBottom:"1px solid #E7EEF9"}}>Station</th><th style={{textAlign:"left",padding:"8px 9px",borderBottom:"1px solid #E7EEF9"}}>Week / Line</th></tr></thead><tbody>{(yieldSerialModal.rows||[]).map(function(r,idx){return <tr key={(r.sn||"sn")+idx} style={{borderBottom:"1px solid #F1F4F8"}}><td style={{padding:"8px 9px",fontWeight:900,color:"#102A43",fontFamily:"monospace"}}>{r.sn||"N/D"}</td><td style={{padding:"8px 9px",color:"#3D3A36",fontFamily:"monospace"}}>{r.wo||"N/D"}</td><td style={{padding:"8px 9px",color:"#3D3A36"}}><div style={{fontWeight:800,color:"#102A43"}}>{r.sku||"N/D"}</div><div style={{fontSize:10,color:"#5F766C"}}>{r.family||"N/D"}</div></td><td style={{padding:"8px 9px",color:"#3D3A36"}}>{r.bu||"N/D"}</td><td style={{padding:"8px 9px",color:"#3D3A36"}}><div style={{fontWeight:700,color:"#102A43"}}>{r.symptom||"N/D"}</div><div style={{fontSize:10,color:"#5F766C"}}>Ref: {r.location||"N/D"}</div></td><td style={{padding:"8px 9px",color:"#3D3A36"}}>{r.station||r.event||"N/D"}</td><td style={{padding:"8px 9px",color:"#3D3A36"}}><div>{r.week||"N/D"}</div><div style={{fontSize:10,color:"#5F766C"}}>Line {r.line||"N/D"}</div></td></tr>;})}</tbody></table>{!(yieldSerialModal.rows||[]).length ? <div style={{fontSize:12,color:"#8A8580",padding:18}}>No hay seriales asociados en el scope actual. Revisa que el Repair Record tenga SN y que el SN exista en SFC.</div> : null}</div>
+          </div>
+        </div>
+      )}
+      {lightbox&&(
         <div className="lb-overlay" onClick={function(){setLightbox(null);}}>
           <div className="lb-box" onClick={function(e){e.stopPropagation();}}>
             <div className="lb-hdr">
