@@ -5288,6 +5288,15 @@ function traceOpsYieldCleanWo(value){
   if (/^\d+(\.0+)?$/.test(st)) st = String(Math.trunc(Number(st)));
   return st;
 }
+function traceOpsYieldCleanSn(value){
+  return String(value == null ? "" : value).trim().toUpperCase();
+}
+function traceOpsYieldHasMeaningfulRootcause(row){
+  var rc = String(traceOpsYieldPick(row,["Rootcause","Root Cause","RootCause","Causa Raiz","Causa Raíz","Cause"]) || "").trim();
+  if (!rc) return false;
+  if (/^(0|na|n/a|null|blank|(blank)|sin causa)$/i.test(rc)) return false;
+  return true;
+}
 function traceOpsYieldParseDate(value){
   if (value == null || value === "") return "";
   if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString().slice(0,16).replace("T"," ");
@@ -5442,47 +5451,121 @@ function traceOpsYieldObjectsFromRawRows(rawRows, role){
 }
 function traceOpsYieldSummarizeRisk(rows){
   var map = {};
-  rows.forEach(function(r){ var sku = String(r.sku || "N/A"); var family = String(r.family || r.model || "N/A"); var symptom = String(r.symptom || r.defect || "Sin sintoma"); var location = String(r.location || r.reference || "N/D"); var key = [sku,family,symptom,location].join("|"); if (!map[key]) map[key] = { bu: r.bu || "NGFWBU", sku: sku, family: family, symptom: symptom, location: location, risk: 0 }; map[key].risk += Number(r.risk || 1); });
-  return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a,b){ return b.risk - a.risk; });
+  rows.forEach(function(r){
+    var sn = traceOpsYieldCleanSn(r.sn || r.SN);
+    var sku = String(r.sku || "N/A");
+    var family = String(r.family || r.model || "N/A");
+    var symptom = String(r.symptom || r.defect || "Sin sintoma");
+    var location = String(r.location || r.reference || "N/D");
+    var key = [sku,family,symptom,location].join("|");
+    if (!map[key]) map[key] = { bu: r.bu || "NGFWBU", sku: sku, family: family, symptom: symptom, location: location, risk: 0, _sns:{} };
+    var snKey = sn || ("row_" + Object.keys(map[key]._sns).length + "_" + Math.random());
+    if (!map[key]._sns[snKey]) { map[key]._sns[snKey] = true; map[key].risk += 1; }
+  });
+  return Object.keys(map).map(function(k){ var row = map[k]; delete row._sns; return row; }).sort(function(a,b){ return b.risk - a.risk; });
 }
 function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMeta){
   var woMap = {}, snToSfc = {}, sfcByWo = {}, repairsByWo = {}, repairsClean = [];
+  var validRepairRawRows = 0;
+  var rejectedRepairRows = { noSn:0, snNotInSfc:0, blankRootcause:0 };
+
   workRows.forEach(function(row){
-    var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Work Order","WO","WO_NO","Order","Orden","WorkOrder"])); if (!wo) return;
-    var sku = String(traceOpsYieldPick(row,["skuno","sku","model","part number","pn","Product","Modelo"]) || "").trim();
-    var family = String(traceOpsYieldPick(row,["Product Family","Model Name","Nombre del Modelo","Product Family Name","Family","Nombre"]) || sku || "N/A").trim();
-    woMap[wo] = { wo:wo, week:String(traceOpsYieldPick(row,["Cisco Week","Week","Semana"]) || "Imported"), date:String(traceOpsYieldPick(row,["Build Start Date","Start Date","Date","Fecha"]) || ""), line:String(traceOpsYieldPick(row,["Line ID","Line","Linea","Línea"]) || ""), bu:String(traceOpsYieldPick(row,["BU","Business Unit"]) || "NGFWBU"), family:family, sku:sku, startSmt:traceOpsYieldParseDate(traceOpsYieldPick(row,["Time Start","Start Time","WO Start Time","Build Start Time","Build Start Date","Start Date","Fecha Inicio"])), qty:traceOpsYieldToNumber(traceOpsYieldPick(row,["Build Qty","Lot Qty","Qty","Quantity","Total Units Processed","Input","Lote","Paste"])) };
+    var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Work Orde 00000","Work Order to search","Work Order","WO","WO_NO","Order","Orden","WorkOrder","WO NO","WO Number"]));
+    if (!wo) return;
+    var sku = String(traceOpsYieldPick(row,["P_NO","skuno","SkuNo","SKU","model","part number","pn","Product","Modelo"]) || "").trim();
+    var family = String(traceOpsYieldPick(row,["Prodcut Family","Product Family","Model Name","Nombre del Modelo","Product Family Name","Family","Nombre"]) || sku || "N/A").trim();
+    woMap[wo] = {
+      wo:wo,
+      week:String(traceOpsYieldPick(row,["Cisco Week","Week","Semana"]) || "Imported"),
+      date:String(traceOpsYieldPick(row,["Build Start Date","Start Date","Date","Fecha"]) || ""),
+      line:String(traceOpsYieldPick(row,["Line ID","Line","Linea","Línea"]) || ""),
+      bu:String(traceOpsYieldPick(row,["BU","Business Unit"]) || "NGFWBU"),
+      family:family,
+      sku:sku,
+      startSmt:traceOpsYieldParseDate(traceOpsYieldPick(row,["Time Start","Start Time","WO Start Time","Build Start Time","Build Start Date","Start Date","Fecha Inicio","Date"])),
+      qty:traceOpsYieldToNumber(traceOpsYieldPick(row,["Build Qty","Lot Qty","Qty","Quantity","Total Units Processed","Input","Lote","Paste","REAL_QTY","STD_QTY","SN_QTY"]))
+    };
   });
+
   sfcRows.forEach(function(row){
-    var sn = String(traceOpsYieldPick(row,["SN","Serial","Serial Number","Barcode","Numero de Serie","Número de Serie"])).trim();
-    var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Work Order","WO","Order","Orden","WorkOrder"]));
-    var sku = String(traceOpsYieldPick(row,["skuno","sku","model","part number","pn","Modelo"])).trim();
-    var family = String(traceOpsYieldPick(row,["Product Family","Model Name","Nombre del Modelo","Family"])).trim();
-    var event = String(traceOpsYieldPick(row,["Current Event","Event","Station","Current Station","Proceso Actual","Current Process"])).trim();
-    var eventTime = traceOpsYieldParseDate(traceOpsYieldPick(row,["Current Event Time","Event Time","Timestamp","DateTime","Date Time","Rec Time","Fecha Hora","Fecha"]));
-    var line = String(traceOpsYieldPick(row,["Line","Line ID","Linea","Línea"])).trim();
+    var sn = traceOpsYieldCleanSn(traceOpsYieldPick(row,["SN","Serial","Serial Number","Barcode","Numero de Serie","Número de Serie"]));
+    var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Work Order to search","workorderno","Work Order","WO","Order","Orden","WorkOrder"]));
+    var sku = String(traceOpsYieldPick(row,["skuno","SkuNo","SKU","model","part number","pn","Modelo"]) || "").trim();
+    var family = String(traceOpsYieldPick(row,["Product Family","Prodcut Family","Model Name","Nombre del Modelo","Family"]) || "").trim();
+    var event = String(traceOpsYieldPick(row,["currentevent","Current Event","Event","Station","Current Station","Proceso Actual","Current Process"]) || "").trim();
+    var eventTime = traceOpsYieldParseDate(traceOpsYieldPick(row,["lasteditdt","Last Edit DT","Current Event Time","Event Time","Timestamp","DateTime","Date Time","Rec Time","Fecha Hora","Fecha"]));
+    var line = String(traceOpsYieldPick(row,["Line ID","Line","productionline","Linea","Línea"]) || "").trim();
     var station = traceOpsYieldClassifyStation(event);
     var clean = { sn:sn, wo:wo, sku:sku, family:family, event:event, eventTime:eventTime, line:line, station:station };
     if (sn) snToSfc[sn] = clean;
-    if (wo) { if (!sfcByWo[wo]) sfcByWo[wo] = []; sfcByWo[wo].push(clean); if (!woMap[wo]) woMap[wo] = {wo:wo,week:"Imported",date:"",line:line,bu:"NGFWBU",family:family||sku||"N/A",sku:sku,startSmt:"",qty:0}; if (!woMap[wo].sku && sku) woMap[wo].sku=sku; if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family; if (!woMap[wo].line && line) woMap[wo].line=line; }
+    if (wo) {
+      if (!sfcByWo[wo]) sfcByWo[wo] = [];
+      sfcByWo[wo].push(clean);
+      if (!woMap[wo]) woMap[wo] = {wo:wo,week:"Imported",date:"",line:line,bu:"NGFWBU",family:family||sku||"N/A",sku:sku,startSmt:"",qty:0};
+      if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
+      if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
+      if (!woMap[wo].line && line) woMap[wo].line=line;
+    }
   });
+
   repairRows.forEach(function(row){
-    var sn = String(traceOpsYieldPick(row,["SN","Serial","Serial Number","Barcode","Numero de Serie","Número de Serie"])).trim(); var sfc = sn ? snToSfc[sn] : null;
-    var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Work Order","WO","Order","Orden","WorkOrder"])) || (sfc && sfc.wo) || "";
-    var sku = String(traceOpsYieldPick(row,["Key_Fail_SKU","Key Fail SKU","skuno","sku","model","part number","pn","Modelo"]) || (sfc && sfc.sku) || "").trim();
-    var family = String(traceOpsYieldPick(row,["Product Family","Model Name","Family","Nombre del Modelo"]) || (sfc && sfc.family) || sku || "N/A").trim();
-    var symptom = String(traceOpsYieldPick(row,["Symptom","Defect","Failure","Failure Mode","Falla","Defecto"]) || "Sin sintoma").trim();
-    var location = String(traceOpsYieldPick(row,["Fail Location","Location","Reference","Reference Designator","RefDes","Referencia","Area"]) || "N/D").trim();
-    var pn = String(traceOpsYieldPick(row,["Part Number","PN","NP","Numero de Parte","Número de Parte"]) || "").trim();
+    var sn = traceOpsYieldCleanSn(traceOpsYieldPick(row,["SN","Serial","Serial Number","Barcode","Numero de Serie","Número de Serie"]));
+    if (!sn) { rejectedRepairRows.noSn += 1; return; }
+    var sfc = snToSfc[sn];
+    if (!sfc) { rejectedRepairRows.snNotInSfc += 1; return; }
+    if (!traceOpsYieldHasMeaningfulRootcause(row)) { rejectedRepairRows.blankRootcause += 1; return; }
+    validRepairRawRows += 1;
+
+    var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Workorderno","workorderno","Work Order","WO","Order","Orden","WorkOrder"])) || (sfc && sfc.wo) || "";
+    var sku = String(traceOpsYieldPick(row,["SkuNo","Key_Fail_SKU","Key Fail SKU","skuno","sku","model","part number","pn","Modelo"]) || (sfc && sfc.sku) || "").trim();
+    var family = String(traceOpsYieldPick(row,["ModelName","Model Name","Product Family","Prodcut Family","Family","Nombre del Modelo"]) || (sfc && sfc.family) || sku || "N/A").trim();
+    var symptom = String(traceOpsYieldPick(row,["Rootcause","Root Cause","RootCause","FailSymptom","Symptom","Defect","Failure","Failure Mode","Falla","Defecto"]) || "Sin sintoma").trim();
+    var location = String(traceOpsYieldPick(row,["FailLocation","Fail Location","Location","Reference","Reference Designator","RefDes","Referencia","Area"]) || "N/D").trim();
+    var pn = String(traceOpsYieldPick(row,["ComponentCode","Component Code","Part Number","PN","NP","Numero de Parte","Número de Parte"]) || "").trim();
     var station = traceOpsYieldClassifyStation(traceOpsYieldPick(row,["Station","Process","Area","Current Event","Evento"])) || (sfc && sfc.station) || "";
-    var repairTime = traceOpsYieldParseDate(traceOpsYieldPick(row,["Repair Time","Repair Date","Repaired Date","Timestamp","DateTime","Fecha","Fecha Hora"]));
+    var repairTime = traceOpsYieldParseDate(traceOpsYieldPick(row,["RepairTime","Repair Time","Repair Date","Repaired Date","Timestamp","DateTime","Fecha","Fecha Hora"]));
     var clean = {sn:sn,wo:wo,sku:sku,family:family,symptom:symptom,location:location,partNumber:pn,station:station,repairTime:repairTime,risk:1,bu:"NGFWBU"};
-    repairsClean.push(clean); if (wo) { if (!repairsByWo[wo]) repairsByWo[wo]=[]; repairsByWo[wo].push(clean); if (!woMap[wo]) woMap[wo]={wo:wo,week:"Imported",date:"",line:(sfc&&sfc.line)||"",bu:"NGFWBU",family:family,sku:sku,startSmt:"",qty:0}; if (!woMap[wo].sku && sku) woMap[wo].sku=sku; if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family; }
+    repairsClean.push(clean);
+    if (wo) {
+      if (!repairsByWo[wo]) repairsByWo[wo]=[];
+      repairsByWo[wo].push(clean);
+      if (!woMap[wo]) woMap[wo]={wo:wo,week:"Imported",date:"",line:(sfc&&sfc.line)||"",bu:"NGFWBU",family:family,sku:sku,startSmt:"",qty:0};
+      if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
+      if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
+    }
   });
-  var rows = Object.keys(woMap).sort().map(function(wo){ var meta=woMap[wo]; var total=(sfcByWo[wo]&&sfcByWo[wo].length)||Number(meta.qty||0)||((repairsByWo[wo]||[]).length); var rep=(repairsByWo[wo]||[]); var seen={}; var risk=0; rep.forEach(function(x){ var k=x.sn||("row"+risk); if(!seen[k]){seen[k]=true; risk++;} }); var clean=Math.max(0,total-risk); return {week:meta.week||"Imported",date:meta.date||(meta.startSmt?String(meta.startSmt).slice(0,10):""),line:meta.line||"N/D",bu:meta.bu||"NGFWBU",family:meta.family||meta.sku||"N/A",sku:meta.sku||"N/A",wo:wo,yield:total?(clean/total*100):0,touch:total?(risk/total*100):0,total:total,clean:clean,risk:risk}; }).filter(function(x){return x.total||x.risk;}).sort(function(a,b){return b.total-a.total;});
-  var topWos = rows.slice(0,4).map(function(row){ var wo=row.wo, meta=woMap[wo]||{}, sfcList=sfcByWo[wo]||[], repairList=repairsByWo[wo]||[], completedByStation={}, defectsByStation={}; TRACEOPS_YIELD_FLOW_STATIONS.forEach(function(st){completedByStation[st]=0;defectsByStation[st]=0;}); sfcList.forEach(function(sfc){var idx=TRACEOPS_YIELD_STATION_ORDER[sfc.station]; if(idx==null)return; TRACEOPS_YIELD_FLOW_STATIONS.forEach(function(st){if(idx>=TRACEOPS_YIELD_STATION_ORDER[st]) completedByStation[st] += 1;});}); repairList.forEach(function(rep){var st=rep.station||"AOI"; if(!defectsByStation[st]) defectsByStation[st]=0; defectsByStation[st]+=1;}); var ftTimes=sfcList.filter(function(x){return /^FT/.test(x.station||"")&&x.eventTime;}).map(function(x){return x.eventTime;}).sort(); var recoveryMap={}; repairList.forEach(function(rep){var st=rep.station||"Repair"; if(!recoveryMap[st]) recoveryMap[st]={station:st,qty:0,totalHours:0,countHours:0,cause:rep.symptom||"Repair / debug"}; recoveryMap[st].qty+=1; if(rep.repairTime&&meta.startSmt){var hrs=traceOpsYieldFlowHoursBetween(meta.startSmt, rep.repairTime); if(hrs!=null){recoveryMap[st].totalHours+=hrs; recoveryMap[st].countHours+=1;}} if(rep.symptom&&recoveryMap[st].cause==="Repair / debug") recoveryMap[st].cause=rep.symptom;}); var recoveryQueue=Object.keys(recoveryMap).map(function(k){var r=recoveryMap[k]; return {station:r.station, qty:r.qty, avgHours:r.countHours?r.totalHours/r.countHours:0, cause:r.cause};}).sort(function(a,b){return b.qty-a.qty;}).slice(0,3); if(!recoveryQueue.length&&row.risk) recoveryQueue.push({station:"Repair",qty:row.risk,avgHours:0,cause:"Repair records imported"}); return {skuno:row.sku,workOrder:wo,model:row.family,line:row.line,lotQty:row.total,startSmt:meta.startSmt||"N/D",firstFunctional:ftTimes[0]||"N/D",completedByStation:completedByStation,defectsByStation:defectsByStation,recoveryQueue:recoveryQueue}; });
-  if (rows.length) TRACEOPS_YIELD_BY_WO_ROWS = rows; if (topWos.length) TRACEOPS_YIELD_FLOW_TRACKER = topWos; if (repairsClean.length) TRACEOPS_RISK_SUMMARY_ROWS = traceOpsYieldSummarizeRisk(repairsClean);
-  TRACEOPS_YIELD_IMPORT_META = Object.assign({source:"ZIP/Excel",mode:"imported"}, sourceMeta||{}, {rows:{workOrders:workRows.length,sfc:sfcRows.length,repairs:repairRows.length}});
+
+  var rows = Object.keys(woMap).sort().map(function(wo){
+    var meta=woMap[wo];
+    var sfcList = sfcByWo[wo] || [];
+    var total=sfcList.length || Number(meta.qty||0) || 0;
+    var rep=repairsByWo[wo]||[];
+    var seen={};
+    rep.forEach(function(x){ if(x.sn) seen[x.sn]=true; });
+    var risk=Object.keys(seen).length;
+    var clean=Math.max(0,total-risk);
+    return {week:meta.week||"Imported",date:meta.date||(meta.startSmt?String(meta.startSmt).slice(0,10):""),line:meta.line||"N/D",bu:meta.bu||"NGFWBU",family:meta.family||meta.sku||"N/A",sku:meta.sku||"N/A",wo:wo,yield:total?(clean/total*100):0,touch:total?(risk/total*100):0,total:total,clean:clean,risk:risk};
+  }).filter(function(x){return x.total||x.risk;}).sort(function(a,b){return b.total-a.total;});
+
+  var topWos = rows.slice(0,4).map(function(row){
+    var wo=row.wo, meta=woMap[wo]||{}, sfcList=sfcByWo[wo]||[], repairList=repairsByWo[wo]||[], completedByStation={}, defectsByStation={};
+    TRACEOPS_YIELD_FLOW_STATIONS.forEach(function(st){completedByStation[st]=0;defectsByStation[st]=0;});
+    sfcList.forEach(function(sfc){var idx=TRACEOPS_YIELD_STATION_ORDER[sfc.station]; if(idx==null)return; TRACEOPS_YIELD_FLOW_STATIONS.forEach(function(st){if(idx>=TRACEOPS_YIELD_STATION_ORDER[st]) completedByStation[st] += 1;});});
+    var defectSeenByStation = {};
+    repairList.forEach(function(rep){var st=rep.station||"AOI"; if(!defectSeenByStation[st]) defectSeenByStation[st]={}; if(rep.sn && !defectSeenByStation[st][rep.sn]){ defectSeenByStation[st][rep.sn]=true; if(!defectsByStation[st]) defectsByStation[st]=0; defectsByStation[st]+=1; }});
+    var ftTimes=sfcList.filter(function(x){return /^FT/.test(x.station||"")&&x.eventTime;}).map(function(x){return x.eventTime;}).sort();
+    var recoveryMap={};
+    var recoverySeen={};
+    repairList.forEach(function(rep){var st=rep.station||"Repair"; var key=st+"|"+rep.sn; if(recoverySeen[key]) return; recoverySeen[key]=true; if(!recoveryMap[st]) recoveryMap[st]={station:st,qty:0,totalHours:0,countHours:0,cause:rep.symptom||"Repair / debug"}; recoveryMap[st].qty+=1; if(rep.repairTime&&meta.startSmt){var hrs=traceOpsYieldFlowHoursBetween(meta.startSmt, rep.repairTime); if(hrs!=null){recoveryMap[st].totalHours+=hrs; recoveryMap[st].countHours+=1;}} if(rep.symptom&&recoveryMap[st].cause==="Repair / debug") recoveryMap[st].cause=rep.symptom;});
+    var recoveryQueue=Object.keys(recoveryMap).map(function(k){var r=recoveryMap[k]; return {station:r.station, qty:r.qty, avgHours:r.countHours?r.totalHours/r.countHours:0, cause:r.cause};}).sort(function(a,b){return b.qty-a.qty;}).slice(0,3);
+    if(!recoveryQueue.length&&row.risk) recoveryQueue.push({station:"Repair",qty:row.risk,avgHours:0,cause:"Repair records imported"});
+    return {skuno:row.sku,workOrder:wo,model:row.family,line:row.line,lotQty:row.total,startSmt:meta.startSmt||"N/D",firstFunctional:ftTimes[0]||"N/D",completedByStation:completedByStation,defectsByStation:defectsByStation,recoveryQueue:recoveryQueue};
+  });
+
+  if (rows.length) TRACEOPS_YIELD_BY_WO_ROWS = rows;
+  if (topWos.length) TRACEOPS_YIELD_FLOW_TRACKER = topWos;
+  if (repairsClean.length) TRACEOPS_RISK_SUMMARY_ROWS = traceOpsYieldSummarizeRisk(repairsClean);
+  TRACEOPS_YIELD_IMPORT_META = Object.assign({source:"ZIP/Excel",mode:"imported"}, sourceMeta||{}, {rows:{workOrders:workRows.length,sfc:sfcRows.length,repairs:repairRows.length,validRepairs:validRepairRawRows,validRepairSn:(function(){var m={}; repairsClean.forEach(function(r){if(r.sn)m[r.sn]=true;}); return Object.keys(m).length;})(), rejectedRepairs:rejectedRepairRows}, daxRule:"Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN] and RepairRecord[Rootcause] is not blank."});
   return TRACEOPS_YIELD_IMPORT_META;
 }
 function traceOpsYieldIsMobileDevice(){
@@ -5679,7 +5762,7 @@ function App() {
     setYieldImportState({ status: "loading", message: "Import local temporal: validando ZIP/Excel y extrayendo solo hojas objetivo...", summary: null });
     setTimeout(function(){
       traceOpsYieldImportExcelZip(file).then(function(summary){
-        setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repairs. Evidencia visible solo en esta sesion; no se conserva el Excel.", summary: summary });
+        setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repair rows · " + ((summary.rows && summary.rows.validRepairSn) || 0) + " SN reparados validos. Regla DAX: SFC[SN] existe en RepairRecord[SN] con Rootcause no blanco. Evidencia visible solo en esta sesion; no se conserva el Excel.", summary: summary });
       }).catch(function(err){
         setYieldImportState({ status: "error", message: err && err.message ? err.message : String(err), summary: null });
       });
@@ -13276,7 +13359,7 @@ function replaceMetaFiles(nextFiles){
             <div style={{background:"#FBFDFF",border:"1px solid #E7EEF9",borderRadius:12,padding:"11px 12px"}}>
               <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Datos jalados</div>
               <div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.5,marginTop:6}}>
-                WO/date/line/SKU desde Station On Line Report · current event/SN desde SFC · defecto, referencia, PN y repair time desde Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.
+                WO/date/line/SKU desde Station On Line Report · current event/SN desde SFC · defecto, referencia, PN y repair time desde Repair Record. Regla OJT: SN de SFC que existe en Repair Record con Rootcause no blanco. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.
                 {yieldImportState.summary && yieldImportState.summary.sheets ? " Hojas: " + yieldImportState.summary.sheets.map(function(x){return x.name+" ("+x.role+":"+x.rows+")";}).join(" · ") : ""}
               </div>
             </div>
