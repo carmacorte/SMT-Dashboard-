@@ -5407,7 +5407,7 @@ function App() {
       langLabel: "Language"
     },
     es: {
-      brandSubtitle: "Inteligencia operativa de calidad con disciplina NC/CAPA",
+      brandSubtitle: "Inteligencia operativa con disciplina NC/CAPA",
       startExport: "Comenzar con export de WhatsApp",
       startExportShort: "Exportar ZIP",
       recentAnalyses: "Ver análisis recientes",
@@ -5415,18 +5415,18 @@ function App() {
       downloadXlsx: "Descargar bitácora XLSX",
       cloudRcca: "RCCA en nube",
       localRcca: "RCCA local",
-      heroEyebrow: "Control tower de calidad para equipos de manufactura",
+      heroEyebrow: "Control tower NC/CAPA para equipos de manufactura",
       heroSubtitle: "TraceOps parte de la conversacion operativa real y ahora evoluciona hacia un flujo NC/CAPA con contencion, ownership, aprobaciones y seguimiento de efectividad.",
       contextKicker: "Construido desde adentro de la operación",
-      contextTitle: "Tu operacion ya tiene las senales. El siguiente paso es control de calidad formal.",
+      contextTitle: "Tu operacion ya tiene las senales. El siguiente paso es cierre NC/CAPA disciplinado.",
       contextSubtitle: "Carga una exportacion de WhatsApp, un hilo de correo o un historial de mensajes operativos. TraceOps convierte actualizaciones dispersas en incidentes estructurados y luego los escala a registros NC/CAPA con trazabilidad, plan de accion, aprobaciones y control de cierre.",
       loadZip: "Cargar ZIP ahora",
       uploadTitle: "Comenzar con export de WhatsApp",
       uploadSubtitle: "Suelta aquí el ZIP o haz clic para seleccionarlo",
       selectFile: "Seleccionar archivo",
-      chipsHero: ["Captura NC","Ejecucion CAPA","Memoria RCCA","Listo para 8D","Gobernanza de calidad"],
+      chipsHero: ["Captura NC","Ejecucion CAPA","Memoria RCCA","Listo para 8D","Gobernanza NC/CAPA"],
       chipsContext: ["Export de WhatsApp","EML / MBOX","Contencion","Evidencia en contexto","Compuertas de cierre"],
-      footerTagline: "Inteligencia operativa de calidad con disciplina NC/CAPA",
+      footerTagline: "Inteligencia operativa con disciplina NC/CAPA",
       langLabel: "Idioma"
     },
     zh: {
@@ -12900,7 +12900,7 @@ function replaceMetaFiles(nextFiles){
         <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
           <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
             <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Capas operativas de Yield Flow</div>
-            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>La lectura separa salida de proceso, reincorporacion y tiempo SMT→FT sin transferir la ejecucion de reparaciones a calidad.</div>
+            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>La lectura separa salida de proceso, reincorporacion y tiempo SMT→FT para asignar seguimiento operativo por rol.</div>
           </div>
           <div style={{padding:"14px 18px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:10}}>
             <div style={{background:"#FFF9EE",border:"1px solid #F5E4A0",borderRadius:14,padding:"13px 14px"}}><div style={{fontSize:10,fontWeight:800,color:"#B87820",textTransform:"uppercase"}}>1. Salida de proceso</div><div style={{fontSize:12,color:"#5F4A21",lineHeight:1.55,marginTop:8}}>Cada estacion marca volumen fuera de flujo para diferenciar defecto real contra acumulacion de cola, retrabajo o espera.</div></div>
@@ -12912,7 +12912,7 @@ function replaceMetaFiles(nextFiles){
         <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
           <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
             <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Gobernanza por rol</div>
-            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>El modulo debe orientar seguimiento y prioridad; no debe convertir a calidad en dueña de la reparacion.</div>
+            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>El modulo define responsabilidad operativa por funcion para sostener prioridad, reparacion, validacion y cierre trazable.</div>
           </div>
           <div style={{padding:"14px 18px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(4,minmax(0,1fr))",gap:10}}>
             <div style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"12px 13px",background:"#FBFDFF"}}><div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>PM / Project</div><div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.55,marginTop:7}}>Empuja prioridades con supervisores y areas soporte segun criticidad de componente, riesgo de WO y compromiso de salida.</div></div>
@@ -13007,7 +13007,7 @@ function replaceMetaFiles(nextFiles){
     {
       key: "nccapa",
       label: "NC/CAPA",
-      shortLabel: "Control tower de calidad con no conformidad, plan CAPA y cierre auditable",
+      shortLabel: "Control tower NC/CAPA con no conformidad, plan CAPA y cierre auditable",
       count: ncOpenCount,
       anchorId: "nccapa-section",
       tone: { bg:"#EEF6FF", border:"#CFE0FB", color:"#145A28" }
@@ -14279,7 +14279,7 @@ function replaceMetaFiles(nextFiles){
                   <div style={{minWidth:0,flex:1}}>
                     <div style={{fontSize:10,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",opacity:.72,marginBottom:8}}>TraceOps evolution</div>
                     <div style={{fontSize:24,fontWeight:800,lineHeight:1.05,maxWidth:620}}>NC/CAPA Control Tower</div>
-                    <div style={{fontSize:12.5,lineHeight:1.6,opacity:.82,maxWidth:760,marginTop:8}}>La lectura operativa de TraceOps ahora aterriza en un modulo de calidad con compuertas de contencion, analisis, accion, verificacion y cierre formal. La idea es no quedarse en incidentes visibles, sino empujar ownership, evidencia y efectividad.</div>
+                    <div style={{fontSize:12.5,lineHeight:1.6,opacity:.82,maxWidth:760,marginTop:8}}>La lectura operativa de TraceOps ahora aterriza en un modulo NC/CAPA con compuertas de contencion, analisis, accion, verificacion y cierre formal. La idea es no quedarse en incidentes visibles, sino empujar ownership, evidencia y efectividad por rol.</div>
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                     <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{ncOpenCount} NC activas</span>
@@ -14298,7 +14298,7 @@ function replaceMetaFiles(nextFiles){
                 <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.15fr .85fr",gap:14}}>
                   <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
                     <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
-                      <div><div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Dashboard ejecutivo de calidad</div><div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Vista diaria para priorizar cartera NC/CAPA y riesgos de recurrencia</div></div>
+                      <div><div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Dashboard ejecutivo NC/CAPA</div><div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Vista diaria para priorizar cartera NC/CAPA y riesgos de recurrencia</div></div>
                       <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#EAF2FF",color:"#1F3A5F",border:"1px solid #CFE0FB"}}>{ncPriorityRows.length} prioridades visibles</span>
                     </div>
                     <div style={{padding:"12px 16px"}}>
