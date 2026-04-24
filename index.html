@@ -6027,12 +6027,12 @@ function traceOpsYieldFlowBarPct(value, max){
 function traceOpsYieldInferBU(rawBu, family, sku){
   var explicit = String(rawBu || '').trim();
   var explicitNorm = explicit.toUpperCase();
-  if (explicitNorm && explicitNorm !== 'N/D' && explicitNorm !== 'NA' && explicitNorm !== 'N/A' && explicitNorm !== 'UNKNOWN' && explicitNorm !== 'IMPORTADO' && explicitNorm !== 'IMPORTED') return traceOpsYieldNormalizeBU(explicit);
   var key = traceOpsYieldNorm([family, sku].join(' '));
-  // Fieldwork legacy products are often present without a BU column in Station/SFC exports.
-  // Infer them from product family / SKU so the BU filter is usable even with lightweight TXT ZIPs.
+  // SFC/family identity is stronger than DB Model BU when the DB catalog carries legacy or mixed labels.
+  // This prevents Warwick/CSF/Tuffnel/Maryland from being pulled into FIELDWORKS only because of a catalog row.
   if (/westminster|woodside|hyde park|fieldwork|fieldworks|lancer/.test(key)) return 'FIELDWORKS';
   if (/tuffnel|tufnell|csf|warwick|maryland|brentwood|shenfield|ngfw/.test(key)) return 'NGFWBU';
+  if (explicitNorm && explicitNorm !== 'N/D' && explicitNorm !== 'NA' && explicitNorm !== 'N/A' && explicitNorm !== 'UNKNOWN' && explicitNorm !== 'IMPORTADO' && explicitNorm !== 'IMPORTED') return traceOpsYieldNormalizeBU(explicit);
   return explicit ? traceOpsYieldNormalizeBU(explicit) : 'NGFWBU';
 }
 
@@ -6052,6 +6052,27 @@ function traceOpsYieldUniqueSorted(values){
 function traceOpsYieldMatchesFilter(value, selected){
   if (!selected || selected === 'ALL') return true;
   return String(value || '') === String(selected || '');
+}
+function traceOpsYieldWoRiskCount(row){
+  if (!row) return 0;
+  if (row.risk != null) return Number(row.risk || 0);
+  var defects = row.defectsByStation || {};
+  return Object.keys(defects).reduce(function(sum, k){ return sum + Number(defects[k] || 0); }, 0);
+}
+function traceOpsYieldWoTotalCount(row){
+  if (!row) return 0;
+  return Number(row.total || row.lotQty || row.units || row.qty || 0);
+}
+function traceOpsYieldWoSeverity(row){
+  var total = traceOpsYieldWoTotalCount(row);
+  var risk = traceOpsYieldWoRiskCount(row);
+  var rate = total > 0 ? (risk / total * 100) : 0;
+  var sev = {level:'Normal', short:'OK', rate:rate, risk:risk, total:total, border:'#D9E6F7', bg:'#fff', soft:'#F8FBFF', text:'#1F3A5F', chipBg:'#EEF5FF'};
+  if (rate >= 15) return Object.assign(sev,{level:'Critica',short:'Critical',border:'#F1B5AE',bg:'#FFF7F5',soft:'#FFF1EE',text:'#A43B2E',chipBg:'#FDEDEA'});
+  if (rate >= 10) return Object.assign(sev,{level:'Alta',short:'High',border:'#F2C185',bg:'#FFF9EE',soft:'#FFF4DE',text:'#B87820',chipBg:'#FFF2D5'});
+  if (rate >= 5) return Object.assign(sev,{level:'Media',short:'Medium',border:'#F5E4A0',bg:'#FFFDF4',soft:'#FFF9E8',text:'#9A6A16',chipBg:'#FEF7D7'});
+  if (rate >= 1.5) return Object.assign(sev,{level:'Baja',short:'Low',border:'#CFE0FB',bg:'#FBFDFF',soft:'#F3F8FF',text:'#1F3A5F',chipBg:'#EEF5FF'});
+  return sev;
 }
 function traceOpsYieldWeekSortDesc(a,b){ return traceOpsYieldWeekSortValue(b) - traceOpsYieldWeekSortValue(a) || String(b).localeCompare(String(a)); }
 function traceOpsYieldRiskOrigin(cause){
@@ -6277,12 +6298,17 @@ function traceOpsBuildYieldFlowModelLocal(filters){
     });
   }
   if (rows && rows.length) {
-    var worstWo = rows.slice().sort(function(a,b){ return Number(b.risk || 0) - Number(a.risk || 0) || Number(b.total || 0) - Number(a.total || 0); })[0];
+    var worstWo = rows.slice().sort(function(a,b){
+      var ar = Number(a.total || 0) ? Number(a.risk || 0) / Number(a.total || 0) : 0;
+      var br = Number(b.total || 0) ? Number(b.risk || 0) / Number(b.total || 0) : 0;
+      return br - ar || Number(b.risk || 0) - Number(a.risk || 0) || Number(b.total || 0) - Number(a.total || 0);
+    })[0];
+    var worstSev = traceOpsYieldWoSeverity(worstWo);
     topPainCases.push({
       type: 'Work order',
       title: 'WO ' + (worstWo.wo || 'N/D'),
       metric: traceOpsYieldFlowFmt(worstWo.risk || 0) + ' risk / ' + traceOpsYieldFlowFmt(worstWo.total || 0) + ' unidades',
-      detail: (worstWo.family || 'N/D') + ' · ' + (worstWo.week || 'N/D') + ' · ' + (worstWo.line || 'N/D'),
+      detail: worstSev.level + ' · ' + traceOpsYieldFlowFmt(worstSev.rate,1) + '% OJT · ' + (worstWo.family || 'N/D') + ' · ' + (worstWo.week || 'N/D') + ' · ' + (worstWo.line || 'N/D'),
       action: {kind:'filterWo', wo:String(worstWo.wo || '')}
     });
   }
@@ -13939,7 +13965,7 @@ function replaceMetaFiles(nextFiles){
     addSheet("KPI", ["Metric","Value"], [
       {Metric:"Work Orders",Value:model.kpi.orders},{Metric:"Total Units",Value:model.kpi.units},{Metric:"Clean Units",Value:model.kpi.clean},{Metric:"Risk Units",Value:model.kpi.risk},{Metric:"Clean Yield %",Value:traceOpsYieldFlowFmt(model.kpi.yield,2)},{Metric:"OJT Touch Rate %",Value:traceOpsYieldFlowFmt(model.kpi.touch,2)},{Metric:"Avg Reintegration",Value:traceOpsYieldFlowFmtHoursDays(model.kpi.avgReintegrationProxy,1)},{Metric:"Avg SMT to Stocking/FT",Value:traceOpsYieldFlowFmtHoursDays(model.kpi.avgLeadHours,1)},{Metric:"Scope BU",Value:yieldFilters.bu || "ALL"},{Metric:"Scope Product Family",Value:yieldFilters.family || "ALL"},{Metric:"Scope SKU",Value:yieldFilters.sku || "ALL"},{Metric:"Scope Cisco Week",Value:yieldFilters.week || "ALL"},{Metric:"Scope Line",Value:yieldFilters.line || "ALL"},{Metric:"Scope Work Order",Value:yieldFilters.wo || "ALL"}
     ]);
-    addSheet("Yield_by_WO", ["week","line","bu","family","sku","wo","yield","touch","total","clean","risk"], model.rows || []);
+    addSheet("Yield_by_WO", ["week","line","bu","family","sku","wo","yield","touch","total","clean","risk","severity","riskRate"], (model.rows || []).map(function(r){ var sev=traceOpsYieldWoSeverity(r); return Object.assign({}, r, {severity:sev.level, riskRate:traceOpsYieldFlowFmt(sev.rate,2)+"%"}); }));
     addSheet("Weekly_Factory_Health", ["week","orders","total","clean","risk","ojtPct","ft","avgLeadHours"], model.weeklyTrend || []);
     addSheet("Top_Risk_SKU", ["family","sku","risk","topSymptom"], model.topRiskSku || []);
     addSheet("Failure_Pareto", ["pattern","units","impact","cumulativePct","criticality","origin","refs","serialCount"], (model.failurePatterns || []).map(function(x){ return Object.assign({}, x, {refs:(x.refs||[]).join(", "), serialCount:(x.serials||[]).length}); }));
@@ -14203,14 +14229,16 @@ function replaceMetaFiles(nextFiles){
           <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:12}}>
             {trackerRowsView.length ? trackerRowsView.map(function(item){
               var leadHours = traceOpsYieldFlowHoursBetween(item.startSmt, item.firstFunctional);
+              var woSeverity = traceOpsYieldWoSeverity(item);
               return (
-                <div key={item.workOrder} style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"14px 14px 12px",background:"#fff"}}>
+                <div key={item.workOrder} style={{border:"1px solid "+woSeverity.border,borderRadius:14,padding:"14px 14px 12px",background:woSeverity.bg,boxShadow:woSeverity.rate>=10?"0 8px 22px rgba(164,59,46,.08)":"none"}}>
                   <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:12}}>
                     <div>
                       <div style={{fontSize:15,fontWeight:800,color:"#102A43"}}>{item.model}</div>
                       <div style={{fontSize:11,color:"#5F766C",marginTop:4}}>WO {item.workOrder} · SKU {item.skuno} · {item.line} · lote {traceOpsYieldFlowFmt(item.lotQty)}</div>
                     </div>
                     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontSize:10,fontWeight:900,padding:"5px 8px",borderRadius:999,background:woSeverity.chipBg,color:woSeverity.text,border:"1px solid "+woSeverity.border}}>Sev {woSeverity.level} · {traceOpsYieldFlowFmt(woSeverity.rate,1)}% OJT</span>
                       <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#EEF5FF",color:"#1F3A5F",border:"1px solid #DBE8FB"}}>SMT start {item.startSmt}</span>
                       <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#F5F0FE",color:"#6B2DA8",border:"1px solid #DBCDF8"}}>FT first pass {item.firstFunctional}</span>
                       <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#FEF9E8",color:"#B87820",border:"1px solid #F5E4A0"}}>{leadHours==null?"Lead time N/D":(traceOpsYieldFlowFmtHoursDays(leadHours,1)+" total")}</span>
@@ -14242,10 +14270,11 @@ function replaceMetaFiles(nextFiles){
             </div>
             <div style={{padding:"12px 16px"}}>
               <table className="toq-mini-table">
-                <thead><tr><th>Week</th><th>Line</th><th>Product Family</th><th>SKU</th><th>WO</th><th>Yield</th><th>OJT</th><th>Units</th><th>Risk</th></tr></thead>
+                <thead><tr><th>Week</th><th>Line</th><th>Product Family</th><th>SKU</th><th>WO</th><th>Yield</th><th>OJT</th><th>Units</th><th>Risk</th><th>Sev</th></tr></thead>
                 <tbody>
-                  {yieldFlowModel.rows.slice(0, 14).map(function(item){
-                    return <tr key={item.wo}><td>{item.week}</td><td>{item.line}</td><td>{item.family}</td><td>{item.sku}</td><td>{item.wo}</td><td>{traceOpsYieldFlowFmt(item.yield,2)}%</td><td>{traceOpsYieldFlowFmt(item.touch,2)}%</td><td>{traceOpsYieldFlowFmt(item.total)}</td><td>{traceOpsYieldFlowFmt(item.risk)}</td></tr>;
+                  {yieldFlowModel.rows.slice().sort(function(a,b){ return (traceOpsYieldWoSeverity(b).rate - traceOpsYieldWoSeverity(a).rate) || Number(b.risk||0)-Number(a.risk||0); }).slice(0, 14).map(function(item){
+                    var sev = traceOpsYieldWoSeverity(item);
+                    return <tr key={item.wo} style={{background:sev.rate>=10?sev.soft:undefined}}><td>{item.week}</td><td>{item.line}</td><td>{item.family}</td><td>{item.sku}</td><td>{item.wo}</td><td>{traceOpsYieldFlowFmt(item.yield,2)}%</td><td>{traceOpsYieldFlowFmt(item.touch,2)}%</td><td>{traceOpsYieldFlowFmt(item.total)}</td><td>{traceOpsYieldFlowFmt(item.risk)}</td><td><span style={{fontSize:9,fontWeight:900,padding:"3px 6px",borderRadius:999,background:sev.chipBg,color:sev.text,border:"1px solid "+sev.border}}>{sev.level}</span></td></tr>;
                   })}
                 </tbody>
               </table>
