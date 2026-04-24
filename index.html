@@ -5294,7 +5294,7 @@ function traceOpsYieldCleanSn(value){
 function traceOpsYieldHasMeaningfulRootcause(row){
   var rc = String(traceOpsYieldPick(row,["Rootcause","Root Cause","RootCause","Causa Raiz","Causa Raíz","Cause"]) || "").trim();
   if (!rc) return false;
-  if (/^(0|na|n/a|null|blank|(blank)|sin causa)$/i.test(rc)) return false;
+  if (/^(0|na|n\/a|null|blank|\(blank\)|sin causa)$/i.test(rc)) return false;
   return true;
 }
 function traceOpsYieldParseDate(value){
