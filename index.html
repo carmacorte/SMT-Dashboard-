@@ -5258,6 +5258,7 @@ var TRACEOPS_YIELD_IMPORT_META = {
   rows: { workOrders: 0, sfc: 0, repairs: 0, dbModel: 0 },
   notes: "Datos cargados desde arrays base. Usa Import ZIP/Excel para reemplazarlos sin editar codigo."
 };
+
 var TRACEOPS_YIELD_DB_MODEL_MAP = {};
 var TRACEOPS_YIELD_DB_MODEL_OPTIONS = [];
 
@@ -5407,7 +5408,7 @@ function traceOpsYieldClassifyStation(value){
 function traceOpsYieldSheetRole(sheetName){
   var n = traceOpsYieldNorm(sheetName);
   if (/cisco calendar|cisco calendary|calendar|calendario|fiscal/.test(n)) return "calendar";
-  if (/db model|dbmodel|dm model|dmmodel|model master|modelo maestro|master model/.test(n)) return "dbmodel";
+  if (/db model|dbmodel|dm model|dmmodel|model master|modelo maestro|master model|db_model/.test(n)) return "dbmodel";
   if (/(^|\s)sfc(0\s)|shop floor|shopfloor|current event|sf control/.test(n)) return "sfc";
   if (/repair|repar|rework|retrab|defect|failure|fail|ng record/.test(n)) return "repair";
   if (/work order|workorder|orden|\bwo\b|build info|ordenes|orders/.test(n)) return "wo";
@@ -5448,7 +5449,7 @@ function traceOpsYieldHeaderScore(headers, role){
   else if (role === "repair") { if (hasAny(["sn","serial","serial number"])) score += 3; if (hasAny(["defect","symptom","failure","falla","defecto"])) score += 3; if (hasAny(["reference","location","refdes","fail location","referencia"])) score += 2; if (hasAny(["part number","pn","key fail sku"])) score += 1; }
   else if (role === "wo") { if (hasAny(["work order","wo","orden"])) score += 3; if (hasAny(["line","line id","linea"])) score += 2; if (hasAny(["model","product family","skuno","sku"])) score += 2; if (hasAny(["time start","start time","build start","start date"])) score += 3; }
   else if (role === "calendar") { if (hasAny(["date","fecha"])) score += 3; if (hasAny(["wfcsy","week cisco","cisco week","quarter","fiscal"])) score += 3; }
-  else if (role === "dbmodel") { if (hasAny(["skuno","sku","model","modelo","part number","pn","p_no","key fail sku"])) score += 3; if (hasAny(["bu","business unit","unidad negocio","unidad de negocio"])) score += 3; if (hasAny(["product family","prodcut family","model name","nombre del modelo","family","uuttype","uut type"])) score += 3; }
+  else if (role === "dbmodel") { if (hasAny(["skuno","sku","model","modelo","part number","pn","p_no","key fail sku"])) score += 3; if (hasAny(["bu","business unit","unidad negocio","unidad de negocio"])) score += 3; if (hasAny(["product family","prodcut family","model name","nombre del modelo","family","uuttype","uut type","description"])) score += 3; }
   return score;
 }
 
@@ -5516,7 +5517,7 @@ async function traceOpsYieldTryImportTextZip(file){
     }
   }
   if(!parsed.wo.length && !parsed.sfc.length && !parsed.repair.length) {
-    throw new Error("El ZIP ligero contiene TXT/CSV, pero no se reconocieron encabezados utiles. Revisa que SFC tenga SN/currentevent, Station On Line tenga WO/Date/Line/SKU, y Repair Record tenga SN/FailTime/FailSymptom/FailLocation y DB Model tenga BU/SKU/modelo.");
+    throw new Error("El ZIP ligero contiene TXT/CSV, pero no se reconocieron encabezados utiles. Revisa que SFC tenga SN/currentevent, Station On Line tenga WO/Date/Line/SKU, y Repair Record tenga SN/FailTime/FailSymptom/FailLocation.");
   }
   return traceOpsYieldBuildFromImported(parsed.wo, parsed.sfc, parsed.repair, {
     source:"ZIP TXT local",
@@ -5538,40 +5539,43 @@ function traceOpsYieldObjectsFromRawRows(rawRows, role){
   return out;
 }
 
-function traceOpsYieldDbModelSku(row){ return String(traceOpsYieldPick(row,["skuno","SkuNo","SKU","P_NO","P NO","Part Number","PN","Model","Modelo","Key_Fail_SKU","Key Fail SKU","Product Number"]) || "").trim(); }
-function traceOpsYieldDbModelFamily(row){ return String(traceOpsYieldPick(row,["Product Family","Prodcut Family","Model Name","Nombre del Modelo","Nombre Modelo","Family","UUTType","UUT Type","UUT Type Name","Product Family Name","Description","Descripcion","Descripción"]) || "").trim(); }
-function traceOpsYieldDbModelBU(row){ return String(traceOpsYieldPick(row,["BU","Business Unit","BU Name","BusinessUnit","Unidad Negocio","Unidad de Negocio","Division","División"]) || "").trim(); }
+function traceOpsYieldDbModelSku(row){
+  return String(traceOpsYieldPick(row,["skuno","SkuNo","SKU","P_NO","P NO","Part Number","PN","Model","Modelo","Key_Fail_SKU","Key Fail SKU","Product Number","Number Model","Model Number"]) || "").trim();
+}
+function traceOpsYieldDbModelFamily(row){
+  return String(traceOpsYieldPick(row,["Product Family","Prodcut Family","Model Name","Nombre del Modelo","Nombre Modelo","Family","UUTType","UUT Type","UUT Type Name","Product Family Name","Description","Descripcion","Descripción"]) || "").trim();
+}
+function traceOpsYieldDbModelBU(row){
+  return String(traceOpsYieldPick(row,["BU","Business Unit","BU Name","BusinessUnit","Unidad Negocio","Unidad de Negocio","Division","División"]) || "").trim();
+}
 function traceOpsYieldBuildDbModelMap(rows){
-  var map={}, opts=[], seen={};
-  (rows||[]).forEach(function(row){
-    var sku=traceOpsYieldDbModelSku(row);
-    var family=traceOpsYieldDbModelFamily(row);
-    var bu=traceOpsYieldNormalizeBU(traceOpsYieldDbModelBU(row));
-    if(!sku && !family) return;
-    if(!bu || bu==='N/D') bu=traceOpsYieldInferBU('', family, sku);
-    var rec={sku:sku, family:family||sku||'N/A', bu:bu};
-    [sku, traceOpsYieldCompact(sku), family, traceOpsYieldCompact(family)].forEach(function(k){ if(k) map[String(k)]=rec; });
-    var key=[rec.bu,rec.family,rec.sku].join('|');
-    if(!seen[key]){ seen[key]=true; opts.push(rec); }
+  var map = {}, opts = [], seen = {};
+  (rows || []).forEach(function(row){
+    var sku = traceOpsYieldDbModelSku(row);
+    var family = traceOpsYieldDbModelFamily(row);
+    var bu = traceOpsYieldNormalizeBU(traceOpsYieldDbModelBU(row));
+    if (!sku && !family) return;
+    if (!bu || bu === "N/D") bu = traceOpsYieldInferBU("", family, sku);
+    var rec = { sku: sku, family: family || sku || "N/A", bu: bu };
+    if (sku) { map[String(sku)] = rec; map[traceOpsYieldCompact(sku)] = rec; }
+    var key = [rec.bu, rec.family, rec.sku].join("|");
+    if (!seen[key]) { seen[key] = true; opts.push(rec); }
   });
-  TRACEOPS_YIELD_DB_MODEL_MAP=map;
-  TRACEOPS_YIELD_DB_MODEL_OPTIONS=opts;
+  TRACEOPS_YIELD_DB_MODEL_MAP = map;
+  TRACEOPS_YIELD_DB_MODEL_OPTIONS = opts;
   return map;
 }
-function traceOpsYieldDbLookup(map, sku, family){
-  map=map||TRACEOPS_YIELD_DB_MODEL_MAP||{};
-  var keys=[];
-  if(sku) keys.push(String(sku), traceOpsYieldCompact(sku));
-  if(family) keys.push(String(family), traceOpsYieldCompact(family));
-  for(var i=0;i<keys.length;i++){ if(map[keys[i]]) return map[keys[i]]; }
-  return null;
+function traceOpsYieldDbLookup(sku){
+  var map = TRACEOPS_YIELD_DB_MODEL_MAP || {};
+  if (!sku) return null;
+  return map[String(sku)] || map[traceOpsYieldCompact(sku)] || null;
 }
-function traceOpsYieldApplyDbModel(sku,family,bu){
-  var db=traceOpsYieldDbLookup(TRACEOPS_YIELD_DB_MODEL_MAP, sku, family);
-  var outFamily=(db&&db.family)||family||sku||'N/A';
-  var outSku=sku||(db&&db.sku)||'';
-  var outBu=(db&&db.bu)||traceOpsYieldInferBU(bu,outFamily,outSku);
-  return {sku:outSku,family:outFamily,bu:outBu,db:db};
+function traceOpsYieldApplyDbModel(sku, family, bu){
+  var db = traceOpsYieldDbLookup(sku);
+  var outSku = sku || (db && db.sku) || "";
+  var outFamily = (db && db.family) || family || outSku || "N/A";
+  var outBu = (db && db.bu) || traceOpsYieldInferBU(bu, outFamily, outSku);
+  return { sku: outSku, family: outFamily, bu: outBu, db: db };
 }
 
 function traceOpsYieldSummarizeRisk(rows){
@@ -5636,7 +5640,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     if (wo) {
       if (!sfcByWo[wo]) sfcByWo[wo] = [];
       sfcByWo[wo].push(clean);
-      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo] = {wo:wo,week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),date:"",line:line,bu:clean.bu,family:family||sku||"N/A",sku:sku,startSmt:"",qty:0};
+      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo] = {wo:wo,week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),date:"",line:line,bu:traceOpsYieldInferBU("", family, sku),family:family||sku||"N/A",sku:sku,startSmt:"",qty:0};
       if (woMap[wo]) {
         if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
         if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
@@ -5670,7 +5674,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     if (wo) {
       if (!repairsByWo[wo]) repairsByWo[wo]=[];
       repairsByWo[wo].push(clean);
-      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo]={wo:wo,week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),date:"",line:(sfc&&sfc.line)||"",bu:clean.bu,family:family,sku:sku,startSmt:"",qty:0};
+      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo]={wo:wo,week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),date:"",line:(sfc&&sfc.line)||"",bu:traceOpsYieldInferBU("", family, sku),family:family,sku:sku,startSmt:"",qty:0};
       if (woMap[wo]) {
         if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
         if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
@@ -5687,8 +5691,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     rep.forEach(function(x){ if(x.sn) seen[x.sn]=true; });
     var risk=Object.keys(seen).length;
     var clean=Math.max(0,total-risk);
-    var dbRow = traceOpsYieldApplyDbModel(meta.sku, meta.family, meta.bu);
-    return {week:meta.week||"Imported",date:meta.date||(meta.startSmt?String(meta.startSmt).slice(0,10):""),line:meta.line||"N/D",bu:dbRow.bu,family:dbRow.family||meta.family||meta.sku||"N/A",sku:dbRow.sku||meta.sku||"N/A",wo:wo,yield:total?(clean/total*100):0,touch:total?(risk/total*100):0,total:total,clean:clean,risk:risk};
+    return {week:meta.week||"Imported",date:meta.date||(meta.startSmt?String(meta.startSmt).slice(0,10):""),line:meta.line||"N/D",bu:traceOpsYieldInferBU(meta.bu, meta.family, meta.sku),family:meta.family||meta.sku||"N/A",sku:meta.sku||"N/A",wo:wo,yield:total?(clean/total*100):0,touch:total?(risk/total*100):0,total:total,clean:clean,risk:risk};
   }).filter(function(x){return x.total||x.risk;}).sort(function(a,b){return b.total-a.total;});
 
   var topWos = rows.map(function(row){
@@ -5754,10 +5757,10 @@ function traceOpsYieldAbortHeavyImport(file, innerEntry){
   var mobileLimitMb = 8;
   var desktopLimitMb = 140;
   if (mobile && estimatedMb > mobileLimitMb) {
-    throw new Error("Import local protegido: archivo de " + estimatedMb.toFixed(1) + " MB. En movil el navegador puede cerrar la pagina al descomprimir XLSM/ZIP. Este modulo no guarda el archivo; solo muestra evidencia temporal. Para este tamaño usa PC/laptop, o genera un ZIP ligero con CSV/Excel reducido: SFC, Work Orders/Build Info, DB Model y Repair Record.");
+    throw new Error("Import local protegido: archivo de " + estimatedMb.toFixed(1) + " MB. En movil el navegador puede cerrar la pagina al descomprimir XLSM/ZIP. Este modulo no guarda el archivo; solo muestra evidencia temporal. Para este tamaño usa PC/laptop, o genera un ZIP ligero con CSV/Excel reducido: SFC, Work Orders/Build Info y Repair Record.");
   }
   if (estimatedMb > desktopLimitMb) {
-    throw new Error("Import local detenido: el Excel estimado supera " + estimatedMb.toFixed(1) + " MB. Para evitar bloqueo del navegador, usa una extraccion ligera con solo SFC, Work Orders/Build Info, DB Model y Repair Record.");
+    throw new Error("Import local detenido: el Excel estimado supera " + estimatedMb.toFixed(1) + " MB. Para evitar bloqueo del navegador, usa una extraccion ligera con solo SFC, Work Orders/Build Info y Repair Record.");
   }
 }
 function traceOpsYieldPreflightLocalFile(file){
@@ -5767,7 +5770,7 @@ function traceOpsYieldPreflightLocalFile(file){
   var mobile = traceOpsYieldIsMobileDevice();
   if(!/\.(zip|xlsx|xlsm|txt|tsv|csv)$/.test(lower)) throw new Error("Carga un archivo .zip, .xlsx, .xlsm, .txt, .tsv o .csv para Yield Flow.");
   if(mobile && mb > 8){
-    throw new Error("Import local protegido: el archivo pesa " + mb.toFixed(1) + " MB. En movil se bloquea antes de descomprimir para evitar que Chrome/Safari reinicie la pagina. Este modulo es local y temporal: no conserva el Excel ni evidencia. Usa PC/laptop o sube una version ligera con solo SFC, Work Orders/Build Info, DB Model y Repair Record.");
+    throw new Error("Import local protegido: el archivo pesa " + mb.toFixed(1) + " MB. En movil se bloquea antes de descomprimir para evitar que Chrome/Safari reinicie la pagina. Este modulo es local y temporal: no conserva el Excel ni evidencia. Usa PC/laptop o sube una version ligera con solo SFC, Work Orders/Build Info y Repair Record.");
   }
   if(mb > 140){
     throw new Error("Import local detenido: archivo de " + mb.toFixed(1) + " MB. Usa una extraccion ligera; el navegador no debe cargar el libro completo.");
@@ -5783,7 +5786,7 @@ async function traceOpsYieldFindWorkbookFile(file){
   if(!/\.zip$/.test(lower)) throw new Error("Carga un .zip, .xlsx o .xlsm.");
   await window.ensureZipTools();
   if (traceOpsYieldIsMobileDevice() && traceOpsYieldMb(file.size) > 8) {
-    throw new Error("Import local protegido: el ZIP pesa " + traceOpsYieldMb(file.size).toFixed(1) + " MB. En movil esto puede reiniciar la pagina al descomprimir. Usa PC/laptop o un ZIP ligero con solo SFC, Work Orders/Build Info, DB Model y Repair Record.");
+    throw new Error("Import local protegido: el ZIP pesa " + traceOpsYieldMb(file.size).toFixed(1) + " MB. En movil esto puede reiniciar la pagina al descomprimir. Usa PC/laptop o un ZIP ligero con solo SFC, Work Orders/Build Info y Repair Record.");
   }
   var outer=await JSZip.loadAsync(file);
   var candidates=[];
@@ -5820,7 +5823,7 @@ async function traceOpsYieldImportExcelZip(file){
     var sheetFile=xlsx.file(path); if(!sheetFile) continue;
     targetSheetFiles.push({name:name,role:role,file:sheetFile,path:path});
   }
-  if(!targetSheetFiles.length) throw new Error("No se detectaron hojas por nombre. Esperado: SFC, Work Orders/Build Info, DB Model y Repair Record.");
+  if(!targetSheetFiles.length) throw new Error("No se detectaron hojas por nombre. Esperado: SFC, Work Orders/Build Info y Repair Record.");
   var sharedFile=xlsx.file("xl/sharedStrings.xml");
   var sharedStrings=[];
   if(sharedFile){
@@ -6014,7 +6017,6 @@ function traceOpsBuildYieldFlowModelLocal(filters){
     var db = traceOpsYieldApplyDbModel(r.sku, r.family, r.bu);
     return Object.assign({}, r, { sku: db.sku || r.sku, family: db.family || r.family, bu: db.bu, buLabel: db.bu });
   });
-
   var modelOptions = TRACEOPS_YIELD_DB_MODEL_OPTIONS || [];
   var options = {
     bu: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.buLabel; }).concat(modelOptions.map(function(m){ return m.bu; }))).filter(function(x){ return x && x !== 'N/D'; }),
@@ -11184,6 +11186,7 @@ function exportEightdPpt(draft) {
   }
 
   function download(){
+    if(activeModule === "yieldflow") { exportYieldFlowXlsx().catch(function(e){ setErrMsg((e&&e.message)||String(e)); }); return; }
     if(!xlsxBytes)return;
     var blob=new Blob([xlsxBytes],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
     var a=document.createElement("a");
@@ -13763,6 +13766,34 @@ function replaceMetaFiles(nextFiles){
 
   var yieldFlowModel = traceOpsBuildYieldFlowModelLocal(yieldFilters);
 
+  async function exportYieldFlowXlsx(){
+    await window.ensureExcelTools();
+    var model = traceOpsBuildYieldFlowModelLocal(yieldFilters);
+    var wb = new ExcelJS.Workbook();
+    wb.creator = "TraceOps by SMTintel";
+    wb.created = new Date();
+    function addSheet(name, headers, rows){
+      var ws = wb.addWorksheet(name);
+      ws.addRow(headers);
+      rows.forEach(function(r){ ws.addRow(headers.map(function(h){ return r[h] == null ? "" : r[h]; })); });
+      ws.getRow(1).font = {name:"Segoe UI", bold:true, color:{argb:"FFFFFFFF"}};
+      ws.getRow(1).fill = {type:"pattern",pattern:"solid",fgColor:{argb:"FF1F3A5F"}};
+      ws.columns = headers.map(function(h){ return {header:h, width: Math.max(12, Math.min(32, String(h).length + 6))}; });
+      ws.views = [{state:"frozen", ySplit:1}];
+    }
+    addSheet("KPI", ["Metric","Value"], [
+      {Metric:"Work Orders",Value:model.kpi.orders},{Metric:"Total Units",Value:model.kpi.units},{Metric:"Clean Units",Value:model.kpi.clean},{Metric:"Risk Units",Value:model.kpi.risk},{Metric:"Clean Yield %",Value:traceOpsYieldFlowFmt(model.kpi.yield,2)},{Metric:"OJT Touch Rate %",Value:traceOpsYieldFlowFmt(model.kpi.touch,2)},{Metric:"Avg Reintegration",Value:traceOpsYieldFlowFmtHoursDays(model.kpi.avgReintegrationProxy,1)},{Metric:"Avg SMT to Stocking/FT",Value:traceOpsYieldFlowFmtHoursDays(model.kpi.avgLeadHours,1)},{Metric:"Scope BU",Value:yieldFilters.bu || "ALL"},{Metric:"Scope Product Family",Value:yieldFilters.family || "ALL"},{Metric:"Scope SKU",Value:yieldFilters.sku || "ALL"},{Metric:"Scope Cisco Week",Value:yieldFilters.week || "ALL"},{Metric:"Scope Line",Value:yieldFilters.line || "ALL"}
+    ]);
+    addSheet("Yield_by_WO", ["week","line","bu","family","sku","wo","yield","touch","total","clean","risk"], model.rows || []);
+    addSheet("Weekly_Factory_Health", ["week","orders","total","clean","risk","ojtPct","ft","avgLeadHours"], model.weeklyTrend || []);
+    addSheet("Top_Risk_SKU", ["family","sku","risk","topSymptom"], model.topRiskSku || []);
+    addSheet("Failure_Pareto", ["pattern","units","impact","cumulativePct","criticality","origin","refs"], (model.failurePatterns || []).map(function(x){ return Object.assign({}, x, {refs:(x.refs||[]).join(", ")}); }));
+    addSheet("Tracker", ["model","skuno","workOrder","line","lotQty","startSmt","firstStocking","firstFunctional"], (model.trackerRows || []).map(function(t){ return {model:t.model,skuno:t.skuno,workOrder:t.workOrder,line:t.line,lotQty:t.lotQty,startSmt:String(t.startSmt||""),firstStocking:String(t.firstStocking||""),firstFunctional:String(t.firstFunctional||"")}; }));
+    var buf = await wb.xlsx.writeBuffer();
+    var blob = new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="TraceOps_Yield_Flow_"+new Date().toISOString().slice(0,10)+".xlsx"; a.click(); URL.revokeObjectURL(a.href);
+  }
+
   function renderYieldFlowSection(){
     var weeklyTrend = yieldFlowModel.weeklyTrend || [];
     var maxWeeklyTotal = weeklyTrend.reduce(function(max, w){ return Math.max(max, Number(w.total || 0)); }, 0);
@@ -14200,7 +14231,7 @@ function replaceMetaFiles(nextFiles){
           <div className="sidebar-section-title">Acciones rapidas</div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {state==="done"&&<button className="sidebar-nuevo" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>Nuevo analisis</button>}
-            {xlsxBytes&&<button className="sidebar-btn active" onClick={function(){download();if(isMobile())setSidebarOpen(false);}} style={{background:"rgba(122,148,72,.15)",color:"#8ABD6E"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Descargar .xlsx</button>}
+            {(xlsxBytes||activeModule==="yieldflow")&&<button className="sidebar-btn active" onClick={function(){download();if(isMobile())setSidebarOpen(false);}} style={{background:"rgba(122,148,72,.15)",color:"#8ABD6E"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Descargar .xlsx</button>}
             <div style={{fontSize:10,lineHeight:1.5,color:"rgba(255,255,255,.38)",padding:"4px 2px 0"}}>La carga de ZIP vive en el header principal para que nunca quede bloqueada por el drawer.</div>
           </div>
         </div>
@@ -14277,7 +14308,7 @@ function replaceMetaFiles(nextFiles){
           </div>
           {state==="done"&&<button className="saas-header-btn" onClick={function(){reset();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg><span className="hide-mobile">{t("newAnalysis")}</span></button>}
           <button className="saas-header-btn primary" onClick={function(){if(isMobile())setSidebarOpen(false);if(fileRef.current)fileRef.current.click();}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>{isMobile()?t("startExportShort"):t("startExport")}</span></button>
-          {xlsxBytes&&<button className="saas-header-btn" onClick={function(){download();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span className="hide-mobile">{t("downloadXlsx")}</span></button>}
+          {(xlsxBytes||activeModule==="yieldflow")&&<button className="saas-header-btn" onClick={function(){download();if(isMobile())setSidebarOpen(false);}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span className="hide-mobile">{t("downloadXlsx")}</span></button>}
         </div>
       </header>
 
