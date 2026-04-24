@@ -5638,7 +5638,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     return {week:meta.week||"Imported",date:meta.date||(meta.startSmt?String(meta.startSmt).slice(0,10):""),line:meta.line||"N/D",bu:meta.bu||"NGFWBU",family:meta.family||meta.sku||"N/A",sku:meta.sku||"N/A",wo:wo,yield:total?(clean/total*100):0,touch:total?(risk/total*100):0,total:total,clean:clean,risk:risk};
   }).filter(function(x){return x.total||x.risk;}).sort(function(a,b){return b.total-a.total;});
 
-  var topWos = rows.slice(0,4).map(function(row){
+  var topWos = rows.map(function(row){
     var wo=row.wo, meta=woMap[wo]||{}, sfcList=sfcByWo[wo]||[], repairList=repairsByWo[wo]||[], completedByStation={}, defectsByStation={};
     TRACEOPS_YIELD_FLOW_STATIONS.forEach(function(st){completedByStation[st]=0;defectsByStation[st]=0;});
 
@@ -5845,12 +5845,36 @@ function traceOpsBuildYieldFlowWeeklyTrend(rows, trackerRows){
 function traceOpsBuildYieldFlowCauseSummary(rows){
   var map = {};
   (rows || []).forEach(function(r){
-    var cause = String(r.symptom || r.topSymptom || 'Sin sintoma');
+    var cause = String(r.symptom || r.topSymptom || 'Sin sintoma').trim() || 'Sin sintoma';
     var risk = Number(r.risk || 0);
-    if (!map[cause]) map[cause] = { cause: cause, risk: 0 };
+    var location = String(r.location || r.reference || '').trim();
+    var family = String(r.family || r.model || '').trim();
+    var sku = String(r.sku || '').trim();
+    if (!map[cause]) map[cause] = { cause: cause, risk: 0, refsMap: {}, familyMap: {}, skuMap: {} };
     map[cause].risk += risk;
+    if (location && location !== 'N/D') map[cause].refsMap[location] = (map[cause].refsMap[location] || 0) + risk;
+    if (family) map[cause].familyMap[family] = (map[cause].familyMap[family] || 0) + risk;
+    if (sku) map[cause].skuMap[sku] = (map[cause].skuMap[sku] || 0) + risk;
   });
-  return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a,b){ return b.risk - a.risk; }).slice(0, 6);
+  var list = Object.keys(map).map(function(k){
+    var row = map[k];
+    var refs = Object.keys(row.refsMap).sort(function(a,b){ return row.refsMap[b] - row.refsMap[a]; }).slice(0, 4);
+    var topFamilies = Object.keys(row.familyMap).sort(function(a,b){ return row.familyMap[b] - row.familyMap[a]; }).slice(0, 2);
+    var topSkus = Object.keys(row.skuMap).sort(function(a,b){ return row.skuMap[b] - row.skuMap[a]; }).slice(0, 2);
+    return { cause: row.cause, risk: row.risk, refs: refs, topFamilies: topFamilies, topSkus: topSkus };
+  }).sort(function(a,b){ return b.risk - a.risk; });
+
+  var total = list.reduce(function(sum, item){ return sum + Number(item.risk || 0); }, 0);
+  var cumulative = 0;
+  list.forEach(function(item, idx){
+    var prev = cumulative;
+    var risk = Number(item.risk || 0);
+    item.sharePct = total ? (risk / total * 100) : 0;
+    cumulative += risk;
+    item.cumulativePct = total ? (cumulative / total * 100) : 0;
+    item.isPareto = risk > 1 && (idx === 0 || prev < total * 0.8);
+  });
+  return list;
 }
 function traceOpsYieldFlowBarPct(value, max){
   var n = Number(value || 0); var m = Number(max || 0);
@@ -5862,7 +5886,7 @@ function traceOpsYieldFlowBarPct(value, max){
 function traceOpsYieldNormalizeBU(value){
   var v = String(value || '').trim().toUpperCase();
   if (!v) return 'N/D';
-  if (v.indexOf('FIELD') >= 0) return 'Fieldwork Legacy';
+  if (v.indexOf('FIELD') >= 0) return 'Fieldwork (Legacy)';
   if (v.indexOf('NGFW') >= 0) return 'NGFWBU';
   return String(value || 'N/D').trim();
 }
@@ -5886,11 +5910,28 @@ function traceOpsYieldRiskOrigin(cause){
   return {criticality:'Medium', origin:'Process'};
 }
 function traceOpsYieldBuildFailurePatterns(causeSummary){
-  var total = (causeSummary || []).reduce(function(a,c){ return a + Number(c.risk || 0); }, 0);
-  return (causeSummary || []).slice(0,6).map(function(c){
+  var filtered = (causeSummary || []).filter(function(c){ return Number(c.risk || 0) > 1; });
+  var total = filtered.reduce(function(a,c){ return a + Number(c.risk || 0); }, 0);
+  var cumulative = 0;
+  return filtered.reduce(function(out, c, idx){
+    var prev = cumulative;
+    var risk = Number(c.risk || 0);
+    cumulative += risk;
+    if (!(idx === 0 || prev < total * 0.8)) return out;
     var tag = traceOpsYieldRiskOrigin(c.cause);
-    return { pattern:c.cause, units:Number(c.risk || 0), impact: total ? (Number(c.risk || 0) / total * 100) : 0, criticality:tag.criticality, origin:tag.origin };
-  });
+    out.push({
+      pattern: c.cause,
+      units: risk,
+      impact: total ? (risk / total * 100) : 0,
+      cumulativePct: total ? (cumulative / total * 100) : 0,
+      criticality: tag.criticality,
+      origin: tag.origin,
+      refs: c.refs || [],
+      topFamilies: c.topFamilies || [],
+      topSkus: c.topSkus || []
+    });
+    return out;
+  }, []).slice(0, 6);
 }
 function traceOpsBuildYieldFlowModelLocal(filters){
   filters = filters || {};
@@ -5918,11 +5959,46 @@ function traceOpsBuildYieldFlowModelLocal(filters){
   var activeSku = {}; rows.forEach(function(r){ activeSku[String(r.sku || '')] = true; });
   var activeFamily = {}; rows.forEach(function(r){ activeFamily[String(r.family || '')] = true; });
 
+  var baseRowMetaByWo = {};
+  baseRows.forEach(function(r){
+    var rawWo = String(r.wo || '');
+    var normWo = rawWo.replace(/^0+/, '') || rawWo;
+    baseRowMetaByWo[rawWo] = r;
+    baseRowMetaByWo[normWo] = r;
+  });
+
   var trackerRows = TRACEOPS_YIELD_FLOW_TRACKER.filter(function(t){
-    var wo = String(t.workOrder || t.wo || '');
-    if (rows.length && activeWo[wo]) return true;
-    if (!rows.length && TRACEOPS_YIELD_BY_WO_ROWS.length) return false;
-    return true;
+    var rawWo = String(t.workOrder || t.wo || '');
+    var normWo = rawWo.replace(/^0+/, '') || rawWo;
+    var meta = baseRowMetaByWo[rawWo] || baseRowMetaByWo[normWo] || null;
+    var family = meta ? meta.family : (t.model || t.family || '');
+    var sku = meta ? meta.sku : (t.skuno || t.sku || '');
+    var line = meta ? meta.line : (t.line || '');
+    var week = meta ? meta.week : (t.week || '');
+    var buLabel = meta ? traceOpsYieldNormalizeBU(meta.bu) : traceOpsYieldNormalizeBU(t.bu || '');
+
+    var basicMatch = traceOpsYieldMatchesFilter(buLabel, filters.bu) &&
+      traceOpsYieldMatchesFilter(family, filters.family) &&
+      traceOpsYieldMatchesFilter(sku, filters.sku) &&
+      traceOpsYieldMatchesFilter(line, filters.line) &&
+      ((!filters.week || filters.week === 'ALL') ? true : (week ? traceOpsYieldMatchesFilter(week, filters.week) : true));
+
+    if (!basicMatch) return false;
+
+    if (!rows.length) {
+      return TRACEOPS_YIELD_BY_WO_ROWS.length ? false : true;
+    }
+
+    if (activeWo[rawWo] || activeWo[normWo]) return true;
+
+    var hasSpecificIdentityFilter = (!!filters.family && filters.family !== 'ALL') || (!!filters.sku && filters.sku !== 'ALL') || (!!filters.line && filters.line !== 'ALL');
+    if (hasSpecificIdentityFilter) {
+      var familyMatchLoose = !filters.family || filters.family === 'ALL' || traceOpsYieldNorm(family) === traceOpsYieldNorm(filters.family);
+      var skuMatch = !filters.sku || filters.sku === 'ALL' || String(sku || '') === String(filters.sku || '');
+      var lineMatch = !filters.line || filters.line === 'ALL' || String(line || '') === String(filters.line || '');
+      return familyMatchLoose && skuMatch && lineMatch;
+    }
+    return false;
   });
 
   var totalUnits = rows.reduce(function(sum, item){ return sum + Number(item.total || 0); }, 0);
@@ -13604,7 +13680,11 @@ function replaceMetaFiles(nextFiles){
     var weeklyTrend = yieldFlowModel.weeklyTrend || [];
     var maxWeeklyTotal = weeklyTrend.reduce(function(max, w){ return Math.max(max, Number(w.total || 0)); }, 0);
     var causeSummary = yieldFlowModel.causeSummary || [];
+    var failurePareto = yieldFlowModel.failurePatterns || [];
     var maxCauseRisk = causeSummary.reduce(function(max, c){ return Math.max(max, Number(c.risk || 0)); }, 0);
+    var hasSpecificYieldFilter = Object.keys(yieldFilters || {}).some(function(key){ return yieldFilters[key] && yieldFilters[key] !== "ALL"; });
+    var trackerRowsView = hasSpecificYieldFilter ? (yieldFlowModel.trackerRows || []) : (yieldFlowModel.trackerRows || []).slice(0, 12);
+    var hiddenTrackerRows = Math.max(0, (yieldFlowModel.trackerRows || []).length - trackerRowsView.length);
     return (
       <div id="yieldflow-section" style={{display:"flex",flexDirection:"column",gap:14,marginBottom:14}}>
         <div style={{background:"linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)",borderRadius:18,padding:isMobile()?"16px 14px":"18px 20px",color:"#fff",display:"grid",gridTemplateColumns:isMobile()?"1fr":"minmax(0,1fr) auto",alignItems:"center",gap:isMobile()?10:14,overflow:"hidden"}}>
@@ -13754,14 +13834,32 @@ function replaceMetaFiles(nextFiles){
                 <div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.55,marginTop:7}}>La vista separa produccion limpia contra unidades con intervencion. El avance SMT a Stocking/FT se activa cuando existen timestamps suficientes; si no, el dato queda como N/D sin inferencia artificial.</div>
               </div>
               <div style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"12px 13px",background:"#fff"}}>
-                <div style={{fontSize:10,fontWeight:800,color:"#A43B2E",textTransform:"uppercase",marginBottom:8}}>Top causas de salida</div>
-                {causeSummary.map(function(c){
-                  var pct = traceOpsYieldFlowBarPct(c.risk, maxCauseRisk);
-                  return <div key={c.cause} style={{marginBottom:9}}>
-                    <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}><span style={{fontSize:10.5,fontWeight:700,color:"#102A43",lineHeight:1.3}}>{c.cause}</span><span style={{fontSize:11,fontWeight:800,color:"#A43B2E"}}>{traceOpsYieldFlowFmt(c.risk)}</span></div>
-                    <div style={{height:6,borderRadius:999,background:"#F3F6FA",overflow:"hidden",marginTop:4}}><div style={{height:"100%",width:pct+"%",background:"linear-gradient(90deg,#A43B2E,#D9A441)",borderRadius:999}}></div></div>
+                <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
+                  <div style={{fontSize:10,fontWeight:800,color:"#A43B2E",textTransform:"uppercase"}}>Pareto 80/20 de modos de falla</div>
+                  <span style={{fontSize:9.5,fontWeight:800,padding:"4px 8px",borderRadius:999,background:"#FFF4F0",color:"#A43B2E",border:"1px solid #F2D2CB"}}>{failurePareto.length} modo{failurePareto.length!==1?"s":""} clave</span>
+                </div>
+                <div style={{fontSize:10.5,color:"#5F766C",lineHeight:1.5,marginBottom:9}}>Solo se muestran los modos dominantes que acumulan el 80% del riesgo y se excluyen pipitiyas de baja repeticion.</div>
+                {failurePareto.length ? failurePareto.map(function(c){
+                  var pct = traceOpsYieldFlowBarPct(c.units, maxCauseRisk);
+                  return <div key={c.pattern} style={{marginBottom:11,paddingBottom:10,borderBottom:"1px solid #F1F4F8"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}>
+                      <div style={{minWidth:0,flex:1}}>
+                        <div style={{fontSize:10.5,fontWeight:700,color:"#102A43",lineHeight:1.35}}>{c.pattern}</div>
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
+                          <span style={{fontSize:9,fontWeight:800,padding:"3px 7px",borderRadius:999,background:"#FFF9EE",color:"#B87820",border:"1px solid #F5E4A0"}}>{traceOpsYieldFlowFmt(c.impact,1)}%</span>
+                          <span style={{fontSize:9,fontWeight:800,padding:"3px 7px",borderRadius:999,background:"#EEF5FF",color:"#1F3A5F",border:"1px solid #D8E6FB"}}>acum {traceOpsYieldFlowFmt(c.cumulativePct,1)}%</span>
+                          <span style={{fontSize:9,fontWeight:800,padding:"3px 7px",borderRadius:999,background:"#F8F3FF",color:"#6B2DA8",border:"1px solid #E2D6FA"}}>{c.origin}</span>
+                        </div>
+                      </div>
+                      <span style={{fontSize:11,fontWeight:800,color:"#A43B2E"}}>{traceOpsYieldFlowFmt(c.units)}</span>
+                    </div>
+                    <div style={{height:6,borderRadius:999,background:"#F3F6FA",overflow:"hidden",marginTop:6}}><div style={{height:"100%",width:pct+"%",background:"linear-gradient(90deg,#A43B2E,#D9A441)",borderRadius:999}}></div></div>
+                    <div style={{fontSize:10,color:"#5F766C",lineHeight:1.45,marginTop:6}}>
+                      <strong style={{color:"#102A43"}}>Refs:</strong> {(c.refs && c.refs.length) ? c.refs.join(", ") : "N/D"}
+                      {c.topFamilies && c.topFamilies.length ? <span> · <strong style={{color:"#102A43"}}>Familia:</strong> {c.topFamilies.join(", ")}</span> : null}
+                    </div>
                   </div>;
-                })}
+                }) : <div style={{fontSize:11,color:"#8A8580"}}>Sin modos dominantes con volumen suficiente para construir el Pareto.</div>}
               </div>
             </div>
           </div>
@@ -13794,11 +13892,11 @@ function replaceMetaFiles(nextFiles){
 
         <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
           <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
-            <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Tracker por estacion SFC / manual</div>
-            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Seguimiento operativo desde Current Event de SFC; si no hay import, conserva tracker manual.</div>
+            <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",flexWrap:"wrap"}}><div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Tracker por estacion SFC / manual</div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}><span style={{fontSize:9.5,fontWeight:800,padding:"4px 8px",borderRadius:999,background:"#EEF5FF",color:"#1F3A5F",border:"1px solid #D8E6FB"}}>{traceOpsYieldFlowFmt((yieldFlowModel.trackerRows || []).length)} WO scope</span>{hiddenTrackerRows>0?<span style={{fontSize:9.5,fontWeight:800,padding:"4px 8px",borderRadius:999,background:"#F7FAFF",color:"#5F766C",border:"1px solid #E7EEF9"}}>mostrando {traceOpsYieldFlowFmt(trackerRowsView.length)} / {traceOpsYieldFlowFmt((yieldFlowModel.trackerRows || []).length)}</span>:null}</div></div>
+            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Seguimiento operativo desde Current Event de SFC; el scope respeta BU, modelo, SKU, semana Cisco y linea.</div>
           </div>
           <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:12}}>
-            {yieldFlowModel.trackerRows.map(function(item){
+            {trackerRowsView.length ? trackerRowsView.map(function(item){
               var leadHours = traceOpsYieldFlowHoursBetween(item.startSmt, item.firstFunctional);
               return (
                 <div key={item.workOrder} style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"14px 14px 12px",background:"#fff"}}>
@@ -13821,13 +13919,13 @@ function replaceMetaFiles(nextFiles){
                     })}
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:8,marginTop:10}}>
-                    {item.recoveryQueue.map(function(row, idx){
+                    {(item.recoveryQueue || []).map(function(row, idx){
                       return <div key={row.station+"-"+idx} style={{background:"#FBFDFF",border:"1px solid #E7EEF9",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>{row.station}</div><div style={{fontSize:11,color:"#5F766C",marginTop:5,lineHeight:1.45}}>{row.cause}</div><div style={{fontSize:16,fontWeight:800,color:"#102A43",marginTop:6}}>{traceOpsYieldFlowFmt(row.qty)} pcs · {traceOpsYieldFlowFmt(row.avgHours,1)} h</div></div>;
                     })}
                   </div>
                 </div>
               );
-            })}
+            }) : <div style={{border:"1px dashed #D9E6F7",borderRadius:12,padding:"18px 16px",background:"#FBFDFF",fontSize:11.5,color:"#5F766C"}}>No hay WOs en el tracker para el filtro actual. Si el modelo no aparece aun, revisa que el import haya traido SFC/Current Event y Work Order para esa familia.</div>}
           </div>
         </section>
 
