@@ -5750,6 +5750,64 @@ function traceOpsYieldFlowFmt(value, digits){
   if (!isFinite(n)) n = 0;
   return n.toLocaleString("en-US", { minimumFractionDigits: digits || 0, maximumFractionDigits: digits || 0 });
 }
+
+function traceOpsYieldWeekSortValue(week){
+  var raw = String(week || 'Imported');
+  var m = raw.match(/W[- ]?(\d{1,3})/i);
+  var y = raw.match(/FY(\d{4})/i);
+  var q = raw.match(/Q(\d)/i);
+  return (y ? Number(y[1]) : 0) * 1000 + (q ? Number(q[1]) : 0) * 100 + (m ? Number(m[1]) : 0);
+}
+function traceOpsBuildYieldFlowWeeklyTrend(rows, trackerRows){
+  var ftByWo = {};
+  (trackerRows || []).forEach(function(t){
+    var wo = String(t.workOrder || t.wo || '').replace(/^0+/, '') || String(t.workOrder || t.wo || '');
+    var done = t.completedByStation || {};
+    var ft = Number(done.FT1 || 0) + Number(done.FT2 || 0) + Number(done.FT3 || 0) + Number(done.FT4 || 0);
+    var lead = traceOpsYieldFlowHoursBetween(t.startSmt, t.firstFunctional);
+    ftByWo[wo] = { ft: ft, lead: lead };
+  });
+  var map = {};
+  (rows || []).forEach(function(r){
+    var week = String(r.week || 'Imported');
+    if (!map[week]) map[week] = { week: week, total: 0, clean: 0, risk: 0, ft: 0, leadTotal: 0, leadCount: 0, woCount: 0 };
+    map[week].total += Number(r.total || 0);
+    map[week].clean += Number(r.clean || 0);
+    map[week].risk += Number(r.risk || 0);
+    map[week].woCount += 1;
+    var woKey = String(r.wo || '').replace(/^0+/, '') || String(r.wo || '');
+    var ftMeta = ftByWo[woKey] || ftByWo[String(r.wo || '')];
+    if (ftMeta) {
+      map[week].ft += Number(ftMeta.ft || 0);
+      if (ftMeta.lead != null) { map[week].leadTotal += ftMeta.lead; map[week].leadCount += 1; }
+    }
+  });
+  return Object.keys(map).map(function(k){
+    var x = map[k];
+    x.pendingFt = Math.max(0, x.total - x.ft);
+    x.cleanPct = x.total ? (x.clean / x.total * 100) : 0;
+    x.ojtPct = x.total ? (x.risk / x.total * 100) : 0;
+    x.ftPct = x.total ? (x.ft / x.total * 100) : 0;
+    x.avgLeadHours = x.leadCount ? (x.leadTotal / x.leadCount) : null;
+    return x;
+  }).sort(function(a,b){ return traceOpsYieldWeekSortValue(b.week) - traceOpsYieldWeekSortValue(a.week) || String(b.week).localeCompare(String(a.week)); });
+}
+function traceOpsBuildYieldFlowCauseSummary(rows){
+  var map = {};
+  (rows || []).forEach(function(r){
+    var cause = String(r.symptom || r.topSymptom || 'Sin sintoma');
+    var risk = Number(r.risk || 0);
+    if (!map[cause]) map[cause] = { cause: cause, risk: 0 };
+    map[cause].risk += risk;
+  });
+  return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a,b){ return b.risk - a.risk; }).slice(0, 6);
+}
+function traceOpsYieldFlowBarPct(value, max){
+  var n = Number(value || 0); var m = Number(max || 0);
+  if (!m) return 0;
+  return Math.max(0, Math.min(100, n / m * 100));
+}
+
 function traceOpsBuildYieldFlowModelLocal(){
   var rows = TRACEOPS_YIELD_BY_WO_ROWS.filter(function(item){
     if (TRACEOPS_YIELD_IMPORT_META && TRACEOPS_YIELD_IMPORT_META.mode === "imported") return true;
@@ -5774,6 +5832,8 @@ function traceOpsBuildYieldFlowModelLocal(){
     var symptom = Object.keys(row.symptomMap).sort(function(a,b){ return row.symptomMap[b] - row.symptomMap[a]; })[0] || "Sin sintoma";
     return { sku: row.sku, family: row.family, risk: row.risk, topSymptom: symptom };
   }).sort(function(a,b){ return b.risk - a.risk; }).slice(0, 6);
+  var weeklyTrend = traceOpsBuildYieldFlowWeeklyTrend(rows, trackerRows);
+  var causeSummary = traceOpsBuildYieldFlowCauseSummary(TRACEOPS_RISK_SUMMARY_ROWS);
   return {
     kpi: {
       orders: rows.length,
@@ -5782,11 +5842,15 @@ function traceOpsBuildYieldFlowModelLocal(){
       risk: totalRisk,
       yield: weightedYield,
       touch: weightedTouch,
-      avgLeadHours: leadHours.length ? (leadHours.reduce(function(a,b){ return a+b; }, 0) / leadHours.length) : 0
+      avgLeadHours: leadHours.length ? (leadHours.reduce(function(a,b){ return a+b; }, 0) / leadHours.length) : 0,
+      weeklyCount: weeklyTrend.length,
+      bgaUnits: causeSummary.filter(function(x){ return /BGA|REBALL|U8300|ASIC|CPU|FPGA/i.test(x.cause); }).reduce(function(a,b){ return a + Number(b.risk || 0); }, 0)
     },
     rows: rows,
     trackerRows: trackerRows,
-    topRiskSku: topRiskSku
+    topRiskSku: topRiskSku,
+    weeklyTrend: weeklyTrend,
+    causeSummary: causeSummary
   };
 }
 
@@ -13386,6 +13450,10 @@ function replaceMetaFiles(nextFiles){
   var yieldFlowModel = traceOpsBuildYieldFlowModelLocal();
 
   function renderYieldFlowSection(){
+    var weeklyTrend = yieldFlowModel.weeklyTrend || [];
+    var maxWeeklyTotal = weeklyTrend.reduce(function(max, w){ return Math.max(max, Number(w.total || 0)); }, 0);
+    var causeSummary = yieldFlowModel.causeSummary || [];
+    var maxCauseRisk = causeSummary.reduce(function(max, c){ return Math.max(max, Number(c.risk || 0)); }, 0);
     return (
       <div id="yieldflow-section" style={{display:"flex",flexDirection:"column",gap:14,marginBottom:14}}>
         <div style={{background:"linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)",borderRadius:18,padding:isMobile()?"16px 14px":"18px 20px",color:"#fff",display:"grid",gridTemplateColumns:isMobile()?"1fr":"minmax(0,1fr) auto",alignItems:"center",gap:isMobile()?10:14,overflow:"hidden"}}>
@@ -13433,6 +13501,65 @@ function replaceMetaFiles(nextFiles){
               <div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.5,marginTop:6}}>
                 WO/date/line/SKU desde Station On Line Report · current event/SN desde SFC · defecto, referencia, PN y repair time desde Repair Record. Regla OJT: SN de SFC que existe en Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.
                 {yieldImportState.summary && yieldImportState.summary.sheets ? " Hojas: " + yieldImportState.summary.sheets.map(function(x){return x.name+" ("+x.role+":"+x.rows+")";}).join(" · ") : ""}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
+          <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+            <div>
+              <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Weekly Flow Trend</div>
+              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Avance semanal de unidades: volumen limpio, touch/OJT y lectura de salida del proceso por causa.</div>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <span style={{fontSize:10,fontWeight:800,padding:"5px 9px",borderRadius:999,background:"#EEF5FF",color:"#1F3A5F",border:"1px solid #D8E6FB"}}>{yieldFlowModel.kpi.weeklyCount} semanas</span>
+              <span style={{fontSize:10,fontWeight:800,padding:"5px 9px",borderRadius:999,background:"#FFF9EE",color:"#B87820",border:"1px solid #F5E4A0"}}>BGA focus {traceOpsYieldFlowFmt(yieldFlowModel.kpi.bgaUnits)}</span>
+            </div>
+          </div>
+          <div style={{padding:"14px 18px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.25fr .75fr",gap:14}}>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {weeklyTrend.slice(0, 10).map(function(w){
+                var cleanPct = w.total ? Math.max(0, Math.min(100, w.clean / w.total * 100)) : 0;
+                var riskPct = w.total ? Math.max(0, Math.min(100, w.risk / w.total * 100)) : 0;
+                return (
+                  <div key={w.week} style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"10px 11px",background:"#FBFDFF"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
+                      <div style={{fontSize:11.5,fontWeight:800,color:"#102A43"}}>{w.week}</div>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:10,color:"#5F766C"}}>
+                        <span><strong style={{color:"#102A43"}}>{traceOpsYieldFlowFmt(w.woCount)}</strong> WO</span>
+                        <span><strong style={{color:"#102A43"}}>{traceOpsYieldFlowFmt(w.total)}</strong> units</span>
+                        <span><strong style={{color:"#B87820"}}>{traceOpsYieldFlowFmt(w.ojtPct,2)}%</strong> OJT</span>
+                      </div>
+                    </div>
+                    <div style={{height:16,borderRadius:999,overflow:"hidden",background:"#EEF3F9",display:"flex",border:"1px solid #E1EAF6"}}>
+                      <div title="Clean units" style={{width:cleanPct+"%",background:"linear-gradient(90deg,#2E8B57,#5CA879)"}}></div>
+                      <div title="Risk / OJT units" style={{width:riskPct+"%",background:"linear-gradient(90deg,#B87820,#D9A441)"}}></div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr 1fr":"repeat(4,minmax(0,1fr))",gap:8,marginTop:8}}>
+                      <div style={{fontSize:10,color:"#5F766C"}}>Clean <strong style={{color:"#145A28"}}>{traceOpsYieldFlowFmt(w.clean)}</strong></div>
+                      <div style={{fontSize:10,color:"#5F766C"}}>Risk <strong style={{color:"#B87820"}}>{traceOpsYieldFlowFmt(w.risk)}</strong></div>
+                      <div style={{fontSize:10,color:"#5F766C"}}>FT current <strong style={{color:"#1F3A5F"}}>{traceOpsYieldFlowFmt(w.ft)}</strong></div>
+                      <div style={{fontSize:10,color:"#5F766C"}}>Lead <strong style={{color:"#6B2DA8"}}>{w.avgLeadHours==null?"N/D":(traceOpsYieldFlowFmt(w.avgLeadHours,1)+" h")}</strong></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <div style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"12px 13px",background:"#F7FAFF"}}>
+                <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Lectura del avance</div>
+                <div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.55,marginTop:7}}>El stacked bar compara unidades limpias contra unidades con touch/OJT por semana. FT current se toma del SFC[currentevent]; si no hay evento FT, se mantiene como N/D o cero.</div>
+              </div>
+              <div style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"12px 13px",background:"#fff"}}>
+                <div style={{fontSize:10,fontWeight:800,color:"#A43B2E",textTransform:"uppercase",marginBottom:8}}>Top causas de salida</div>
+                {causeSummary.map(function(c){
+                  var pct = traceOpsYieldFlowBarPct(c.risk, maxCauseRisk);
+                  return <div key={c.cause} style={{marginBottom:9}}>
+                    <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}><span style={{fontSize:10.5,fontWeight:700,color:"#102A43",lineHeight:1.3}}>{c.cause}</span><span style={{fontSize:11,fontWeight:800,color:"#A43B2E"}}>{traceOpsYieldFlowFmt(c.risk)}</span></div>
+                    <div style={{height:6,borderRadius:999,background:"#F3F6FA",overflow:"hidden",marginTop:4}}><div style={{height:"100%",width:pct+"%",background:"linear-gradient(90deg,#A43B2E,#D9A441)",borderRadius:999}}></div></div>
+                  </div>;
+                })}
               </div>
             </div>
           </div>
