@@ -6232,6 +6232,66 @@ function traceOpsBuildYieldFlowWeeklyTrend(rows, trackerRows) {
         return x;
     }).sort(function (a, b) { return traceOpsYieldWeekSortValue(b.week) - traceOpsYieldWeekSortValue(a.week) || String(b.week).localeCompare(String(a.week)); });
 }
+
+function traceOpsBuildYieldFlowStationFpy(rows, trackerRows) {
+    var activeByWo = {};
+    (rows || []).forEach(function (r) {
+        var raw = String(r.wo || '');
+        var norm = raw.replace(/^0+/, '') || raw;
+        activeByWo[raw] = r;
+        activeByWo[norm] = r;
+    });
+    var stationMap = {};
+    TRACEOPS_YIELD_FLOW_STATIONS.forEach(function (st) {
+        stationMap[st] = { station: st, expected: 0, current: 0, defects: 0, woMap: {} };
+    });
+    (trackerRows || []).forEach(function (t) {
+        var rawWo = String(t.workOrder || t.wo || '');
+        var normWo = rawWo.replace(/^0+/, '') || rawWo;
+        var meta = activeByWo[rawWo] || activeByWo[normWo] || null;
+        var expected = Number((meta && meta.total) || t.lotQty || 0);
+        var completed = t.completedByStation || {};
+        var defects = t.defectsByStation || {};
+        TRACEOPS_YIELD_FLOW_STATIONS.forEach(function (st) {
+            var row = stationMap[st];
+            var current = Number(completed[st] || 0);
+            var leak = Number(defects[st] || 0);
+            row.expected += expected;
+            row.current += current;
+            row.defects += leak;
+            if (current || leak) row.woMap[rawWo || normWo || ('WO-' + Object.keys(row.woMap).length)] = true;
+        });
+    });
+    return TRACEOPS_YIELD_FLOW_STATIONS.map(function (st) {
+        var r = stationMap[st];
+        var fpy = r.expected ? (Math.max(0, r.current - r.defects) / r.expected * 100) : null;
+        var ojt = r.current ? (r.defects / r.current * 100) : (r.expected ? (r.defects / r.expected * 100) : 0);
+        var health = 'Normal';
+        var tone = { bg: '#F7FAFF', border: '#D9E6F7', text: '#1F3A5F', fill: '#2F6FB3' };
+        if (ojt >= 10 || r.defects >= 30) {
+            health = 'Critical';
+            tone = { bg: '#FFF7F5', border: '#F1B5AE', text: '#A43B2E', fill: '#A43B2E' };
+        } else if (ojt >= 5 || r.defects >= 10) {
+            health = 'High';
+            tone = { bg: '#FFF9EE', border: '#F5E4A0', text: '#B87820', fill: '#D9A441' };
+        } else if (ojt > 0) {
+            health = 'Watch';
+            tone = { bg: '#FBFDFF', border: '#CFE0FB', text: '#1F3A5F', fill: '#4A90E2' };
+        }
+        return {
+            station: st,
+            expected: r.expected,
+            current: r.current,
+            defects: r.defects,
+            fpy: fpy,
+            ojt: ojt,
+            woCount: Object.keys(r.woMap || {}).filter(Boolean).length,
+            health: health,
+            tone: tone
+        };
+    }).filter(function (x) { return Number(x.expected || 0) || Number(x.current || 0) || Number(x.defects || 0); });
+}
+
 function traceOpsBuildYieldFlowCauseSummary(rows) {
     var map = {};
     (rows || []).forEach(function (r) {
@@ -6552,6 +6612,7 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
     var weeklyTrend = traceOpsBuildYieldFlowWeeklyTrend(rows, trackerRows);
     var causeSummary = traceOpsBuildYieldFlowCauseSummary(riskRows);
     var failurePatterns = traceOpsYieldBuildFailurePatterns(causeSummary);
+    var stationFpy = traceOpsBuildYieldFlowStationFpy(rows, trackerRows);
     var bgaUnits = riskRows.filter(function (x) { return /BGA|REBALL|U8300|ASIC|CPU|FPGA|UNDERFILL/i.test([x.symptom, x.location, x.family, x.sku].join(' ')); }).reduce(function (a, b) { return a + Number(b.risk || 0); }, 0);
     var stockingUnits = trackerRows.reduce(function (a, t) { return a + Number((t.completedByStation && t.completedByStation.Stocking) || 0); }, 0);
     var ftUnits = trackerRows.reduce(function (a, t) { var c = t.completedByStation || {}; return a + Number(c.FT1 || 0) + Number(c.FT2 || 0) + Number(c.FT3 || 0) + Number(c.FT4 || 0); }, 0);
@@ -6705,7 +6766,13 @@ function App() {
                 managementTitle: "Management Control View",
                 importTitle: "Import ZIP / Excel",
                 weeklyTitle: "Weekly Factory Health",
-                paretoTitle: "Pareto 80/20 de modos de falla"
+                paretoTitle: "Pareto 80/20 de modos de falla",
+                stationFpyTitle: "FPY proxy por estacion",
+                stationFpySubtitle: "Lectura por Current Event de SFC: cobertura de flujo, fugas y severidad por estacion.",
+                expectedUnits: "Unidades esperadas",
+                currentUnits: "Unidades actuales",
+                defectsOut: "Fugas",
+                impactedWo: "WOs impactadas"
             },
             en: {
                 filtersTitle: "Yield Flow executive filters",
@@ -14792,6 +14859,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         addSheet("Weekly_Factory_Health", ["week", "orders", "total", "clean", "risk", "ojtPct", "ft", "avgLeadHours"], model.weeklyTrend || []);
         addSheet("Top_Risk_SKU", ["family", "sku", "risk", "topSymptom"], model.topRiskSku || []);
         addSheet("Failure_Pareto", ["pattern", "units", "impact", "cumulativePct", "criticality", "origin", "refs", "serialCount"], (model.failurePatterns || []).map(function (x) { return Object.assign({}, x, { refs: (x.refs || []).join(", "), serialCount: (x.serials || []).length }); }));
+        addSheet("Station_FPY", ["station", "expected", "current", "defects", "fpy", "ojt", "woCount", "health"], (model.stationFpy || []).map(function (x) { return Object.assign({}, x, { fpy: x.fpy == null ? "N/D" : traceOpsYieldFlowFmt(x.fpy, 2) + "%", ojt: traceOpsYieldFlowFmt(x.ojt, 2) + "%" }); }));
         var serialEvidenceRows = [];
         (model.failurePatterns || []).forEach(function (pat) { (pat.serials || []).forEach(function (r) { serialEvidenceRows.push({ pattern: pat.pattern, sn: r.sn, wo: r.wo, sku: r.sku, family: r.family, bu: r.bu, symptom: r.symptom, location: r.location, station: r.station, week: r.week, line: r.line }); }); });
         addSheet("Serial_Evidence", ["pattern", "sn", "wo", "sku", "family", "bu", "symptom", "location", "station", "week", "line"], serialEvidenceRows);
@@ -15047,6 +15115,28 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                             " ",
                                             c.topFamilies.join(", ")) : null));
                             }) : React.createElement("div", { style: { fontSize: 11, color: "#8A8580" } }, "Sin modos dominantes con volumen suficiente para construir el Pareto."))))),
+            React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
+                React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("stationFpyTitle")),
+                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, yieldText("stationFpySubtitle"))),
+                    React.createElement("span", { style: { fontSize: 10, fontWeight: 900, padding: "5px 9px", borderRadius: 999, background: "#EEF5FF", color: "#1F3A5F", border: "1px solid #CFE0FB" } }, stationFpy.length + " stations")),
+                React.createElement("div", { style: { padding: "14px 18px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(4,minmax(0,1fr))", gap: 10 } }, stationFpy.length ? stationFpy.map(function (st) {
+                    var pct = st.fpy == null ? 0 : Math.max(0, Math.min(100, st.fpy));
+                    var tone = st.tone || { bg: "#F7FAFF", border: "#D9E6F7", text: "#1F3A5F", fill: "#2F6FB3" };
+                    return React.createElement("div", { key: st.station, style: { background: tone.bg, border: "1px solid " + tone.border, borderRadius: 14, padding: "12px 13px" } },
+                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
+                            React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#102A43", textTransform: "uppercase" } }, st.station),
+                            React.createElement("span", { style: { fontSize: 9, fontWeight: 900, color: tone.text, border: "1px solid " + tone.border, borderRadius: 999, padding: "3px 7px", background: "#fff" } }, st.health)),
+                        React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: tone.text, marginTop: 8 } }, st.fpy == null ? "N/D" : (traceOpsYieldFlowFmt(st.fpy, 1) + "%")),
+                        React.createElement("div", { style: { height: 7, borderRadius: 999, background: "#EAF0F7", overflow: "hidden", marginTop: 8 } },
+                            React.createElement("div", { style: { height: "100%", width: pct + "%", background: tone.fill, borderRadius: 999 } })),
+                        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 10, fontSize: 10.5, color: "#5F766C" } },
+                            React.createElement("div", null, yieldText("expectedUnits"), React.createElement("br", null), React.createElement("strong", { style: { color: "#102A43" } }, traceOpsYieldFlowFmt(st.expected))),
+                            React.createElement("div", null, yieldText("currentUnits"), React.createElement("br", null), React.createElement("strong", { style: { color: "#102A43" } }, traceOpsYieldFlowFmt(st.current))),
+                            React.createElement("div", null, yieldText("defectsOut"), React.createElement("br", null), React.createElement("strong", { style: { color: tone.text } }, traceOpsYieldFlowFmt(st.defects))),
+                            React.createElement("div", null, yieldText("impactedWo"), React.createElement("br", null), React.createElement("strong", { style: { color: "#102A43" } }, traceOpsYieldFlowFmt(st.woCount)))));
+                }) : React.createElement("div", { style: { gridColumn: "1 / -1", border: "1px dashed #D9E6F7", borderRadius: 12, padding: "14px", fontSize: 11.5, color: "#5F766C", background: "#FBFDFF" } }, "No station FPY data for the active scope."))),
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF" } },
                     React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Capas operativas de Yield Flow"),
