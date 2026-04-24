@@ -5467,7 +5467,7 @@ function traceOpsYieldSummarizeRisk(rows){
 function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMeta){
   var woMap = {}, snToSfc = {}, sfcByWo = {}, repairsByWo = {}, repairsClean = [];
   var validRepairRawRows = 0;
-  var rejectedRepairRows = { noSn:0, snNotInSfc:0, blankRootcause:0 };
+  var rejectedRepairRows = { noSn:0, snNotInSfc:0 };
 
   workRows.forEach(function(row){
     var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Work Orde 00000","Work Order to search","Work Order","WO","WO_NO","Order","Orden","WorkOrder","WO NO","WO Number"]));
@@ -5487,6 +5487,8 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     };
   });
 
+  var hasWorkOrderSource = Object.keys(woMap).length > 0;
+
   sfcRows.forEach(function(row){
     var sn = traceOpsYieldCleanSn(traceOpsYieldPick(row,["SN","Serial","Serial Number","Barcode","Numero de Serie","Número de Serie"]));
     var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Work Order to search","workorderno","Work Order","WO","Order","Orden","WorkOrder"]));
@@ -5501,10 +5503,12 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     if (wo) {
       if (!sfcByWo[wo]) sfcByWo[wo] = [];
       sfcByWo[wo].push(clean);
-      if (!woMap[wo]) woMap[wo] = {wo:wo,week:"Imported",date:"",line:line,bu:"NGFWBU",family:family||sku||"N/A",sku:sku,startSmt:"",qty:0};
-      if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
-      if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
-      if (!woMap[wo].line && line) woMap[wo].line=line;
+      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo] = {wo:wo,week:"Imported",date:"",line:line,bu:"NGFWBU",family:family||sku||"N/A",sku:sku,startSmt:"",qty:0};
+      if (woMap[wo]) {
+        if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
+        if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
+        if (!woMap[wo].line && line) woMap[wo].line=line;
+      }
     }
   });
 
@@ -5513,7 +5517,6 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     if (!sn) { rejectedRepairRows.noSn += 1; return; }
     var sfc = snToSfc[sn];
     if (!sfc) { rejectedRepairRows.snNotInSfc += 1; return; }
-    if (!traceOpsYieldHasMeaningfulRootcause(row)) { rejectedRepairRows.blankRootcause += 1; return; }
     validRepairRawRows += 1;
 
     var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Workorderno","workorderno","Work Order","WO","Order","Orden","WorkOrder"])) || (sfc && sfc.wo) || "";
@@ -5529,9 +5532,11 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     if (wo) {
       if (!repairsByWo[wo]) repairsByWo[wo]=[];
       repairsByWo[wo].push(clean);
-      if (!woMap[wo]) woMap[wo]={wo:wo,week:"Imported",date:"",line:(sfc&&sfc.line)||"",bu:"NGFWBU",family:family,sku:sku,startSmt:"",qty:0};
-      if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
-      if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
+      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo]={wo:wo,week:"Imported",date:"",line:(sfc&&sfc.line)||"",bu:"NGFWBU",family:family,sku:sku,startSmt:"",qty:0};
+      if (woMap[wo]) {
+        if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
+        if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
+      }
     }
   });
 
@@ -5550,7 +5555,21 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
   var topWos = rows.slice(0,4).map(function(row){
     var wo=row.wo, meta=woMap[wo]||{}, sfcList=sfcByWo[wo]||[], repairList=repairsByWo[wo]||[], completedByStation={}, defectsByStation={};
     TRACEOPS_YIELD_FLOW_STATIONS.forEach(function(st){completedByStation[st]=0;defectsByStation[st]=0;});
-    sfcList.forEach(function(sfc){var idx=TRACEOPS_YIELD_STATION_ORDER[sfc.station]; if(idx==null)return; TRACEOPS_YIELD_FLOW_STATIONS.forEach(function(st){if(idx>=TRACEOPS_YIELD_STATION_ORDER[st]) completedByStation[st] += 1;});});
+
+    // Breakdown rule: station volume comes from SFC[currentevent].
+    // Count each SN only in its CURRENT station bucket, not cumulatively across previous stations.
+    var currentEventSeenByStation = {};
+    TRACEOPS_YIELD_FLOW_STATIONS.forEach(function(st){ currentEventSeenByStation[st] = {}; });
+    sfcList.forEach(function(sfc){
+      var st = traceOpsYieldClassifyStation(sfc.event || sfc.currentEvent || sfc.station || "");
+      if (!st || !Object.prototype.hasOwnProperty.call(TRACEOPS_YIELD_STATION_ORDER, st)) return;
+      var snKey = sfc.sn || (st + "_row_" + completedByStation[st]);
+      if (!currentEventSeenByStation[st][snKey]) {
+        currentEventSeenByStation[st][snKey] = true;
+        completedByStation[st] += 1;
+      }
+    });
+
     var defectSeenByStation = {};
     repairList.forEach(function(rep){var st=rep.station||"AOI"; if(!defectSeenByStation[st]) defectSeenByStation[st]={}; if(rep.sn && !defectSeenByStation[st][rep.sn]){ defectSeenByStation[st][rep.sn]=true; if(!defectsByStation[st]) defectsByStation[st]=0; defectsByStation[st]+=1; }});
     var ftTimes=sfcList.filter(function(x){return /^FT/.test(x.station||"")&&x.eventTime;}).map(function(x){return x.eventTime;}).sort();
@@ -5565,7 +5584,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
   if (rows.length) TRACEOPS_YIELD_BY_WO_ROWS = rows;
   if (topWos.length) TRACEOPS_YIELD_FLOW_TRACKER = topWos;
   if (repairsClean.length) TRACEOPS_RISK_SUMMARY_ROWS = traceOpsYieldSummarizeRisk(repairsClean);
-  TRACEOPS_YIELD_IMPORT_META = Object.assign({source:"ZIP/Excel",mode:"imported"}, sourceMeta||{}, {rows:{workOrders:workRows.length,sfc:sfcRows.length,repairs:repairRows.length,validRepairs:validRepairRawRows,validRepairSn:(function(){var m={}; repairsClean.forEach(function(r){if(r.sn)m[r.sn]=true;}); return Object.keys(m).length;})(), rejectedRepairs:rejectedRepairRows}, daxRule:"Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN] and RepairRecord[Rootcause] is not blank."});
+  TRACEOPS_YIELD_IMPORT_META = Object.assign({source:"ZIP/Excel",mode:"imported"}, sourceMeta||{}, {rows:{workOrders:workRows.length,sfc:sfcRows.length,repairs:repairRows.length,validRepairs:validRepairRawRows,validRepairSn:(function(){var m={}; repairsClean.forEach(function(r){if(r.sn)m[r.sn]=true;}); return Object.keys(m).length;})(), rejectedRepairs:rejectedRepairRows}, daxRule:"Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN].", stationRule:"Breakdown station counts = DISTINCTCOUNT(SFC[SN]) grouped by SFC[currentevent] bucket; non cumulative."});
   return TRACEOPS_YIELD_IMPORT_META;
 }
 function traceOpsYieldIsMobileDevice(){
@@ -5681,6 +5700,7 @@ function traceOpsYieldFlowFmt(value, digits){
 }
 function traceOpsBuildYieldFlowModelLocal(){
   var rows = TRACEOPS_YIELD_BY_WO_ROWS.filter(function(item){
+    if (TRACEOPS_YIELD_IMPORT_META && TRACEOPS_YIELD_IMPORT_META.mode === "imported") return true;
     return String(item.bu || "").toUpperCase().indexOf("NGFW") >= 0;
   });
   var trackerRows = TRACEOPS_YIELD_FLOW_TRACKER.slice();
@@ -5762,7 +5782,7 @@ function App() {
     setYieldImportState({ status: "loading", message: "Import local temporal: validando ZIP/Excel y extrayendo solo hojas objetivo...", summary: null });
     setTimeout(function(){
       traceOpsYieldImportExcelZip(file).then(function(summary){
-        setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repair rows · " + ((summary.rows && summary.rows.validRepairSn) || 0) + " SN reparados validos. Regla DAX: SFC[SN] existe en RepairRecord[SN] con Rootcause no blanco. Evidencia visible solo en esta sesion; no se conserva el Excel.", summary: summary });
+        setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repair rows · " + ((summary.rows && summary.rows.validRepairSn) || 0) + " SN reparados validos. Regla DAX: SFC[SN] existe en RepairRecord[SN]. Evidencia visible solo en esta sesion; no se conserva el Excel.", summary: summary });
       }).catch(function(err){
         setYieldImportState({ status: "error", message: err && err.message ? err.message : String(err), summary: null });
       });
@@ -13359,7 +13379,7 @@ function replaceMetaFiles(nextFiles){
             <div style={{background:"#FBFDFF",border:"1px solid #E7EEF9",borderRadius:12,padding:"11px 12px"}}>
               <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Datos jalados</div>
               <div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.5,marginTop:6}}>
-                WO/date/line/SKU desde Station On Line Report · current event/SN desde SFC · defecto, referencia, PN y repair time desde Repair Record. Regla OJT: SN de SFC que existe en Repair Record con Rootcause no blanco. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.
+                WO/date/line/SKU desde Station On Line Report · current event/SN desde SFC · defecto, referencia, PN y repair time desde Repair Record. Regla OJT: SN de SFC que existe en Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.
                 {yieldImportState.summary && yieldImportState.summary.sheets ? " Hojas: " + yieldImportState.summary.sheets.map(function(x){return x.name+" ("+x.role+":"+x.rows+")";}).join(" · ") : ""}
               </div>
             </div>
