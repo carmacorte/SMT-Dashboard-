@@ -8947,7 +8947,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     <div class="note"><strong>Evidence checklist.</strong><br>${esc(normalized.evidence_checklist || '')}</div>
   </div>
 
-\x3Cscript>
+<script>
 (function(){
   setTimeout(function(){
     try {
@@ -8958,7 +8958,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     } catch(_) {}
   }, 4500);
 })();
-\x3C/script>
+</script>
 </body>
 </html>`;
     }
@@ -11628,12 +11628,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             + traceOpsEsc(new Date().toLocaleString())
             + '</span><span class="to-pill">Card system export</span></div></section><section class="to-grid-cards">'
             + cards
-            + '</section></div><scr' + 'ipt>window.__TRACEOPS_EXPORT__=' + safePayload
-            + ';function downloadJson(){var blob=new Blob([JSON.stringify(window.__TRACEOPS_EXPORT__,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download='
-            + JSON.stringify(filename.replace(".html", ".json"))
-            + ';a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1000)}function downloadHtml(){var html=document.documentElement.outerHTML;var blob=new Blob([html],{type:"text/html"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download='
-            + JSON.stringify(filename)
-            + ';a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1000)}</scr' + 'ipt></body></html>';
+            + '</section></div><script>window.__TRACEOPS_EXPORT__=' + safePayload + ';function downloadJson(){var blob=new Blob([JSON.stringify(window.__TRACEOPS_EXPORT__,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=' + JSON.stringify(filename.replace('.html', '.json')) + ';a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1000)}function downloadHtml(){var html=document.documentElement.outerHTML;var blob=new Blob([html],{type:"text/html"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=' + JSON.stringify(filename) + ';a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1000)}<\/script></body></html>';
         var blob = new Blob([doc], { type: "text/html" });
         var url = URL.createObjectURL(blob);
         var w = window.open(url, "_blank");
@@ -14803,31 +14798,31 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" } },
                     React.createElement("div", null,
-                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("filtersTitle")),
-                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, yieldText("filtersSubtitle"))),
-                    React.createElement("button", { type: "button", onClick: resetYieldFilters, style: { border: "1px solid #C9DAF5", background: "#fff", color: "#1F3A5F", borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" } }, yieldText("resetFilters"))),
-                React.createElement("div", { style: { padding: "13px 18px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(6,minmax(0,1fr))", gap: 10 } }, [
-                    { key: "family", label: yieldText("modelFamily"), items: yieldFlowModel.options.family },
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Filtros ejecutivos Yield Flow"),
+                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Filtros generados desde WOs/SN presentes en SFC. DB Model solo enriquece modelo/SKU. El filtro BU se oculta para evitar lecturas ambiguas del catalogo; use modelo, SKU, semana, linea, WO o rango de fechas.")),
+                    React.createElement("button", { type: "button", onClick: resetYieldFilters, style: { border: "1px solid #C9DAF5", background: "#fff", color: "#1F3A5F", borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" } }, "Restablecer filtros")),
+                React.createElement("div", { style: { padding: "13px 18px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(7,minmax(0,1fr))", gap: 10 } }, [
+                    { key: "family", label: "Modelo / Product family", items: yieldFlowModel.options.family },
                     { key: "sku", label: "SKU", items: yieldFlowModel.options.sku },
-                    { key: "week", label: yieldText("ciscoWeek"), items: yieldFlowModel.options.week },
-                    { key: "line", label: yieldText("line"), items: yieldFlowModel.options.line },
-                    { key: "wo", label: yieldText("workOrder"), items: yieldFlowModel.options.wo },
-                    { key: "from", label: yieldText("dateFrom"), type: "date" },
-                    { key: "to", label: yieldText("dateTo"), type: "date" }
+                    { key: "week", label: "Cisco week", items: yieldFlowModel.options.week },
+                    { key: "line", label: "Linea", items: yieldFlowModel.options.line },
+                    { key: "wo", label: "Work order", items: yieldFlowModel.options.wo },
+                    { key: "from", label: "Fecha desde", type: "date" },
+                    { key: "to", label: "Fecha hasta", type: "date" }
                 ].map(function (f) {
                     return (React.createElement("label", { key: f.key, style: { display: "flex", flexDirection: "column", gap: 5, fontSize: 10, fontWeight: 800, color: "#5F766C", textTransform: "uppercase", letterSpacing: ".04em" } },
                         f.label,
                         f.type === "date" ? React.createElement("input", { type: "date", value: yieldFilters[f.key] || "", onChange: function (e) { updateYieldFilter(f.key, e.target.value); }, style: { height: 38, border: "1px solid #C9DAF5", borderRadius: 12, padding: "0 10px", fontSize: 12, fontWeight: 700, color: "#102A43", background: "#fff", outline: "none" } }) :
                         React.createElement("select", { value: yieldFilters[f.key] || "ALL", onChange: function (e) { updateYieldFilter(f.key, e.target.value); }, style: { height: 38, border: "1px solid #C9DAF5", borderRadius: 12, padding: "0 10px", fontSize: 12, fontWeight: 700, color: "#102A43", background: "#fff", outline: "none" } },
-                            React.createElement("option", { value: "ALL" }, yieldText("all")),
+                            React.createElement("option", { value: "ALL" }, "Todos"),
                             ((yieldFilters[f.key] && yieldFilters[f.key] !== "ALL" && (f.items || []).indexOf(yieldFilters[f.key]) < 0) ? [yieldFilters[f.key]].concat(f.items || []) : (f.items || [])).map(function (v) { return React.createElement("option", { key: v, value: v }, v); }))));
                 }))),
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" } },
                     React.createElement("div", null,
-                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("meetingFocusTitle")),
-                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, yieldText("meetingFocusSubtitle"))),
-                    React.createElement("span", { style: { fontSize: 10, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: "#FFF9EE", color: "#B87820", border: "1px solid #F5E4A0" } }, yieldText("liveScope"))),
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Foco actual para junta"),
+                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Resume que duele en el scope activo y permite abrir el caso: modo de falla, SKU/modelo o WO.")),
+                    React.createElement("span", { style: { fontSize: 10, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: "#FFF9EE", color: "#B87820", border: "1px solid #F5E4A0" } }, "scope vivo")),
                 React.createElement("div", { style: { padding: "13px 18px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(3,minmax(0,1fr))", gap: 10 } }, painCases.length ? painCases.map(function (card, idx) {
                     return (React.createElement("div", { key: card.type + idx, style: { border: "1px solid #D9E6F7", borderRadius: 14, padding: "13px 14px", background: idx === 0 ? "#FFFBF0" : "#FBFDFF", display: "flex", flexDirection: "column", gap: 8, minHeight: 120 } },
                         React.createElement("div", { style: { fontSize: 9.5, fontWeight: 900, color: idx === 0 ? "#B87820" : "#1F3A5F", textTransform: "uppercase", letterSpacing: ".06em" } }, card.type),
@@ -14843,7 +14838,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                 }) : React.createElement("div", { style: { gridColumn: isMobile() ? "auto" : "1 / -1", border: "1px dashed #D9E6F7", borderRadius: 12, padding: "14px", fontSize: 11.5, color: "#5F766C", background: "#FBFDFF" } }, "Sin foco activo. Carga el ZIP/TXT de Yield Flow o restablece filtros para ver los principales dolores."))),
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF" } },
-                    React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("managementTitle")),
+                    React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Management Control View"),
                     React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Lectura directa para gerencia: salida de proceso, reincorporacion y avance SMT a Stocking/FT por BU.")),
                 React.createElement("div", { style: { padding: "13px 18px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1.05fr 1.05fr .9fr", gap: 10 } },
                     React.createElement("div", { style: { border: "1px solid #F5E4A0", background: "#FFFBF0", borderRadius: 14, padding: "14px" } },
@@ -14867,7 +14862,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" } },
                     React.createElement("div", null,
-                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("importTitle")),
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Import ZIP / Excel"),
                         React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Import local temporal: no conserva el Excel. Valida tama\u00F1o y extrae solo SFC, Work Orders / Build Info y Repair Record.")),
                     React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
                         React.createElement("input", { id: "traceops-yield-zip-import", type: "file", accept: ".zip,.xlsx,.xlsm,.txt,.tsv,.csv", style: { display: "none" }, onChange: function (e) { if (e && e.preventDefault)
@@ -14889,7 +14884,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" } },
                     React.createElement("div", null,
-                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("weeklyTitle")),
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Weekly Factory Health"),
                         React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Vista semanal de flujo: unidades limpias, touch/OJT, riesgo y causas dominantes por semana Cisco.")),
                     React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
                         React.createElement("span", { style: { fontSize: 10, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: "#EEF5FF", color: "#1F3A5F", border: "1px solid #D8E6FB" } },
@@ -14945,7 +14940,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                             React.createElement("div", { style: { fontSize: 11.5, color: "#5F766C", lineHeight: 1.55, marginTop: 7 } }, "La vista separa produccion limpia contra unidades con intervencion. El avance SMT a Stocking/FT se activa cuando existen timestamps suficientes; si no, el dato queda como N/D sin inferencia artificial.")),
                         React.createElement("div", { style: { border: "1px solid #E7EEF9", borderRadius: 12, padding: "12px 13px", background: "#fff" } },
                             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" } },
-                                React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#A43B2E", textTransform: "uppercase" } }, yieldText("paretoTitle")),
+                                React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#A43B2E", textTransform: "uppercase" } }, "Pareto 80/20 de modos de falla"),
                                 React.createElement("span", { style: { fontSize: 9.5, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#FFF4F0", color: "#A43B2E", border: "1px solid #F2D2CB" } },
                                     failurePareto.length,
                                     " modo",
