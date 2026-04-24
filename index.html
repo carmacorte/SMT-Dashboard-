@@ -5356,6 +5356,81 @@ function traceOpsYieldHeaderScore(headers, role){
   else if (role === "wo") { if (hasAny(["work order","wo","orden"])) score += 3; if (hasAny(["line","line id","linea"])) score += 2; if (hasAny(["model","product family","skuno","sku"])) score += 2; if (hasAny(["time start","start time","build start","start date"])) score += 3; }
   return score;
 }
+
+function traceOpsYieldDetectTextRole(name){
+  var n = traceOpsYieldCompact(name || "");
+  if (n.indexOf("sfc") >= 0 || n.indexOf("shopfloor") >= 0 || n.indexOf("currentevent") >= 0) return "sfc";
+  if (n.indexOf("repair") >= 0 || n.indexOf("repar") >= 0 || n.indexOf("defect") >= 0) return "repair";
+  if (n.indexOf("stationonlinereport") >= 0 || n.indexOf("workorder") >= 0 || n.indexOf("workorders") >= 0 || n.indexOf("buildinfo") >= 0 || n.indexOf("build") >= 0) return "wo";
+  return "";
+}
+function traceOpsYieldParseDelimitedText(text){
+  var raw = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  var first = (raw.split("\n")[0] || "");
+  var delimiter = first.indexOf("\t") >= 0 ? "\t" : (first.indexOf(";") >= 0 ? ";" : ",");
+  var rows = [];
+  var lines = raw.split("\n");
+  for (var i=0; i<lines.length; i++){
+    var line = lines[i];
+    if (i > 250000) break;
+    if (!line || !line.trim()) continue;
+    if (delimiter === "," && line.indexOf('"') >= 0) rows.push(traceOpsYieldCsvSplit(line));
+    else rows.push(line.split(delimiter).map(function(v){ return String(v == null ? "" : v).trim(); }));
+  }
+  return rows;
+}
+function traceOpsYieldCsvSplit(line){
+  var out=[], cur="", q=false;
+  for (var i=0;i<String(line).length;i++){
+    var ch=line[i];
+    if(ch==='"'){
+      if(q && line[i+1]==='"'){ cur+='"'; i++; }
+      else q=!q;
+    } else if(ch===',' && !q){ out.push(cur.trim()); cur=""; }
+    else cur+=ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+async function traceOpsYieldTryImportTextZip(file){
+  if(!file || !/\.zip$/i.test(file.name || "")) return null;
+  await window.ensureZipTools();
+  var outer = await JSZip.loadAsync(file);
+  var entries = [];
+  outer.forEach(function(path, entry){
+    if(entry.dir || /^__MACOSX\//i.test(path)) return;
+    if(/\.(txt|tsv|csv)$/i.test(path)){
+      var role = traceOpsYieldDetectTextRole(path);
+      if(role) entries.push({path:path, entry:entry, role:role});
+    }
+  });
+  if(!entries.length) return null;
+  var parsed = {wo:[], sfc:[], repair:[]};
+  var pulledSheets = [];
+  for(var i=0;i<entries.length;i++){
+    await traceOpsYieldYieldThread();
+    var item = entries[i];
+    var text = await item.entry.async("string");
+    var rawRows = traceOpsYieldParseDelimitedText(text);
+    var objects = traceOpsYieldObjectsFromRawRows(rawRows, item.role);
+    if(objects.length){
+      parsed[item.role] = parsed[item.role].concat(objects);
+      pulledSheets.push({name:item.path.split('/').pop(), role:item.role, rows:objects.length});
+    }
+  }
+  if(!parsed.wo.length && !parsed.sfc.length && !parsed.repair.length) {
+    throw new Error("El ZIP ligero contiene TXT/CSV, pero no se reconocieron encabezados utiles. Revisa que SFC tenga SN/currentevent, Station On Line tenga WO/Date/Line/SKU, y Repair Record tenga SN/FailTime/FailSymptom/FailLocation.");
+  }
+  return traceOpsYieldBuildFromImported(parsed.wo, parsed.sfc, parsed.repair, {
+    source:"ZIP TXT local",
+    mode:"text-import",
+    fileName:file.name,
+    workbookName:"TXT/TSV lightweight package",
+    container:file.name,
+    sheets:pulledSheets,
+    notes:"Import ligero: se procesaron archivos TXT/TSV/CSV locales. No se cargo XLSM, PowerPivot, pivots, macros, estilos ni dashboards pesados. Evidencia visible solo durante esta sesion."
+  });
+}
 function traceOpsYieldObjectsFromRawRows(rawRows, role){
   var bestIdx = -1, bestScore = 0;
   for (var i=0; i<Math.min(rawRows.length, 25); i++){ var headers = (rawRows[i] || []).map(function(v){ return String(v == null ? "" : v).trim(); }); var score = traceOpsYieldHeaderScore(headers, role); if (score > bestScore) { bestScore = score; bestIdx = i; } }
@@ -5419,11 +5494,26 @@ function traceOpsYieldAbortHeavyImport(file, innerEntry){
   var fileMb = traceOpsYieldMb(file && file.size);
   var innerMb = traceOpsYieldMb(innerEntry && innerEntry._data && innerEntry._data.uncompressedSize);
   var estimatedMb = Math.max(fileMb, innerMb || 0);
-  if (mobile && estimatedMb > 28) {
-    throw new Error("Import protegido: este ZIP/Excel es demasiado grande para procesarlo en movil (" + estimatedMb.toFixed(1) + " MB aprox.). Para evitar que Safari/Chrome reinicie la pagina, usa PC/laptop o genera un ZIP ligero con solo SFC, Work Orders/Build Info y Repair Record.");
+  var mobileLimitMb = 8;
+  var desktopLimitMb = 140;
+  if (mobile && estimatedMb > mobileLimitMb) {
+    throw new Error("Import local protegido: archivo de " + estimatedMb.toFixed(1) + " MB. En movil el navegador puede cerrar la pagina al descomprimir XLSM/ZIP. Este modulo no guarda el archivo; solo muestra evidencia temporal. Para este tamaño usa PC/laptop, o genera un ZIP ligero con CSV/Excel reducido: SFC, Work Orders/Build Info y Repair Record.");
   }
-  if (estimatedMb > 220) {
-    throw new Error("Import detenido: el Excel estimado supera " + estimatedMb.toFixed(1) + " MB. Usa una extraccion ligera con solo SFC, Work Orders/Build Info y Repair Record.");
+  if (estimatedMb > desktopLimitMb) {
+    throw new Error("Import local detenido: el Excel estimado supera " + estimatedMb.toFixed(1) + " MB. Para evitar bloqueo del navegador, usa una extraccion ligera con solo SFC, Work Orders/Build Info y Repair Record.");
+  }
+}
+function traceOpsYieldPreflightLocalFile(file){
+  if(!file) return;
+  var lower = String(file.name || "").toLowerCase();
+  var mb = traceOpsYieldMb(file.size);
+  var mobile = traceOpsYieldIsMobileDevice();
+  if(!/\.(zip|xlsx|xlsm|txt|tsv|csv)$/.test(lower)) throw new Error("Carga un archivo .zip, .xlsx, .xlsm, .txt, .tsv o .csv para Yield Flow.");
+  if(mobile && mb > 8){
+    throw new Error("Import local protegido: el archivo pesa " + mb.toFixed(1) + " MB. En movil se bloquea antes de descomprimir para evitar que Chrome/Safari reinicie la pagina. Este modulo es local y temporal: no conserva el Excel ni evidencia. Usa PC/laptop o sube una version ligera con solo SFC, Work Orders/Build Info y Repair Record.");
+  }
+  if(mb > 140){
+    throw new Error("Import local detenido: archivo de " + mb.toFixed(1) + " MB. Usa una extraccion ligera; el navegador no debe cargar el libro completo.");
   }
 }
 function traceOpsYieldYieldThread(){ return new Promise(function(resolve){ setTimeout(resolve, 0); }); }
@@ -5435,8 +5525,8 @@ async function traceOpsYieldFindWorkbookFile(file){
   }
   if(!/\.zip$/.test(lower)) throw new Error("Carga un .zip, .xlsx o .xlsm.");
   await window.ensureZipTools();
-  if (traceOpsYieldIsMobileDevice() && traceOpsYieldMb(file.size) > 28) {
-    throw new Error("Import protegido: el ZIP pesa " + traceOpsYieldMb(file.size).toFixed(1) + " MB. En movil esto puede reiniciar la pagina al descomprimir. Usa PC/laptop o un ZIP ligero con solo las hojas SFC, Work Orders/Build Info y Repair Record.");
+  if (traceOpsYieldIsMobileDevice() && traceOpsYieldMb(file.size) > 8) {
+    throw new Error("Import local protegido: el ZIP pesa " + traceOpsYieldMb(file.size).toFixed(1) + " MB. En movil esto puede reiniciar la pagina al descomprimir. Usa PC/laptop o un ZIP ligero con solo SFC, Work Orders/Build Info y Repair Record.");
   }
   var outer=await JSZip.loadAsync(file);
   var candidates=[];
@@ -5449,6 +5539,8 @@ async function traceOpsYieldFindWorkbookFile(file){
 async function traceOpsYieldImportExcelZip(file){
   if(!file) throw new Error("No se selecciono archivo.");
   await window.ensureZipTools();
+  var lightweight = await traceOpsYieldTryImportTextZip(file);
+  if (lightweight) return lightweight;
   var wbFile=await traceOpsYieldFindWorkbookFile(file);
   await traceOpsYieldYieldThread();
   var xlsx=await JSZip.loadAsync(wbFile.bytes);
@@ -5578,10 +5670,16 @@ function App() {
   function handleYieldFlowZipImport(file){
     if (!file) return;
     setActiveModule("yieldflow");
-    setYieldImportState({ status: "loading", message: "Preflight del ZIP/Excel y filtro de hojas objetivo...", summary: null });
+    try {
+      traceOpsYieldPreflightLocalFile(file);
+    } catch (err) {
+      setYieldImportState({ status: "error", message: err && err.message ? err.message : String(err), summary: null });
+      return;
+    }
+    setYieldImportState({ status: "loading", message: "Import local temporal: validando ZIP/Excel y extrayendo solo hojas objetivo...", summary: null });
     setTimeout(function(){
       traceOpsYieldImportExcelZip(file).then(function(summary){
-        setYieldImportState({ status: "ok", message: "Import completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repairs", summary: summary });
+        setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repairs. Evidencia visible solo en esta sesion; no se conserva el Excel.", summary: summary });
       }).catch(function(err){
         setYieldImportState({ status: "error", message: err && err.message ? err.message : String(err), summary: null });
       });
@@ -13156,17 +13254,17 @@ function replaceMetaFiles(nextFiles){
         </div>
 
         <div style={{background:"#FBFDFF",border:"1px dashed #C9DAF5",borderRadius:14,padding:"12px 14px",fontSize:11,color:"#5F766C",lineHeight:1.55}}>
-          Fuente actual: <span style={{fontWeight:800,color:"#102A43"}}>{TRACEOPS_YIELD_IMPORT_META.source}</span>. Para resetear manualmente: edita <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_FLOW_TRACKER</span>, <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_BY_WO_ROWS</span> y <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_RISK_SUMMARY_ROWS</span>.
+          Fuente actual: <span style={{fontWeight:800,color:"#102A43"}}>{TRACEOPS_YIELD_IMPORT_META.source}</span>. Modo local: el Excel importado no se conserva; al recargar vuelve a muestra/base. Para resetear manualmente: edita <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_FLOW_TRACKER</span>, <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_BY_WO_ROWS</span> y <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_RISK_SUMMARY_ROWS</span>.
         </div>
 
         <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
           <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
             <div>
               <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Import ZIP / Excel</div>
-              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Filtro previo: valida tamaño, extrae solo SFC, Work Orders / Build Info y Repair Record, y protege móvil contra reinicio por memoria.</div>
+              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Import local temporal: no conserva el Excel. Valida tamaño y extrae solo SFC, Work Orders / Build Info y Repair Record.</div>
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-              <input id="traceops-yield-zip-import" type="file" accept=".zip,.xlsx,.xlsm" style={{display:"none"}} onChange={function(e){ if(e&&e.preventDefault)e.preventDefault(); var f=e.target.files && e.target.files[0]; handleYieldFlowZipImport(f); setTimeout(function(){ try{ e.target.value=""; }catch(_){} }, 250); }} />
+              <input id="traceops-yield-zip-import" type="file" accept=".zip,.xlsx,.xlsm,.txt,.tsv,.csv" style={{display:"none"}} onChange={function(e){ if(e&&e.preventDefault)e.preventDefault(); var f=e.target.files && e.target.files[0]; handleYieldFlowZipImport(f); setTimeout(function(){ try{ e.target.value=""; }catch(_){} }, 250); }} />
               <button type="button" onClick={function(){ var el=document.getElementById("traceops-yield-zip-import"); if(el) el.click(); }} disabled={yieldImportState.status==="loading"} style={{border:"1px solid #1F3A5F",background:yieldImportState.status==="loading"?"#D9E6F7":"#1F3A5F",color:"#fff",borderRadius:999,padding:"9px 13px",fontSize:11,fontWeight:800,cursor:yieldImportState.status==="loading"?"wait":"pointer"}}>{yieldImportState.status==="loading"?"Importando...":"Cargar ZIP/Excel"}</button>
             </div>
           </div>
@@ -13178,7 +13276,7 @@ function replaceMetaFiles(nextFiles){
             <div style={{background:"#FBFDFF",border:"1px solid #E7EEF9",borderRadius:12,padding:"11px 12px"}}>
               <div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Datos jalados</div>
               <div style={{fontSize:11.5,color:"#5F766C",lineHeight:1.5,marginTop:6}}>
-                WO start desde Work Orders · current event/SN desde SFC · defecto, referencia y PN desde Repair Record. En móvil, archivos grandes se bloquean antes de descomprimir para evitar reinicio de página.
+                WO/date/line/SKU desde Station On Line Report · current event/SN desde SFC · defecto, referencia, PN y repair time desde Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.
                 {yieldImportState.summary && yieldImportState.summary.sheets ? " Hojas: " + yieldImportState.summary.sheets.map(function(x){return x.name+" ("+x.role+":"+x.rows+")";}).join(" · ") : ""}
               </div>
             </div>
