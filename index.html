@@ -5341,6 +5341,51 @@ function traceOpsYieldParseDate(value){
   if (!isNaN(d2.getTime())) return d2.toISOString().slice(0,16).replace("T"," ");
   return st;
 }
+function traceOpsYieldPad2(n){ n = Number(n || 0); return n < 10 ? "0" + n : String(n); }
+function traceOpsYieldDateKey(value){
+  if (value == null || value === "") return "";
+  if (value instanceof Date && !isNaN(value.getTime())) return value.getFullYear() + "-" + traceOpsYieldPad2(value.getMonth()+1) + "-" + traceOpsYieldPad2(value.getDate());
+  if (typeof value === "number") {
+    var ms = Math.round((value - 25569) * 86400 * 1000);
+    var d = new Date(ms);
+    if (!isNaN(d.getTime())) return d.getUTCFullYear() + "-" + traceOpsYieldPad2(d.getUTCMonth()+1) + "-" + traceOpsYieldPad2(d.getUTCDate());
+  }
+  var st = String(value).trim();
+  if (!st) return "";
+  var m = st.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) return m[3] + "-" + traceOpsYieldPad2(m[1]) + "-" + traceOpsYieldPad2(m[2]);
+  var y = st.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (y) return y[1] + "-" + traceOpsYieldPad2(y[2]) + "-" + traceOpsYieldPad2(y[3]);
+  var d2 = new Date(st);
+  if (!isNaN(d2.getTime())) return d2.getFullYear() + "-" + traceOpsYieldPad2(d2.getMonth()+1) + "-" + traceOpsYieldPad2(d2.getDate());
+  return "";
+}
+function traceOpsYieldBuildCiscoCalendarMap(calendarRows){
+  var map = {};
+  (calendarRows || []).forEach(function(row){
+    var key = traceOpsYieldDateKey(traceOpsYieldPick(row,["Date","Fecha","Calendar Date","Cisco Date"]));
+    if (!key) return;
+    var wf = String(traceOpsYieldPick(row,["WFCSY","Cisco Week","Fiscal Week","Cisco Fiscal Week","Week Cisco Full"]) || "").trim();
+    var quarter = String(traceOpsYieldPick(row,["Quarter","Fiscal Quarter","Qtr"]) || "").trim();
+    var weekCisco = String(traceOpsYieldPick(row,["Week Cisco","Cisco Week Number","Week"]) || "").trim();
+    if (!wf || !/FY\d{4}.*W[- ]?\d{1,3}/i.test(wf)) {
+      var fy = quarter.match(/FY\d{4}/i);
+      var q = quarter.match(/Q\d/i);
+      var wk = weekCisco ? ("W-" + String(weekCisco).replace(/^W[- ]?/i, "").padStart(3,"0")) : "";
+      wf = [fy ? fy[0].toUpperCase() : "", q ? q[0].toUpperCase() : "", wk].filter(Boolean).join(" ");
+    }
+    map[key] = { week: wf || "Imported", quarter: quarter, weekCisco: weekCisco };
+  });
+  return map;
+}
+function traceOpsYieldResolveCiscoWeek(row, calendarMap){
+  var direct = String(traceOpsYieldPick(row,["WFCSY","Cisco Week","Fiscal Week","Cisco Fiscal Week","Week Cisco Full","Week","Semana"]) || "").trim();
+  if (/FY\d{4}.*W[- ]?\d{1,3}/i.test(direct)) return direct;
+  var dateValue = traceOpsYieldPick(row,["Build Start Date","Build Start Date (Month)","Start Date","Date","Fecha","WO Start Time","Time Start","lasteditdt","Last Edit DT","Current Event Time"]);
+  var key = traceOpsYieldDateKey(dateValue);
+  if (key && calendarMap && calendarMap[key] && calendarMap[key].week) return calendarMap[key].week;
+  return direct || "Imported";
+}
 function traceOpsYieldClassifyStation(value){
   var t = traceOpsYieldNorm(value);
   if (!t) return "";
@@ -5359,7 +5404,8 @@ function traceOpsYieldClassifyStation(value){
 }
 function traceOpsYieldSheetRole(sheetName){
   var n = traceOpsYieldNorm(sheetName);
-  if (/(^|\s)sfc($|\s)|shop floor|shopfloor|current event|sf control/.test(n)) return "sfc";
+  if (/cisco calendar|cisco calendary|calendar|calendario|fiscal/.test(n)) return "calendar";
+  if (/(^|\s)sfc(0\s)|shop floor|shopfloor|current event|sf control/.test(n)) return "sfc";
   if (/repair|repar|rework|retrab|defect|failure|fail|ng record/.test(n)) return "repair";
   if (/work order|workorder|orden|\bwo\b|build info|ordenes|orders/.test(n)) return "wo";
   return "";
@@ -5398,11 +5444,13 @@ function traceOpsYieldHeaderScore(headers, role){
   if (role === "sfc") { if (hasAny(["sn","serial","serial number"])) score += 3; if (hasAny(["current event","event","station","proceso actual"])) score += 3; if (hasAny(["work order","wo"])) score += 2; if (hasAny(["model","sku","skuno"])) score += 1; }
   else if (role === "repair") { if (hasAny(["sn","serial","serial number"])) score += 3; if (hasAny(["defect","symptom","failure","falla","defecto"])) score += 3; if (hasAny(["reference","location","refdes","fail location","referencia"])) score += 2; if (hasAny(["part number","pn","key fail sku"])) score += 1; }
   else if (role === "wo") { if (hasAny(["work order","wo","orden"])) score += 3; if (hasAny(["line","line id","linea"])) score += 2; if (hasAny(["model","product family","skuno","sku"])) score += 2; if (hasAny(["time start","start time","build start","start date"])) score += 3; }
+  else if (role === "calendar") { if (hasAny(["date","fecha"])) score += 3; if (hasAny(["wfcsy","week cisco","cisco week","quarter","fiscal"])) score += 3; }
   return score;
 }
 
 function traceOpsYieldDetectTextRole(name){
   var n = traceOpsYieldCompact(name || "");
+  if (n.indexOf("ciscocalendary") >= 0 || n.indexOf("ciscocalendar") >= 0 || n.indexOf("calendario") >= 0 || n.indexOf("fiscalcalendar") >= 0) return "calendar";
   if (n.indexOf("sfc") >= 0 || n.indexOf("shopfloor") >= 0 || n.indexOf("currentevent") >= 0) return "sfc";
   if (n.indexOf("repair") >= 0 || n.indexOf("repar") >= 0 || n.indexOf("defect") >= 0) return "repair";
   if (n.indexOf("stationonlinereport") >= 0 || n.indexOf("workorder") >= 0 || n.indexOf("workorders") >= 0 || n.indexOf("buildinfo") >= 0 || n.indexOf("build") >= 0) return "wo";
@@ -5449,7 +5497,7 @@ async function traceOpsYieldTryImportTextZip(file){
     }
   });
   if(!entries.length) return null;
-  var parsed = {wo:[], sfc:[], repair:[]};
+  var parsed = {wo:[], sfc:[], repair:[], calendar:[]};
   var pulledSheets = [];
   for(var i=0;i<entries.length;i++){
     await traceOpsYieldYieldThread();
@@ -5473,7 +5521,7 @@ async function traceOpsYieldTryImportTextZip(file){
     container:file.name,
     sheets:pulledSheets,
     notes:"Import ligero: se procesaron archivos TXT/TSV/CSV locales. No se cargo XLSM, PowerPivot, pivots, macros, estilos ni dashboards pesados. Evidencia visible solo durante esta sesion."
-  });
+  }, parsed.calendar);
 }
 function traceOpsYieldObjectsFromRawRows(rawRows, role){
   var bestIdx = -1, bestScore = 0;
@@ -5499,10 +5547,11 @@ function traceOpsYieldSummarizeRisk(rows){
   });
   return Object.keys(map).map(function(k){ var row = map[k]; delete row._sns; return row; }).sort(function(a,b){ return b.risk - a.risk; });
 }
-function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMeta){
+function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMeta, calendarRows){
   var woMap = {}, snToSfc = {}, sfcByWo = {}, repairsByWo = {}, repairsClean = [], repairRowsBySnRaw = {};
   var validRepairRawRows = 0;
   var rejectedRepairRows = { noSn:0, snNotInSfc:0 };
+  var ciscoCalendarMap = traceOpsYieldBuildCiscoCalendarMap(calendarRows || []);
 
   workRows.forEach(function(row){
     var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Work Orde 00000","Work Order to search","Work Order","WO","WO_NO","Order","Orden","WorkOrder","WO NO","WO Number"]));
@@ -5511,7 +5560,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     var family = String(traceOpsYieldPick(row,["Prodcut Family","Product Family","Model Name","Nombre del Modelo","Product Family Name","Family","Nombre"]) || sku || "N/A").trim();
     woMap[wo] = {
       wo:wo,
-      week:String(traceOpsYieldPick(row,["Cisco Week","Week","Semana"]) || "Imported"),
+      week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),
       date:String(traceOpsYieldPick(row,["Build Start Date","Start Date","Date","Fecha"]) || ""),
       line:String(traceOpsYieldPick(row,["Line ID","Line","Linea","Línea"]) || ""),
       bu:String(traceOpsYieldPick(row,["BU","Business Unit"]) || "NGFWBU"),
@@ -5538,7 +5587,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     if (wo) {
       if (!sfcByWo[wo]) sfcByWo[wo] = [];
       sfcByWo[wo].push(clean);
-      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo] = {wo:wo,week:"Imported",date:"",line:line,bu:"NGFWBU",family:family||sku||"N/A",sku:sku,startSmt:"",qty:0};
+      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo] = {wo:wo,week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),date:"",line:line,bu:"NGFWBU",family:family||sku||"N/A",sku:sku,startSmt:"",qty:0};
       if (woMap[wo]) {
         if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
         if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
@@ -5569,7 +5618,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     if (wo) {
       if (!repairsByWo[wo]) repairsByWo[wo]=[];
       repairsByWo[wo].push(clean);
-      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo]={wo:wo,week:"Imported",date:"",line:(sfc&&sfc.line)||"",bu:"NGFWBU",family:family,sku:sku,startSmt:"",qty:0};
+      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo]={wo:wo,week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),date:"",line:(sfc&&sfc.line)||"",bu:"NGFWBU",family:family,sku:sku,startSmt:"",qty:0};
       if (woMap[wo]) {
         if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
         if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
@@ -5636,7 +5685,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     };
   });
   if (sfcStoryRows.length) TRACEOPS_RISK_SUMMARY_ROWS = traceOpsYieldSummarizeRisk(sfcStoryRows);
-  TRACEOPS_YIELD_IMPORT_META = Object.assign({source:"ZIP/Excel",mode:"imported"}, sourceMeta||{}, {rows:{workOrders:workRows.length,sfc:sfcRows.length,repairs:repairRows.length,validRepairs:validRepairRawRows,validRepairSn:(function(){var m={}; repairsClean.forEach(function(r){if(r.sn)m[r.sn]=true;}); return Object.keys(m).length;})(), storySn:sfcStoryRows.length, rejectedRepairs:rejectedRepairRows}, daxRule:"Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN].", storyRule:"Symptom = top Rootcause per SFC[SN] from RepairRecord; Fail Location = distinct RepairRecord[FailLocation] for that SN. Used for the story of why units left the flow.", stationRule:"Breakdown station counts = DISTINCTCOUNT(SFC[SN]) grouped by SFC[currentevent] bucket; non cumulative."});
+  TRACEOPS_YIELD_IMPORT_META = Object.assign({source:"ZIP/Excel",mode:"imported"}, sourceMeta||{}, {rows:{workOrders:workRows.length,sfc:sfcRows.length,repairs:repairRows.length,calendar:(calendarRows||[]).length,validRepairs:validRepairRawRows,validRepairSn:(function(){var m={}; repairsClean.forEach(function(r){if(r.sn)m[r.sn]=true;}); return Object.keys(m).length;})(), storySn:sfcStoryRows.length, rejectedRepairs:rejectedRepairRows}, daxRule:"Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN].", storyRule:"Symptom = top Rootcause per SFC[SN] from RepairRecord; Fail Location = distinct RepairRecord[FailLocation] for that SN. Used for the story of why units left the flow.", stationRule:"Breakdown station counts = DISTINCTCOUNT(SFC[SN]) grouped by SFC[currentevent] bucket; non cumulative.", calendarRule:"Cisco Week/FY/Qtr resolved from Cisco Calendary.txt by matching Build Start Date or event date to calendar Date/WFCSY."});
   return TRACEOPS_YIELD_IMPORT_META;
 }
 function traceOpsYieldIsMobileDevice(){
@@ -5707,7 +5756,7 @@ async function traceOpsYieldImportExcelZip(file){
   var relDoc=new DOMParser().parseFromString(relsXml,"application/xml");
   var rels={};
   Array.prototype.slice.call(relDoc.getElementsByTagName("Relationship")).forEach(function(rel){rels[rel.getAttribute("Id")]=rel.getAttribute("Target");});
-  var parsed={wo:[],sfc:[],repair:[]}, pulledSheets=[], targetSheetFiles=[];
+  var parsed={wo:[],sfc:[],repair:[],calendar:[]}, pulledSheets=[], targetSheetFiles=[];
   var sheets=Array.prototype.slice.call(wbDoc.getElementsByTagName("sheet"));
   for(var i=0;i<sheets.length;i++){
     var sh=sheets[i], name=sh.getAttribute("name")||("Sheet"+(i+1)), role=traceOpsYieldSheetRole(name);
@@ -5735,7 +5784,7 @@ async function traceOpsYieldImportExcelZip(file){
     if(objects.length){parsed[info.role]=parsed[info.role].concat(objects); pulledSheets.push({name:info.name,role:info.role,rows:objects.length});}
   }
   if(!parsed.wo.length&&!parsed.sfc.length&&!parsed.repair.length) throw new Error("No se detectaron filas utiles. Revisa encabezados: SN/current event, WO/time start, defecto/referencia/PN.");
-  return traceOpsYieldBuildFromImported(parsed.wo, parsed.sfc, parsed.repair, {fileName:file.name, workbookName:wbFile.name, container:wbFile.container, sheets:pulledSheets, notes:"Import protegido: se procesaron solo hojas objetivo y se limito a 25,000 filas por hoja para evitar reinicios en navegador."});
+  return traceOpsYieldBuildFromImported(parsed.wo, parsed.sfc, parsed.repair, {fileName:file.name, workbookName:wbFile.name, container:wbFile.container, sheets:pulledSheets, notes:"Import protegido: se procesaron solo hojas objetivo y se limito a 25,000 filas por hoja para evitar reinicios en navegador."}, parsed.calendar);
 }
 
 
@@ -5898,7 +5947,7 @@ function App() {
     setYieldImportState({ status: "loading", message: "Import local temporal: validando ZIP/Excel y extrayendo solo hojas objetivo...", summary: null });
     setTimeout(function(){
       traceOpsYieldImportExcelZip(file).then(function(summary){
-        setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repair rows · " + ((summary.rows && summary.rows.validRepairSn) || 0) + " SN reparados validos. Regla DAX: SFC[SN] existe en RepairRecord[SN]. Evidencia visible solo en esta sesion; no se conserva el Excel.", summary: summary });
+        setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repair rows · " + ((summary.rows && summary.rows.validRepairSn) || 0) + " SN reparados validos · " + ((summary.rows && summary.rows.calendar) || 0) + " calendar rows. Regla DAX: SFC[SN] existe en RepairRecord[SN]. Evidencia visible solo en esta sesion; no se conserva el Excel.", summary: summary });
       }).catch(function(err){
         setYieldImportState({ status: "error", message: err && err.message ? err.message : String(err), summary: null });
       });
