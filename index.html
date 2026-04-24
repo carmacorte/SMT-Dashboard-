@@ -5297,6 +5297,41 @@ function traceOpsYieldHasMeaningfulRootcause(row){
   if (/^(0|na|n\/a|null|blank|\(blank\)|sin causa)$/i.test(rc)) return false;
   return true;
 }
+function traceOpsYieldMeaningfulText(value){
+  var st = String(value == null ? "" : value).trim();
+  if (!st) return "";
+  if (/^(0|na|n\/a|null|blank|\(blank\)|sin causa|sin sintoma|n\/d)$/i.test(st)) return "";
+  return st;
+}
+function traceOpsYieldRepairRootcause(row){
+  return traceOpsYieldMeaningfulText(traceOpsYieldPick(row,["Rootcause","Root Cause","RootCause","Causa Raiz","Causa Raíz","FailSymptom","Symptom","Defect","Failure","Failure Mode","Falla","Defecto"]));
+}
+function traceOpsYieldRepairFailLocation(row){
+  return traceOpsYieldMeaningfulText(traceOpsYieldPick(row,["FailLocation","Fail Location","Location","Reference","Reference Designator","RefDes","Referencia","Area"]));
+}
+function traceOpsYieldTopRootcauseFromRepairs(rows){
+  var map = {};
+  (rows || []).forEach(function(r){
+    var rc = traceOpsYieldRepairRootcause(r);
+    if (!rc) return;
+    map[rc] = (map[rc] || 0) + 1;
+  });
+  var keys = Object.keys(map).sort(function(a,b){
+    if (map[b] !== map[a]) return map[b] - map[a];
+    return String(a).localeCompare(String(b));
+  });
+  return keys[0] || "Sin sintoma";
+}
+function traceOpsYieldFailLocationsFromRepairs(rows){
+  var seen = {}, out = [];
+  (rows || []).forEach(function(r){
+    var loc = traceOpsYieldRepairFailLocation(r);
+    if (!loc || seen[loc]) return;
+    seen[loc] = true;
+    out.push(loc);
+  });
+  return out.length ? out.join(", ") : "N/D";
+}
 function traceOpsYieldParseDate(value){
   if (value == null || value === "") return "";
   if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString().slice(0,16).replace("T"," ");
@@ -5465,7 +5500,7 @@ function traceOpsYieldSummarizeRisk(rows){
   return Object.keys(map).map(function(k){ var row = map[k]; delete row._sns; return row; }).sort(function(a,b){ return b.risk - a.risk; });
 }
 function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMeta){
-  var woMap = {}, snToSfc = {}, sfcByWo = {}, repairsByWo = {}, repairsClean = [];
+  var woMap = {}, snToSfc = {}, sfcByWo = {}, repairsByWo = {}, repairsClean = [], repairRowsBySnRaw = {};
   var validRepairRawRows = 0;
   var rejectedRepairRows = { noSn:0, snNotInSfc:0 };
 
@@ -5518,6 +5553,8 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     var sfc = snToSfc[sn];
     if (!sfc) { rejectedRepairRows.snNotInSfc += 1; return; }
     validRepairRawRows += 1;
+    if (!repairRowsBySnRaw[sn]) repairRowsBySnRaw[sn] = [];
+    repairRowsBySnRaw[sn].push(row);
 
     var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row,["Workorderno","workorderno","Work Order","WO","Order","Orden","WorkOrder"])) || (sfc && sfc.wo) || "";
     var sku = String(traceOpsYieldPick(row,["SkuNo","Key_Fail_SKU","Key Fail SKU","skuno","sku","model","part number","pn","Modelo"]) || (sfc && sfc.sku) || "").trim();
@@ -5583,8 +5620,23 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
 
   if (rows.length) TRACEOPS_YIELD_BY_WO_ROWS = rows;
   if (topWos.length) TRACEOPS_YIELD_FLOW_TRACKER = topWos;
-  if (repairsClean.length) TRACEOPS_RISK_SUMMARY_ROWS = traceOpsYieldSummarizeRisk(repairsClean);
-  TRACEOPS_YIELD_IMPORT_META = Object.assign({source:"ZIP/Excel",mode:"imported"}, sourceMeta||{}, {rows:{workOrders:workRows.length,sfc:sfcRows.length,repairs:repairRows.length,validRepairs:validRepairRawRows,validRepairSn:(function(){var m={}; repairsClean.forEach(function(r){if(r.sn)m[r.sn]=true;}); return Object.keys(m).length;})(), rejectedRepairs:rejectedRepairRows}, daxRule:"Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN].", stationRule:"Breakdown station counts = DISTINCTCOUNT(SFC[SN]) grouped by SFC[currentevent] bucket; non cumulative."});
+  var sfcStoryRows = Object.keys(repairRowsBySnRaw).map(function(sn){
+    var sfc = snToSfc[sn] || {};
+    var repList = repairRowsBySnRaw[sn] || [];
+    return {
+      sn: sn,
+      wo: sfc.wo || "",
+      sku: sfc.sku || traceOpsYieldPick(repList[0] || {},["SkuNo","Key_Fail_SKU","Key Fail SKU","skuno","sku","model","part number","pn","Modelo"]) || "N/A",
+      family: sfc.family || traceOpsYieldPick(repList[0] || {},["ModelName","Model Name","Product Family","Prodcut Family","Family","Nombre del Modelo"]) || "N/A",
+      symptom: traceOpsYieldTopRootcauseFromRepairs(repList),
+      location: traceOpsYieldFailLocationsFromRepairs(repList),
+      station: sfc.station || traceOpsYieldClassifyStation(traceOpsYieldPick(repList[0] || {},["Station","Process","Area","Current Event","Evento"])),
+      risk: 1,
+      bu: "NGFWBU"
+    };
+  });
+  if (sfcStoryRows.length) TRACEOPS_RISK_SUMMARY_ROWS = traceOpsYieldSummarizeRisk(sfcStoryRows);
+  TRACEOPS_YIELD_IMPORT_META = Object.assign({source:"ZIP/Excel",mode:"imported"}, sourceMeta||{}, {rows:{workOrders:workRows.length,sfc:sfcRows.length,repairs:repairRows.length,validRepairs:validRepairRawRows,validRepairSn:(function(){var m={}; repairsClean.forEach(function(r){if(r.sn)m[r.sn]=true;}); return Object.keys(m).length;})(), storySn:sfcStoryRows.length, rejectedRepairs:rejectedRepairRows}, daxRule:"Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN].", storyRule:"Symptom = top Rootcause per SFC[SN] from RepairRecord; Fail Location = distinct RepairRecord[FailLocation] for that SN. Used for the story of why units left the flow.", stationRule:"Breakdown station counts = DISTINCTCOUNT(SFC[SN]) grouped by SFC[currentevent] bucket; non cumulative."});
   return TRACEOPS_YIELD_IMPORT_META;
 }
 function traceOpsYieldIsMobileDevice(){
