@@ -5165,139 +5165,6 @@ function traceOpsDownloadCsv(filename, rows){
   URL.revokeObjectURL(a.href);
 }
 
-var TRACEOPS_YIELD_FLOW_STATIONS = ["Paste","SPI","AOI","Router","VI","ICT","Stocking","FT1","FT2","FT3","FT4"];
-var TRACEOPS_YIELD_FLOW_TRACKER = [
-  {
-    skuno:"73-20249-06",
-    workOrder:"000001282323",
-    model:"Tuffnel Park Low",
-    line:"L2",
-    lotQty:1000,
-    startSmt:"2026-04-22 07:00",
-    firstFunctional:"2026-04-23 11:30",
-    completedByStation:{Paste:1000,SPI:1000,AOI:980,Router:980,VI:980,ICT:950,Stocking:950,FT1:950,FT2:940,FT3:940,FT4:935},
-    defectsByStation:{AOI:20,ICT:30,FT1:10,FT2:10,FT4:5},
-    recoveryQueue:[
-      {station:"AOI",qty:20,avgHours:6.5,cause:"AOI defect / review"},
-      {station:"ICT",qty:30,avgHours:14,cause:"ICT fail / debug"},
-      {station:"FT4",qty:5,avgHours:24,cause:"Functional retest"}
-    ]
-  },
-  {
-    skuno:"74-134450-05",
-    workOrder:"000001287162",
-    model:"CSF1230, RM-A",
-    line:"L16",
-    lotQty:760,
-    startSmt:"2026-03-29 06:40",
-    firstFunctional:"2026-03-31 15:10",
-    completedByStation:{Paste:760,SPI:760,AOI:735,Router:722,VI:709,ICT:690,Stocking:685,FT1:681,FT2:676,FT3:673,FT4:671},
-    defectsByStation:{AOI:25,Router:13,VI:13,ICT:19,FT1:4,FT2:5,FT3:3,FT4:2},
-    recoveryQueue:[
-      {station:"AOI",qty:25,avgHours:8,cause:"Alignment and solder review"},
-      {station:"ICT",qty:19,avgHours:18,cause:"Electrical debug"},
-      {station:"FT2",qty:5,avgHours:22,cause:"Functional retest loop"}
-    ]
-  }
-];
-var TRACEOPS_YIELD_BY_WO_ROWS = [
-  {week:"FY2026 Q3 W-013",date:"4/23/2026",line:"L14",bu:"NGFWBU",family:"Warwick",sku:"73-102435-05",wo:"000001287678",yield:100,touch:0,total:35,clean:35,risk:0},
-  {week:"FY2026 Q3 W-013",date:"4/23/2026",line:"L13",bu:"NGFWBU",family:"Warwick",sku:"73-102433-05",wo:"000001287701",yield:100,touch:0,total:71,clean:71,risk:0},
-  {week:"FY2026 Q3 W-013",date:"4/22/2026",line:"L2",bu:"NGFWBU",family:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001287587",yield:98.24,touch:1.76,total:170,clean:167,risk:3},
-  {week:"FY2026 Q3 W-012",date:"4/17/2026",line:"L13",bu:"NGFWBU",family:"Warwick",sku:"73-102433-05",wo:"000001287544",yield:88.57,touch:11.43,total:70,clean:62,risk:8},
-  {week:"FY2026 Q3 W-012",date:"4/17/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001287486",yield:86.88,touch:13.13,total:320,clean:278,risk:42},
-  {week:"FY2026 Q3 W-012",date:"4/16/2026",line:"L14",bu:"NGFWBU",family:"Warwick",sku:"73-102435-05",wo:"000001287546",yield:91.67,touch:8.33,total:36,clean:33,risk:3},
-  {week:"FY2026 Q3 W-012",date:"4/16/2026",line:"L12",bu:"NGFWBU",family:"MARYLAND",sku:"73-101944-03",wo:"000001287484",yield:100,touch:0,total:52,clean:52,risk:0},
-  {week:"FY2026 Q3 W-012",date:"4/16/2026",line:"L16",bu:"NGFWBU",family:"CSF1220CX, DT-B",sku:"74-134456-05",wo:"000001287483",yield:95.15,touch:4.85,total:330,clean:314,risk:16},
-  {week:"FY2026 Q3 W-012",date:"4/15/2026",line:"L15",bu:"NGFWBU",family:"BRENTWOOD",sku:"73-101945-03",wo:"000001287485",yield:100,touch:0,total:68,clean:68,risk:0},
-  {week:"FY2026 Q3 W-012",date:"4/14/2026",line:"L16",bu:"NGFWBU",family:"CSF1210CE, DT-A",sku:"74-134454-05",wo:"000001287481",yield:94.6,touch:5.4,total:500,clean:473,risk:27},
-  {week:"FY2026 Q3 W-012",date:"4/13/2026",line:"L7",bu:"NGFWBU",family:"CSF1210CE, DT-A",sku:"74-134454-05",wo:"000001287364",yield:90.91,touch:9.09,total:330,clean:300,risk:30},
-  {week:"FY2026 Q3 W-012",date:"4/12/2026",line:"L16",bu:"NGFWBU",family:"CSF1240, RM-B",sku:"74-134451-05",wo:"000001287363",yield:91.32,touch:8.68,total:380,clean:347,risk:33},
-  {week:"FY2026 Q3 W-012",date:"4/12/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park High",sku:"73-20247-06",wo:"000001287329",yield:83.33,touch:16.67,total:120,clean:100,risk:20},
-  {week:"FY2026 Q3 W-011",date:"4/9/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001287326",yield:89.5,touch:10.5,total:400,clean:358,risk:42},
-  {week:"FY2026 Q3 W-010",date:"3/31/2026",line:"L16",bu:"NGFWBU",family:"CSF1230, RM-A",sku:"74-134450-05",wo:"000001287162",yield:88.29,touch:11.71,total:760,clean:671,risk:89},
-  {week:"FY2026 Q3 W-010",date:"3/30/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park High",sku:"73-20247-06",wo:"000001286878",yield:97.33,touch:2.67,total:150,clean:146,risk:4},
-  {week:"FY2026 Q3 W-009",date:"3/27/2026",line:"L13",bu:"NGFWBU",family:"Warwick",sku:"73-102433-05",wo:"000001287022",yield:93.33,touch:6.67,total:90,clean:84,risk:6},
-  {week:"FY2026 Q3 W-009",date:"3/26/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001286877",yield:89.75,touch:10.25,total:400,clean:359,risk:41},
-  {week:"FY2026 Q3 W-009",date:"3/26/2026",line:"L14",bu:"NGFWBU",family:"Warwick",sku:"73-102435-05",wo:"000001287024",yield:88.57,touch:11.43,total:70,clean:62,risk:8},
-  {week:"FY2026 Q3 W-008",date:"3/19/2026",line:"L12",bu:"NGFWBU",family:"Shenfield",sku:"73-103125-02",wo:"000001286925",yield:97.92,touch:2.08,total:96,clean:94,risk:2}
-];
-var TRACEOPS_RISK_SUMMARY_ROWS = [
-  {bu:"NGFWBU",sku:"73-101944-03",family:"MARYLAND",symptom:"PUNTO DE PRUEBA CON FALTA DE SOLDADURA",location:"U18",risk:7},
-  {bu:"NGFWBU",sku:"73-101944-03",family:"MARYLAND",symptom:"IMAGEN CORRUPTA EN TABLILLA",location:"U17",risk:2},
-  {bu:"NGFWBU",sku:"73-101945-03",family:"BRENTWOOD",symptom:"SOLDADURA INSUFICIENTE",location:"U100",risk:4},
-  {bu:"NGFWBU",sku:"73-102433-05",family:"Warwick",symptom:"COMPONENTE DESALINEADO",location:"CR202",risk:2},
-  {bu:"NGFWBU",sku:"73-102433-05",family:"Warwick",symptom:"COMPONENTE DAÑADO/FRACTURADO",location:"CR202",risk:6},
-  {bu:"NGFWBU",sku:"73-102433-05",family:"Warwick",symptom:"COMPONENTE EQUIVOCADO",location:"R8_PSTBY",risk:1},
-  {bu:"NGFWBU",sku:"73-102435-05",family:"Warwick",symptom:"COMPONENTE DESALINEADO",location:"CR24",risk:3},
-  {bu:"NGFWBU",sku:"73-102435-05",family:"Warwick",symptom:"PUENTE/CORTO DE SOLDADURA",location:"P16",risk:5},
-  {bu:"NGFWBU",sku:"73-20249-06",family:"Tuffnel Park Low",symptom:"COMPONENTE DESALINEADO",location:"CR50",risk:5},
-  {bu:"NGFWBU",sku:"73-20249-06",family:"Tuffnel Park Low",symptom:"COMPONENTE CON PIN DOBLADO",location:"PNM21",risk:5},
-  {bu:"NGFWBU",sku:"73-20249-06",family:"Tuffnel Park Low",symptom:"PUENTE/CORTO DE SOLDADURA",location:"U203",risk:8},
-  {bu:"NGFWBU",sku:"73-20247-06",family:"Tuffnel Park High",symptom:"PUENTE/CORTO DE SOLDADURA",location:"J9",risk:6},
-  {bu:"NGFWBU",sku:"73-20247-06",family:"Tuffnel Park High",symptom:"SOLDADURA ABIERTA",location:"U31",risk:5},
-  {bu:"NGFWBU",sku:"73-103125-02",family:"Shenfield",symptom:"PUNTO DE PRUEBA CON FALTA DE SOLDADURA",location:"R257",risk:2},
-  {bu:"NGFWBU",sku:"74-134450-05",family:"CSF1230, RM-A",symptom:"PUNTO DE PRUEBA CON FALTA DE SOLDADURA",location:"U18",risk:7},
-  {bu:"NGFWBU",sku:"74-134450-05",family:"CSF1230, RM-A",symptom:"SOLDADURA INSUFICIENTE",location:"J19",risk:8},
-  {bu:"NGFWBU",sku:"74-134450-05",family:"CSF1230, RM-A",symptom:"PUENTE/CORTO DE SOLDADURA",location:"PCB",risk:9},
-  {bu:"NGFWBU",sku:"74-134451-05",family:"CSF1240, RM-B",symptom:"SOLDADURA ABIERTA",location:"U6B_F",risk:5},
-  {bu:"NGFWBU",sku:"74-134451-05",family:"CSF1240, RM-B",symptom:"SOLDADURA INSUFICIENTE",location:"U1_A",risk:7},
-  {bu:"NGFWBU",sku:"74-134454-05",family:"CSF1210CE, DT-A",symptom:"COMPONENTE DESALINEADO",location:"U25",risk:5},
-  {bu:"NGFWBU",sku:"74-134454-05",family:"CSF1210CE, DT-A",symptom:"PUENTE/CORTO DE SOLDADURA",location:"J7",risk:8},
-  {bu:"NGFWBU",sku:"74-134454-05",family:"CSF1210CE, DT-A",symptom:"SOLDADURA INSUFICIENTE",location:"U1_C",risk:9},
-  {bu:"NGFWBU",sku:"74-134456-05",family:"CSF1220CX, DT-B",symptom:"SOLDADURA ABIERTA",location:"U1",risk:4},
-  {bu:"NGFWBU",sku:"74-134456-05",family:"CSF1220CX, DT-B",symptom:"PROBLEMA EN BGA",location:"U1_A",risk:6}
-];
-function traceOpsYieldFlowHoursBetween(start,end){
-  var a = new Date(String(start || "").replace(" ","T"));
-  var b = new Date(String(end || "").replace(" ","T"));
-  if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
-  return Math.max(0, (b.getTime() - a.getTime()) / 36e5);
-}
-function traceOpsYieldFlowFmt(value, digits){
-  var n = Number(value || 0);
-  if (!isFinite(n)) n = 0;
-  return n.toLocaleString("en-US", { minimumFractionDigits: digits || 0, maximumFractionDigits: digits || 0 });
-}
-function traceOpsBuildYieldFlowModelLocal(){
-  var rows = TRACEOPS_YIELD_BY_WO_ROWS.filter(function(item){
-    return String(item.bu || "").toUpperCase().indexOf("NGFW") >= 0;
-  });
-  var trackerRows = TRACEOPS_YIELD_FLOW_TRACKER.slice();
-  var totalUnits = rows.reduce(function(sum, item){ return sum + Number(item.total || 0); }, 0);
-  var totalClean = rows.reduce(function(sum, item){ return sum + Number(item.clean || 0); }, 0);
-  var totalRisk = rows.reduce(function(sum, item){ return sum + Number(item.risk || 0); }, 0);
-  var weightedYield = totalUnits ? rows.reduce(function(sum, item){ return sum + (Number(item.yield || 0) * Number(item.total || 0)); }, 0) / totalUnits : 0;
-  var weightedTouch = totalUnits ? rows.reduce(function(sum, item){ return sum + (Number(item.touch || 0) * Number(item.total || 0)); }, 0) / totalUnits : 0;
-  var leadHours = trackerRows.map(function(item){ return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstFunctional); }).filter(function(v){ return v != null; });
-  var riskBySku = {};
-  TRACEOPS_RISK_SUMMARY_ROWS.forEach(function(item){
-    var sku = item.sku || "N/A";
-    if (!riskBySku[sku]) riskBySku[sku] = { sku: sku, family: item.family || "N/A", risk: 0, symptomMap: {} };
-    riskBySku[sku].risk += Number(item.risk || 0);
-    riskBySku[sku].symptomMap[item.symptom || "Sin sintoma"] = (riskBySku[sku].symptomMap[item.symptom || "Sin sintoma"] || 0) + Number(item.risk || 0);
-  });
-  var topRiskSku = Object.keys(riskBySku).map(function(key){
-    var row = riskBySku[key];
-    var symptom = Object.keys(row.symptomMap).sort(function(a,b){ return row.symptomMap[b] - row.symptomMap[a]; })[0] || "Sin sintoma";
-    return { sku: row.sku, family: row.family, risk: row.risk, topSymptom: symptom };
-  }).sort(function(a,b){ return b.risk - a.risk; }).slice(0, 6);
-  return {
-    kpi: {
-      orders: rows.length,
-      units: totalUnits,
-      clean: totalClean,
-      risk: totalRisk,
-      yield: weightedYield,
-      touch: weightedTouch,
-      avgLeadHours: leadHours.length ? (leadHours.reduce(function(a,b){ return a+b; }, 0) / leadHours.length) : 0
-    },
-    rows: rows,
-    trackerRows: trackerRows,
-    topRiskSku: topRiskSku
-  };
-}
-
 const TRACEOPS_NIGHT_OPS_HERO = 'hero-night-ops.jpeg';
 function App() {
   var stateArr = _useState("idle");
@@ -12848,6 +12715,100 @@ function replaceMetaFiles(nextFiles){
     );
   }
 
+
+  // ==== NATIVE TRACEOPS YIELD FLOW MODULE ====
+  // Reset data here. This module is part of TraceOps navigation/workspace, not a DOM patch.
+  var TRACEOPS_YIELD_FLOW_TRACKER = [
+    {
+      wo:"000001282323", sku:"73-20249-06", productFamily:"Tuffnel Park Low", lot:1000,
+      reincorporationAvgHours:12.2, smtToFtHours:28.5,
+      stations:[
+        {name:"Paste",qty:1000,out:0},{name:"SPI",qty:1000,out:0},{name:"AOI",qty:980,out:20},
+        {name:"Router",qty:980,out:0},{name:"VI",qty:980,out:0},{name:"ICT",qty:950,out:30},
+        {name:"Stocking",qty:950,out:0},{name:"FT1",qty:950,out:10},{name:"FT2",qty:940,out:10},
+        {name:"FT3",qty:940,out:0},{name:"FT4",qty:935,out:5}
+      ],
+      exits:[
+        {station:"AOI",units:20,cause:"AOI defect / review",hours:6.5},
+        {station:"ICT",units:30,cause:"ICT fail / debug",hours:14.0},
+        {station:"FT4",units:5,cause:"Functional retest",hours:24.0}
+      ]
+    }
+  ];
+
+  var TRACEOPS_YIELD_BY_WO_ROWS = [
+    {week:"FY2026 Q3 W-013",line:"L14",bu:"NGFWBU",productFamily:"Warwick",sku:"73-102435-05",wo:"000001287678",yieldPct:100,ojtPct:0,units:35,clean:35,risk:0},
+    {week:"FY2026 Q3 W-013",line:"L13",bu:"NGFWBU",productFamily:"Warwick",sku:"73-102433-05",wo:"000001287701",yieldPct:100,ojtPct:0,units:71,clean:71,risk:0},
+    {week:"FY2026 Q3 W-013",line:"L2",bu:"NGFWBU",productFamily:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001287587",yieldPct:98.24,ojtPct:1.76,units:170,clean:167,risk:3},
+    {week:"FY2026 Q3 W-012",line:"L13",bu:"NGFWBU",productFamily:"Warwick",sku:"73-102433-05",wo:"000001287544",yieldPct:88.57,ojtPct:11.43,units:70,clean:62,risk:8},
+    {week:"FY2026 Q3 W-012",line:"L3",bu:"NGFWBU",productFamily:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001287486",yieldPct:86.88,ojtPct:13.13,units:320,clean:278,risk:42},
+    {week:"FY2026 Q3 W-012",line:"L16",bu:"NGFWBU",productFamily:"CSF1220CX, DT-B",sku:"74-134456-05",wo:"000001287483",yieldPct:95.15,ojtPct:4.85,units:330,clean:314,risk:16},
+    {week:"FY2026 Q3 W-012",line:"L16",bu:"NGFWBU",productFamily:"CSF1210CE, DT-A",sku:"74-134454-05",wo:"000001287481",yieldPct:94.60,ojtPct:5.40,units:500,clean:473,risk:27},
+    {week:"FY2026 Q3 W-012",line:"L7",bu:"NGFWBU",productFamily:"CSF1210CE, DT-A",sku:"74-134454-05",wo:"000001287364",yieldPct:90.91,ojtPct:9.09,units:330,clean:300,risk:30},
+    {week:"FY2026 Q3 W-012",line:"L16",bu:"NGFWBU",productFamily:"CSF1240, RM-B",sku:"74-134451-05",wo:"000001287363",yieldPct:91.32,ojtPct:8.68,units:380,clean:347,risk:33},
+    {week:"FY2026 Q3 W-010",line:"L16",bu:"NGFWBU",productFamily:"CSF1230, RM-A",sku:"74-134450-05",wo:"000001287162",yieldPct:88.29,ojtPct:11.71,units:760,clean:671,risk:89},
+    {week:"FY2026 Q3 W-006",line:"L16",bu:"NGFWBU",productFamily:"CSF1230, RM-A",sku:"74-134450-05",wo:"000001286531",yieldPct:76.90,ojtPct:23.10,units:420,clean:323,risk:97}
+  ];
+
+  var TRACEOPS_RISK_SUMMARY_ROWS = [
+    {productFamily:"Tuffnel Park Low",sku:"73-20249-06",symptom:"PUENTE/CORTO DE SOLDADURA",risk:18},
+    {productFamily:"CSF1230, RM-A",sku:"74-134450-05",symptom:"PUNTO DE PRUEBA CON FALTA DE SOLDADURA",risk:7},
+    {productFamily:"Warwick",sku:"73-102433-05",symptom:"PUENTE/CORTO DE SOLDADURA",risk:5},
+    {productFamily:"CSF1220CX, DT-B",sku:"74-134456-05",symptom:"SOLDADURA ABIERTA",risk:4},
+    {productFamily:"Warwick",sku:"73-102435-05",symptom:"COMPONENTE DESALINEADO",risk:3}
+  ];
+
+  function traceOpsYieldFlowModel(){
+    var rows = TRACEOPS_YIELD_BY_WO_ROWS.filter(function(r){ return String(r.bu||"").toUpperCase().indexOf("NGFW")>=0; });
+    var totalUnits = rows.reduce(function(a,r){return a + Number(r.units||0);},0);
+    var cleanUnits = rows.reduce(function(a,r){return a + Number(r.clean||0);},0);
+    var riskUnits = rows.reduce(function(a,r){return a + Number(r.risk||0);},0);
+    var avgReinc = TRACEOPS_YIELD_FLOW_TRACKER.length ? TRACEOPS_YIELD_FLOW_TRACKER.reduce(function(a,r){return a+Number(r.reincorporationAvgHours||0);},0)/TRACEOPS_YIELD_FLOW_TRACKER.length : 0;
+    var avgSmtFt = TRACEOPS_YIELD_FLOW_TRACKER.length ? TRACEOPS_YIELD_FLOW_TRACKER.reduce(function(a,r){return a+Number(r.smtToFtHours||0);},0)/TRACEOPS_YIELD_FLOW_TRACKER.length : 0;
+    return {
+      rows: rows,
+      risks: TRACEOPS_RISK_SUMMARY_ROWS.slice().sort(function(a,b){return Number(b.risk||0)-Number(a.risk||0);}),
+      tracker: TRACEOPS_YIELD_FLOW_TRACKER,
+      kpi: {
+        workOrders: rows.length, totalUnits: totalUnits, cleanUnits: cleanUnits, riskUnits: riskUnits,
+        cleanYield: totalUnits ? cleanUnits/totalUnits*100 : 0, ojtRate: totalUnits ? riskUnits/totalUnits*100 : 0, avgReinc: avgReinc, avgSmtFt: avgSmtFt
+      }
+    };
+  }
+
+  function renderYieldFlowSection(){
+    var yf = traceOpsYieldFlowModel();
+    var cardStyle={background:"#fff",border:"1px solid #D9E6F7",borderRadius:20,padding:"16px 18px",boxShadow:"0 2px 12px rgba(20,32,51,.04)"};
+    var panelStyle={background:"#fff",border:"1px solid #D9E6F7",borderRadius:22,overflow:"hidden",boxShadow:"0 2px 12px rgba(20,32,51,.04)"};
+    return (
+      <div id="yieldflow-section" style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div className="traceops-context" style={{marginBottom:0,background:"linear-gradient(135deg,#0B1623,#1F3A5F)",borderColor:"rgba(255,255,255,.12)",color:"#fff"}}>
+          <div className="traceops-context-main"><div className="traceops-context-kicker" style={{color:"rgba(255,255,255,.68)"}}>NGFW Tracker</div><div className="traceops-context-title" style={{color:"#fff"}}>Yield Flow por Work Order y avance a pruebas funcionales</div><div className="traceops-context-subtitle" style={{color:"rgba(255,255,255,.74)"}}>Cruce del resumen semanal de yield con tracker por estación para responder piezas fuera de flujo, tiempo de reincorporación y avance SMT a Functional Test.</div></div>
+          <div className="traceops-context-chips"><span style={{background:"rgba(255,255,255,.10)",color:"#fff",borderColor:"rgba(255,255,255,.18)"}}>{yf.kpi.workOrders} WOs</span><span style={{background:"rgba(255,255,255,.10)",color:"#fff",borderColor:"rgba(255,255,255,.18)"}}>{yf.kpi.riskUnits} risk units</span><span style={{background:"rgba(255,255,255,.10)",color:"#fff",borderColor:"rgba(255,255,255,.18)"}}>{yf.kpi.ojtRate.toFixed(2)}% OJT</span></div>
+        </div>
+        <div className="traceops-kpi-strip" style={{gridTemplateColumns:isMobile()?"1fr":"repeat(4,minmax(0,1fr))",marginBottom:0}}>
+          <div className="traceops-kpi-card"><div className="traceops-kpi-label">Work orders</div><div className="traceops-kpi-value">{yf.kpi.workOrders}</div><div className="traceops-kpi-meta"><span>Filtradas a NGFW</span></div></div>
+          <div className="traceops-kpi-card"><div className="traceops-kpi-label">Clean Yield</div><div className="traceops-kpi-value pass">{yf.kpi.cleanYield.toFixed(2)}%</div><div className="traceops-kpi-meta"><span>{yf.kpi.cleanUnits.toLocaleString()} clean units</span></div></div>
+          <div className="traceops-kpi-card"><div className="traceops-kpi-label">OJT Touch Rate</div><div className="traceops-kpi-value warn">{yf.kpi.ojtRate.toFixed(2)}%</div><div className="traceops-kpi-meta"><span>Cálculo ponderado</span></div></div>
+          <div className="traceops-kpi-card"><div className="traceops-kpi-label">Risk Units</div><div className="traceops-kpi-value fail">{yf.kpi.riskUnits}</div><div className="traceops-kpi-meta"><span>OJT / retrabajo visible</span></div></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:12}}>
+          <div style={cardStyle}><div className="traceops-kpi-label">Fuera de flujo</div><div className="traceops-kpi-value fail">{yf.tracker.reduce(function(a,t){return a + t.stations.reduce(function(b,s){return b+Number(s.out||0);},0);},0)}</div><div className="traceops-kpi-meta"><span>Suma por estaciones del tracker</span></div></div>
+          <div style={cardStyle}><div className="traceops-kpi-label">Reincorporación avg</div><div className="traceops-kpi-value info">{yf.kpi.avgReinc.toFixed(1)}h</div><div className="traceops-kpi-meta"><span>Promedio del tracker activo</span></div></div>
+          <div style={cardStyle}><div className="traceops-kpi-label">SMT → FT avg</div><div className="traceops-kpi-value info">{yf.kpi.avgSmtFt.toFixed(1)}h</div><div className="traceops-kpi-meta"><span>Lead time de orden</span></div></div>
+        </div>
+        <div style={panelStyle}><div className="traceops-panel-head"><div><h3>Tracker manual por estación</h3><span>Salida del flujo, reincorporación y avance a FT.</span></div></div><div className="traceops-panel-body" style={{display:"flex",flexDirection:"column",gap:14}}>
+          {yf.tracker.map(function(t){var outTotal=t.stations.reduce(function(a,s){return a+Number(s.out||0);},0);return <div key={t.wo} style={{border:"1px solid #D9E6F7",borderRadius:18,padding:14,background:"#FAFCFF"}}><div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",alignItems:"flex-start",marginBottom:12}}><div><div style={{fontSize:16,fontWeight:800,color:"#102A43"}}>{t.productFamily}</div><div style={{fontSize:11,color:"#5F766C",marginTop:2}}>WO {t.wo} · SKU {t.sku} · Lote {Number(t.lot||0).toLocaleString()}</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}><span className="traceops-window-pill" style={{background:"#FFF7E8",color:"#9A6A16",borderColor:"#F2DFC0"}}>{outTotal} fuera de flujo</span><span className="traceops-window-pill">Reinc. {Number(t.reincorporationAvgHours||0).toFixed(1)}h avg</span><span className="traceops-window-pill actual">SMT→FT {Number(t.smtToFtHours||0).toFixed(1)}h</span></div></div><div style={{display:"grid",gridTemplateColumns:isMobile()?"repeat(2,minmax(0,1fr))":"repeat(6,minmax(0,1fr))",gap:10}}>{t.stations.map(function(st){return <div key={st.name} style={{background:st.out?"#FFF9EE":"#fff",border:"1px solid "+(st.out?"#F2DFC0":"#D9E6F7"),borderRadius:14,padding:"12px 10px"}}><div style={{fontSize:9,fontWeight:800,color:"#5F766C",textTransform:"uppercase"}}>{st.name}</div><div style={{fontSize:22,fontWeight:800,color:"#102A43",marginTop:6}}>{Number(st.qty||0).toLocaleString()}</div><div style={{fontSize:10,color:st.out?"#9A6A16":"#5F766C",marginTop:2}}>{st.out?st.out+" fuera":"sin fuga"}</div></div>;})}</div><div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:10,marginTop:12}}>{t.exits.map(function(ex){return <div key={ex.station} style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:14,padding:"12px 13px"}}><div style={{fontSize:11,fontWeight:800,color:"#102A43",textTransform:"uppercase"}}>{ex.station} · {ex.units} unidades</div><div style={{fontSize:10.5,color:"#5F766C",marginTop:6}}>{ex.cause}</div><div style={{fontSize:20,fontWeight:800,color:"#102A43",marginTop:8}}>{Number(ex.hours||0).toFixed(1)}h</div></div>;})}</div></div>;})}
+        </div></div>
+        <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.45fr .8fr",gap:16}}>
+          <div style={panelStyle}><div className="traceops-panel-head"><div><h3>Yield por Work Order</h3><span>Base del resumen semanal filtrada a NGFW.</span></div></div><div className="tscroll"><table><thead><tr><th>Line</th><th>Product Family</th><th>SKU</th><th>WO</th><th>Yield</th><th>OJT</th><th>Units</th><th>Risk</th></tr></thead><tbody>{yf.rows.map(function(r){return <tr key={r.wo}><td>{r.line}</td><td>{r.productFamily}</td><td>{r.sku}</td><td>{r.wo}</td><td>{Number(r.yieldPct||0).toFixed(2)}%</td><td>{Number(r.ojtPct||0).toFixed(2)}%</td><td>{r.units}</td><td>{r.risk}</td></tr>;})}</tbody></table></div></div>
+          <div style={panelStyle}><div className="traceops-panel-head"><div><h3>Top Risk SKU</h3><span>Cruce rápido con síntomas dominantes.</span></div></div><div className="traceops-panel-body" style={{display:"flex",flexDirection:"column",gap:10}}>{yf.risks.map(function(r){return <div key={r.sku+r.symptom} style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"12px 14px",background:"#FAFCFF",display:"flex",justifyContent:"space-between",gap:12}}><div><div style={{fontSize:12,fontWeight:800,color:"#102A43"}}>{r.productFamily}</div><div style={{fontSize:10,color:"#5F766C",marginTop:3}}>{r.sku}</div><div style={{fontSize:10,color:"#5F766C",marginTop:7,textTransform:"uppercase"}}>{r.symptom}</div></div><div style={{fontSize:22,fontWeight:800,color:"#C44141"}}>{r.risk}</div></div>;})}</div></div>
+        </div>
+      </div>
+    );
+  }
+  // ==== END NATIVE TRACEOPS YIELD FLOW MODULE ====
+
   function scrollToSection(sectionId){
     try {
       var el = document.getElementById(sectionId);
@@ -12867,113 +12828,11 @@ function replaceMetaFiles(nextFiles){
     }, 60);
   }
 
-  var yieldFlowModel = traceOpsBuildYieldFlowModelLocal();
-
-  function renderYieldFlowSection(){
-    return (
-      <div id="yieldflow-section" style={{display:"flex",flexDirection:"column",gap:14,marginBottom:14}}>
-        <div style={{background:"linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)",borderRadius:18,padding:"18px 20px",color:"#fff",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:14,flexWrap:"wrap"}}>
-          <div style={{minWidth:0,flex:1}}>
-            <div style={{fontSize:10,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",opacity:.72,marginBottom:8}}>Yield intelligence</div>
-            <div style={{fontSize:24,fontWeight:800,lineHeight:1.05,maxWidth:680}}>Yield Flow para NGFW con avance real de SMT a prueba funcional</div>
-            <div style={{fontSize:12.5,lineHeight:1.6,opacity:.84,maxWidth:800,marginTop:8}}>Este modulo aterriza el seguimiento por work order dentro del lenguaje nativo de TraceOps: yield, touch rate, riesgo visible, estaciones con fuga y tiempo de reincorporacion hasta functional test.</div>
-          </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{yieldFlowModel.kpi.orders} WOs NGFW</span>
-            <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.risk)} risk units</span>
-            <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.avgLeadHours,1)} h a FT</span>
-          </div>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(4,minmax(0,1fr))",gap:10}}>
-          <div style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#5F766C",textTransform:"uppercase"}}>Work orders</div><div style={{fontSize:28,fontWeight:800,color:"#102A43",marginTop:6}}>{yieldFlowModel.kpi.orders}</div><div style={{fontSize:11,color:"#5F766C",marginTop:5}}>Base semanal filtrada a NGFW</div></div>
-          <div style={{background:"#fff",border:"1px solid #CFE0FB",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Clean yield</div><div style={{fontSize:28,fontWeight:800,color:"#1F3A5F",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.yield,2)}%</div><div style={{fontSize:11,color:"#5F766C",marginTop:5}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.clean)} clean units</div></div>
-          <div style={{background:"#fff",border:"1px solid #F5E4A0",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#B87820",textTransform:"uppercase"}}>OJT touch rate</div><div style={{fontSize:28,fontWeight:800,color:"#B87820",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.touch,2)}%</div><div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Promedio ponderado por volumen</div></div>
-          <div style={{background:"#fff",border:"1px solid #F1D0CB",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#A43B2E",textTransform:"uppercase"}}>Risk units</div><div style={{fontSize:28,fontWeight:800,color:"#A43B2E",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.risk)}</div><div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Rework visible y touch OJT</div></div>
-        </div>
-
-        <div style={{background:"#FBFDFF",border:"1px dashed #C9DAF5",borderRadius:14,padding:"12px 14px",fontSize:11,color:"#5F766C",lineHeight:1.55}}>
-          Para resetear datos sin tocar el render: edita <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_FLOW_TRACKER</span>, <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_BY_WO_ROWS</span> y <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_RISK_SUMMARY_ROWS</span>.
-        </div>
-
-        <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
-          <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
-            <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Tracker manual por estacion</div>
-            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Seguimiento operativo para piezas fuera de flujo, reincorporacion y arribo a pruebas funcionales.</div>
-          </div>
-          <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:12}}>
-            {yieldFlowModel.trackerRows.map(function(item){
-              var leadHours = traceOpsYieldFlowHoursBetween(item.startSmt, item.firstFunctional);
-              return (
-                <div key={item.workOrder} style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"14px 14px 12px",background:"#fff"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:12}}>
-                    <div>
-                      <div style={{fontSize:15,fontWeight:800,color:"#102A43"}}>{item.model}</div>
-                      <div style={{fontSize:11,color:"#5F766C",marginTop:4}}>WO {item.workOrder} · SKU {item.skuno} · {item.line} · lote {traceOpsYieldFlowFmt(item.lotQty)}</div>
-                    </div>
-                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                      <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#EEF5FF",color:"#1F3A5F",border:"1px solid #DBE8FB"}}>SMT start {item.startSmt}</span>
-                      <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#F5F0FE",color:"#6B2DA8",border:"1px solid #DBCDF8"}}>FT first pass {item.firstFunctional}</span>
-                      <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#FEF9E8",color:"#B87820",border:"1px solid #F5E4A0"}}>{leadHours==null?"Lead time N/D":(traceOpsYieldFlowFmt(leadHours,1)+" h total")}</span>
-                    </div>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:isMobile()?"repeat(2,minmax(0,1fr))":"repeat(11,minmax(0,1fr))",gap:8}}>
-                    {TRACEOPS_YIELD_FLOW_STATIONS.map(function(station){
-                      var completed = item.completedByStation[station] || 0;
-                      var defects = item.defectsByStation[station] || 0;
-                      return <div key={station} style={{border:"1px solid "+(defects?"#F5E4A0":"#D9E6F7"),borderRadius:12,padding:"10px 9px",background:defects?"#FFF9EE":"#F8FBFF"}}><div style={{fontSize:9,fontWeight:800,color:"#5F766C",textTransform:"uppercase"}}>{station}</div><div style={{fontSize:18,fontWeight:800,color:"#102A43",marginTop:6}}>{traceOpsYieldFlowFmt(completed)}</div><div style={{fontSize:10.5,color:defects?"#B87820":"#5F766C",marginTop:3}}>{defects?traceOpsYieldFlowFmt(defects)+" fuera":"sin fuga"}</div></div>;
-                    })}
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:8,marginTop:10}}>
-                    {item.recoveryQueue.map(function(row, idx){
-                      return <div key={row.station+"-"+idx} style={{background:"#FBFDFF",border:"1px solid #E7EEF9",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>{row.station}</div><div style={{fontSize:11,color:"#5F766C",marginTop:5,lineHeight:1.45}}>{row.cause}</div><div style={{fontSize:16,fontWeight:800,color:"#102A43",marginTop:6}}>{traceOpsYieldFlowFmt(row.qty)} pcs · {traceOpsYieldFlowFmt(row.avgHours,1)} h</div></div>;
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.15fr .85fr",gap:14}}>
-          <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
-              <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Yield por work order</div>
-              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Lectura consolidada por familia, volumen, clean yield y touch rate.</div>
-            </div>
-            <div style={{padding:"12px 16px"}}>
-              <table className="toq-mini-table">
-                <thead><tr><th>Week</th><th>Line</th><th>Product Family</th><th>SKU</th><th>WO</th><th>Yield</th><th>OJT</th><th>Units</th><th>Risk</th></tr></thead>
-                <tbody>
-                  {yieldFlowModel.rows.slice(0, 14).map(function(item){
-                    return <tr key={item.wo}><td>{item.week}</td><td>{item.line}</td><td>{item.family}</td><td>{item.sku}</td><td>{item.wo}</td><td>{traceOpsYieldFlowFmt(item.yield,2)}%</td><td>{traceOpsYieldFlowFmt(item.touch,2)}%</td><td>{traceOpsYieldFlowFmt(item.total)}</td><td>{traceOpsYieldFlowFmt(item.risk)}</td></tr>;
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
-              <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Top risk SKU</div>
-              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Concentracion de riesgo y sintoma dominante.</div>
-            </div>
-            <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
-              {yieldFlowModel.topRiskSku.map(function(item){
-                return <div key={item.sku} style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"10px 11px",background:"#FBFDFF"}}><div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}><div style={{minWidth:0,flex:1}}><div style={{fontSize:12,fontWeight:800,color:"#102A43"}}>{item.family}</div><div style={{fontSize:10,color:"#5F766C",marginTop:3}}>{item.sku}</div><div style={{fontSize:10.5,color:"#6A6560",marginTop:6,lineHeight:1.45}}>{item.topSymptom}</div></div><div style={{fontSize:18,fontWeight:800,color:"#A43B2E"}}>{traceOpsYieldFlowFmt(item.risk)}</div></div></div>;
-              })}
-            </div>
-          </section>
-        </div>
-      </div>
-    );
-  }
-
   function renderModuleIcon(kind){
     if (kind === "nccapa") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3h6l1 2h4v16H4V5h4l1-2z"/><path d="M9 10h6"/><path d="M9 14h6"/><path d="M9 18h4"/><path d="M17 10l2 2 3-3"/></svg>;
     if (kind === "rcca") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>;
-    if (kind === "yieldflow") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19h16"/><path d="M7 16V8"/><path d="M12 16V5"/><path d="M17 16v-3"/><path d="M5 8l3-3 4 2 5-4 2 2"/></svg>;
     if (kind === "maintenance") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 7l3-3 3 3-3 3-3-3"/><path d="M2 20l7-7"/><path d="M9 13l3 3"/><path d="M9 13l-3-3"/><path d="M12 16l8-8"/></svg>;
+    if (kind === "yieldflow") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-3"/><path d="M20 16V6"/></svg>;
     return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3h6l1 2h4v16H4V5h4l1-2z"/><path d="M9 10h6"/><path d="M9 14h6"/><path d="M9 18h4"/></svg>;
   }
 
@@ -13003,20 +12862,20 @@ function replaceMetaFiles(nextFiles){
       tone: { bg:"#EAF2FF", border:"#C7DBF7", color:"#1F3A5F" }
     },
     {
-      key: "yieldflow",
-      label: "Yield Flow",
-      shortLabel: "Yield por WO, avance por estacion y foco de riesgo para NGFW",
-      count: yieldFlowModel.kpi.orders,
-      anchorId: "yieldflow-section",
-      tone: { bg:"#EAF2FF", border:"#C7DBF7", color:"#1F3A5F" }
-    },
-    {
       key: "maintenance",
       label: "Maintenance Log",
       shortLabel: "Machine history, part replacement and recurrence tracking",
       count: maintenanceRecords.length,
       anchorId: "maintenance-section",
       tone: { bg:"#EEF6FF", border:"#D8E6FB", color:"#145A28" }
+    },
+    {
+      key: "yieldflow",
+      label: "Yield Flow",
+      shortLabel: "Yield por WO, piezas fuera de flujo, reincorporación y avance SMT a Functional Test",
+      count: traceOpsYieldFlowModel().kpi.workOrders,
+      anchorId: "yieldflow-section",
+      tone: { bg:"#EAF2FF", border:"#C7DBF7", color:"#1F3A5F" }
     }
   ];
   var activeModuleMeta = moduleNavItems.find(function(item){ return item.key === activeModule; }) || moduleNavItems[0];
@@ -14396,9 +14255,9 @@ function replaceMetaFiles(nextFiles){
                 </div>
               </div>}
 
-              {activeModule==="yieldflow" && renderYieldFlowSection()}
-
               {activeModule==="maintenance" && renderMaintenanceSection()}
+
+              {activeModule==="yieldflow" && renderYieldFlowSection()}
 
           {activeModule==="rcca" && <div id="rcca-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
             <div style={{padding:"14px 20px",borderBottom:"1px solid #EEECEA",background:"#F8F7F5",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
@@ -14779,6 +14638,9 @@ function replaceMetaFiles(nextFiles){
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
+
+
+
 
 <script>
 window.addEventListener("load", function() {
