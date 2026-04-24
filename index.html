@@ -5464,10 +5464,19 @@ function traceOpsYieldDetectTextRole(name){
 }
 function traceOpsYieldParseDelimitedText(text){
   var raw = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  var first = (raw.split("\n")[0] || "");
-  var delimiter = first.indexOf("\t") >= 0 ? "\t" : (first.indexOf(";") >= 0 ? ";" : ",");
-  var rows = [];
   var lines = raw.split("\n");
+  var first = "";
+  for (var f=0; f<Math.min(lines.length, 20); f++){
+    if (lines[f] && lines[f].trim()) { first = lines[f]; break; }
+  }
+  function countDelim(line, ch){
+    var count = 0;
+    for (var j=0; j<String(line).length; j++){ if (line[j] === ch) count++; }
+    return count;
+  }
+  var candidates = ["\t", "|", ";", ","];
+  var delimiter = candidates.map(function(ch){ return { ch: ch, count: countDelim(first, ch) }; }).sort(function(a,b){ return b.count - a.count; })[0].ch || ",";
+  var rows = [];
   for (var i=0; i<lines.length; i++){
     var line = lines[i];
     if (i > 250000) break;
@@ -5782,7 +5791,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     };
   });
   if (sfcStoryRows.length) TRACEOPS_RISK_SUMMARY_ROWS = traceOpsYieldSummarizeRisk(sfcStoryRows);
-  TRACEOPS_YIELD_IMPORT_META = Object.assign({source:"ZIP/Excel",mode:"imported"}, sourceMeta||{}, {rows:{workOrders:workRows.length,sfc:sfcRows.length,repairs:repairRows.length,calendar:(calendarRows||[]).length,dbModel:(dbModelRows||[]).length,validRepairs:validRepairRawRows,validRepairSn:(function(){var m={}; repairsClean.forEach(function(r){if(r.sn)m[r.sn]=true;}); return Object.keys(m).length;})(), storySn:sfcStoryRows.length, rejectedRepairs:rejectedRepairRows}, daxRule:"Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN].", storyRule:"Symptom = top Rootcause per SFC[SN] from RepairRecord; Fail Location = distinct RepairRecord[FailLocation] for that SN. Used for the story of why units left the flow.", stationRule:"Breakdown station counts = DISTINCTCOUNT(SFC[SN]) grouped by SFC[currentevent] bucket; non cumulative.", calendarRule:"Cisco Week/FY/Qtr resolved from Cisco Calendary.txt by matching Build Start Date or event date to calendar Date/WFCSY."});
+  TRACEOPS_YIELD_IMPORT_META = Object.assign({source:"ZIP/Excel"}, sourceMeta||{}, {mode:"imported", rows:{workOrders:workRows.length,sfc:sfcRows.length,repairs:repairRows.length,sfcWorkOrders:Object.keys(sfcByWo).length,calendar:(calendarRows||[]).length,dbModel:(dbModelRows||[]).length,validRepairs:validRepairRawRows,validRepairSn:(function(){var m={}; repairsClean.forEach(function(r){if(r.sn)m[r.sn]=true;}); return Object.keys(m).length;})(), storySn:sfcStoryRows.length, rejectedRepairs:rejectedRepairRows}, daxRule:"Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN].", storyRule:"Symptom = top Rootcause per SFC[SN] from RepairRecord; Fail Location = distinct RepairRecord[FailLocation] for that SN. Used for the story of why units left the flow.", stationRule:"Breakdown station counts = DISTINCTCOUNT(SFC[SN]) grouped by SFC[currentevent] bucket; non cumulative.", calendarRule:"Cisco Week/FY/Qtr resolved from Cisco Calendary.txt by matching Build Start Date or event date to calendar Date/WFCSY."});
   return TRACEOPS_YIELD_IMPORT_META;
 }
 function traceOpsYieldIsMobileDevice(){
@@ -6265,7 +6274,8 @@ function App() {
     setYieldImportState({ status: "loading", message: "Import local temporal: validando ZIP/Excel y extrayendo solo hojas objetivo...", summary: null });
     setTimeout(function(){
       traceOpsYieldImportExcelZip(file).then(function(summary){
-        setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repair rows · " + ((summary.rows && summary.rows.validRepairSn) || 0) + " SN reparados validos · " + ((summary.rows && summary.rows.calendar) || 0) + " calendar rows · " + ((summary.rows && summary.rows.dbModel) || 0) + " DB model rows. Regla DAX: SFC[SN] existe en RepairRecord[SN]. Evidencia visible solo en esta sesion; no se conserva el Excel.", summary: summary });
+        setYieldFilters({ bu: "ALL", family: "ALL", sku: "ALL", week: "ALL", line: "ALL" });
+        setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfcWorkOrders) || 0) + " WO en SFC · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repair rows · " + ((summary.rows && summary.rows.validRepairSn) || 0) + " SN reparados validos · " + ((summary.rows && summary.rows.calendar) || 0) + " calendar rows · " + ((summary.rows && summary.rows.dbModel) || 0) + " DB model rows. Regla DAX: SFC[SN] existe en RepairRecord[SN]. Scope/filtros salen de SFC; DB Model solo enriquece BU/modelo.", summary: summary });
       }).catch(function(err){
         setYieldImportState({ status: "error", message: err && err.message ? err.message : String(err), summary: null });
       });
