@@ -6081,7 +6081,8 @@ function traceOpsBuildYieldFlowModelLocal(filters){
     family: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.family; })).filter(function(x){ return x && x !== 'N/A'; }),
     sku: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.sku; })).filter(function(x){ return x && x !== 'N/A'; }),
     week: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.week; })).filter(function(x){ return x && x !== 'Imported'; }).sort(traceOpsYieldWeekSortDesc),
-    line: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.line; })).filter(function(x){ return x && x !== 'N/D'; })
+    line: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.line; })).filter(function(x){ return x && x !== 'N/D'; }),
+    wo: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return String(r.wo || ''); })).filter(function(x){ return x && x !== 'N/D'; })
   };
 
   var rows = baseRows.filter(function(r){
@@ -6089,7 +6090,8 @@ function traceOpsBuildYieldFlowModelLocal(filters){
       traceOpsYieldMatchesFilter(r.family, filters.family) &&
       traceOpsYieldMatchesFilter(r.sku, filters.sku) &&
       traceOpsYieldMatchesFilter(r.week, filters.week) &&
-      traceOpsYieldMatchesFilter(r.line, filters.line);
+      traceOpsYieldMatchesFilter(r.line, filters.line) &&
+      traceOpsYieldMatchesFilter(String(r.wo || ''), filters.wo);
   });
   var activeWo = {}; rows.forEach(function(r){ activeWo[String(r.wo || '')] = true; });
   var activeSku = {}; rows.forEach(function(r){ activeSku[String(r.sku || '')] = true; });
@@ -6117,6 +6119,7 @@ function traceOpsBuildYieldFlowModelLocal(filters){
       traceOpsYieldMatchesFilter(family, filters.family) &&
       traceOpsYieldMatchesFilter(sku, filters.sku) &&
       traceOpsYieldMatchesFilter(line, filters.line) &&
+      traceOpsYieldMatchesFilter(rawWo, filters.wo) &&
       ((!filters.week || filters.week === 'ALL') ? true : (week ? traceOpsYieldMatchesFilter(week, filters.week) : true));
 
     if (!basicMatch) return false;
@@ -6127,12 +6130,13 @@ function traceOpsBuildYieldFlowModelLocal(filters){
 
     if (activeWo[rawWo] || activeWo[normWo]) return true;
 
-    var hasSpecificIdentityFilter = (!!filters.family && filters.family !== 'ALL') || (!!filters.sku && filters.sku !== 'ALL') || (!!filters.line && filters.line !== 'ALL');
+    var hasSpecificIdentityFilter = (!!filters.family && filters.family !== 'ALL') || (!!filters.sku && filters.sku !== 'ALL') || (!!filters.line && filters.line !== 'ALL') || (!!filters.wo && filters.wo !== 'ALL');
     if (hasSpecificIdentityFilter) {
       var familyMatchLoose = !filters.family || filters.family === 'ALL' || traceOpsYieldNorm(family) === traceOpsYieldNorm(filters.family);
       var skuMatch = !filters.sku || filters.sku === 'ALL' || String(sku || '') === String(filters.sku || '');
       var lineMatch = !filters.line || filters.line === 'ALL' || String(line || '') === String(filters.line || '');
-      return familyMatchLoose && skuMatch && lineMatch;
+      var woMatch = !filters.wo || filters.wo === 'ALL' || String(rawWo || '') === String(filters.wo || '') || String(normWo || '') === String(filters.wo || '').replace(/^0+/, '');
+      return familyMatchLoose && skuMatch && lineMatch && woMatch;
     }
     return false;
   });
@@ -6150,14 +6154,22 @@ function traceOpsBuildYieldFlowModelLocal(filters){
   var ftHours = trackerRows.map(function(item){ return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstFunctional); }).filter(function(v){ return v != null; });
   var stockingHours = trackerRows.map(function(item){ return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstStocking); }).filter(function(v){ return v != null; });
 
-  var riskRows = TRACEOPS_RISK_SUMMARY_ROWS.filter(function(item){
+  var riskRows = TRACEOPS_RISK_SUMMARY_ROWS.map(function(item){
     var db = traceOpsYieldApplyDbModel(item.sku, item.family, item.bu);
-    var famOk = !filters.family || filters.family === 'ALL' || String(db.family || '') === String(filters.family);
-    var skuOk = !filters.sku || filters.sku === 'ALL' || String(db.sku || '') === String(filters.sku);
-    var rowKnown = activeSku[String(db.sku || '')] || activeFamily[String(db.family || '')];
-    var buOk = !filters.bu || filters.bu === 'ALL' || db.bu === filters.bu;
-    return buOk && famOk && skuOk && rowKnown;
-  }).map(function(item){ var db = traceOpsYieldApplyDbModel(item.sku, item.family, item.bu); return Object.assign({}, item, {sku:db.sku||item.sku, family:db.family||item.family, bu:db.bu}); });
+    var rowSerials = (item.serials || []).filter(function(x){
+      return (!filters.wo || filters.wo === 'ALL' || String(x.wo || '') === String(filters.wo || '') || String(x.wo || '').replace(/^0+/, '') === String(filters.wo || '').replace(/^0+/, '')) &&
+        (!filters.week || filters.week === 'ALL' || String(x.week || '') === String(filters.week || '')) &&
+        (!filters.line || filters.line === 'ALL' || String(x.line || '') === String(filters.line || ''));
+    });
+    return Object.assign({}, item, {sku:db.sku||item.sku, family:db.family||item.family, bu:db.bu, serials:rowSerials, risk:(item.serials && item.serials.length) ? rowSerials.length : Number(item.risk || 0)});
+  }).filter(function(item){
+    var famOk = !filters.family || filters.family === 'ALL' || String(item.family || '') === String(filters.family);
+    var skuOk = !filters.sku || filters.sku === 'ALL' || String(item.sku || '') === String(filters.sku);
+    var rowKnown = activeSku[String(item.sku || '')] || activeFamily[String(item.family || '')];
+    var buOk = !filters.bu || filters.bu === 'ALL' || String(item.bu || '') === String(filters.bu || '');
+    var woOk = !filters.wo || filters.wo === 'ALL' || (item.serials && item.serials.length);
+    return buOk && famOk && skuOk && rowKnown && woOk && Number(item.risk || 0) > 0;
+  });
 
   var riskBySku = {};
   riskRows.forEach(function(item){
@@ -6195,6 +6207,36 @@ function traceOpsBuildYieldFlowModelLocal(filters){
   });
   var avgReintegrationProxy = reintegrationWeightedQty ? (reintegrationWeightedHours / reintegrationWeightedQty) : null;
 
+  var topPainCases = [];
+  if (failurePatterns && failurePatterns.length) {
+    topPainCases.push({
+      type: 'Modo de falla',
+      title: failurePatterns[0].pattern,
+      metric: traceOpsYieldFlowFmt(failurePatterns[0].units) + ' unidades',
+      detail: 'Pareto ' + traceOpsYieldFlowFmt(failurePatterns[0].impact,1) + '% · refs ' + ((failurePatterns[0].refs || []).slice(0,3).join(', ') || 'N/D'),
+      action: {kind:'serials', title:failurePatterns[0].pattern, rows:failurePatterns[0].serials || []}
+    });
+  }
+  if (topRiskSku && topRiskSku.length) {
+    topPainCases.push({
+      type: 'SKU / modelo',
+      title: topRiskSku[0].family,
+      metric: traceOpsYieldFlowFmt(topRiskSku[0].risk) + ' risk units',
+      detail: topRiskSku[0].sku + ' · ' + (topRiskSku[0].topSymptom || 'N/D'),
+      action: {kind:'filterSku', sku:topRiskSku[0].sku, family:topRiskSku[0].family, rows:topRiskSku[0].serials || []}
+    });
+  }
+  if (rows && rows.length) {
+    var worstWo = rows.slice().sort(function(a,b){ return Number(b.risk || 0) - Number(a.risk || 0) || Number(b.total || 0) - Number(a.total || 0); })[0];
+    topPainCases.push({
+      type: 'Work order',
+      title: 'WO ' + (worstWo.wo || 'N/D'),
+      metric: traceOpsYieldFlowFmt(worstWo.risk || 0) + ' risk / ' + traceOpsYieldFlowFmt(worstWo.total || 0) + ' unidades',
+      detail: (worstWo.family || 'N/D') + ' · ' + (worstWo.week || 'N/D') + ' · ' + (worstWo.line || 'N/D'),
+      action: {kind:'filterWo', wo:String(worstWo.wo || '')}
+    });
+  }
+
   return {
     filters: filters,
     options: options,
@@ -6220,7 +6262,8 @@ function traceOpsBuildYieldFlowModelLocal(filters){
     topRiskSku: topRiskSku,
     weeklyTrend: weeklyTrend,
     causeSummary: causeSummary,
-    failurePatterns: failurePatterns
+    failurePatterns: failurePatterns,
+    topPainCases: topPainCases
   };
 }
 
@@ -6256,11 +6299,11 @@ function App() {
   var yieldImportState = yieldImportArr[0];
   var setYieldImportState = yieldImportArr[1];
 
-  var yieldFiltersArr = _useState({ bu: "ALL", family: "ALL", sku: "ALL", week: "ALL", line: "ALL" });
+  var yieldFiltersArr = _useState({ bu: "ALL", family: "ALL", sku: "ALL", week: "ALL", line: "ALL", wo: "ALL" });
   var yieldFilters = yieldFiltersArr[0];
   var setYieldFilters = yieldFiltersArr[1];
   function updateYieldFilter(key, value){ setYieldFilters(function(prev){ var next = Object.assign({}, prev); next[key] = value; return next; }); }
-  function resetYieldFilters(){ setYieldFilters({ bu: "ALL", family: "ALL", sku: "ALL", week: "ALL", line: "ALL" }); }
+  function resetYieldFilters(){ setYieldFilters({ bu: "ALL", family: "ALL", sku: "ALL", week: "ALL", line: "ALL", wo: "ALL" }); }
 
   function handleYieldFlowZipImport(file){
     if (!file) return;
@@ -6274,7 +6317,7 @@ function App() {
     setYieldImportState({ status: "loading", message: "Import local temporal: validando ZIP/Excel y extrayendo solo hojas objetivo...", summary: null });
     setTimeout(function(){
       traceOpsYieldImportExcelZip(file).then(function(summary){
-        setYieldFilters({ bu: "ALL", family: "ALL", sku: "ALL", week: "ALL", line: "ALL" });
+        setYieldFilters({ bu: "ALL", family: "ALL", sku: "ALL", week: "ALL", line: "ALL", wo: "ALL" });
         setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfcWorkOrders) || 0) + " WO en SFC · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repair rows · " + ((summary.rows && summary.rows.validRepairSn) || 0) + " SN reparados validos · " + ((summary.rows && summary.rows.calendar) || 0) + " calendar rows · " + ((summary.rows && summary.rows.dbModel) || 0) + " DB model rows. Regla DAX: SFC[SN] existe en RepairRecord[SN]. Scope/filtros salen de SFC; DB Model solo enriquece BU/modelo.", summary: summary });
       }).catch(function(err){
         setYieldImportState({ status: "error", message: err && err.message ? err.message : String(err), summary: null });
@@ -13844,7 +13887,7 @@ function replaceMetaFiles(nextFiles){
       ws.views = [{state:"frozen", ySplit:1}];
     }
     addSheet("KPI", ["Metric","Value"], [
-      {Metric:"Work Orders",Value:model.kpi.orders},{Metric:"Total Units",Value:model.kpi.units},{Metric:"Clean Units",Value:model.kpi.clean},{Metric:"Risk Units",Value:model.kpi.risk},{Metric:"Clean Yield %",Value:traceOpsYieldFlowFmt(model.kpi.yield,2)},{Metric:"OJT Touch Rate %",Value:traceOpsYieldFlowFmt(model.kpi.touch,2)},{Metric:"Avg Reintegration",Value:traceOpsYieldFlowFmtHoursDays(model.kpi.avgReintegrationProxy,1)},{Metric:"Avg SMT to Stocking/FT",Value:traceOpsYieldFlowFmtHoursDays(model.kpi.avgLeadHours,1)},{Metric:"Scope BU",Value:yieldFilters.bu || "ALL"},{Metric:"Scope Product Family",Value:yieldFilters.family || "ALL"},{Metric:"Scope SKU",Value:yieldFilters.sku || "ALL"},{Metric:"Scope Cisco Week",Value:yieldFilters.week || "ALL"},{Metric:"Scope Line",Value:yieldFilters.line || "ALL"}
+      {Metric:"Work Orders",Value:model.kpi.orders},{Metric:"Total Units",Value:model.kpi.units},{Metric:"Clean Units",Value:model.kpi.clean},{Metric:"Risk Units",Value:model.kpi.risk},{Metric:"Clean Yield %",Value:traceOpsYieldFlowFmt(model.kpi.yield,2)},{Metric:"OJT Touch Rate %",Value:traceOpsYieldFlowFmt(model.kpi.touch,2)},{Metric:"Avg Reintegration",Value:traceOpsYieldFlowFmtHoursDays(model.kpi.avgReintegrationProxy,1)},{Metric:"Avg SMT to Stocking/FT",Value:traceOpsYieldFlowFmtHoursDays(model.kpi.avgLeadHours,1)},{Metric:"Scope BU",Value:yieldFilters.bu || "ALL"},{Metric:"Scope Product Family",Value:yieldFilters.family || "ALL"},{Metric:"Scope SKU",Value:yieldFilters.sku || "ALL"},{Metric:"Scope Cisco Week",Value:yieldFilters.week || "ALL"},{Metric:"Scope Line",Value:yieldFilters.line || "ALL"},{Metric:"Scope Work Order",Value:yieldFilters.wo || "ALL"}
     ]);
     addSheet("Yield_by_WO", ["week","line","bu","family","sku","wo","yield","touch","total","clean","risk"], model.rows || []);
     addSheet("Weekly_Factory_Health", ["week","orders","total","clean","risk","ojtPct","ft","avgLeadHours"], model.weeklyTrend || []);
@@ -13868,6 +13911,7 @@ function replaceMetaFiles(nextFiles){
     var hasSpecificYieldFilter = Object.keys(yieldFilters || {}).some(function(key){ return yieldFilters[key] && yieldFilters[key] !== "ALL"; });
     var trackerRowsView = hasSpecificYieldFilter ? (yieldFlowModel.trackerRows || []) : (yieldFlowModel.trackerRows || []).slice(0, 12);
     var hiddenTrackerRows = Math.max(0, (yieldFlowModel.trackerRows || []).length - trackerRowsView.length);
+    var painCases = yieldFlowModel.topPainCases || [];
     return (
       <div id="yieldflow-section" style={{display:"flex",flexDirection:"column",gap:14,marginBottom:14}}>
         <div style={{background:"linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)",borderRadius:18,padding:isMobile()?"16px 14px":"18px 20px",color:"#fff",display:"grid",gridTemplateColumns:isMobile()?"1fr":"minmax(0,1fr) auto",alignItems:"center",gap:isMobile()?10:14,overflow:"hidden"}}>
@@ -13902,13 +13946,14 @@ function replaceMetaFiles(nextFiles){
             </div>
             <button type="button" onClick={resetYieldFilters} style={{border:"1px solid #C9DAF5",background:"#fff",color:"#1F3A5F",borderRadius:999,padding:"8px 12px",fontSize:11,fontWeight:800,cursor:"pointer"}}>Restablecer filtros</button>
           </div>
-          <div style={{padding:"13px 18px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(5,minmax(0,1fr))",gap:10}}>
+          <div style={{padding:"13px 18px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(6,minmax(0,1fr))",gap:10}}>
             {[
               {key:"bu",label:"BU",items:yieldFlowModel.options.bu},
               {key:"family",label:"Modelo / Product family",items:yieldFlowModel.options.family},
               {key:"sku",label:"SKU",items:yieldFlowModel.options.sku},
               {key:"week",label:"Cisco week",items:yieldFlowModel.options.week},
-              {key:"line",label:"Linea",items:yieldFlowModel.options.line}
+              {key:"line",label:"Linea",items:yieldFlowModel.options.line},
+              {key:"wo",label:"Work order",items:yieldFlowModel.options.wo}
             ].map(function(f){ return (
               <label key={f.key} style={{display:"flex",flexDirection:"column",gap:5,fontSize:10,fontWeight:800,color:"#5F766C",textTransform:"uppercase",letterSpacing:".04em"}}>
                 {f.label}
@@ -13918,6 +13963,31 @@ function replaceMetaFiles(nextFiles){
                 </select>
               </label>
             ); })}
+          </div>
+        </section>
+
+        <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
+          <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF",display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+            <div>
+              <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Foco actual para junta</div>
+              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Resume que duele en el scope activo y permite abrir el caso: modo de falla, SKU/modelo o WO.</div>
+            </div>
+            <span style={{fontSize:10,fontWeight:800,padding:"5px 9px",borderRadius:999,background:"#FFF9EE",color:"#B87820",border:"1px solid #F5E4A0"}}>scope vivo</span>
+          </div>
+          <div style={{padding:"13px 18px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:10}}>
+            {painCases.length ? painCases.map(function(card,idx){ return (
+              <div key={card.type+idx} style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"13px 14px",background:idx===0?"#FFFBF0":"#FBFDFF",display:"flex",flexDirection:"column",gap:8,minHeight:120}}>
+                <div style={{fontSize:9.5,fontWeight:900,color:idx===0?"#B87820":"#1F3A5F",textTransform:"uppercase",letterSpacing:".06em"}}>{card.type}</div>
+                <div style={{fontSize:14,fontWeight:900,color:"#102A43",lineHeight:1.25}}>{card.title}</div>
+                <div style={{fontSize:18,fontWeight:900,color:idx===0?"#A43B2E":"#1F3A5F"}}>{card.metric}</div>
+                <div style={{fontSize:10.5,color:"#5F766C",lineHeight:1.35,flex:1}}>{card.detail}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:2}}>
+                  {card.action && card.action.kind === 'filterWo' ? <button type="button" onClick={function(){ updateYieldFilter('wo', card.action.wo || 'ALL'); }} style={{border:"1px solid #C9DAF5",background:"#fff",color:"#1F3A5F",borderRadius:999,padding:"6px 9px",fontSize:10,fontWeight:800,cursor:"pointer"}}>Filtrar WO</button> : null}
+                  {card.action && card.action.kind === 'filterSku' ? <button type="button" onClick={function(){ setYieldFilters(function(prev){ return Object.assign({}, prev, {sku:card.action.sku || 'ALL', family:card.action.family || prev.family || 'ALL'}); }); }} style={{border:"1px solid #C9DAF5",background:"#fff",color:"#1F3A5F",borderRadius:999,padding:"6px 9px",fontSize:10,fontWeight:800,cursor:"pointer"}}>Filtrar SKU</button> : null}
+                  {card.action && card.action.rows && card.action.rows.length ? <button type="button" onClick={function(){ setYieldSerialModal({title:card.title, subtitle:card.type + ' · foco actual', rows:card.action.rows}); }} style={{border:"1px solid #CFE0FB",background:"#EAF2FF",color:"#1F3A5F",borderRadius:999,padding:"6px 9px",fontSize:10,fontWeight:800,cursor:"pointer"}}>Ver SN {traceOpsYieldFlowFmt(card.action.rows.length)}</button> : null}
+                </div>
+              </div>
+            ); }) : <div style={{gridColumn:isMobile()?"auto":"1 / -1",border:"1px dashed #D9E6F7",borderRadius:12,padding:"14px",fontSize:11.5,color:"#5F766C",background:"#FBFDFF"}}>Sin foco activo. Carga el ZIP/TXT de Yield Flow o restablece filtros para ver los principales dolores.</div>}
           </div>
         </section>
 
