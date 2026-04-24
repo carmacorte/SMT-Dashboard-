@@ -14882,6 +14882,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         var trackerRowsView = hasSpecificYieldFilter ? (yieldFlowModel.trackerRows || []) : (yieldFlowModel.trackerRows || []).slice(0, 12);
         var hiddenTrackerRows = Math.max(0, (yieldFlowModel.trackerRows || []).length - trackerRowsView.length);
         var painCases = yieldFlowModel.topPainCases || [];
+        var stationFpy = yieldFlowModel.stationFpy || [];
         return (React.createElement("div", { id: "yieldflow-section", style: { display: "flex", flexDirection: "column", gap: 14, marginBottom: 14 } },
             React.createElement("div", { style: { background: "linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)", borderRadius: 18, padding: isMobile() ? "16px 14px" : "18px 20px", color: "#fff", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "minmax(0,1fr) auto", alignItems: "center", gap: isMobile() ? 10 : 14, overflow: "hidden" } },
                 React.createElement("div", { style: { minWidth: 0, width: "100%" } },
