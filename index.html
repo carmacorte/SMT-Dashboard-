@@ -5541,7 +5541,7 @@ function traceOpsYieldSummarizeRisk(rows){
     var symptom = String(r.symptom || r.defect || "Sin sintoma");
     var location = String(r.location || r.reference || "N/D");
     var key = [sku,family,symptom,location].join("|");
-    if (!map[key]) map[key] = { bu: r.bu || "NGFWBU", sku: sku, family: family, symptom: symptom, location: location, risk: 0, _sns:{} };
+    if (!map[key]) map[key] = { bu: traceOpsYieldInferBU(r.bu, family, sku), sku: sku, family: family, symptom: symptom, location: location, risk: 0, _sns:{} };
     var snKey = sn || ("row_" + Object.keys(map[key]._sns).length + "_" + Math.random());
     if (!map[key]._sns[snKey]) { map[key]._sns[snKey] = true; map[key].risk += 1; }
   });
@@ -5563,7 +5563,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
       week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),
       date:String(traceOpsYieldPick(row,["Build Start Date","Start Date","Date","Fecha"]) || ""),
       line:String(traceOpsYieldPick(row,["Line ID","Line","Linea","Línea"]) || ""),
-      bu:String(traceOpsYieldPick(row,["BU","Business Unit"]) || "NGFWBU"),
+      bu:traceOpsYieldInferBU(traceOpsYieldPick(row,["BU","Business Unit","BU Name","BusinessUnit"]), family, sku),
       family:family,
       sku:sku,
       startSmt:traceOpsYieldParseDate(traceOpsYieldPick(row,["Time Start","Start Time","WO Start Time","Build Start Time","Build Start Date","Start Date","Fecha Inicio","Date"])),
@@ -5587,7 +5587,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     if (wo) {
       if (!sfcByWo[wo]) sfcByWo[wo] = [];
       sfcByWo[wo].push(clean);
-      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo] = {wo:wo,week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),date:"",line:line,bu:"NGFWBU",family:family||sku||"N/A",sku:sku,startSmt:"",qty:0};
+      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo] = {wo:wo,week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),date:"",line:line,bu:traceOpsYieldInferBU("", family, sku),family:family||sku||"N/A",sku:sku,startSmt:"",qty:0};
       if (woMap[wo]) {
         if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
         if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
@@ -5613,12 +5613,12 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     var pn = String(traceOpsYieldPick(row,["ComponentCode","Component Code","Part Number","PN","NP","Numero de Parte","Número de Parte"]) || "").trim();
     var station = traceOpsYieldClassifyStation(traceOpsYieldPick(row,["Station","Process","Area","Current Event","Evento"])) || (sfc && sfc.station) || "";
     var repairTime = traceOpsYieldParseDate(traceOpsYieldPick(row,["RepairTime","Repair Time","Repair Date","Repaired Date","Timestamp","DateTime","Fecha","Fecha Hora"]));
-    var clean = {sn:sn,wo:wo,sku:sku,family:family,symptom:symptom,location:location,partNumber:pn,station:station,repairTime:repairTime,risk:1,bu:"NGFWBU"};
+    var clean = {sn:sn,wo:wo,sku:sku,family:family,symptom:symptom,location:location,partNumber:pn,station:station,repairTime:repairTime,eventTime:(sfc&&sfc.eventTime)||"",risk:1,bu:traceOpsYieldInferBU("", family, sku)};
     repairsClean.push(clean);
     if (wo) {
       if (!repairsByWo[wo]) repairsByWo[wo]=[];
       repairsByWo[wo].push(clean);
-      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo]={wo:wo,week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),date:"",line:(sfc&&sfc.line)||"",bu:"NGFWBU",family:family,sku:sku,startSmt:"",qty:0};
+      if (!woMap[wo] && !hasWorkOrderSource) woMap[wo]={wo:wo,week:traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap),date:"",line:(sfc&&sfc.line)||"",bu:traceOpsYieldInferBU("", family, sku),family:family,sku:sku,startSmt:"",qty:0};
       if (woMap[wo]) {
         if (!woMap[wo].sku && sku) woMap[wo].sku=sku;
         if ((!woMap[wo].family || woMap[wo].family==="N/A") && family) woMap[wo].family=family;
@@ -5635,7 +5635,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     rep.forEach(function(x){ if(x.sn) seen[x.sn]=true; });
     var risk=Object.keys(seen).length;
     var clean=Math.max(0,total-risk);
-    return {week:meta.week||"Imported",date:meta.date||(meta.startSmt?String(meta.startSmt).slice(0,10):""),line:meta.line||"N/D",bu:meta.bu||"NGFWBU",family:meta.family||meta.sku||"N/A",sku:meta.sku||"N/A",wo:wo,yield:total?(clean/total*100):0,touch:total?(risk/total*100):0,total:total,clean:clean,risk:risk};
+    return {week:meta.week||"Imported",date:meta.date||(meta.startSmt?String(meta.startSmt).slice(0,10):""),line:meta.line||"N/D",bu:traceOpsYieldInferBU(meta.bu, meta.family, meta.sku),family:meta.family||meta.sku||"N/A",sku:meta.sku||"N/A",wo:wo,yield:total?(clean/total*100):0,touch:total?(risk/total*100):0,total:total,clean:clean,risk:risk};
   }).filter(function(x){return x.total||x.risk;}).sort(function(a,b){return b.total-a.total;});
 
   var topWos = rows.map(function(row){
@@ -5662,7 +5662,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     var stockingTimes=sfcList.filter(function(x){return (x.station==="Stocking")&&x.eventTime;}).map(function(x){return x.eventTime;}).sort();
     var recoveryMap={};
     var recoverySeen={};
-    repairList.forEach(function(rep){var st=rep.station||"Repair"; var key=st+"|"+rep.sn; if(recoverySeen[key]) return; recoverySeen[key]=true; if(!recoveryMap[st]) recoveryMap[st]={station:st,qty:0,totalHours:0,countHours:0,cause:rep.symptom||"Repair / debug"}; recoveryMap[st].qty+=1; if(rep.repairTime&&meta.startSmt){var hrs=traceOpsYieldFlowHoursBetween(meta.startSmt, rep.repairTime); if(hrs!=null){recoveryMap[st].totalHours+=hrs; recoveryMap[st].countHours+=1;}} if(rep.symptom&&recoveryMap[st].cause==="Repair / debug") recoveryMap[st].cause=rep.symptom;});
+    repairList.forEach(function(rep){var st=rep.station||"Repair"; var key=st+"|"+rep.sn; if(recoverySeen[key]) return; recoverySeen[key]=true; if(!recoveryMap[st]) recoveryMap[st]={station:st,qty:0,totalHours:0,countHours:0,cause:rep.symptom||"Repair / debug"}; recoveryMap[st].qty+=1; var outOfFlowTime = rep.eventTime || meta.startSmt; if(rep.repairTime&&outOfFlowTime){var hrs=traceOpsYieldFlowHoursBetween(outOfFlowTime, rep.repairTime); if(hrs!=null){recoveryMap[st].totalHours+=hrs; recoveryMap[st].countHours+=1;}} if(rep.symptom&&recoveryMap[st].cause==="Repair / debug") recoveryMap[st].cause=rep.symptom;});
     var recoveryQueue=Object.keys(recoveryMap).map(function(k){var r=recoveryMap[k]; return {station:r.station, qty:r.qty, avgHours:r.countHours?r.totalHours/r.countHours:0, cause:r.cause};}).sort(function(a,b){return b.qty-a.qty;}).slice(0,3);
     if(!recoveryQueue.length&&row.risk) recoveryQueue.push({station:"Repair",qty:row.risk,avgHours:0,cause:"Repair records imported"});
     return {skuno:row.sku,workOrder:wo,model:row.family,line:row.line,lotQty:row.total,startSmt:meta.startSmt||"N/D",firstFunctional:ftTimes[0]||"N/D",firstStocking:stockingTimes[0]||"N/D",completedByStation:completedByStation,defectsByStation:defectsByStation,recoveryQueue:recoveryQueue};
@@ -5682,7 +5682,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
       location: traceOpsYieldFailLocationsFromRepairs(repList),
       station: sfc.station || traceOpsYieldClassifyStation(traceOpsYieldPick(repList[0] || {},["Station","Process","Area","Current Event","Evento"])),
       risk: 1,
-      bu: "NGFWBU"
+      bu: traceOpsYieldInferBU("", sfc.family || traceOpsYieldPick(repList[0] || {},["ModelName","Model Name","Product Family","Prodcut Family","Family","Nombre del Modelo"]) || "N/A", sfc.sku || traceOpsYieldPick(repList[0] || {},["SkuNo","Key_Fail_SKU","Key Fail SKU","skuno","sku","model","part number","pn","Modelo"]) || "N/A")
     };
   });
   if (sfcStoryRows.length) TRACEOPS_RISK_SUMMARY_ROWS = traceOpsYieldSummarizeRisk(sfcStoryRows);
@@ -5882,11 +5882,22 @@ function traceOpsYieldFlowBarPct(value, max){
   return Math.max(0, Math.min(100, n / m * 100));
 }
 
+function traceOpsYieldInferBU(rawBu, family, sku){
+  var explicit = String(rawBu || '').trim();
+  var explicitNorm = explicit.toUpperCase();
+  if (explicitNorm && explicitNorm !== 'N/D' && explicitNorm !== 'NA' && explicitNorm !== 'N/A' && explicitNorm !== 'UNKNOWN' && explicitNorm !== 'IMPORTADO' && explicitNorm !== 'IMPORTED') return traceOpsYieldNormalizeBU(explicit);
+  var key = traceOpsYieldNorm([family, sku].join(' '));
+  // Fieldwork legacy products are often present without a BU column in Station/SFC exports.
+  // Infer them from product family / SKU so the BU filter is usable even with lightweight TXT ZIPs.
+  if (/westminster|woodside|hyde park|fieldwork|fieldworks|lancer/.test(key)) return 'Fieldwork (Legacy)';
+  if (/tuffnel|tufnell|csf|warwick|maryland|brentwood|shenfield|ngfw/.test(key)) return 'NGFWBU';
+  return explicit ? traceOpsYieldNormalizeBU(explicit) : 'NGFWBU';
+}
 
 function traceOpsYieldNormalizeBU(value){
   var v = String(value || '').trim().toUpperCase();
   if (!v) return 'N/D';
-  if (v.indexOf('FIELD') >= 0) return 'Fieldwork (Legacy)';
+  if (v.indexOf('FIELD') >= 0 || v === 'FW' || v.indexOf('FWBU') >= 0) return 'Fieldwork (Legacy)';
   if (v.indexOf('NGFW') >= 0) return 'NGFWBU';
   return String(value || 'N/D').trim();
 }
@@ -5938,7 +5949,7 @@ function traceOpsBuildYieldFlowModelLocal(filters){
   var baseRows = TRACEOPS_YIELD_BY_WO_ROWS.filter(function(item){
     if (TRACEOPS_YIELD_IMPORT_META && TRACEOPS_YIELD_IMPORT_META.mode === "imported") return true;
     return String(item.bu || "").toUpperCase().indexOf("NGFW") >= 0;
-  }).map(function(r){ return Object.assign({}, r, { buLabel: traceOpsYieldNormalizeBU(r.bu) }); });
+  }).map(function(r){ var inferredBu = traceOpsYieldInferBU(r.bu, r.family, r.sku); return Object.assign({}, r, { bu: inferredBu, buLabel: inferredBu }); });
 
   var options = {
     bu: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.buLabel; })),
@@ -5975,7 +5986,7 @@ function traceOpsBuildYieldFlowModelLocal(filters){
     var sku = meta ? meta.sku : (t.skuno || t.sku || '');
     var line = meta ? meta.line : (t.line || '');
     var week = meta ? meta.week : (t.week || '');
-    var buLabel = meta ? traceOpsYieldNormalizeBU(meta.bu) : traceOpsYieldNormalizeBU(t.bu || '');
+    var buLabel = meta ? traceOpsYieldInferBU(meta.bu, meta.family, meta.sku) : traceOpsYieldInferBU(t.bu || '', t.model || t.family || '', t.skuno || t.sku || '');
 
     var basicMatch = traceOpsYieldMatchesFilter(buLabel, filters.bu) &&
       traceOpsYieldMatchesFilter(family, filters.family) &&
@@ -6015,10 +6026,11 @@ function traceOpsBuildYieldFlowModelLocal(filters){
   var stockingHours = trackerRows.map(function(item){ return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstStocking); }).filter(function(v){ return v != null; });
 
   var riskRows = TRACEOPS_RISK_SUMMARY_ROWS.filter(function(item){
+    var itemBu = traceOpsYieldInferBU(item.bu, item.family, item.sku);
     var famOk = !filters.family || filters.family === 'ALL' || String(item.family || '') === String(filters.family);
     var skuOk = !filters.sku || filters.sku === 'ALL' || String(item.sku || '') === String(filters.sku);
     var rowKnown = !rows.length || activeSku[String(item.sku || '')] || activeFamily[String(item.family || '')];
-    var buOk = !filters.bu || filters.bu === 'ALL' || rowKnown || traceOpsYieldNormalizeBU(item.bu) === filters.bu;
+    var buOk = !filters.bu || filters.bu === 'ALL' || itemBu === filters.bu;
     return buOk && famOk && skuOk && rowKnown;
   });
 
@@ -6042,9 +6054,19 @@ function traceOpsBuildYieldFlowModelLocal(filters){
   var stockingUnits = trackerRows.reduce(function(a,t){ return a + Number((t.completedByStation && t.completedByStation.Stocking) || 0); }, 0);
   var ftUnits = trackerRows.reduce(function(a,t){ var c=t.completedByStation||{}; return a + Number(c.FT1||0)+Number(c.FT2||0)+Number(c.FT3||0)+Number(c.FT4||0); }, 0);
   var reintegrationCandidates = trackerRows.reduce(function(a,t){ return a + ((t.recoveryQueue || []).reduce(function(x,r){ return x + Number(r.qty || 0); }, 0)); }, 0);
-  var reintegrationHourValues = [];
-  trackerRows.forEach(function(t){ (t.recoveryQueue || []).forEach(function(r){ if (Number(r.avgHours || 0) > 0) reintegrationHourValues.push(Number(r.avgHours || 0)); }); });
-  var avgReintegrationProxy = reintegrationHourValues.length ? reintegrationHourValues.reduce(function(a,b){return a+b;},0)/reintegrationHourValues.length : null;
+  var reintegrationWeightedHours = 0;
+  var reintegrationWeightedQty = 0;
+  trackerRows.forEach(function(t){
+    (t.recoveryQueue || []).forEach(function(r){
+      var qty = Number(r.qty || 0);
+      var hrs = Number(r.avgHours || 0);
+      if (qty > 0 && hrs > 0) {
+        reintegrationWeightedHours += qty * hrs;
+        reintegrationWeightedQty += qty;
+      }
+    });
+  });
+  var avgReintegrationProxy = reintegrationWeightedQty ? (reintegrationWeightedHours / reintegrationWeightedQty) : null;
 
   return {
     filters: filters,
@@ -13752,7 +13774,7 @@ function replaceMetaFiles(nextFiles){
             <div style={{border:"1px solid #D9E6F7",background:"#F7FAFF",borderRadius:14,padding:"14px"}}>
               <div style={{fontSize:10,fontWeight:900,color:"#1F3A5F",textTransform:"uppercase",letterSpacing:".06em"}}>Reincorporacion / seguimiento</div>
               <div style={{fontSize:26,fontWeight:900,color:"#102A43",marginTop:8}}>{yieldFlowModel.kpi.avgReintegrationProxy!=null?traceOpsYieldFlowFmt(yieldFlowModel.kpi.avgReintegrationProxy,1)+" h":"N/D"}</div>
-              <div style={{fontSize:11,color:"#5F766C",lineHeight:1.45}}>Promedio disponible desde registros de reparacion y current status. Si falta timestamp historico, se muestra como proxy o N/D.</div>
+              <div style={{fontSize:11,color:"#5F766C",lineHeight:1.45}}>Promedio ponderado por piezas del scope filtrado. Cambia con BU, modelo, SKU, semana Cisco y linea; si faltan timestamps queda N/D.</div>
             </div>
             <div style={{border:"1px solid #D7C5F7",background:"#FBF8FF",borderRadius:14,padding:"14px"}}>
               <div style={{fontSize:10,fontWeight:900,color:"#6B2DA8",textTransform:"uppercase",letterSpacing:".06em"}}>2. SMT a Stocking/FT</div>
