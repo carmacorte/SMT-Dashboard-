@@ -5579,11 +5579,31 @@ function traceOpsYieldDbLookup(sku){
   if (!sku) return null;
   return map[String(sku)] || map[traceOpsYieldCompact(sku)] || null;
 }
+function traceOpsYieldLooksLikeSku(value){
+  var v = String(value || "").trim();
+  if (!v) return false;
+  if (/^\d{2,3}-\d{4,6}-\d{2}$/i.test(v)) return true;
+  if (/^\d{2,3}-\d{5,}-\d{1,2}$/i.test(v)) return true;
+  if (/^\d{2,3}-\d{5,}$/i.test(v)) return true;
+  if (/^\d{3,}-\d{3,}/i.test(v)) return true;
+  return false;
+}
+function traceOpsYieldSafeFamily(candidate, fallback, sku){
+  var c = String(candidate || "").trim();
+  var f = String(fallback || "").trim();
+  var s = String(sku || "").trim();
+  if (c && !traceOpsYieldLooksLikeSku(c) && traceOpsYieldCompact(c) !== traceOpsYieldCompact(s)) return c;
+  if (f && !traceOpsYieldLooksLikeSku(f) && traceOpsYieldCompact(f) !== traceOpsYieldCompact(s)) return f;
+  if (f) return f;
+  return s || "N/A";
+}
 function traceOpsYieldApplyDbModel(sku, family, bu){
   var db = traceOpsYieldDbLookup(sku);
   var outSku = sku || (db && db.sku) || "";
-  var outFamily = (db && db.family) || family || outSku || "N/A";
-  var outBu = (db && db.bu) || traceOpsYieldInferBU(bu, outFamily, outSku);
+  // DB Model is enrichment only. Do not let catalog/part-number columns replace a real Product Family.
+  var outFamily = traceOpsYieldSafeFamily((db && db.family), family, outSku);
+  var dbBu = db && db.bu ? traceOpsYieldNormalizeBU(db.bu) : "";
+  var outBu = dbBu || traceOpsYieldInferBU(bu, outFamily, outSku);
   return { sku: outSku, family: outFamily, bu: outBu, db: db };
 }
 
@@ -6076,23 +6096,29 @@ function traceOpsBuildYieldFlowModelLocal(filters){
     var db = traceOpsYieldApplyDbModel(r.sku, r.family, r.bu);
     return Object.assign({}, r, { sku: db.sku || r.sku, family: db.family || r.family, bu: db.bu, buLabel: db.bu });
   });
+  function rowMatchesCurrentScope(r, ignoreKey){
+    return (ignoreKey === 'bu' || traceOpsYieldMatchesFilter(r.buLabel, filters.bu)) &&
+      (ignoreKey === 'family' || traceOpsYieldMatchesFilter(r.family, filters.family)) &&
+      (ignoreKey === 'sku' || traceOpsYieldMatchesFilter(r.sku, filters.sku)) &&
+      (ignoreKey === 'week' || traceOpsYieldMatchesFilter(r.week, filters.week)) &&
+      (ignoreKey === 'line' || traceOpsYieldMatchesFilter(r.line, filters.line)) &&
+      (ignoreKey === 'wo' || traceOpsYieldMatchesFilter(String(r.wo || ''), filters.wo));
+  }
+  function scopedOptions(key, getter, rejectFn, sorter){
+    var list = baseRows.filter(function(r){ return rowMatchesCurrentScope(r, key); }).map(getter);
+    list = traceOpsYieldUniqueSorted(list).filter(function(x){ return x && !(rejectFn && rejectFn(x)); });
+    return sorter ? list.sort(sorter) : list;
+  }
   var options = {
-    bu: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.buLabel; })).filter(function(x){ return x && x !== 'N/D'; }),
-    family: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.family; })).filter(function(x){ return x && x !== 'N/A'; }),
-    sku: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.sku; })).filter(function(x){ return x && x !== 'N/A'; }),
-    week: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.week; })).filter(function(x){ return x && x !== 'Imported'; }).sort(traceOpsYieldWeekSortDesc),
-    line: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.line; })).filter(function(x){ return x && x !== 'N/D'; }),
-    wo: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return String(r.wo || ''); })).filter(function(x){ return x && x !== 'N/D'; })
+    bu: scopedOptions('bu', function(r){ return r.buLabel; }, function(x){ return x === 'N/D'; }),
+    family: scopedOptions('family', function(r){ return r.family; }, function(x){ return x === 'N/A' || traceOpsYieldLooksLikeSku(x); }),
+    sku: scopedOptions('sku', function(r){ return r.sku; }, function(x){ return x === 'N/A'; }),
+    week: scopedOptions('week', function(r){ return r.week; }, function(x){ return x === 'Imported'; }, traceOpsYieldWeekSortDesc),
+    line: scopedOptions('line', function(r){ return r.line; }, function(x){ return x === 'N/D'; }),
+    wo: scopedOptions('wo', function(r){ return String(r.wo || ''); }, function(x){ return x === 'N/D'; })
   };
 
-  var rows = baseRows.filter(function(r){
-    return traceOpsYieldMatchesFilter(r.buLabel, filters.bu) &&
-      traceOpsYieldMatchesFilter(r.family, filters.family) &&
-      traceOpsYieldMatchesFilter(r.sku, filters.sku) &&
-      traceOpsYieldMatchesFilter(r.week, filters.week) &&
-      traceOpsYieldMatchesFilter(r.line, filters.line) &&
-      traceOpsYieldMatchesFilter(String(r.wo || ''), filters.wo);
-  });
+  var rows = baseRows.filter(function(r){ return rowMatchesCurrentScope(r, null); });
   var activeWo = {}; rows.forEach(function(r){ activeWo[String(r.wo || '')] = true; });
   var activeSku = {}; rows.forEach(function(r){ activeSku[String(r.sku || '')] = true; });
   var activeFamily = {}; rows.forEach(function(r){ activeFamily[String(r.family || '')] = true; });
@@ -6154,21 +6180,45 @@ function traceOpsBuildYieldFlowModelLocal(filters){
   var ftHours = trackerRows.map(function(item){ return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstFunctional); }).filter(function(v){ return v != null; });
   var stockingHours = trackerRows.map(function(item){ return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstStocking); }).filter(function(v){ return v != null; });
 
+  var activeWoMeta = {};
+  rows.forEach(function(r){
+    var rawWo = String(r.wo || '');
+    var normWo = rawWo.replace(/^0+/, '') || rawWo;
+    activeWoMeta[rawWo] = r;
+    activeWoMeta[normWo] = r;
+  });
+
   var riskRows = TRACEOPS_RISK_SUMMARY_ROWS.map(function(item){
     var db = traceOpsYieldApplyDbModel(item.sku, item.family, item.bu);
-    var rowSerials = (item.serials || []).filter(function(x){
-      return (!filters.wo || filters.wo === 'ALL' || String(x.wo || '') === String(filters.wo || '') || String(x.wo || '').replace(/^0+/, '') === String(filters.wo || '').replace(/^0+/, '')) &&
-        (!filters.week || filters.week === 'ALL' || String(x.week || '') === String(filters.week || '')) &&
-        (!filters.line || filters.line === 'ALL' || String(x.line || '') === String(filters.line || ''));
+    var itemSku = db.sku || item.sku;
+    var itemFamily = db.family || item.family;
+    var rowSerials = (item.serials || []).map(function(x){
+      var rawWo = String(x.wo || '');
+      var normWo = rawWo.replace(/^0+/, '') || rawWo;
+      var meta = activeWoMeta[rawWo] || activeWoMeta[normWo] || null;
+      return Object.assign({}, x, {
+        wo: rawWo,
+        sku: meta ? meta.sku : (x.sku || itemSku),
+        family: meta ? meta.family : (x.family || itemFamily),
+        bu: meta ? meta.buLabel : traceOpsYieldInferBU(x.bu || item.bu, itemFamily, itemSku),
+        week: meta ? meta.week : x.week,
+        line: meta ? meta.line : x.line
+      });
+    }).filter(function(x){
+      var rawWo = String(x.wo || '');
+      var normWo = rawWo.replace(/^0+/, '') || rawWo;
+      return !!(activeWoMeta[rawWo] || activeWoMeta[normWo]);
     });
-    return Object.assign({}, item, {sku:db.sku||item.sku, family:db.family||item.family, bu:db.bu, serials:rowSerials, risk:(item.serials && item.serials.length) ? rowSerials.length : Number(item.risk || 0)});
+    var dominantMeta = rowSerials[0] || {};
+    return Object.assign({}, item, {
+      sku: dominantMeta.sku || itemSku,
+      family: dominantMeta.family || itemFamily,
+      bu: dominantMeta.bu || db.bu,
+      serials: rowSerials,
+      risk: rowSerials.length
+    });
   }).filter(function(item){
-    var famOk = !filters.family || filters.family === 'ALL' || String(item.family || '') === String(filters.family);
-    var skuOk = !filters.sku || filters.sku === 'ALL' || String(item.sku || '') === String(filters.sku);
-    var rowKnown = activeSku[String(item.sku || '')] || activeFamily[String(item.family || '')];
-    var buOk = !filters.bu || filters.bu === 'ALL' || String(item.bu || '') === String(filters.bu || '');
-    var woOk = !filters.wo || filters.wo === 'ALL' || (item.serials && item.serials.length);
-    return buOk && famOk && skuOk && rowKnown && woOk && Number(item.risk || 0) > 0;
+    return Number(item.risk || 0) > 0;
   });
 
   var riskBySku = {};
@@ -13959,7 +14009,7 @@ function replaceMetaFiles(nextFiles){
                 {f.label}
                 <select value={yieldFilters[f.key] || "ALL"} onChange={function(e){ updateYieldFilter(f.key, e.target.value); }} style={{height:38,border:"1px solid #C9DAF5",borderRadius:12,padding:"0 10px",fontSize:12,fontWeight:700,color:"#102A43",background:"#fff",outline:"none"}}>
                   <option value="ALL">Todos</option>
-                  {(f.items || []).map(function(v){ return <option key={v} value={v}>{v}</option>; })}
+                  {((yieldFilters[f.key] && yieldFilters[f.key] !== "ALL" && (f.items || []).indexOf(yieldFilters[f.key]) < 0) ? [yieldFilters[f.key]].concat(f.items || []) : (f.items || [])).map(function(v){ return <option key={v} value={v}>{v}</option>; })}
                 </select>
               </label>
             ); })}
