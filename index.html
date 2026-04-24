@@ -5953,7 +5953,7 @@ function traceOpsYieldInferBU(rawBu, family, sku){
   var key = traceOpsYieldNorm([family, sku].join(' '));
   // Fieldwork legacy products are often present without a BU column in Station/SFC exports.
   // Infer them from product family / SKU so the BU filter is usable even with lightweight TXT ZIPs.
-  if (/westminster|woodside|hyde park|fieldwork|fieldworks|lancer/.test(key)) return 'Fieldwork (Legacy)';
+  if (/westminster|woodside|hyde park|fieldwork|fieldworks|lancer/.test(key)) return 'FIELDWORKS';
   if (/tuffnel|tufnell|csf|warwick|maryland|brentwood|shenfield|ngfw/.test(key)) return 'NGFWBU';
   return explicit ? traceOpsYieldNormalizeBU(explicit) : 'NGFWBU';
 }
@@ -5961,7 +5961,7 @@ function traceOpsYieldInferBU(rawBu, family, sku){
 function traceOpsYieldNormalizeBU(value){
   var v = String(value || '').trim().toUpperCase();
   if (!v) return 'N/D';
-  if (v.indexOf('FIELD') >= 0 || v === 'FW' || v.indexOf('FWBU') >= 0) return 'Fieldwork (Legacy)';
+  if (v.indexOf('FIELD') >= 0 || v === 'FW' || v.indexOf('FWBU') >= 0) return 'FIELDWORKS';
   if (v.indexOf('NGFW') >= 0) return 'NGFWBU';
   return String(value || 'N/D').trim();
 }
@@ -6019,7 +6019,7 @@ function traceOpsBuildYieldFlowModelLocal(filters){
   });
   var modelOptions = TRACEOPS_YIELD_DB_MODEL_OPTIONS || [];
   var options = {
-    bu: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.buLabel; }).concat(modelOptions.map(function(m){ return m.bu; }))).filter(function(x){ return x && x !== 'N/D'; }),
+    bu: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.buLabel; }).concat(modelOptions.map(function(m){ return m.bu; })).concat(["FIELDWORKS","NGFWBU"])).filter(function(x){ return x && x !== 'N/D'; }),
     family: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.family; }).concat(modelOptions.map(function(m){ return m.family; }))),
     sku: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.sku; }).concat(modelOptions.map(function(m){ return m.sku; }))),
     week: traceOpsYieldUniqueSorted(baseRows.map(function(r){ return r.week; })).sort(traceOpsYieldWeekSortDesc),
@@ -13917,13 +13917,13 @@ function replaceMetaFiles(nextFiles){
               <span style={{fontSize:10,fontWeight:800,padding:"5px 9px",borderRadius:999,background:"#FFF9EE",color:"#B87820",border:"1px solid #F5E4A0"}}>BGA focus {traceOpsYieldFlowFmt(yieldFlowModel.kpi.bgaUnits)}</span>
             </div>
           </div>
-          <div style={{padding:"14px 18px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.25fr .75fr",gap:14}}>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {weeklyTrend.slice(0, 10).map(function(w){
+          <div style={{padding:"14px 18px",display:"grid",gridTemplateColumns:isMobile()?"1fr":"minmax(0,.9fr) minmax(430px,1.1fr)",gap:14}}>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {weeklyTrend.slice(0, 6).map(function(w){
                 var cleanPct = w.total ? Math.max(0, Math.min(100, w.clean / w.total * 100)) : 0;
                 var riskPct = w.total ? Math.max(0, Math.min(100, w.risk / w.total * 100)) : 0;
                 return (
-                  <div key={w.week} style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"10px 11px",background:"#FBFDFF"}}>
+                  <div key={w.week} style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"8px 10px",background:"#FBFDFF"}}>
                     <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
                       <div style={{fontSize:11.5,fontWeight:800,color:"#102A43"}}>{w.week}</div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:10,color:"#5F766C"}}>
@@ -13932,7 +13932,7 @@ function replaceMetaFiles(nextFiles){
                         <span><strong style={{color:"#B87820"}}>{traceOpsYieldFlowFmt(w.ojtPct,2)}%</strong> OJT</span>
                       </div>
                     </div>
-                    <div style={{height:16,borderRadius:999,overflow:"hidden",background:"#EEF3F9",display:"flex",border:"1px solid #E1EAF6"}}>
+                    <div style={{height:11,borderRadius:999,overflow:"hidden",background:"#EEF3F9",display:"flex",border:"1px solid #E1EAF6"}}>
                       <div title="Clean units" style={{width:cleanPct+"%",background:"linear-gradient(90deg,#2E8B57,#5CA879)"}}></div>
                       <div title="Risk / OJT units" style={{width:riskPct+"%",background:"linear-gradient(90deg,#B87820,#D9A441)"}}></div>
                     </div>
@@ -13945,6 +13945,7 @@ function replaceMetaFiles(nextFiles){
                   </div>
                 );
               })}
+              {weeklyTrend.length > 6 ? <div style={{fontSize:10,color:"#5F766C",textAlign:"right",padding:"2px 4px"}}>+ {weeklyTrend.length - 6} semanas adicionales en scope; usar filtro Cisco Week para detalle.</div> : null}
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               <div style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"12px 13px",background:"#F7FAFF"}}>
