@@ -5165,6 +5165,139 @@ function traceOpsDownloadCsv(filename, rows){
   URL.revokeObjectURL(a.href);
 }
 
+var TRACEOPS_YIELD_FLOW_STATIONS = ["Paste","SPI","AOI","Router","VI","ICT","Stocking","FT1","FT2","FT3","FT4"];
+var TRACEOPS_YIELD_FLOW_TRACKER = [
+  {
+    skuno:"73-20249-06",
+    workOrder:"000001282323",
+    model:"Tuffnel Park Low",
+    line:"L2",
+    lotQty:1000,
+    startSmt:"2026-04-22 07:00",
+    firstFunctional:"2026-04-23 11:30",
+    completedByStation:{Paste:1000,SPI:1000,AOI:980,Router:980,VI:980,ICT:950,Stocking:950,FT1:950,FT2:940,FT3:940,FT4:935},
+    defectsByStation:{AOI:20,ICT:30,FT1:10,FT2:10,FT4:5},
+    recoveryQueue:[
+      {station:"AOI",qty:20,avgHours:6.5,cause:"AOI defect / review"},
+      {station:"ICT",qty:30,avgHours:14,cause:"ICT fail / debug"},
+      {station:"FT4",qty:5,avgHours:24,cause:"Functional retest"}
+    ]
+  },
+  {
+    skuno:"74-134450-05",
+    workOrder:"000001287162",
+    model:"CSF1230, RM-A",
+    line:"L16",
+    lotQty:760,
+    startSmt:"2026-03-29 06:40",
+    firstFunctional:"2026-03-31 15:10",
+    completedByStation:{Paste:760,SPI:760,AOI:735,Router:722,VI:709,ICT:690,Stocking:685,FT1:681,FT2:676,FT3:673,FT4:671},
+    defectsByStation:{AOI:25,Router:13,VI:13,ICT:19,FT1:4,FT2:5,FT3:3,FT4:2},
+    recoveryQueue:[
+      {station:"AOI",qty:25,avgHours:8,cause:"Alignment and solder review"},
+      {station:"ICT",qty:19,avgHours:18,cause:"Electrical debug"},
+      {station:"FT2",qty:5,avgHours:22,cause:"Functional retest loop"}
+    ]
+  }
+];
+var TRACEOPS_YIELD_BY_WO_ROWS = [
+  {week:"FY2026 Q3 W-013",date:"4/23/2026",line:"L14",bu:"NGFWBU",family:"Warwick",sku:"73-102435-05",wo:"000001287678",yield:100,touch:0,total:35,clean:35,risk:0},
+  {week:"FY2026 Q3 W-013",date:"4/23/2026",line:"L13",bu:"NGFWBU",family:"Warwick",sku:"73-102433-05",wo:"000001287701",yield:100,touch:0,total:71,clean:71,risk:0},
+  {week:"FY2026 Q3 W-013",date:"4/22/2026",line:"L2",bu:"NGFWBU",family:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001287587",yield:98.24,touch:1.76,total:170,clean:167,risk:3},
+  {week:"FY2026 Q3 W-012",date:"4/17/2026",line:"L13",bu:"NGFWBU",family:"Warwick",sku:"73-102433-05",wo:"000001287544",yield:88.57,touch:11.43,total:70,clean:62,risk:8},
+  {week:"FY2026 Q3 W-012",date:"4/17/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001287486",yield:86.88,touch:13.13,total:320,clean:278,risk:42},
+  {week:"FY2026 Q3 W-012",date:"4/16/2026",line:"L14",bu:"NGFWBU",family:"Warwick",sku:"73-102435-05",wo:"000001287546",yield:91.67,touch:8.33,total:36,clean:33,risk:3},
+  {week:"FY2026 Q3 W-012",date:"4/16/2026",line:"L12",bu:"NGFWBU",family:"MARYLAND",sku:"73-101944-03",wo:"000001287484",yield:100,touch:0,total:52,clean:52,risk:0},
+  {week:"FY2026 Q3 W-012",date:"4/16/2026",line:"L16",bu:"NGFWBU",family:"CSF1220CX, DT-B",sku:"74-134456-05",wo:"000001287483",yield:95.15,touch:4.85,total:330,clean:314,risk:16},
+  {week:"FY2026 Q3 W-012",date:"4/15/2026",line:"L15",bu:"NGFWBU",family:"BRENTWOOD",sku:"73-101945-03",wo:"000001287485",yield:100,touch:0,total:68,clean:68,risk:0},
+  {week:"FY2026 Q3 W-012",date:"4/14/2026",line:"L16",bu:"NGFWBU",family:"CSF1210CE, DT-A",sku:"74-134454-05",wo:"000001287481",yield:94.6,touch:5.4,total:500,clean:473,risk:27},
+  {week:"FY2026 Q3 W-012",date:"4/13/2026",line:"L7",bu:"NGFWBU",family:"CSF1210CE, DT-A",sku:"74-134454-05",wo:"000001287364",yield:90.91,touch:9.09,total:330,clean:300,risk:30},
+  {week:"FY2026 Q3 W-012",date:"4/12/2026",line:"L16",bu:"NGFWBU",family:"CSF1240, RM-B",sku:"74-134451-05",wo:"000001287363",yield:91.32,touch:8.68,total:380,clean:347,risk:33},
+  {week:"FY2026 Q3 W-012",date:"4/12/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park High",sku:"73-20247-06",wo:"000001287329",yield:83.33,touch:16.67,total:120,clean:100,risk:20},
+  {week:"FY2026 Q3 W-011",date:"4/9/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001287326",yield:89.5,touch:10.5,total:400,clean:358,risk:42},
+  {week:"FY2026 Q3 W-010",date:"3/31/2026",line:"L16",bu:"NGFWBU",family:"CSF1230, RM-A",sku:"74-134450-05",wo:"000001287162",yield:88.29,touch:11.71,total:760,clean:671,risk:89},
+  {week:"FY2026 Q3 W-010",date:"3/30/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park High",sku:"73-20247-06",wo:"000001286878",yield:97.33,touch:2.67,total:150,clean:146,risk:4},
+  {week:"FY2026 Q3 W-009",date:"3/27/2026",line:"L13",bu:"NGFWBU",family:"Warwick",sku:"73-102433-05",wo:"000001287022",yield:93.33,touch:6.67,total:90,clean:84,risk:6},
+  {week:"FY2026 Q3 W-009",date:"3/26/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001286877",yield:89.75,touch:10.25,total:400,clean:359,risk:41},
+  {week:"FY2026 Q3 W-009",date:"3/26/2026",line:"L14",bu:"NGFWBU",family:"Warwick",sku:"73-102435-05",wo:"000001287024",yield:88.57,touch:11.43,total:70,clean:62,risk:8},
+  {week:"FY2026 Q3 W-008",date:"3/19/2026",line:"L12",bu:"NGFWBU",family:"Shenfield",sku:"73-103125-02",wo:"000001286925",yield:97.92,touch:2.08,total:96,clean:94,risk:2}
+];
+var TRACEOPS_RISK_SUMMARY_ROWS = [
+  {bu:"NGFWBU",sku:"73-101944-03",family:"MARYLAND",symptom:"PUNTO DE PRUEBA CON FALTA DE SOLDADURA",location:"U18",risk:7},
+  {bu:"NGFWBU",sku:"73-101944-03",family:"MARYLAND",symptom:"IMAGEN CORRUPTA EN TABLILLA",location:"U17",risk:2},
+  {bu:"NGFWBU",sku:"73-101945-03",family:"BRENTWOOD",symptom:"SOLDADURA INSUFICIENTE",location:"U100",risk:4},
+  {bu:"NGFWBU",sku:"73-102433-05",family:"Warwick",symptom:"COMPONENTE DESALINEADO",location:"CR202",risk:2},
+  {bu:"NGFWBU",sku:"73-102433-05",family:"Warwick",symptom:"COMPONENTE DAÑADO/FRACTURADO",location:"CR202",risk:6},
+  {bu:"NGFWBU",sku:"73-102433-05",family:"Warwick",symptom:"COMPONENTE EQUIVOCADO",location:"R8_PSTBY",risk:1},
+  {bu:"NGFWBU",sku:"73-102435-05",family:"Warwick",symptom:"COMPONENTE DESALINEADO",location:"CR24",risk:3},
+  {bu:"NGFWBU",sku:"73-102435-05",family:"Warwick",symptom:"PUENTE/CORTO DE SOLDADURA",location:"P16",risk:5},
+  {bu:"NGFWBU",sku:"73-20249-06",family:"Tuffnel Park Low",symptom:"COMPONENTE DESALINEADO",location:"CR50",risk:5},
+  {bu:"NGFWBU",sku:"73-20249-06",family:"Tuffnel Park Low",symptom:"COMPONENTE CON PIN DOBLADO",location:"PNM21",risk:5},
+  {bu:"NGFWBU",sku:"73-20249-06",family:"Tuffnel Park Low",symptom:"PUENTE/CORTO DE SOLDADURA",location:"U203",risk:8},
+  {bu:"NGFWBU",sku:"73-20247-06",family:"Tuffnel Park High",symptom:"PUENTE/CORTO DE SOLDADURA",location:"J9",risk:6},
+  {bu:"NGFWBU",sku:"73-20247-06",family:"Tuffnel Park High",symptom:"SOLDADURA ABIERTA",location:"U31",risk:5},
+  {bu:"NGFWBU",sku:"73-103125-02",family:"Shenfield",symptom:"PUNTO DE PRUEBA CON FALTA DE SOLDADURA",location:"R257",risk:2},
+  {bu:"NGFWBU",sku:"74-134450-05",family:"CSF1230, RM-A",symptom:"PUNTO DE PRUEBA CON FALTA DE SOLDADURA",location:"U18",risk:7},
+  {bu:"NGFWBU",sku:"74-134450-05",family:"CSF1230, RM-A",symptom:"SOLDADURA INSUFICIENTE",location:"J19",risk:8},
+  {bu:"NGFWBU",sku:"74-134450-05",family:"CSF1230, RM-A",symptom:"PUENTE/CORTO DE SOLDADURA",location:"PCB",risk:9},
+  {bu:"NGFWBU",sku:"74-134451-05",family:"CSF1240, RM-B",symptom:"SOLDADURA ABIERTA",location:"U6B_F",risk:5},
+  {bu:"NGFWBU",sku:"74-134451-05",family:"CSF1240, RM-B",symptom:"SOLDADURA INSUFICIENTE",location:"U1_A",risk:7},
+  {bu:"NGFWBU",sku:"74-134454-05",family:"CSF1210CE, DT-A",symptom:"COMPONENTE DESALINEADO",location:"U25",risk:5},
+  {bu:"NGFWBU",sku:"74-134454-05",family:"CSF1210CE, DT-A",symptom:"PUENTE/CORTO DE SOLDADURA",location:"J7",risk:8},
+  {bu:"NGFWBU",sku:"74-134454-05",family:"CSF1210CE, DT-A",symptom:"SOLDADURA INSUFICIENTE",location:"U1_C",risk:9},
+  {bu:"NGFWBU",sku:"74-134456-05",family:"CSF1220CX, DT-B",symptom:"SOLDADURA ABIERTA",location:"U1",risk:4},
+  {bu:"NGFWBU",sku:"74-134456-05",family:"CSF1220CX, DT-B",symptom:"PROBLEMA EN BGA",location:"U1_A",risk:6}
+];
+function traceOpsYieldFlowHoursBetween(start,end){
+  var a = new Date(String(start || "").replace(" ","T"));
+  var b = new Date(String(end || "").replace(" ","T"));
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
+  return Math.max(0, (b.getTime() - a.getTime()) / 36e5);
+}
+function traceOpsYieldFlowFmt(value, digits){
+  var n = Number(value || 0);
+  if (!isFinite(n)) n = 0;
+  return n.toLocaleString("en-US", { minimumFractionDigits: digits || 0, maximumFractionDigits: digits || 0 });
+}
+function traceOpsBuildYieldFlowModelLocal(){
+  var rows = TRACEOPS_YIELD_BY_WO_ROWS.filter(function(item){
+    return String(item.bu || "").toUpperCase().indexOf("NGFW") >= 0;
+  });
+  var trackerRows = TRACEOPS_YIELD_FLOW_TRACKER.slice();
+  var totalUnits = rows.reduce(function(sum, item){ return sum + Number(item.total || 0); }, 0);
+  var totalClean = rows.reduce(function(sum, item){ return sum + Number(item.clean || 0); }, 0);
+  var totalRisk = rows.reduce(function(sum, item){ return sum + Number(item.risk || 0); }, 0);
+  var weightedYield = totalUnits ? rows.reduce(function(sum, item){ return sum + (Number(item.yield || 0) * Number(item.total || 0)); }, 0) / totalUnits : 0;
+  var weightedTouch = totalUnits ? rows.reduce(function(sum, item){ return sum + (Number(item.touch || 0) * Number(item.total || 0)); }, 0) / totalUnits : 0;
+  var leadHours = trackerRows.map(function(item){ return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstFunctional); }).filter(function(v){ return v != null; });
+  var riskBySku = {};
+  TRACEOPS_RISK_SUMMARY_ROWS.forEach(function(item){
+    var sku = item.sku || "N/A";
+    if (!riskBySku[sku]) riskBySku[sku] = { sku: sku, family: item.family || "N/A", risk: 0, symptomMap: {} };
+    riskBySku[sku].risk += Number(item.risk || 0);
+    riskBySku[sku].symptomMap[item.symptom || "Sin sintoma"] = (riskBySku[sku].symptomMap[item.symptom || "Sin sintoma"] || 0) + Number(item.risk || 0);
+  });
+  var topRiskSku = Object.keys(riskBySku).map(function(key){
+    var row = riskBySku[key];
+    var symptom = Object.keys(row.symptomMap).sort(function(a,b){ return row.symptomMap[b] - row.symptomMap[a]; })[0] || "Sin sintoma";
+    return { sku: row.sku, family: row.family, risk: row.risk, topSymptom: symptom };
+  }).sort(function(a,b){ return b.risk - a.risk; }).slice(0, 6);
+  return {
+    kpi: {
+      orders: rows.length,
+      units: totalUnits,
+      clean: totalClean,
+      risk: totalRisk,
+      yield: weightedYield,
+      touch: weightedTouch,
+      avgLeadHours: leadHours.length ? (leadHours.reduce(function(a,b){ return a+b; }, 0) / leadHours.length) : 0
+    },
+    rows: rows,
+    trackerRows: trackerRows,
+    topRiskSku: topRiskSku
+  };
+}
+
 const TRACEOPS_NIGHT_OPS_HERO = 'hero-night-ops.jpeg';
 function App() {
   var stateArr = _useState("idle");
@@ -12734,9 +12867,112 @@ function replaceMetaFiles(nextFiles){
     }, 60);
   }
 
+  var yieldFlowModel = traceOpsBuildYieldFlowModelLocal();
+
+  function renderYieldFlowSection(){
+    return (
+      <div id="yieldflow-section" style={{display:"flex",flexDirection:"column",gap:14,marginBottom:14}}>
+        <div style={{background:"linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)",borderRadius:18,padding:"18px 20px",color:"#fff",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:14,flexWrap:"wrap"}}>
+          <div style={{minWidth:0,flex:1}}>
+            <div style={{fontSize:10,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase",opacity:.72,marginBottom:8}}>Yield intelligence</div>
+            <div style={{fontSize:24,fontWeight:800,lineHeight:1.05,maxWidth:680}}>Yield Flow para NGFW con avance real de SMT a prueba funcional</div>
+            <div style={{fontSize:12.5,lineHeight:1.6,opacity:.84,maxWidth:800,marginTop:8}}>Este modulo aterriza el seguimiento por work order dentro del lenguaje nativo de TraceOps: yield, touch rate, riesgo visible, estaciones con fuga y tiempo de reincorporacion hasta functional test.</div>
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{yieldFlowModel.kpi.orders} WOs NGFW</span>
+            <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.risk)} risk units</span>
+            <span style={{fontSize:10,fontWeight:800,padding:"6px 10px",borderRadius:999,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)"}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.avgLeadHours,1)} h a FT</span>
+          </div>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(4,minmax(0,1fr))",gap:10}}>
+          <div style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#5F766C",textTransform:"uppercase"}}>Work orders</div><div style={{fontSize:28,fontWeight:800,color:"#102A43",marginTop:6}}>{yieldFlowModel.kpi.orders}</div><div style={{fontSize:11,color:"#5F766C",marginTop:5}}>Base semanal filtrada a NGFW</div></div>
+          <div style={{background:"#fff",border:"1px solid #CFE0FB",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>Clean yield</div><div style={{fontSize:28,fontWeight:800,color:"#1F3A5F",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.yield,2)}%</div><div style={{fontSize:11,color:"#5F766C",marginTop:5}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.clean)} clean units</div></div>
+          <div style={{background:"#fff",border:"1px solid #F5E4A0",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#B87820",textTransform:"uppercase"}}>OJT touch rate</div><div style={{fontSize:28,fontWeight:800,color:"#B87820",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.touch,2)}%</div><div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Promedio ponderado por volumen</div></div>
+          <div style={{background:"#fff",border:"1px solid #F1D0CB",borderRadius:14,padding:"14px 15px"}}><div style={{fontSize:9.5,fontWeight:800,color:"#A43B2E",textTransform:"uppercase"}}>Risk units</div><div style={{fontSize:28,fontWeight:800,color:"#A43B2E",marginTop:6}}>{traceOpsYieldFlowFmt(yieldFlowModel.kpi.risk)}</div><div style={{fontSize:11,color:"#6A6560",marginTop:5}}>Rework visible y touch OJT</div></div>
+        </div>
+
+        <div style={{background:"#FBFDFF",border:"1px dashed #C9DAF5",borderRadius:14,padding:"12px 14px",fontSize:11,color:"#5F766C",lineHeight:1.55}}>
+          Para resetear datos sin tocar el render: edita <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_FLOW_TRACKER</span>, <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_YIELD_BY_WO_ROWS</span> y <span style={{fontWeight:800,color:"#102A43"}}>TRACEOPS_RISK_SUMMARY_ROWS</span>.
+        </div>
+
+        <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
+          <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
+            <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Tracker manual por estacion</div>
+            <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Seguimiento operativo para piezas fuera de flujo, reincorporacion y arribo a pruebas funcionales.</div>
+          </div>
+          <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:12}}>
+            {yieldFlowModel.trackerRows.map(function(item){
+              var leadHours = traceOpsYieldFlowHoursBetween(item.startSmt, item.firstFunctional);
+              return (
+                <div key={item.workOrder} style={{border:"1px solid #D9E6F7",borderRadius:14,padding:"14px 14px 12px",background:"#fff"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:12}}>
+                    <div>
+                      <div style={{fontSize:15,fontWeight:800,color:"#102A43"}}>{item.model}</div>
+                      <div style={{fontSize:11,color:"#5F766C",marginTop:4}}>WO {item.workOrder} · SKU {item.skuno} · {item.line} · lote {traceOpsYieldFlowFmt(item.lotQty)}</div>
+                    </div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#EEF5FF",color:"#1F3A5F",border:"1px solid #DBE8FB"}}>SMT start {item.startSmt}</span>
+                      <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#F5F0FE",color:"#6B2DA8",border:"1px solid #DBCDF8"}}>FT first pass {item.firstFunctional}</span>
+                      <span style={{fontSize:10,fontWeight:800,padding:"5px 8px",borderRadius:999,background:"#FEF9E8",color:"#B87820",border:"1px solid #F5E4A0"}}>{leadHours==null?"Lead time N/D":(traceOpsYieldFlowFmt(leadHours,1)+" h total")}</span>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile()?"repeat(2,minmax(0,1fr))":"repeat(11,minmax(0,1fr))",gap:8}}>
+                    {TRACEOPS_YIELD_FLOW_STATIONS.map(function(station){
+                      var completed = item.completedByStation[station] || 0;
+                      var defects = item.defectsByStation[station] || 0;
+                      return <div key={station} style={{border:"1px solid "+(defects?"#F5E4A0":"#D9E6F7"),borderRadius:12,padding:"10px 9px",background:defects?"#FFF9EE":"#F8FBFF"}}><div style={{fontSize:9,fontWeight:800,color:"#5F766C",textTransform:"uppercase"}}>{station}</div><div style={{fontSize:18,fontWeight:800,color:"#102A43",marginTop:6}}>{traceOpsYieldFlowFmt(completed)}</div><div style={{fontSize:10.5,color:defects?"#B87820":"#5F766C",marginTop:3}}>{defects?traceOpsYieldFlowFmt(defects)+" fuera":"sin fuga"}</div></div>;
+                    })}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"repeat(3,minmax(0,1fr))",gap:8,marginTop:10}}>
+                    {item.recoveryQueue.map(function(row, idx){
+                      return <div key={row.station+"-"+idx} style={{background:"#FBFDFF",border:"1px solid #E7EEF9",borderRadius:10,padding:"10px 11px"}}><div style={{fontSize:10,fontWeight:800,color:"#1F3A5F",textTransform:"uppercase"}}>{row.station}</div><div style={{fontSize:11,color:"#5F766C",marginTop:5,lineHeight:1.45}}>{row.cause}</div><div style={{fontSize:16,fontWeight:800,color:"#102A43",marginTop:6}}>{traceOpsYieldFlowFmt(row.qty)} pcs · {traceOpsYieldFlowFmt(row.avgHours,1)} h</div></div>;
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <div style={{display:"grid",gridTemplateColumns:isMobile()?"1fr":"1.15fr .85fr",gap:14}}>
+          <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
+            <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
+              <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Yield por work order</div>
+              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Lectura consolidada por familia, volumen, clean yield y touch rate.</div>
+            </div>
+            <div style={{padding:"12px 16px"}}>
+              <table className="toq-mini-table">
+                <thead><tr><th>Week</th><th>Line</th><th>Product Family</th><th>SKU</th><th>WO</th><th>Yield</th><th>OJT</th><th>Units</th><th>Risk</th></tr></thead>
+                <tbody>
+                  {yieldFlowModel.rows.slice(0, 14).map(function(item){
+                    return <tr key={item.wo}><td>{item.week}</td><td>{item.line}</td><td>{item.family}</td><td>{item.sku}</td><td>{item.wo}</td><td>{traceOpsYieldFlowFmt(item.yield,2)}%</td><td>{traceOpsYieldFlowFmt(item.touch,2)}%</td><td>{traceOpsYieldFlowFmt(item.total)}</td><td>{traceOpsYieldFlowFmt(item.risk)}</td></tr>;
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section style={{background:"#fff",border:"1px solid #D9E6F7",borderRadius:16,overflow:"hidden"}}>
+            <div style={{padding:"14px 18px",borderBottom:"1px solid #ECF3FF",background:"#F7FAFF"}}>
+              <div style={{fontSize:13.5,fontWeight:800,color:"#102A43"}}>Top risk SKU</div>
+              <div style={{fontSize:10.5,color:"#5F766C",marginTop:3}}>Concentracion de riesgo y sintoma dominante.</div>
+            </div>
+            <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
+              {yieldFlowModel.topRiskSku.map(function(item){
+                return <div key={item.sku} style={{border:"1px solid #E7EEF9",borderRadius:12,padding:"10px 11px",background:"#FBFDFF"}}><div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}><div style={{minWidth:0,flex:1}}><div style={{fontSize:12,fontWeight:800,color:"#102A43"}}>{item.family}</div><div style={{fontSize:10,color:"#5F766C",marginTop:3}}>{item.sku}</div><div style={{fontSize:10.5,color:"#6A6560",marginTop:6,lineHeight:1.45}}>{item.topSymptom}</div></div><div style={{fontSize:18,fontWeight:800,color:"#A43B2E"}}>{traceOpsYieldFlowFmt(item.risk)}</div></div></div>;
+              })}
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   function renderModuleIcon(kind){
     if (kind === "nccapa") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3h6l1 2h4v16H4V5h4l1-2z"/><path d="M9 10h6"/><path d="M9 14h6"/><path d="M9 18h4"/><path d="M17 10l2 2 3-3"/></svg>;
     if (kind === "rcca") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>;
+    if (kind === "yieldflow") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19h16"/><path d="M7 16V8"/><path d="M12 16V5"/><path d="M17 16v-3"/><path d="M5 8l3-3 4 2 5-4 2 2"/></svg>;
     if (kind === "maintenance") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 7l3-3 3 3-3 3-3-3"/><path d="M2 20l7-7"/><path d="M9 13l3 3"/><path d="M9 13l-3-3"/><path d="M12 16l8-8"/></svg>;
     return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3h6l1 2h4v16H4V5h4l1-2z"/><path d="M9 10h6"/><path d="M9 14h6"/><path d="M9 18h4"/></svg>;
   }
@@ -12764,6 +13000,14 @@ function replaceMetaFiles(nextFiles){
       shortLabel: "Structured discipline drafts generated from RCCA",
       count: eightdList.length,
       anchorId: "eightd-section",
+      tone: { bg:"#EAF2FF", border:"#C7DBF7", color:"#1F3A5F" }
+    },
+    {
+      key: "yieldflow",
+      label: "Yield Flow",
+      shortLabel: "Yield por WO, avance por estacion y foco de riesgo para NGFW",
+      count: yieldFlowModel.kpi.orders,
+      anchorId: "yieldflow-section",
       tone: { bg:"#EAF2FF", border:"#C7DBF7", color:"#1F3A5F" }
     },
     {
@@ -14152,6 +14396,8 @@ function replaceMetaFiles(nextFiles){
                 </div>
               </div>}
 
+              {activeModule==="yieldflow" && renderYieldFlowSection()}
+
               {activeModule==="maintenance" && renderMaintenanceSection()}
 
           {activeModule==="rcca" && <div id="rcca-section" style={{background:"#fff",border:"1px solid #DDDBD7",borderRadius:14,overflow:"hidden",marginBottom:14}}>
@@ -14533,200 +14779,6 @@ function replaceMetaFiles(nextFiles){
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
-
-
-
-<!-- ==== TRACEOPS YIELD FLOW SAFE FUSION V2 (vanilla JS, no JSX dependency) ==== -->
-<style id="traceops-yieldflow-safe-style">
-  .tyf-hidden{display:none!important}
-  .tyf-wrap{display:flex;flex-direction:column;gap:16px;margin:0 0 18px;position:relative;z-index:3}
-  .tyf-hero{background:linear-gradient(135deg,#102A43 0%,#174A7E 100%);border:1px solid rgba(255,255,255,.10);border-radius:22px;padding:20px;color:#fff;box-shadow:0 14px 34px rgba(18,70,51,.08)}
-  .tyf-hero-row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
-  .tyf-kicker{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.72;margin-bottom:8px}
-  .tyf-title{font-size:25px;line-height:1.05;font-weight:800;letter-spacing:-.03em;margin-bottom:8px;max-width:760px}
-  .tyf-sub{font-size:12.5px;line-height:1.6;opacity:.86;max-width:820px}
-  .tyf-chiprow{display:flex;gap:8px;flex-wrap:wrap}.tyf-chip{font-size:10px;font-weight:800;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);white-space:nowrap}
-  .tyf-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.tyf-kpi{background:#fff;border:1px solid #D9E6F7;border-radius:16px;padding:15px;box-shadow:0 1px 2px rgba(16,35,28,.03),0 14px 34px rgba(18,70,51,.06)}
-  .tyf-kpi .lbl{font-size:9.5px;font-weight:800;color:#5F766C;text-transform:uppercase;letter-spacing:.08em}.tyf-kpi .val{font-size:28px;line-height:1;font-weight:800;color:#102A43;margin-top:7px}.tyf-kpi .meta{font-size:11px;color:#5F766C;margin-top:6px;line-height:1.35}.tyf-kpi.blue .val{color:#1F3A5F}.tyf-kpi.warn .val{color:#B87820}.tyf-kpi.red .val{color:#A43B2E}
-  .tyf-panel{background:#fff;border:1px solid #D9E6F7;border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(16,35,28,.03),0 14px 34px rgba(18,70,51,.06)}
-  .tyf-panel-head{padding:14px 16px;border-bottom:1px solid #ECF3FF;background:#F7FAFF}.tyf-panel-head h3{margin:0;font-size:14px;font-weight:800;color:#102A43}.tyf-panel-head p{margin:4px 0 0;font-size:10.5px;color:#5F766C;line-height:1.45}
-  .tyf-panel-body{padding:14px 16px}.tyf-tracker-list{display:flex;flex-direction:column;gap:12px}.tyf-tracker{border:1px solid #D9E6F7;border-radius:14px;padding:14px;background:#fff}.tyf-tracker-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}.tyf-name{font-size:15px;font-weight:800;color:#102A43}.tyf-meta{font-size:11px;color:#5F766C;margin-top:4px}.tyf-badges{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}.tyf-badge{font-size:10px;font-weight:800;padding:5px 8px;border-radius:999px;border:1px solid #DBE8FB;background:#EEF5FF;color:#1F3A5F}.tyf-badge.warn{background:#FFF7E8;color:#9A6A16;border-color:#F2DFC0}.tyf-badge.green{background:#EEF6FF;color:#145A28;border-color:#D8E6FB}
-  .tyf-stations{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:8px}.tyf-station{border:1px solid #D9E6F7;border-radius:12px;padding:10px 9px;background:#F8FBFF}.tyf-station.warn{border-color:#F5E4A0;background:#FFF9EE}.tyf-station .s{font-size:9px;font-weight:800;color:#5F766C;text-transform:uppercase}.tyf-station .q{font-size:18px;font-weight:800;color:#102A43;margin-top:6px}.tyf-station .d{font-size:10.5px;color:#5F766C;margin-top:3px}.tyf-station.warn .d{color:#B87820}
-  .tyf-recovery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.tyf-recovery-card{background:#FBFDFF;border:1px solid #E7EEF9;border-radius:10px;padding:10px 11px}.tyf-recovery-card .r1{font-size:10px;font-weight:800;color:#1F3A5F;text-transform:uppercase}.tyf-recovery-card .r2{font-size:11px;color:#5F766C;margin-top:5px;line-height:1.45}.tyf-recovery-card .r3{font-size:16px;font-weight:800;color:#102A43;margin-top:6px}
-  .tyf-grid{display:grid;grid-template-columns:1.45fr .95fr;gap:12px}.tyf-table-wrap{overflow-x:auto}.tyf-table{width:100%;border-collapse:collapse;font-size:11px;min-width:850px}.tyf-table th{background:#F7FAFF;color:#5F766C;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:10px 12px;border-bottom:1px solid #E7EFEA;text-align:left;white-space:nowrap}.tyf-table td{padding:10px 12px;border-bottom:1px solid #EEF4F0;color:#33463F;vertical-align:top;line-height:1.45}.tyf-table tr:last-child td{border-bottom:none}
-  .tyf-risk-list{display:flex;flex-direction:column;gap:8px}.tyf-risk{border:1px solid #E7EEF9;border-radius:12px;padding:10px 11px;background:#FBFDFF}.tyf-risk-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.tyf-risk-title{font-size:12px;font-weight:800;color:#102A43}.tyf-risk-sku{font-size:10px;color:#5F766C;margin-top:3px}.tyf-risk-sym{font-size:10.5px;color:#6A6560;margin-top:6px;line-height:1.45}.tyf-risk-num{font-size:18px;font-weight:800;color:#A43B2E}
-  .tyf-reset-box{border:1px dashed #C9DAF5;background:#FBFDFF;border-radius:14px;padding:12px 14px;color:#5F766C;font-size:11px;line-height:1.5}.tyf-reset-box code{color:#102A43;background:#EEF5FF;border:1px solid #DBE8FB;border-radius:6px;padding:2px 5px;font-size:10px}
-  @media(max-width:900px){.tyf-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.tyf-grid{grid-template-columns:1fr}.tyf-stations{grid-template-columns:repeat(2,minmax(0,1fr))}.tyf-recovery{grid-template-columns:1fr}.tyf-title{font-size:21px}.tyf-wrap{margin-top:0}}
-  @media(max-width:560px){.tyf-kpis{grid-template-columns:1fr}.tyf-hero{border-radius:18px;padding:16px}.tyf-panel-body{padding:12px}.tyf-tracker{padding:12px}}
-</style>
-<script id="traceops-yieldflow-safe-script">
-(function(){
-  if (window.__TRACEOPS_YIELDFLOW_SAFE_FUSED__) return;
-  window.__TRACEOPS_YIELDFLOW_SAFE_FUSED__ = true;
-
-  var STATIONS = ["Paste","SPI","AOI","Router","VI","ICT","Stocking","FT1","FT2","FT3","FT4"];
-
-  window.TRACEOPS_YIELD_FLOW_TRACKER = window.TRACEOPS_YIELD_FLOW_TRACKER || [
-    {
-      skuno:"73-20249-06",
-      workOrder:"000001282323",
-      model:"Tuffnel Park Low",
-      lotQty:1000,
-      startSmt:"2026-04-22 07:00",
-      firstFunctional:"2026-04-23 11:30",
-      completedByStation:{Paste:1000,SPI:1000,AOI:980,Router:980,VI:980,ICT:950,Stocking:950,FT1:950,FT2:940,FT3:940,FT4:935},
-      defectsByStation:{AOI:20,ICT:30,FT1:10,FT2:10,FT4:5},
-      recoveryQueue:[
-        {station:"AOI",qty:20,avgHours:6.5,cause:"AOI defect / review"},
-        {station:"ICT",qty:30,avgHours:14.0,cause:"ICT fail / debug"},
-        {station:"FT4",qty:5,avgHours:24.0,cause:"Functional retest"}
-      ]
-    }
-  ];
-
-  window.TRACEOPS_YIELD_BY_WO_ROWS = window.TRACEOPS_YIELD_BY_WO_ROWS || [
-    {week:"FY2026 Q3 W-013",date:"4/23/2026",line:"L14",bu:"NGFWBU",family:"Warwick",sku:"73-102435-05",wo:"000001287678",yield:100,touch:0,total:35,clean:35,risk:0},
-    {week:"FY2026 Q3 W-013",date:"4/23/2026",line:"L13",bu:"NGFWBU",family:"Warwick",sku:"73-102433-05",wo:"000001287701",yield:100,touch:0,total:71,clean:71,risk:0},
-    {week:"FY2026 Q3 W-013",date:"4/22/2026",line:"L2",bu:"NGFWBU",family:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001287587",yield:98.24,touch:1.76,total:170,clean:167,risk:3},
-    {week:"FY2026 Q3 W-012",date:"4/17/2026",line:"L13",bu:"NGFWBU",family:"Warwick",sku:"73-102433-05",wo:"000001287544",yield:88.57,touch:11.43,total:70,clean:62,risk:8},
-    {week:"FY2026 Q3 W-012",date:"4/17/2026",line:"L3",bu:"NGFWBU",family:"Tuffnel Park Low",sku:"73-20249-06",wo:"000001287486",yield:86.88,touch:13.13,total:320,clean:278,risk:42},
-    {week:"FY2026 Q3 W-012",date:"4/16/2026",line:"L16",bu:"NGFWBU",family:"CSF1220CX, DT-B",sku:"74-134456-05",wo:"000001287483",yield:95.15,touch:4.85,total:330,clean:314,risk:16},
-    {week:"FY2026 Q3 W-012",date:"4/14/2026",line:"L16",bu:"NGFWBU",family:"CSF1210CE, DT-A",sku:"74-134454-05",wo:"000001287481",yield:94.60,touch:5.40,total:500,clean:473,risk:27},
-    {week:"FY2026 Q3 W-012",date:"4/13/2026",line:"L7",bu:"NGFWBU",family:"CSF1210CE, DT-A",sku:"74-134454-05",wo:"000001287364",yield:90.91,touch:9.09,total:330,clean:300,risk:30},
-    {week:"FY2026 Q3 W-012",date:"4/12/2026",line:"L16",bu:"NGFWBU",family:"CSF1240, RM-B",sku:"74-134451-05",wo:"000001287363",yield:91.32,touch:8.68,total:380,clean:347,risk:33},
-    {week:"FY2026 Q3 W-010",date:"3/31/2026",line:"L16",bu:"NGFWBU",family:"CSF1230, RM-A",sku:"74-134450-05",wo:"000001287162",yield:88.29,touch:11.71,total:760,clean:671,risk:89},
-    {week:"FY2026 Q3 W-006",date:"3/1/2026",line:"L16",bu:"NGFWBU",family:"CSF1230, RM-A",sku:"74-134450-05",wo:"000001286531",yield:76.90,touch:23.10,total:420,clean:323,risk:97}
-  ];
-
-  window.TRACEOPS_RISK_SUMMARY_ROWS = window.TRACEOPS_RISK_SUMMARY_ROWS || [
-    {bu:"NGFWBU",sku:"73-20249-06",family:"Tuffnel Park Low",symptom:"COMPONENTE DESALINEADO",location:"CR50",risk:5},
-    {bu:"NGFWBU",sku:"73-20249-06",family:"Tuffnel Park Low",symptom:"COMPONENTE CON PIN DOBLADO",location:"PNM21",risk:5},
-    {bu:"NGFWBU",sku:"73-20249-06",family:"Tuffnel Park Low",symptom:"PUENTE/CORTO DE SOLDADURA",location:"U203",risk:8},
-    {bu:"NGFWBU",sku:"74-134450-05",family:"CSF1230, RM-A",symptom:"PUNTO DE PRUEBA CON FALTA DE SOLDADURA",location:"U18",risk:7},
-    {bu:"NGFWBU",sku:"73-102433-05",family:"Warwick",symptom:"PUENTE/CORTO DE SOLDADURA",location:"P16",risk:5},
-    {bu:"NGFWBU",sku:"73-102435-05",family:"Warwick",symptom:"COMPONENTE DESALINEADO",location:"CR24",risk:3},
-    {bu:"NGFWBU",sku:"74-134456-05",family:"CSF1220CX, DT-B",symptom:"SOLDADURA ABIERTA",location:"U1",risk:4}
-  ];
-
-  function fmt(n, d){
-    var x = Number(n || 0);
-    if (!isFinite(x)) x = 0;
-    return x.toLocaleString('en-US',{minimumFractionDigits:d||0,maximumFractionDigits:d||0});
-  }
-  function hoursBetween(start,end){
-    var a = new Date(String(start||'').replace(' ','T'));
-    var b = new Date(String(end||'').replace(' ','T'));
-    if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
-    return Math.max(0,(b.getTime()-a.getTime())/36e5);
-  }
-  function esc(v){
-    return String(v == null ? '' : v).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});
-  }
-  function buildModel(){
-    var rows = (window.TRACEOPS_YIELD_BY_WO_ROWS || []).filter(function(r){return String(r.bu||'').toUpperCase().indexOf('NGFW')>=0;});
-    var total = rows.reduce(function(s,r){return s + Number(r.total||0);},0);
-    var clean = rows.reduce(function(s,r){return s + Number(r.clean||0);},0);
-    var risk = rows.reduce(function(s,r){return s + Number(r.risk||0);},0);
-    var riskBySku = {};
-    (window.TRACEOPS_RISK_SUMMARY_ROWS || []).forEach(function(r){
-      if (String(r.bu||'').toUpperCase().indexOf('NGFW') < 0) return;
-      var k = r.sku || 'N/A';
-      if (!riskBySku[k]) riskBySku[k] = {sku:k,family:r.family||'N/A',risk:0,symptoms:{}};
-      riskBySku[k].risk += Number(r.risk||0);
-      riskBySku[k].symptoms[r.symptom||'Sin sintoma'] = (riskBySku[k].symptoms[r.symptom||'Sin sintoma']||0) + Number(r.risk||0);
-    });
-    var topRisk = Object.keys(riskBySku).map(function(k){
-      var it = riskBySku[k];
-      var top = Object.keys(it.symptoms).sort(function(a,b){return it.symptoms[b]-it.symptoms[a];})[0] || 'Sin sintoma';
-      return {sku:it.sku,family:it.family,risk:it.risk,top:top};
-    }).sort(function(a,b){return b.risk-a.risk;}).slice(0,8);
-    var tracker = (window.TRACEOPS_YIELD_FLOW_TRACKER || []).map(function(item){
-      var defects = item.defectsByStation || {};
-      var totalOut = Object.keys(defects).reduce(function(s,k){return s + Number(defects[k]||0);},0);
-      var rq = item.recoveryQueue || [];
-      var rqty = rq.reduce(function(s,q){return s + Number(q.qty||0);},0);
-      var rh = rq.reduce(function(s,q){return s + Number(q.qty||0)*Number(q.avgHours||0);},0);
-      return Object.assign({}, item, {totalOutOfFlow:totalOut,avgRecoveryHours:rqty?rh/rqty:0,smtToFunctionalHours:hoursBetween(item.startSmt,item.firstFunctional)});
-    });
-    return {rows:rows,topRisk:topRisk,tracker:tracker,kpi:{orders:rows.length,total:total,clean:clean,risk:risk,yield:total?clean/total*100:0,touch:total?risk/total*100:0}};
-  }
-  function renderYieldFlow(){
-    var m = buildModel();
-    var trackerHtml = m.tracker.map(function(item){
-      var stationHtml = STATIONS.map(function(st){
-        var q = item.completedByStation && item.completedByStation[st] ? item.completedByStation[st] : 0;
-        var d = item.defectsByStation && item.defectsByStation[st] ? item.defectsByStation[st] : 0;
-        return '<div class="tyf-station '+(d?'warn':'')+'"><div class="s">'+esc(st)+'</div><div class="q">'+fmt(q)+'</div><div class="d">'+(d?fmt(d)+' fuera':'sin fuga')+'</div></div>';
-      }).join('');
-      var recHtml = (item.recoveryQueue||[]).map(function(q){
-        return '<div class="tyf-recovery-card"><div class="r1">'+esc(q.station)+' · '+fmt(q.qty)+' unidades</div><div class="r2">'+esc(q.cause)+'</div><div class="r3">'+fmt(q.avgHours,1)+'h</div></div>';
-      }).join('');
-      return '<div class="tyf-tracker"><div class="tyf-tracker-top"><div><div class="tyf-name">'+esc(item.model)+'</div><div class="tyf-meta">WO '+esc(item.workOrder)+' · SKU '+esc(item.skuno)+' · Lote '+fmt(item.lotQty)+'</div></div><div class="tyf-badges"><span class="tyf-badge warn">'+fmt(item.totalOutOfFlow)+' fuera de flujo</span><span class="tyf-badge">Reinc. '+fmt(item.avgRecoveryHours,1)+'h avg</span><span class="tyf-badge green">SMT→FT '+(item.smtToFunctionalHours==null?'N/D':fmt(item.smtToFunctionalHours,1)+'h')+'</span></div></div><div class="tyf-stations">'+stationHtml+'</div><div class="tyf-recovery">'+recHtml+'</div></div>';
-    }).join('');
-    var rowsHtml = m.rows.slice(0,16).map(function(r){
-      return '<tr><td>'+esc(r.week)+'</td><td>'+esc(r.line)+'</td><td>'+esc(r.family)+'</td><td>'+esc(r.sku)+'</td><td>'+esc(r.wo)+'</td><td>'+fmt(r.yield,2)+'%</td><td>'+fmt(r.touch,2)+'%</td><td>'+fmt(r.total)+'</td><td>'+fmt(r.risk)+'</td></tr>';
-    }).join('');
-    var riskHtml = m.topRisk.map(function(r){
-      return '<div class="tyf-risk"><div class="tyf-risk-top"><div><div class="tyf-risk-title">'+esc(r.family)+'</div><div class="tyf-risk-sku">'+esc(r.sku)+'</div><div class="tyf-risk-sym">'+esc(r.top)+'</div></div><div class="tyf-risk-num">'+fmt(r.risk)+'</div></div></div>';
-    }).join('');
-    return '<section class="tyf-wrap" id="yieldflow-section"><div class="tyf-hero"><div class="tyf-hero-row"><div><div class="tyf-kicker">NGFW tracker</div><div class="tyf-title">Yield Flow por Work Order y avance a pruebas funcionales</div><div class="tyf-sub">Cruce del resumen semanal de yield con tracker por estacion para responder: piezas fuera de flujo, tiempo de reincorporacion y avance SMT a Functional Test.</div></div><div class="tyf-chiprow"><span class="tyf-chip">'+fmt(m.kpi.orders)+' WOs</span><span class="tyf-chip">'+fmt(m.kpi.risk)+' risk units</span><span class="tyf-chip">'+fmt(m.kpi.touch,2)+'% OJT</span></div></div></div><div class="tyf-kpis"><div class="tyf-kpi"><div class="lbl">Work orders</div><div class="val">'+fmt(m.kpi.orders)+'</div><div class="meta">Filtradas a NGFW</div></div><div class="tyf-kpi blue"><div class="lbl">Clean yield</div><div class="val">'+fmt(m.kpi.yield,2)+'%</div><div class="meta">'+fmt(m.kpi.clean)+' clean units</div></div><div class="tyf-kpi warn"><div class="lbl">OJT touch rate</div><div class="val">'+fmt(m.kpi.touch,2)+'%</div><div class="meta">Calculo ponderado</div></div><div class="tyf-kpi red"><div class="lbl">Risk units</div><div class="val">'+fmt(m.kpi.risk)+'</div><div class="meta">OJT / retrabajo visible</div></div></div><div class="tyf-reset-box">Para resetear datos: edita <code>TRACEOPS_YIELD_FLOW_TRACKER</code>, <code>TRACEOPS_YIELD_BY_WO_ROWS</code> y <code>TRACEOPS_RISK_SUMMARY_ROWS</code> dentro del index.</div><section class="tyf-panel"><div class="tyf-panel-head"><h3>Tracker manual por estacion</h3><p>Incluye salida del flujo, reincorporacion y avance a FT.</p></div><div class="tyf-panel-body"><div class="tyf-tracker-list">'+trackerHtml+'</div></div></section><div class="tyf-grid"><section class="tyf-panel"><div class="tyf-panel-head"><h3>Yield por work order</h3><p>Base del resumen semanal filtrada a NGFW.</p></div><div class="tyf-table-wrap"><table class="tyf-table"><thead><tr><th>Week</th><th>Line</th><th>Product Family</th><th>SKU</th><th>WO</th><th>Yield</th><th>OJT</th><th>Units</th><th>Risk</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div></section><section class="tyf-panel"><div class="tyf-panel-head"><h3>Top risk SKU</h3><p>Cruce rapido con sintomas dominantes.</p></div><div class="tyf-panel-body"><div class="tyf-risk-list">'+riskHtml+'</div></div></section></div></section>';
-  }
-  function ensureMount(){
-    var main = document.querySelector('.main-content') || document.getElementById('root') || document.body;
-    if (!main) return null;
-    var root = document.getElementById('traceops-yieldflow-root');
-    if (!root) {
-      root = document.createElement('div');
-      root.id = 'traceops-yieldflow-root';
-      root.className = 'tyf-hidden';
-      main.insertBefore(root, main.firstChild);
-    }
-    return root;
-  }
-  function showYieldFlow(){
-    var root = ensureMount();
-    if (!root) return;
-    root.innerHTML = renderYieldFlow();
-    root.classList.remove('tyf-hidden');
-    try { root.scrollIntoView({behavior:'smooth',block:'start'}); } catch(_) {}
-  }
-  function hideYieldFlow(){
-    var root = document.getElementById('traceops-yieldflow-root');
-    if (root) root.classList.add('tyf-hidden');
-  }
-  function addNavButton(){
-    if (document.getElementById('traceops-yieldflow-nav')) return;
-    var target = document.querySelector('.sidebar-section .sidebar-btn') || document.querySelector('.sidebar-section') || document.querySelector('.sidebar') || document.body;
-    if (!target || !target.parentNode) return;
-    var btn = document.createElement('button');
-    btn.id = 'traceops-yieldflow-nav';
-    btn.className = 'sidebar-btn';
-    btn.type = 'button';
-    btn.innerHTML = '<span style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center">📊</span><span>Yield Flow</span>';
-    btn.addEventListener('click', function(){
-      document.querySelectorAll('.sidebar-btn.active').forEach(function(b){b.classList.remove('active');});
-      btn.classList.add('active');
-      showYieldFlow();
-      if (window.innerWidth <= 900) {
-        var sb = document.querySelector('.sidebar');
-        var ov = document.querySelector('.sidebar-overlay');
-        if (sb) sb.classList.remove('open');
-        if (ov) ov.classList.remove('show');
-      }
-    });
-    target.parentNode.insertBefore(btn, target.nextSibling);
-  }
-  window.TraceOpsYieldFlow = {show:showYieldFlow,hide:hideYieldFlow,render:renderYieldFlow};
-  function boot(){
-    addNavButton();
-    ensureMount();
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  setTimeout(boot, 800);
-  setTimeout(boot, 2000);
-})();
-</script>
-<!-- ==== END TRACEOPS YIELD FLOW SAFE FUSION V2 ==== -->
 
 <script>
 window.addEventListener("load", function() {
