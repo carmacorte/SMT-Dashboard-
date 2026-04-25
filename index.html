@@ -4460,7 +4460,7 @@ async function analyzeWithAI(msgs, apiKey) {
       "anthropic-dangerous-direct-browser-access": "true"
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: TRACEOPS_MAX_OUTPUT_TOKENS,
       system: system,
       messages: [
@@ -4548,7 +4548,7 @@ async function analyzeWithAI(msgs, apiKey) {
   parsed.__traceops_api = {
     api_calls: 1,
     cache_hit: false,
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: TRACEOPS_MAX_OUTPUT_TOKENS,
     input_tokens: usage.input_tokens || estimateTokensLocal(system + "\n" + userContent),
     output_tokens: usage.output_tokens || estimateTokensLocal(raw),
