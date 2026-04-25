@@ -5290,6 +5290,9 @@ var TRACEOPS_YIELD_IMPORT_META = {
 };
 var TRACEOPS_YIELD_DB_MODEL_MAP = {};
 var TRACEOPS_YIELD_DB_MODEL_OPTIONS = [];
+var TRACEOPS_YIELD_FT_ROWS = [];
+var TRACEOPS_YIELD_FT_AREA_ROWS = [];
+var TRACEOPS_YIELD_ACTION_TRACKER_ROWS = [];
 var TRACEOPS_YIELD_STATION_ORDER = { Paste: 0, SPI: 1, AOI: 2, Router: 3, VI: 4, ICT: 5, Stocking: 6, FT1: 7, FT2: 8, FT3: 9, FT4: 10 };
 function traceOpsYieldNorm(value) {
     return String(value == null ? "" : value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -5486,6 +5489,8 @@ function traceOpsYieldClassifyStation(value) {
 }
 function traceOpsYieldSheetRole(sheetName) {
     var n = traceOpsYieldNorm(sheetName);
+    if (/cesium|functional test|funcional|ft report|test station|station fpy|fpy test/.test(n))
+        return "cesium";
     if (/cisco calendar|cisco calendary|calendar|calendario|fiscal/.test(n))
         return "calendar";
     if (/db model|dbmodel|dm model|dmmodel|model master|modelo maestro|master model|db_model/.test(n))
@@ -5580,10 +5585,24 @@ function traceOpsYieldHeaderScore(headers, role) {
         if (hasAny(["product family", "prodcut family", "model name", "nombre del modelo", "family", "uuttype", "uut type", "description"]))
             score += 3;
     }
+    else if (role === "cesium") {
+        if (hasAny(["serial number", "serial", "sn"]))
+            score += 3;
+        if (hasAny(["test area", "area de prueba", "station", "test station"]))
+            score += 3;
+        if (hasAny(["status", "pass", "fail"]))
+            score += 2;
+        if (hasAny(["failing test name", "failure test", "test name", "failing test"]))
+            score += 2;
+        if (hasAny(["record time", "timestamp", "date time", "rec time"]))
+            score += 2;
+    }
     return score;
 }
 function traceOpsYieldDetectTextRole(name) {
     var n = traceOpsYieldCompact(name || "");
+    if (n.indexOf("cesium") >= 0 || n.indexOf("functionaltest") >= 0 || n.indexOf("teststation") >= 0 || n.indexOf("ftreport") >= 0 || n.indexOf("fpytest") >= 0)
+        return "cesium";
     if (n.indexOf("ciscocalendary") >= 0 || n.indexOf("ciscocalendar") >= 0 || n.indexOf("calendario") >= 0 || n.indexOf("fiscalcalendar") >= 0)
         return "calendar";
     if (n.indexOf("dbmodel") >= 0 || n.indexOf("db_model") >= 0 || n.indexOf("dmmodel") >= 0 || n.indexOf("dm_model") >= 0 || n.indexOf("modelmaster") >= 0 || n.indexOf("maestromodelo") >= 0)
@@ -5669,7 +5688,7 @@ async function traceOpsYieldTryImportTextZip(file) {
     });
     if (!entries.length)
         return null;
-    var parsed = { wo: [], sfc: [], repair: [], calendar: [], dbmodel: [] };
+    var parsed = { wo: [], sfc: [], repair: [], calendar: [], dbmodel: [], cesium: [] };
     var pulledSheets = [];
     for (var i = 0; i < entries.length; i++) {
         await traceOpsYieldYieldThread();
@@ -5693,7 +5712,7 @@ async function traceOpsYieldTryImportTextZip(file) {
         container: file.name,
         sheets: pulledSheets,
         notes: "Import ligero: se procesaron archivos TXT/TSV/CSV locales. No se cargo XLSM, PowerPivot, pivots, macros, estilos ni dashboards pesados. Evidencia visible solo durante esta sesion."
-    }, parsed.calendar, parsed.dbmodel);
+    }, parsed.calendar, parsed.dbmodel, parsed.cesium);
 }
 function traceOpsYieldObjectsFromRawRows(rawRows, role) {
     var bestIdx = -1, bestScore = 0;
@@ -5824,7 +5843,174 @@ function traceOpsYieldSummarizeRisk(rows) {
     });
     return Object.keys(map).map(function (k) { var row = map[k]; delete row._sns; return row; }).sort(function (a, b) { return b.risk - a.risk; });
 }
-function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMeta, calendarRows, dbModelRows) {
+
+function traceOpsYieldParseAttributes(value) {
+    try {
+        var txt = String(value || "").trim();
+        if (!txt || txt[0] !== "{")
+            return {};
+        return JSON.parse(txt);
+    }
+    catch (_) {
+        return {};
+    }
+}
+function traceOpsYieldStatusKind(value) {
+    var v = String(value || "").toLowerCase();
+    if (v.indexOf("fail") >= 0)
+        return "fail";
+    if (v.indexOf("pass") >= 0)
+        return "pass";
+    return "other";
+}
+function traceOpsYieldBuildCesiumRows(cesiumRows, snToSfc, ciscoCalendarMap) {
+    var out = [];
+    (cesiumRows || []).forEach(function (row) {
+        var sn = traceOpsYieldCleanSn(traceOpsYieldPick(row, ["Serial Number", "Serial", "SN", "Barcode"]));
+        if (!sn)
+            return;
+        var sfc = snToSfc[sn];
+        if (!sfc)
+            return;
+        var attrs = traceOpsYieldParseAttributes(traceOpsYieldPick(row, ["Attributes", "attributes", "Attr", "Atributos"]));
+        var boardPn = String(attrs["Board_P/N"] || attrs.Board_PN || attrs.BoardPN || "").trim();
+        var testArea = String(traceOpsYieldPick(row, ["Test Area", "TestArea", "Area", "Area de Prueba", "Station", "Test Station"]) || "N/D").trim() || "N/D";
+        var status = String(traceOpsYieldPick(row, ["Status", "Result", "Pass Fail", "Pass/Fail"]) || "").trim();
+        var kind = traceOpsYieldStatusKind(status);
+        var failName = String(traceOpsYieldPick(row, ["Failing Test Name", "FailingTestName", "Failure Test Name", "Failure", "Test Name", "Fail Name"]) || "").trim();
+        var recordTime = traceOpsYieldParseDate(traceOpsYieldPick(row, ["Record Time (US/Mountain)", "Record Time", "Rec Time", "Timestamp", "DateTime", "Date Time", "Fecha Hora", "Fecha"]));
+        var machine = String(traceOpsYieldPick(row, ["Machine", "Tester", "Equipo"]) || "").trim();
+        var uutType = String(traceOpsYieldPick(row, ["UUT Type", "UUTType", "UUT", "Model"]) || "").trim();
+        var assyPn = String(traceOpsYieldPick(row, ["Assy Part Number", "TAN", "Part Number", "PN"]) || "").trim();
+        var db = traceOpsYieldApplyDbModel(boardPn || sfc.sku, sfc.family, sfc.bu);
+        out.push({
+            sn: sn,
+            wo: sfc.wo || "",
+            sku: db.sku || boardPn || sfc.sku || "N/A",
+            family: db.family || sfc.family || boardPn || "N/A",
+            bu: db.bu || sfc.bu || traceOpsYieldInferBU("", sfc.family, sfc.sku),
+            line: sfc.line || "",
+            week: recordTime ? traceOpsYieldResolveCiscoWeek({ Date: recordTime }, ciscoCalendarMap) : (sfc.week || "Imported"),
+            testArea: testArea,
+            status: status,
+            kind: kind,
+            pass: kind === "pass" ? 1 : 0,
+            fail: kind === "fail" ? 1 : 0,
+            failingTestName: failName || (kind === "fail" ? "N/D" : ""),
+            machine: machine,
+            recordTime: recordTime || "",
+            uutType: uutType,
+            assyPartNumber: assyPn,
+            boardPn: boardPn,
+            rawStatus: status
+        });
+    });
+    return out;
+}
+function traceOpsYieldBuildFtAreaRows(rows) {
+    var goal = 96;
+    var map = {};
+    (rows || []).forEach(function (r) {
+        var area = String(r.testArea || "N/D").trim() || "N/D";
+        if (!map[area])
+            map[area] = { testArea: area, pass: 0, fail: 0, test: 0, failMap: {}, serials: [], machineMap: {}, woMap: {} };
+        var x = map[area];
+        if (r.kind === "pass") {
+            x.pass += 1;
+            x.test += 1;
+        }
+        else if (r.kind === "fail") {
+            x.fail += 1;
+            x.test += 1;
+            var name = r.failingTestName || "N/D";
+            x.failMap[name] = (x.failMap[name] || 0) + 1;
+            x.serials.push({ sn: r.sn, wo: r.wo, sku: r.sku, family: r.family, bu: r.bu, week: r.week, line: r.line, testArea: r.testArea, status: r.status, failingTestName: name, machine: r.machine, recordTime: r.recordTime });
+        }
+        if (r.machine)
+            x.machineMap[r.machine] = true;
+        if (r.wo)
+            x.woMap[r.wo] = true;
+    });
+    return Object.keys(map).map(function (k) {
+        var x = map[k];
+        x.yieldPct = x.test ? (x.pass / x.test * 100) : 0;
+        x.frPct = x.test ? (x.fail / x.test * 100) : 0;
+        x.goalPct = goal;
+        x.deltaPct = x.yieldPct - goal;
+        x.passToGoal = x.yieldPct >= goal ? 0 : Math.max(0, Math.ceil(((goal / 100) * x.test - x.pass) / (1 - goal / 100)));
+        x.topFails = Object.keys(x.failMap).map(function (name) { return { name: name, count: x.failMap[name], share: x.fail ? (x.failMap[name] / x.fail * 100) : 0 }; }).sort(function (a, b) { return b.count - a.count; }).slice(0, 5);
+        x.woCount = Object.keys(x.woMap || {}).length;
+        x.machineCount = Object.keys(x.machineMap || {}).length;
+        x.severity = x.yieldPct >= goal ? "At goal" : (x.deltaPct < -10 ? "Critical" : (x.deltaPct < -3 ? "High" : "Watch"));
+        return x;
+    }).sort(function (a, b) { return b.fail - a.fail || a.yieldPct - b.yieldPct; });
+}
+function traceOpsYieldBuildActionTracker(failurePatterns, ftAreaRows, rows) {
+    var out = [];
+    var id = 1;
+    function severityFromQty(qty, rate) {
+        if (qty >= 30 || rate >= 10)
+            return "Critical";
+        if (qty >= 10 || rate >= 5)
+            return "High";
+        return "Watch";
+    }
+    (failurePatterns || []).slice(0, 5).forEach(function (p) {
+        out.push({
+            id: "YF-A" + String(id++).padStart(3, "0"),
+            source: "Yield Flow",
+            focus: p.pattern,
+            context: ((p.refs || []).slice(0, 3).join(", ") || "N/D"),
+            units: Number(p.units || 0),
+            owner: p.origin === "Handling / SMT" ? "Supervision / Production" : "Process / Test / Mantto",
+            actionType: "Containment / Analysis",
+            action: "Validate impacted serials, confirm physical evidence and define containment or debug priority.",
+            status: "Open",
+            severity: severityFromQty(Number(p.units || 0), Number(p.impact || 0)),
+            serials: p.serials || []
+        });
+    });
+    (ftAreaRows || []).filter(function (x) { return x.fail > 0; }).slice(0, 4).forEach(function (a) {
+        out.push({
+            id: "YF-A" + String(id++).padStart(3, "0"),
+            source: "Cesium FT",
+            focus: a.testArea + " / " + ((a.topFails[0] && a.topFails[0].name) || "N/D"),
+            context: "Yield " + traceOpsYieldFlowFmt(a.yieldPct, 2) + "% vs goal " + traceOpsYieldFlowFmt(a.goalPct, 2) + "%",
+            units: Number(a.fail || 0),
+            owner: "Test Engineering",
+            actionType: "FT Debug / Retest control",
+            action: "Review failing test name Pareto, tester behavior and retest recovery before opening RCCA.",
+            status: "Open",
+            severity: a.severity,
+            serials: a.serials || []
+        });
+    });
+    (rows || []).slice().sort(function (a, b) {
+        var ar = Number(a.total || 0) ? Number(a.risk || 0) / Number(a.total || 0) : 0;
+        var br = Number(b.total || 0) ? Number(b.risk || 0) / Number(b.total || 0) : 0;
+        return br - ar || Number(b.risk || 0) - Number(a.risk || 0);
+    }).slice(0, 3).forEach(function (r) {
+        var rate = Number(r.total || 0) ? Number(r.risk || 0) / Number(r.total || 0) * 100 : 0;
+        if (!r.risk)
+            return;
+        out.push({
+            id: "YF-A" + String(id++).padStart(3, "0"),
+            source: "Critical WO",
+            focus: "WO " + r.wo,
+            context: (r.family || "N/D") + " · " + (r.sku || "N/D") + " · " + traceOpsYieldFlowFmt(rate, 1) + "% OJT",
+            units: Number(r.risk || 0),
+            owner: "PM / Project",
+            actionType: "Priority push",
+            action: "Drive supervisor follow-up by WO criticality and align support areas until units are released.",
+            status: "Open",
+            severity: severityFromQty(Number(r.risk || 0), rate),
+            serials: []
+        });
+    });
+    return out.slice(0, 12);
+}
+
+function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMeta, calendarRows, dbModelRows, cesiumRows) {
     var woMap = {}, snToSfc = {}, sfcByWo = {}, repairsByWo = {}, repairsClean = [], repairRowsBySnRaw = {};
     var validRepairRawRows = 0;
     var rejectedRepairRows = { noSn: 0, snNotInSfc: 0 };
@@ -5883,6 +6069,8 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
             }
         }
     });
+    TRACEOPS_YIELD_FT_ROWS = traceOpsYieldBuildCesiumRows(cesiumRows || [], snToSfc, ciscoCalendarMap);
+    TRACEOPS_YIELD_FT_AREA_ROWS = traceOpsYieldBuildFtAreaRows(TRACEOPS_YIELD_FT_ROWS);
     // SFC is the commanding data source for Yield Flow scope.
     // DB Model is used only to enrich BU/model by SKU, and Station On Line only supplies WO start/time.
     Object.keys(sfcByWo).forEach(function (wo) {
@@ -6039,7 +6227,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     });
     if (sfcStoryRows.length)
         TRACEOPS_RISK_SUMMARY_ROWS = traceOpsYieldSummarizeRisk(sfcStoryRows);
-    TRACEOPS_YIELD_IMPORT_META = Object.assign({ source: "ZIP/Excel" }, sourceMeta || {}, { mode: "imported", rows: { workOrders: workRows.length, sfc: sfcRows.length, repairs: repairRows.length, sfcWorkOrders: Object.keys(sfcByWo).length, calendar: (calendarRows || []).length, dbModel: (dbModelRows || []).length, validRepairs: validRepairRawRows, validRepairSn: (function () { var m = {}; repairsClean.forEach(function (r) { if (r.sn)
+    TRACEOPS_YIELD_IMPORT_META = Object.assign({ source: "ZIP/Excel" }, sourceMeta || {}, { mode: "imported", rows: { workOrders: workRows.length, sfc: sfcRows.length, repairs: repairRows.length, sfcWorkOrders: Object.keys(sfcByWo).length, calendar: (calendarRows || []).length, dbModel: (dbModelRows || []).length, cesium: (cesiumRows || []).length, cesiumInScope: (TRACEOPS_YIELD_FT_ROWS || []).length, validRepairs: validRepairRawRows, validRepairSn: (function () { var m = {}; repairsClean.forEach(function (r) { if (r.sn)
                 m[r.sn] = true; }); return Object.keys(m).length; })(), storySn: sfcStoryRows.length, rejectedRepairs: rejectedRepairRows }, daxRule: "Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN].", storyRule: "Symptom = top Rootcause per SFC[SN] from RepairRecord; Fail Location = distinct RepairRecord[FailLocation] for that SN. Used for the story of why units left the flow.", stationRule: "Breakdown station counts = DISTINCTCOUNT(SFC[SN]) grouped by SFC[currentevent] bucket; non cumulative.", calendarRule: "Cisco Week/FY/Qtr resolved from Cisco Calendary.txt by matching Build Start Date or event date to calendar Date/WFCSY." });
     return TRACEOPS_YIELD_IMPORT_META;
 }
@@ -6124,7 +6312,7 @@ async function traceOpsYieldImportExcelZip(file) {
     var relDoc = new DOMParser().parseFromString(relsXml, "application/xml");
     var rels = {};
     Array.prototype.slice.call(relDoc.getElementsByTagName("Relationship")).forEach(function (rel) { rels[rel.getAttribute("Id")] = rel.getAttribute("Target"); });
-    var parsed = { wo: [], sfc: [], repair: [], calendar: [], dbmodel: [] }, pulledSheets = [], targetSheetFiles = [];
+    var parsed = { wo: [], sfc: [], repair: [], calendar: [], dbmodel: [], cesium: [] }, pulledSheets = [], targetSheetFiles = [];
     var sheets = Array.prototype.slice.call(wbDoc.getElementsByTagName("sheet"));
     for (var i = 0; i < sheets.length; i++) {
         var sh = sheets[i], name = sh.getAttribute("name") || ("Sheet" + (i + 1)), role = traceOpsYieldSheetRole(name);
@@ -6163,7 +6351,7 @@ async function traceOpsYieldImportExcelZip(file) {
     }
     if (!parsed.wo.length && !parsed.sfc.length && !parsed.repair.length)
         throw new Error("No se detectaron filas utiles. Revisa encabezados: SN/current event, WO/time start, defecto/referencia/PN.");
-    return traceOpsYieldBuildFromImported(parsed.wo, parsed.sfc, parsed.repair, { fileName: file.name, workbookName: wbFile.name, container: wbFile.container, sheets: pulledSheets, notes: "Import protegido: se procesaron solo hojas objetivo y se limito a 25,000 filas por hoja para evitar reinicios en navegador." }, parsed.calendar, parsed.dbmodel);
+    return traceOpsYieldBuildFromImported(parsed.wo, parsed.sfc, parsed.repair, { fileName: file.name, workbookName: wbFile.name, container: wbFile.container, sheets: pulledSheets, notes: "Import protegido: se procesaron solo hojas objetivo y se limito a 25,000 filas por hoja para evitar reinicios en navegador." }, parsed.calendar, parsed.dbmodel, parsed.cesium);
 }
 function traceOpsYieldFlowHoursBetween(start, end) {
     var a = new Date(String(start || "").replace(" ", "T"));
@@ -6573,8 +6761,7 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
                 wo: rawWo,
                 sku: meta ? meta.sku : (x.sku || itemSku),
                 family: meta ? meta.family : (x.family || itemFamily),
-                // BU comes from active SFC/WO model identity; DB Model only enriches.
-                bu: traceOpsYieldInferBU(meta ? (meta.buLabel || meta.bu) : (x.bu || item.bu), meta ? meta.family : itemFamily, meta ? meta.sku : itemSku),
+                bu: meta ? meta.buLabel : traceOpsYieldInferBU(x.bu || item.bu, itemFamily, itemSku),
                 week: meta ? meta.week : x.week,
                 line: meta ? meta.line : x.line
             });
@@ -6602,13 +6789,8 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
         riskBySku[sku].risk += Number(item.risk || 0);
         riskBySku[sku].symptomMap[item.symptom || "Sin sintoma"] = (riskBySku[sku].symptomMap[item.symptom || "Sin sintoma"] || 0) + Number(item.risk || 0);
         (item.serials || []).forEach(function (x) { var snKey = traceOpsYieldCleanSn(x.sn || x.SN) || [x.wo, x.location, Math.random()].join('|'); if (!riskBySku[sku].serialMap[snKey])
-            riskBySku[sku].serialMap[snKey] = Object.assign({}, x, { sku: sku, family: item.family || x.family || 'N/A', bu: traceOpsYieldInferBU(x.bu || item.bu, item.family || x.family || 'N/A', sku) }); });
+            riskBySku[sku].serialMap[snKey] = Object.assign({}, x, { sku: sku, family: item.family || x.family || 'N/A' }); });
     });
-    function traceOpsYieldSerialRowsForSkuSymptom(serials, symptom) {
-        var target = traceOpsYieldNorm(symptom || "");
-        var filtered = (serials || []).filter(function (r) { return traceOpsYieldNorm(r.symptom || r.topSymptom || "") === target; });
-        return filtered.length ? filtered : (serials || []);
-    }
     var topRiskSku = Object.keys(riskBySku).map(function (key) {
         var row = riskBySku[key];
         var symptom = Object.keys(row.symptomMap).sort(function (a, b) { return row.symptomMap[b] - row.symptomMap[a]; })[0] || "Sin sintoma";
@@ -6619,6 +6801,16 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
     var causeSummary = traceOpsBuildYieldFlowCauseSummary(riskRows);
     var failurePatterns = traceOpsYieldBuildFailurePatterns(causeSummary);
     var stationFpy = traceOpsBuildYieldFlowStationFpy(rows, trackerRows);
+    var ftRows = (TRACEOPS_YIELD_FT_ROWS || []).filter(function (r) {
+        var rr = { date: r.recordTime || "", family: r.family, sku: r.sku, week: r.week, line: r.line, wo: r.wo, buLabel: r.bu };
+        return traceOpsYieldMatchesFilter(rr.family, filters.family) &&
+            traceOpsYieldMatchesFilter(rr.sku, filters.sku) &&
+            traceOpsYieldMatchesFilter(rr.week, filters.week) &&
+            traceOpsYieldMatchesFilter(rr.line, filters.line) &&
+            traceOpsYieldMatchesFilter(String(rr.wo || ''), filters.wo) &&
+            traceOpsYieldRowDateInRange(rr);
+    });
+    var ftAreaRows = traceOpsYieldBuildFtAreaRows(ftRows);
     var bgaUnits = riskRows.filter(function (x) { return /BGA|REBALL|U8300|ASIC|CPU|FPGA|UNDERFILL/i.test([x.symptom, x.location, x.family, x.sku].join(' ')); }).reduce(function (a, b) { return a + Number(b.risk || 0); }, 0);
     var stockingUnits = trackerRows.reduce(function (a, t) { return a + Number((t.completedByStation && t.completedByStation.Stocking) || 0); }, 0);
     var ftUnits = trackerRows.reduce(function (a, t) { var c = t.completedByStation || {}; return a + Number(c.FT1 || 0) + Number(c.FT2 || 0) + Number(c.FT3 || 0) + Number(c.FT4 || 0); }, 0);
@@ -6636,6 +6828,7 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
         });
     });
     var avgReintegrationProxy = reintegrationWeightedQty ? (reintegrationWeightedHours / reintegrationWeightedQty) : null;
+    var actionTracker = traceOpsYieldBuildActionTracker(failurePatterns, ftAreaRows, rows);
     var topPainCases = [];
     if (failurePatterns && failurePatterns.length) {
         topPainCases.push({
@@ -6696,6 +6889,10 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
         weeklyTrend: weeklyTrend,
         causeSummary: causeSummary,
         failurePatterns: failurePatterns,
+        stationFpy: stationFpy,
+        ftRows: ftRows,
+        ftAreaRows: ftAreaRows,
+        actionTracker: actionTracker,
         topPainCases: topPainCases
     };
 }
@@ -6778,7 +6975,11 @@ function App() {
                 expectedUnits: "Unidades esperadas",
                 currentUnits: "Unidades actuales",
                 defectsOut: "Fugas",
-                impactedWo: "WOs impactadas"
+                impactedWo: "WOs impactadas",
+                ftBreakdownTitle: "Breakdown FT despues de STOCKIN",
+                ftBreakdownSubtitle: "Cesium mide pass/fail por test area, failure test name y unidades necesarias para recuperar meta.",
+                actionTrackerTitle: "Action Tracker de soporte",
+                actionTrackerSubtitle: "Bitacora sugerida para asignar seguimiento, analisis, RCCA e ideas de mejora desde Yield Flow."
             },
             en: {
                 filtersTitle: "Yield Flow executive filters",
@@ -6797,7 +6998,11 @@ function App() {
                 managementTitle: "Management Control View",
                 importTitle: "ZIP / Excel import",
                 weeklyTitle: "Weekly Factory Health",
-                paretoTitle: "Failure mode 80/20 Pareto"
+                paretoTitle: "Failure mode 80/20 Pareto",
+                ftBreakdownTitle: "FT breakdown after STOCKIN",
+                ftBreakdownSubtitle: "Cesium measures pass/fail by test area, failing test name and pass units needed to recover goal.",
+                actionTrackerTitle: "Support Action Tracker",
+                actionTrackerSubtitle: "Suggested log to assign follow-up, analysis, RCCA and improvement ideas from Yield Flow."
             },
             zh: {
                 filtersTitle: "Yield Flow executive filters",
@@ -6816,7 +7021,11 @@ function App() {
                 managementTitle: "Management Control View",
                 importTitle: "ZIP / Excel import",
                 weeklyTitle: "Weekly Factory Health",
-                paretoTitle: "Failure mode 80/20 Pareto"
+                paretoTitle: "Failure mode 80/20 Pareto",
+                ftBreakdownTitle: "FT breakdown after STOCKIN",
+                ftBreakdownSubtitle: "Cesium measures pass/fail by test area, failing test name and pass units needed to recover goal.",
+                actionTrackerTitle: "Support Action Tracker",
+                actionTrackerSubtitle: "Suggested log to assign follow-up, analysis, RCCA and improvement ideas from Yield Flow."
             }
         };
         var langKey = (lang === "zh" || lang === "cn" || lang === "中文") ? "zh" : (lang === "es" ? "es" : "en");
@@ -6849,7 +7058,7 @@ function App() {
         setTimeout(function () {
             traceOpsYieldImportExcelZip(file).then(function (summary) {
                 setYieldFilters({ bu: "ALL", family: "ALL", sku: "ALL", week: "ALL", line: "ALL", wo: "ALL", from: "", to: "" });
-                setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfcWorkOrders) || 0) + " WO en SFC · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repair rows · " + ((summary.rows && summary.rows.validRepairSn) || 0) + " SN reparados validos · " + ((summary.rows && summary.rows.calendar) || 0) + " calendar rows · " + ((summary.rows && summary.rows.dbModel) || 0) + " DB model rows. Regla DAX: SFC[SN] existe en RepairRecord[SN]. Scope/filtros salen de SFC; DB Model solo enriquece BU/modelo.", summary: summary });
+                setYieldImportState({ status: "ok", message: "Import local completado: " + ((summary.rows && summary.rows.workOrders) || 0) + " WO · " + ((summary.rows && summary.rows.sfcWorkOrders) || 0) + " WO en SFC · " + ((summary.rows && summary.rows.sfc) || 0) + " SFC · " + ((summary.rows && summary.rows.repairs) || 0) + " repair rows · " + ((summary.rows && summary.rows.validRepairSn) || 0) + " SN reparados validos · " + ((summary.rows && summary.rows.calendar) || 0) + " calendar rows · " + ((summary.rows && summary.rows.dbModel) || 0) + " DB model rows · " + ((summary.rows && summary.rows.cesiumInScope) || 0) + " Cesium FT rows in scope. Regla DAX: SFC[SN] existe en RepairRecord[SN]. Scope/filtros salen de SFC; DB Model solo enriquece BU/modelo.", summary: summary });
             }).catch(function (err) {
                 setYieldImportState({ status: "error", message: err && err.message ? err.message : String(err), summary: null });
             });
@@ -14866,6 +15075,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         addSheet("Top_Risk_SKU", ["family", "sku", "risk", "topSymptom"], model.topRiskSku || []);
         addSheet("Failure_Pareto", ["pattern", "units", "impact", "cumulativePct", "criticality", "origin", "refs", "serialCount"], (model.failurePatterns || []).map(function (x) { return Object.assign({}, x, { refs: (x.refs || []).join(", "), serialCount: (x.serials || []).length }); }));
         addSheet("Station_FPY", ["station", "expected", "current", "defects", "fpy", "ojt", "woCount", "health"], (model.stationFpy || []).map(function (x) { return Object.assign({}, x, { fpy: x.fpy == null ? "N/D" : traceOpsYieldFlowFmt(x.fpy, 2) + "%", ojt: traceOpsYieldFlowFmt(x.ojt, 2) + "%" }); }));
+        addSheet("FT_Breakdown", ["testArea", "pass", "fail", "test", "yieldPct", "goalPct", "frPct", "deltaPct", "passToGoal", "topFails"], (model.ftAreaRows || []).map(function (x) { return Object.assign({}, x, { yieldPct: traceOpsYieldFlowFmt(x.yieldPct, 2) + "%", goalPct: traceOpsYieldFlowFmt(x.goalPct, 2) + "%", frPct: traceOpsYieldFlowFmt(x.frPct, 2) + "%", deltaPct: traceOpsYieldFlowFmt(x.deltaPct, 2) + "%", topFails: (x.topFails || []).map(function (f) { return f.name + " (" + f.count + ")"; }).join("; ") }); }));
+        addSheet("Support_Action_Tracker", ["id", "source", "focus", "context", "units", "owner", "actionType", "action", "status", "severity"], (model.actionTracker || []));
         var serialEvidenceRows = [];
         (model.failurePatterns || []).forEach(function (pat) { (pat.serials || []).forEach(function (r) { serialEvidenceRows.push({ pattern: pat.pattern, sn: r.sn, wo: r.wo, sku: r.sku, family: r.family, bu: r.bu, symptom: r.symptom, location: r.location, station: r.station, week: r.week, line: r.line }); }); });
         addSheet("Serial_Evidence", ["pattern", "sn", "wo", "sku", "family", "bu", "symptom", "location", "station", "week", "line"], serialEvidenceRows);
@@ -14880,7 +15091,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     }
     function renderYieldFlowSection() {
         var weeklyTrend = yieldFlowModel.weeklyTrend || [];
-        var stationFpy = yieldFlowModel.stationFpy || [];
         var maxWeeklyTotal = weeklyTrend.reduce(function (max, w) { return Math.max(max, Number(w.total || 0)); }, 0);
         var causeSummary = yieldFlowModel.causeSummary || [];
         var failurePareto = yieldFlowModel.failurePatterns || [];
@@ -14889,6 +15099,9 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         var trackerRowsView = hasSpecificYieldFilter ? (yieldFlowModel.trackerRows || []) : (yieldFlowModel.trackerRows || []).slice(0, 12);
         var hiddenTrackerRows = Math.max(0, (yieldFlowModel.trackerRows || []).length - trackerRowsView.length);
         var painCases = yieldFlowModel.topPainCases || [];
+        var stationFpy = yieldFlowModel.stationFpy || [];
+        var ftAreaRows = yieldFlowModel.ftAreaRows || [];
+        var actionTracker = yieldFlowModel.actionTracker || [];
         return (React.createElement("div", { id: "yieldflow-section", style: { display: "flex", flexDirection: "column", gap: 14, marginBottom: 14 } },
             React.createElement("div", { style: { background: "linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)", borderRadius: 18, padding: isMobile() ? "16px 14px" : "18px 20px", color: "#fff", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "minmax(0,1fr) auto", alignItems: "center", gap: isMobile() ? 10 : 14, overflow: "hidden" } },
                 React.createElement("div", { style: { minWidth: 0, width: "100%" } },
@@ -15022,7 +15235,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                     React.createElement("div", { style: { background: "#FBFDFF", border: "1px solid #E7EEF9", borderRadius: 12, padding: "11px 12px" } },
                         React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#1F3A5F", textTransform: "uppercase" } }, "Datos jalados"),
                         React.createElement("div", { style: { fontSize: 11.5, color: "#5F766C", lineHeight: 1.5, marginTop: 6 } },
-                            "WO/date/line/SKU desde Station On Line Report \u00B7 SFC manda el scope: SN, WO, current event y SKU/modelo disponible \u00B7 DB Model solo enriquece BU/modelo por SKU \u00B7 defecto, referencia, PN y repair time desde Repair Record. Regla OJT: SN de SFC que existe en Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.",
+                            "WO/date/line/SKU desde Station On Line Report \u00B7 SFC manda el scope: SN, WO, current event y SKU/modelo disponible \u00B7 DB Model solo enriquece BU/modelo por SKU \u00B7 defecto, referencia, PN y repair time desde Repair Record · pass/fail, test area y failing test name desde Cesium.txt. Regla OJT: SN de SFC que existe en Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.",
                             yieldImportState.summary && yieldImportState.summary.sheets ? " Hojas: " + yieldImportState.summary.sheets.map(function (x) { return x.name + " (" + x.role + ":" + x.rows + ")"; }).join(" · ") : "")))),
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" } },
@@ -15144,6 +15357,41 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                             React.createElement("div", null, yieldText("defectsOut"), React.createElement("br", null), React.createElement("strong", { style: { color: tone.text } }, traceOpsYieldFlowFmt(st.defects))),
                             React.createElement("div", null, yieldText("impactedWo"), React.createElement("br", null), React.createElement("strong", { style: { color: "#102A43" } }, traceOpsYieldFlowFmt(st.woCount)))));
                 }) : React.createElement("div", { style: { gridColumn: "1 / -1", border: "1px dashed #D9E6F7", borderRadius: 12, padding: "14px", fontSize: 11.5, color: "#5F766C", background: "#FBFDFF" } }, "No station FPY data for the active scope."))),
+            React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
+                React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("ftBreakdownTitle")),
+                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, yieldText("ftBreakdownSubtitle"))),
+                    React.createElement("span", { style: { fontSize: 10, fontWeight: 900, padding: "5px 9px", borderRadius: 999, background: "#EEF5FF", color: "#1F3A5F", border: "1px solid #CFE0FB" } }, ftAreaRows.length + " test areas")),
+                React.createElement("div", { style: { padding: "14px 18px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(3,minmax(0,1fr))", gap: 10 } }, ftAreaRows.length ? ftAreaRows.slice(0, 6).map(function (area) {
+                    var tone = area.severity === "Critical" ? { bg: "#FFF7F5", border: "#F1B5AE", text: "#A43B2E" } : (area.severity === "High" ? { bg: "#FFF9EE", border: "#F5E4A0", text: "#B87820" } : { bg: "#FBFDFF", border: "#D9E6F7", text: "#1F3A5F" });
+                    return React.createElement("div", { key: area.testArea, style: { background: tone.bg, border: "1px solid " + tone.border, borderRadius: 14, padding: "12px 13px" } },
+                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" } },
+                            React.createElement("div", null,
+                                React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#102A43" } }, area.testArea),
+                                React.createElement("div", { style: { fontSize: 10, color: "#5F766C", marginTop: 3 } }, "Pass " + traceOpsYieldFlowFmt(area.pass) + " | Fail " + traceOpsYieldFlowFmt(area.fail) + " | Test " + traceOpsYieldFlowFmt(area.test))),
+                            React.createElement("span", { style: { fontSize: 9, fontWeight: 900, padding: "3px 7px", borderRadius: 999, background: "#fff", color: tone.text, border: "1px solid " + tone.border } }, area.severity)),
+                        React.createElement("div", { style: { fontSize: 24, fontWeight: 900, color: tone.text, marginTop: 8 } }, traceOpsYieldFlowFmt(area.yieldPct, 2) + "%"),
+                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 4 } }, "Goal " + traceOpsYieldFlowFmt(area.goalPct, 2) + "% · FR " + traceOpsYieldFlowFmt(area.frPct, 2) + "% · Pass to goal " + traceOpsYieldFlowFmt(area.passToGoal)),
+                        React.createElement("div", { style: { marginTop: 9, display: "flex", flexDirection: "column", gap: 4 } }, (area.topFails || []).slice(0, 3).map(function (f) { return React.createElement("div", { key: f.name, style: { display: "flex", justifyContent: "space-between", gap: 8, fontSize: 10.5, color: "#102A43" } }, React.createElement("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, f.name), React.createElement("strong", null, f.count)); })),
+                        area.serials && area.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: area.testArea, subtitle: "FT impacted serials", rows: area.serials.map(function (r) { return Object.assign({}, r, { symptom: r.failingTestName, station: r.testArea, location: r.machine || "N/D" }); }) }); }, style: { marginTop: 9, fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } }, "Ver SN " + traceOpsYieldFlowFmt(area.serials.length)) : null);
+                }) : React.createElement("div", { style: { gridColumn: "1 / -1", border: "1px dashed #D9E6F7", borderRadius: 12, padding: "14px", fontSize: 11.5, color: "#5F766C", background: "#FBFDFF" } }, "No Cesium / FT data for the active SFC scope."))),
+            React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
+                React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF" } },
+                    React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("actionTrackerTitle")),
+                    React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, yieldText("actionTrackerSubtitle"))),
+                React.createElement("div", { style: { padding: "12px 16px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(3,minmax(0,1fr))", gap: 10 } }, actionTracker.length ? actionTracker.slice(0, 9).map(function (a) {
+                    var isCritical = a.severity === "Critical";
+                    return React.createElement("div", { key: a.id, style: { border: "1px solid " + (isCritical ? "#F1B5AE" : "#D9E6F7"), borderRadius: 14, padding: "12px 13px", background: isCritical ? "#FFF7F5" : "#FBFDFF" } },
+                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" } },
+                            React.createElement("strong", { style: { color: "#102A43", fontSize: 11.5 } }, a.id),
+                            React.createElement("span", { style: { fontSize: 9, fontWeight: 900, padding: "3px 7px", borderRadius: 999, background: "#fff", color: isCritical ? "#A43B2E" : "#1F3A5F", border: "1px solid " + (isCritical ? "#F1B5AE" : "#CFE0FB") } }, a.severity)),
+                        React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#102A43", marginTop: 8, lineHeight: 1.3 } }, a.focus),
+                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 5, lineHeight: 1.45 } }, a.context),
+                        React.createElement("div", { style: { fontSize: 10.5, color: "#102A43", marginTop: 8 } }, React.createElement("b", null, a.owner), " · ", a.actionType),
+                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 5, lineHeight: 1.45 } }, a.action),
+                        a.serials && a.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: a.focus, subtitle: "Action evidence serials", rows: a.serials }); }, style: { marginTop: 9, fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } }, "Ver SN " + traceOpsYieldFlowFmt(a.serials.length)) : null);
+                }) : React.createElement("div", { style: { gridColumn: "1 / -1", border: "1px dashed #D9E6F7", borderRadius: 12, padding: "14px", fontSize: 11.5, color: "#5F766C", background: "#FBFDFF" } }, "No action tracker items for the active scope."))),
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF" } },
                     React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Capas operativas de Yield Flow"),
@@ -15287,7 +15535,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                     React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: "#102A43" } }, item.family),
                                     React.createElement("div", { style: { fontSize: 10, color: "#5F766C", marginTop: 3 } }, item.sku),
                                     React.createElement("div", { style: { fontSize: 10.5, color: "#6A6560", marginTop: 6, lineHeight: 1.45 } }, item.topSymptom),
-                                    item.serials && item.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: item.family + " · " + item.topSymptom, subtitle: "Seriales impactados por SKU", rows: traceOpsYieldSerialRowsForSkuSymptom(item.serials, item.topSymptom) }); }, style: { marginTop: 7, fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } },
+                                    item.serials && item.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: item.family + " · " + item.topSymptom, subtitle: "Seriales impactados por SKU", rows: item.serials }); }, style: { marginTop: 7, fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } },
                                         "Ver SN ",
                                         traceOpsYieldFlowFmt(item.serials.length)) : null),
                                 React.createElement("div", { style: { fontSize: 18, fontWeight: 800, color: "#A43B2E" } }, traceOpsYieldFlowFmt(item.risk))));
@@ -15581,7 +15829,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                             React.createElement("span", { style: { fontSize: 10, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB" } },
                                 traceOpsYieldFlowFmt((yieldSerialModal.rows || []).length),
                                 " SN"),
-                            React.createElement("button", { type: "button", onClick: function () { var text = (yieldSerialModal.rows || []).map(function (r) { return [r.sn, r.wo, r.sku, r.family, traceOpsYieldInferBU(r.bu, r.family, r.sku), r.symptom, r.location, r.station, r.week, r.line].join("\\t"); }).join("\\n"); try {
+                            React.createElement("button", { type: "button", onClick: function () { var text = (yieldSerialModal.rows || []).map(function (r) { return [r.sn, r.wo, r.sku, r.family, r.bu, r.symptom, r.location, r.station, r.week, r.line].join("\\t"); }).join("\\n"); try {
                                     navigator.clipboard && navigator.clipboard.writeText("SN\\tWO\\tSKU\\tFamily\\tBU\\tSymptom\\tReference\\tStation\\tCisco Week\\tLine\\n" + text);
                                 }
                                 catch (_) { } }, style: { border: "1px solid #CFE0FB", background: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 11, fontWeight: 800, color: "#1F3A5F", cursor: "pointer" } }, "Copiar tabla"),
@@ -15603,7 +15851,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                 React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } },
                                     React.createElement("div", { style: { fontWeight: 800, color: "#102A43" } }, r.sku || "N/D"),
                                     React.createElement("div", { style: { fontSize: 10, color: "#5F766C" } }, r.family || "N/D")),
-                                React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } }, traceOpsYieldInferBU(r.bu, r.family, r.sku) || "N/D"),
+                                React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } }, r.bu || "N/D"),
                                 React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } },
                                     React.createElement("div", { style: { fontWeight: 700, color: "#102A43" } }, r.symptom || "N/D"),
                                     React.createElement("div", { style: { fontSize: 10, color: "#5F766C" } },
