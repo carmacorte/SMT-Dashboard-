@@ -2629,7 +2629,7 @@ function stripHtmlToText(str) {
   if (!str) return '';
   var s = String(str)
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(new RegExp('<script[\\s\\S]*?<\\/script>', 'gi'), ' ')
     .replace(/<head[\s\S]*?<\/head>/gi, ' ')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
@@ -5196,7 +5196,7 @@ function traceOpsDownloadCsv(filename, rows) {
     a.click();
     URL.revokeObjectURL(a.href);
 }
-var TRACEOPS_YIELD_FLOW_STATIONS = ["Paste", "SPI", "AOI", "Router", "VI", "ICT", "Stockin", "FT1", "FT2", "FT3", "FT4"];
+var TRACEOPS_YIELD_FLOW_STATIONS = ["AOI", "Router", "VI", "ICT", "Stockin"];
 var TRACEOPS_YIELD_FLOW_TRACKER = [
     {
         skuno: "73-20249-06",
@@ -5293,7 +5293,7 @@ var TRACEOPS_YIELD_DB_MODEL_OPTIONS = [];
 var TRACEOPS_YIELD_FT_ROWS = [];
 var TRACEOPS_YIELD_FT_AREA_ROWS = [];
 var TRACEOPS_YIELD_ACTION_TRACKER_ROWS = [];
-var TRACEOPS_YIELD_STATION_ORDER = { Paste: 0, SPI: 1, AOI: 2, Router: 3, VI: 4, ICT: 5, Stockin: 6, FT1: 7, FT2: 8, FT3: 9, FT4: 10 };
+var TRACEOPS_YIELD_STATION_ORDER = { AOI: 0, Router: 1, VI: 2, ICT: 3, Stockin: 4 };
 function traceOpsYieldNorm(value) {
     return String(value == null ? "" : value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
@@ -6121,17 +6121,21 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
             repairRowsBySnRaw[sn] = [];
         repairRowsBySnRaw[sn].push(row);
         var wo = traceOpsYieldCleanWo(traceOpsYieldPick(row, ["Workorderno", "workorderno", "Work Order", "WO", "Order", "Orden", "WorkOrder"])) || (sfc && sfc.wo) || "";
-        var sku = String(traceOpsYieldPick(row, ["SkuNo", "Key_Fail_SKU", "Key Fail SKU", "skuno", "sku", "model", "part number", "pn", "Modelo"]) || (sfc && sfc.sku) || "").trim();
-        var family = String(traceOpsYieldPick(row, ["ModelName", "Model Name", "Product Family", "Prodcut Family", "Family", "Nombre del Modelo"]) || (sfc && sfc.family) || sku || "N/A").trim();
+        // SFC is authoritative for product scope. Repair Record SKU columns can be component/fail-SKU
+        // and must not reassign the serial to a different model or BU.
+        var repairSku = String(traceOpsYieldPick(row, ["SkuNo", "Key_Fail_SKU", "Key Fail SKU", "skuno", "sku", "model", "part number", "pn", "Modelo"]) || "").trim();
+        var sku = String((sfc && sfc.sku) || repairSku || "").trim();
+        var family = String((sfc && sfc.family) || traceOpsYieldPick(row, ["ModelName", "Model Name", "Product Family", "Prodcut Family", "Family", "Nombre del Modelo"]) || sku || "N/A").trim();
         var symptom = String(traceOpsYieldPick(row, ["Rootcause", "Root Cause", "RootCause", "FailSymptom", "Symptom", "Defect", "Failure", "Failure Mode", "Falla", "Defecto"]) || "Sin sintoma").trim();
         var location = String(traceOpsYieldPick(row, ["FailLocation", "Fail Location", "Location", "Reference", "Reference Designator", "RefDes", "Referencia", "Area"]) || "N/D").trim();
         var pn = String(traceOpsYieldPick(row, ["ComponentCode", "Component Code", "Part Number", "PN", "NP", "Numero de Parte", "Número de Parte"]) || "").trim();
         var station = traceOpsYieldClassifyStation(traceOpsYieldPick(row, ["Station", "Process", "Area", "Current Event", "Evento"])) || (sfc && sfc.station) || "";
         var repairTime = traceOpsYieldParseDate(traceOpsYieldPick(row, ["RepairTime", "Repair Time", "Repair Date", "Repaired Date", "Timestamp", "DateTime", "Fecha", "Fecha Hora"]));
         var dbRep = traceOpsYieldApplyDbModel(sku, family, (sfc && sfc.bu) || "");
-        sku = dbRep.sku || sku;
-        family = dbRep.family || family;
-        var clean = { sn: sn, wo: wo, sku: sku, family: family, symptom: symptom, location: location, partNumber: pn, station: station, repairTime: repairTime, eventTime: (sfc && sfc.eventTime) || "", risk: 1, bu: dbRep.bu };
+        // Keep SFC SKU/family/BU if present; DB Model is enrichment only when SFC is blank.
+        sku = (sfc && sfc.sku) || dbRep.sku || sku;
+        family = (sfc && sfc.family) || dbRep.family || family;
+        var clean = { sn: sn, wo: wo, sku: sku, family: family, symptom: symptom, location: location, partNumber: pn, station: station, repairTime: repairTime, eventTime: (sfc && sfc.eventTime) || "", risk: 1, bu: (sfc && sfc.bu) || dbRep.bu };
         repairsClean.push(clean);
         if (wo) {
             if (!repairsByWo[wo])
@@ -6978,6 +6982,15 @@ function App() {
                 impactedWo: "WOs impactadas",
                 ftBreakdownTitle: "Breakdown FT despues de STOCKIN",
                 ftBreakdownSubtitle: "Cesium mide pass/fail por test area, failure test name y unidades necesarias para recuperar meta.",
+                impactedSerials: "Seriales impactados",
+                traceEvidence: "Evidencia de trazabilidad",
+                copyTable: "Copiar tabla",
+                close: "Cerrar",
+                skuModel: "SKU / Modelo",
+                failureModeRef: "Modo / Ref",
+                ref: "Ref",
+                lineLabel: "Linea",
+                noSerials: "No hay seriales asociados en el scope actual. Revisa que el Repair Record tenga SN y que el SN exista en SFC.",
                 actionTrackerTitle: "Action Tracker de soporte",
                 actionTrackerSubtitle: "Bitacora sugerida para asignar seguimiento, analisis, RCCA e ideas de mejora desde Yield Flow."
             },
@@ -6999,8 +7012,23 @@ function App() {
                 importTitle: "ZIP / Excel import",
                 weeklyTitle: "Weekly Factory Health",
                 paretoTitle: "Failure mode 80/20 Pareto",
+                stationFpyTitle: "SFC station breakdown",
+                stationFpySubtitle: "SFC Current Event view: flow coverage, defects and severity by station. Paste, SPI and FT are excluded; FT is shown from Cesium.",
+                expectedUnits: "Expected units",
+                currentUnits: "Current units",
+                defectsOut: "Defects out",
+                impactedWo: "Impacted WOs",
                 ftBreakdownTitle: "FT breakdown after STOCKIN",
                 ftBreakdownSubtitle: "Cesium measures pass/fail by test area, failing test name and pass units needed to recover goal.",
+                impactedSerials: "Impacted serials",
+                traceEvidence: "Traceability evidence",
+                copyTable: "Copy table",
+                close: "Close",
+                skuModel: "SKU / Model",
+                failureModeRef: "Mode / Ref",
+                ref: "Ref",
+                lineLabel: "Line",
+                noSerials: "No serials are associated with the current scope. Verify that Repair Record has SN and that the SN exists in SFC.",
                 actionTrackerTitle: "Support Action Tracker",
                 actionTrackerSubtitle: "Suggested log to assign follow-up, analysis, RCCA and improvement ideas from Yield Flow."
             },
@@ -7021,9 +7049,23 @@ function App() {
                 managementTitle: "Management Control View",
                 importTitle: "ZIP / Excel import",
                 weeklyTitle: "Weekly Factory Health",
-                paretoTitle: "Failure mode 80/20 Pareto",
                 ftBreakdownTitle: "FT breakdown after STOCKIN",
                 ftBreakdownSubtitle: "Cesium measures pass/fail by test area, failing test name and pass units needed to recover goal.",
+                stationFpyTitle: "SFC station breakdown",
+                stationFpySubtitle: "SFC Current Event view: Paste, SPI and FT excluded; FT is shown from Cesium.",
+                expectedUnits: "Expected units",
+                currentUnits: "Current units",
+                defectsOut: "Defects out",
+                impactedWo: "Impacted WOs",
+                impactedSerials: "Impacted serials",
+                traceEvidence: "Traceability evidence",
+                copyTable: "Copy table",
+                close: "Close",
+                skuModel: "SKU / Model",
+                failureModeRef: "Mode / Ref",
+                ref: "Ref",
+                lineLabel: "Line",
+                noSerials: "No serials are associated with the current scope.",
                 actionTrackerTitle: "Support Action Tracker",
                 actionTrackerSubtitle: "Suggested log to assign follow-up, analysis, RCCA and improvement ideas from Yield Flow."
             }
@@ -14690,6 +14732,17 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         }
         catch (_) { }
     }, [maintenanceRecords]);
+    React.useEffect(function () {
+        function refreshMaintenanceLogFromStorage() {
+            try {
+                var parsed = JSON.parse(localStorage.getItem(MAINT_KEY) || "[]");
+                if (Array.isArray(parsed)) setMaintenanceRecords(parsed);
+            }
+            catch (_) { }
+        }
+        window.addEventListener("traceops-maintenance-log-updated", refreshMaintenanceLogFromStorage);
+        return function () { window.removeEventListener("traceops-maintenance-log-updated", refreshMaintenanceLogFromStorage); };
+    }, []);
     function traceOpsGenerateMaintenanceId() {
         var now = new Date();
         var y = now.getFullYear();
@@ -15395,7 +15448,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                                     traceOpsYieldFlowFmt(c.cumulativePct, 1),
                                                     "%"),
                                                 React.createElement("span", { style: { fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "#F8F3FF", color: "#6B2DA8", border: "1px solid #E2D6FA" } }, c.origin),
-                                                c.serials && c.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: c.pattern, subtitle: "Seriales impactados por modo de falla", rows: c.serials }); }, style: { fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } },
+                                                c.serials && c.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: c.pattern, subtitle: yieldText("impactedSerials") + " · " + yieldText("failureModeRef"), rows: c.serials }); }, style: { fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } },
                                                     "Ver SN ",
                                                     traceOpsYieldFlowFmt(c.serials.length)) : null)),
                                         React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#A43B2E" } }, traceOpsYieldFlowFmt(c.units))),
@@ -15596,7 +15649,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                     React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: "#102A43" } }, item.family),
                                     React.createElement("div", { style: { fontSize: 10, color: "#5F766C", marginTop: 3 } }, item.sku),
                                     React.createElement("div", { style: { fontSize: 10.5, color: "#6A6560", marginTop: 6, lineHeight: 1.45 } }, item.topSymptom),
-                                    item.serials && item.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: item.family + " · " + item.topSymptom, subtitle: "Seriales impactados por SKU", rows: item.serials }); }, style: { marginTop: 7, fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } },
+                                    item.serials && item.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: item.family + " · " + item.topSymptom, subtitle: yieldText("impactedSerials") + " · " + yieldText("skuModel"), rows: item.serials }); }, style: { marginTop: 7, fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } },
                                         "Ver SN ",
                                         traceOpsYieldFlowFmt(item.serials.length)) : null),
                                 React.createElement("div", { style: { fontSize: 18, fontWeight: 800, color: "#A43B2E" } }, traceOpsYieldFlowFmt(item.risk))));
@@ -15881,9 +15934,9 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                 React.createElement("div", { style: { background: "#fff", borderRadius: 18, maxWidth: 920, width: "100%", maxHeight: "86vh", overflow: "hidden", boxShadow: "0 20px 70px rgba(0,0,0,.28)", border: "1px solid #D9E6F7" }, onClick: function (e) { e.stopPropagation(); } },
                     React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #E7EEF9", background: "#F7FAFF", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 } },
                         React.createElement("div", { style: { minWidth: 0 } },
-                            React.createElement("div", { style: { fontSize: 13, fontWeight: 900, color: "#102A43" } }, "Seriales impactados"),
+                            React.createElement("div", { style: { fontSize: 13, fontWeight: 900, color: "#102A43" } }, yieldText("impactedSerials")),
                             React.createElement("div", { style: { fontSize: 11, color: "#5F766C", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } },
-                                yieldSerialModal.subtitle || "Evidencia de trazabilidad",
+                                yieldSerialModal.subtitle || yieldText("traceEvidence"),
                                 " - ",
                                 React.createElement("b", null, yieldSerialModal.title))),
                         React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
@@ -15893,17 +15946,17 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                             React.createElement("button", { type: "button", onClick: function () { var text = (yieldSerialModal.rows || []).map(function (r) { return [r.sn, r.wo, r.sku, r.family, r.bu, r.symptom, r.location, r.station, r.week, r.line].join("\\t"); }).join("\\n"); try {
                                     navigator.clipboard && navigator.clipboard.writeText("SN\\tWO\\tSKU\\tFamily\\tBU\\tSymptom\\tReference\\tStation\\tCisco Week\\tLine\\n" + text);
                                 }
-                                catch (_) { } }, style: { border: "1px solid #CFE0FB", background: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 11, fontWeight: 800, color: "#1F3A5F", cursor: "pointer" } }, "Copiar tabla"),
-                            React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal(null); }, style: { border: "1px solid #DDDBD7", background: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 11, fontWeight: 800, color: "#6A6560", cursor: "pointer" } }, "Cerrar"))),
+                                catch (_) { } }, style: { border: "1px solid #CFE0FB", background: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 11, fontWeight: 800, color: "#1F3A5F", cursor: "pointer" } }, yieldText("copyTable")),
+                            React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal(null); }, style: { border: "1px solid #DDDBD7", background: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 11, fontWeight: 800, color: "#6A6560", cursor: "pointer" } }, yieldText("close")))),
                     React.createElement("div", { style: { padding: 16, overflow: "auto", maxHeight: "70vh" } },
                         React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11 } },
                             React.createElement("thead", null,
                                 React.createElement("tr", { style: { background: "#F7FAFF", color: "#5F766C", textTransform: "uppercase", fontSize: 9.5 } },
                                     React.createElement("th", { style: { textAlign: "left", padding: "8px 9px", borderBottom: "1px solid #E7EEF9" } }, "SN"),
                                     React.createElement("th", { style: { textAlign: "left", padding: "8px 9px", borderBottom: "1px solid #E7EEF9" } }, "WO"),
-                                    React.createElement("th", { style: { textAlign: "left", padding: "8px 9px", borderBottom: "1px solid #E7EEF9" } }, "SKU / Modelo"),
+                                    React.createElement("th", { style: { textAlign: "left", padding: "8px 9px", borderBottom: "1px solid #E7EEF9" } }, yieldText("skuModel")),
                                     React.createElement("th", { style: { textAlign: "left", padding: "8px 9px", borderBottom: "1px solid #E7EEF9" } }, "BU"),
-                                    React.createElement("th", { style: { textAlign: "left", padding: "8px 9px", borderBottom: "1px solid #E7EEF9" } }, "Modo / Ref"),
+                                    React.createElement("th", { style: { textAlign: "left", padding: "8px 9px", borderBottom: "1px solid #E7EEF9" } }, yieldText("failureModeRef")),
                                     React.createElement("th", { style: { textAlign: "left", padding: "8px 9px", borderBottom: "1px solid #E7EEF9" } }, "Station"),
                                     React.createElement("th", { style: { textAlign: "left", padding: "8px 9px", borderBottom: "1px solid #E7EEF9" } }, "Week / Line"))),
                             React.createElement("tbody", null, (yieldSerialModal.rows || []).map(function (r, idx) { return React.createElement("tr", { key: (r.sn || "sn") + idx, style: { borderBottom: "1px solid #F1F4F8" } },
@@ -15916,15 +15969,15 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                 React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } },
                                     React.createElement("div", { style: { fontWeight: 700, color: "#102A43" } }, r.symptom || "N/D"),
                                     React.createElement("div", { style: { fontSize: 10, color: "#5F766C" } },
-                                        "Ref: ",
+                                        yieldText("ref") + ": ",
                                         r.location || "N/D")),
                                 React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } }, r.station || r.event || "N/D"),
                                 React.createElement("td", { style: { padding: "8px 9px", color: "#3D3A36" } },
                                     React.createElement("div", null, r.week || "N/D"),
                                     React.createElement("div", { style: { fontSize: 10, color: "#5F766C" } },
-                                        "Line ",
+                                        yieldText("lineLabel") + " ",
                                         r.line || "N/D"))); }))),
-                        !(yieldSerialModal.rows || []).length ? React.createElement("div", { style: { fontSize: 12, color: "#8A8580", padding: 18 } }, "No hay seriales asociados en el scope actual. Revisa que el Repair Record tenga SN y que el SN exista en SFC.") : null)))),
+                        !(yieldSerialModal.rows || []).length ? React.createElement("div", { style: { fontSize: 12, color: "#8A8580", padding: 18 } }, yieldText("noSerials")) : null)))),
             lightbox && (React.createElement("div", { className: "lb-overlay", onClick: function () { setLightbox(null); } },
                 React.createElement("div", { className: "lb-box", onClick: function (e) { e.stopPropagation(); } },
                     React.createElement("div", { className: "lb-hdr" },
@@ -17738,11 +17791,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                     });
                                     return (React.createElement("div", null,
                                         React.createElement("div", { style: { fontSize: 30, fontWeight: 800, color: "#102A43", lineHeight: 1, marginBottom: 4 } }, yokoCount),
-                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C", marginBottom: 10 } }, "opportunities detected"),
+                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C", marginBottom: 10 } }, "oportunidades detectadas"),
                                         React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
                                             React.createElement("span", { style: { fontSize: 9, fontWeight: 800, background: "#EEF5FF", color: "#2F6FB3", borderRadius: 999, padding: "4px 8px" } },
                                                 yokoItems.length,
-                                                " replicable solutions"))));
+                                                " soluciones replicables"))));
                                 })())),
                         React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } },
                             rccaList.length > 0 && (function () {
@@ -17750,15 +17803,15 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                 if (lessons.length === 0)
                                     return (React.createElement("div", { style: { background: "linear-gradient(180deg,#FFFFFF,#FFF9EF)", border: "1px solid #F1E2B8", borderRadius: 20, padding: "18px 18px" } },
                                         React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#102A43", marginBottom: 4 } }, "LessonTrace"),
-                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "No lessons recorded yet for the active window.")));
+                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "Todav\u00EDa no hay lecciones registradas para la ventana activa.")));
                                 return (React.createElement("div", { style: { background: "linear-gradient(180deg,#FFFFFF,#FFF9EF)", border: "1px solid #F1E2B8", borderRadius: 20, padding: "18px 18px", boxShadow: "0 2px 12px rgba(20,32,51,.03)" } },
                                     React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" } },
                                         React.createElement("div", null,
                                             React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: "#102A43" } }, "LessonTrace"),
-                                            React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "Reusable lessons learned")),
+                                            React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "Lecciones aprendidas reutilizables")),
                                         React.createElement("span", { style: { fontSize: 10, fontWeight: 800, background: "#FFF3D7", color: "#B87820", borderRadius: 999, padding: "6px 10px" } },
                                             lessons.length,
-                                            " lessons")),
+                                            " lecciones")),
                                     React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 12 } }, lessons.slice(0, 4).map(function (r) {
                                         return (React.createElement("div", { key: r.rcca_id, style: { background: "#fff", border: "1px solid #F1E2B8", borderRadius: 16, padding: "14px 14px", minHeight: 158 } },
                                             React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 } },
@@ -17769,7 +17822,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                                 r.leccion_aprendida.slice(0, 175),
                                                 r.leccion_aprendida.length > 175 ? "..." : ""),
                                             r.causa_raiz && React.createElement("div", { style: { fontSize: 10, color: "#5F766C", lineHeight: 1.45 } },
-                                                React.createElement("strong", { style: { color: "#102A43" } }, "Root cause:"),
+                                                React.createElement("strong", { style: { color: "#102A43" } }, "Causa ra\u00EDz:"),
                                                 " ",
                                                 r.causa_raiz.slice(0, 110),
                                                 r.causa_raiz.length > 110 ? "..." : "")));
@@ -17795,12 +17848,12 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                 if (yokoItems.length === 0)
                                     return (React.createElement("div", { style: { background: "linear-gradient(180deg,#FFFFFF,#F5FAFF)", border: "1px solid #D9ECE3", borderRadius: 20, padding: "18px 18px" } },
                                         React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#102A43", marginBottom: 4 } }, "Yokoten"),
-                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "No replicable solutions detected for visible events.")));
+                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "No hay soluciones replicables detectadas para los eventos visibles.")));
                                 return (React.createElement("div", { style: { background: "linear-gradient(180deg,#FFFFFF,#F5FAFF)", border: "1px solid #D9ECE3", borderRadius: 20, padding: "18px 18px", boxShadow: "0 2px 12px rgba(20,32,51,.03)" } },
                                     React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" } },
                                         React.createElement("div", null,
                                             React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: "#102A43" } }, "Yokoten"),
-                                            React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "Solutions that could be reapplied")),
+                                            React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "Soluciones que podr\u00EDan reaplicarse")),
                                         React.createElement("span", { style: { fontSize: 10, fontWeight: 800, background: "#EEF5FF", color: "#2F6FB3", borderRadius: 999, padding: "6px 10px" } },
                                             yokoItems.length,
                                             " casos")),
@@ -17810,7 +17863,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                                 React.createElement("span", { style: { fontSize: 10, fontFamily: "monospace", fontWeight: 800, color: "#2F6FB3" } }, y.rcca.rcca_id),
                                                 React.createElement("span", { style: { fontSize: 9, fontWeight: 800, background: "#EEF5FF", color: "#2F6FB3", borderRadius: 999, padding: "3px 8px" } },
                                                     y.targets.length,
-                                                    " applicable EVTs")),
+                                                    " EVT aplicables")),
                                             React.createElement("div", { style: { fontSize: 11.2, color: "#102A43", lineHeight: 1.55, marginBottom: 10 } },
                                                 y.rcca.accion_correctiva.slice(0, 175),
                                                 y.rcca.accion_correctiva.length > 175 ? "..." : ""),
@@ -17821,7 +17874,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                                 y.targets.length > 4 && React.createElement("span", { style: { fontSize: 9, color: "#5F766C" } },
                                                     "+",
                                                     y.targets.length - 4,
-                                                    " more"))));
+                                                    " m\u00E1s"))));
                                     }))));
                             })())))),
                 React.createElement("div", { className: "foot" },
@@ -17829,7 +17882,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         React.createElement("strong", null, "TraceOps"),
                         " by SMTintel - ALDA - ",
                         new Date().toLocaleDateString("es-MX")),
-                    React.createElement("button", { className: "dlbtn", style: { padding: "8px 16px", fontSize: 12 }, onClick: download }, "Download Excel")))))));
+                    React.createElement("button", { className: "dlbtn", style: { padding: "8px 16px", fontSize: 12 }, onClick: download }, "Descargar Excel")))))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
 

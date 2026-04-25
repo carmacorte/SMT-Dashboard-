@@ -1,336 +1,89 @@
-/* TraceOps Maintenance Andon Module v0.1
-   Standalone module. Does not require changes inside the React App.
-   Mounts into #maintenance-section when available and stores events in localStorage.
+/* TraceOps Maintenance Andon Module v0.3
+   External extender. Keeps index.html stable and writes DONE events into Maintenance Log.
 */
 (function(){
   'use strict';
-
-  var KEY = 'traceops_maintenance_andon_v1';
+  var KEY = 'traceops_maintenance_andon_v2';
+  var LOG_KEY = 'traceops_maintenance_log_v1';
   var USER_KEY = 'traceops_current_user_v1';
   var CHANNEL = 'traceops-maintenance-andon';
-  var mounted = false;
   var events = [];
   var filters = { status: 'ACTIVE', line: 'ALL', priority: 'ALL' };
+  var mountedHost = null;
+  var bc = null;
 
   function nowIso(){ return new Date().toISOString(); }
   function dateOnly(iso){ return String(iso || '').slice(0,10); }
   function timeOnly(iso){ return String(iso || '').slice(11,16); }
   function pad(n){ return String(n).padStart(2,'0'); }
-  function uid(){
-    var d = new Date();
-    return 'ANDON-' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+  function uid(){ var d=new Date(); return 'ANDON-' + d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds()); }
+  function esc(v){ return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function val(id){ var el=document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+  function getUser(){ try { return localStorage.getItem(USER_KEY) || ''; } catch(_) { return ''; } }
+  function setUser(v){ try { localStorage.setItem(USER_KEY, String(v || '').trim()); } catch(_) {} }
+  function load(){ try { events = JSON.parse(localStorage.getItem(KEY) || '[]') || []; } catch(_) { events = []; } }
+  function save(silent){ try { localStorage.setItem(KEY, JSON.stringify(events || [])); } catch(_) {} if(!silent) broadcast({ type:'sync', at:nowIso() }); }
+  function broadcast(msg){ try { if (window.BroadcastChannel) { var c=new BroadcastChannel(CHANNEL); c.postMessage(msg || {}); c.close(); } } catch(_) {} }
+  function minsBetween(a,b){ var aa=new Date(a||0).getTime(), bb=new Date(b||nowIso()).getTime(); if(!aa || !bb || bb<aa) return 0; return Math.round((bb-aa)/60000); }
+  function activeStatus(s){ return ['OPEN','ASSIGNED','IN_PROGRESS','ESCALATED'].indexOf(String(s||'')) >= 0; }
+  function statusLabel(s){ return ({OPEN:'Open',ASSIGNED:'Assigned',IN_PROGRESS:'In work',DONE:'Done',ESCALATED:'Escalated',CANCELLED:'Cancelled'})[s] || s || 'Open'; }
+  function priorityColor(p){ if(p==='Critical') return '#C0392B'; if(p==='High') return '#B87820'; if(p==='Medium') return '#2F6FB3'; return '#1A7A3C'; }
+  function unique(field){ var m={}; events.forEach(function(e){ if(e[field]) m[e[field]]=true; }); return Object.keys(m).sort(); }
+  function kpis(){ var open=events.filter(function(e){return e.status==='OPEN'}).length; var work=events.filter(function(e){return e.status==='ASSIGNED'||e.status==='IN_PROGRESS'}).length; var done=events.filter(function(e){return e.status==='DONE' && dateOnly(e.closed_at)===dateOnly(nowIso())}).length; var resp=events.filter(function(e){return e.accepted_at}); var avg=resp.length ? Math.round(resp.reduce(function(a,e){return a+minsBetween(e.created_at,e.accepted_at)},0)/resp.length) : 0; return {open:open, work:work, done:done, avg:avg}; }
+  function filtered(){ return events.filter(function(e){ if(filters.status==='ACTIVE' && !activeStatus(e.status)) return false; if(filters.status!=='ACTIVE' && filters.status!=='ALL' && e.status!==filters.status) return false; if(filters.line!=='ALL' && e.line!==filters.line) return false; if(filters.priority!=='ALL' && e.priority!==filters.priority) return false; return true; }); }
+
+  function persistentAlert(title, body, eventId){
+    var box=document.getElementById('traceops-andon-persistent-alert');
+    if(!box){ box=document.createElement('div'); box.id='traceops-andon-persistent-alert'; document.body.appendChild(box); }
+    box.style.cssText='position:fixed;right:14px;bottom:14px;z-index:99999;width:min(390px,calc(100vw - 28px));background:#102A43;color:#fff;border:1px solid rgba(255,255,255,.18);box-shadow:0 18px 50px rgba(0,0,0,.28);border-radius:18px;padding:14px 16px;font-family:Inter,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
+    box.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div style="font-size:12px;font-weight:900;margin-bottom:4px">'+esc(title)+'</div><div style="font-size:11px;line-height:1.45;color:rgba(255,255,255,.78)">'+esc(body||'')+'</div></div><button id="ta-alert-close" style="border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;border-radius:999px;width:26px;height:26px;cursor:pointer">x</button></div><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button id="ta-alert-open" style="border:none;background:#4A90E2;color:#fff;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer">View board</button>'+(eventId?'<button id="ta-alert-accept" style="border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer">Accept</button>':'')+'</div>';
+    var close=document.getElementById('ta-alert-close'); if(close) close.onclick=function(){ try{box.remove();}catch(_){} };
+    var open=document.getElementById('ta-alert-open'); if(open) open.onclick=function(){ focusBoard(); };
+    var accept=document.getElementById('ta-alert-accept'); if(accept) accept.onclick=function(){ acceptEvent(eventId); try{box.remove();}catch(_){} };
   }
-  function esc(s){
-    return String(s == null ? '' : s)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  function notify(title, body, eventId){ persistentAlert(title, body, eventId); try { if('Notification' in window && Notification.permission==='granted') new Notification(title,{body:body||'',tag:eventId||'traceops-andon'}); } catch(_){} }
+  function requestNotifyPermission(){ try { if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); } catch(_){} }
+
+  function createEvent(){
+    var line=val('ta-line'), station=val('ta-station'), symptom=val('ta-symptom');
+    if(!line && !station && !symptom){ alert('Capture at least Line, Station/Equipment or Symptom.'); return; }
+    var e={ id:uid(), status:'OPEN', priority:val('ta-priority')||'Medium', line:line, station:station, equipment:val('ta-equipment')||station, issue_type:val('ta-issue-type')||'Mechanical', symptom:symptom, created_by:getUser()||'Production', created_at:nowIso(), assigned_to:'', accepted_at:'', started_at:'', closed_at:'', finding:'', action:'', parts:'', downtime_min:'', history:[] };
+    e.history.push({at:e.created_at,by:e.created_by,action:'OPENED'}); events.unshift(e); save(); clearForm(); render(); notify('Maintenance Andon opened', (e.line||'N/D')+' · '+(e.station||'N/D')+' · '+(e.symptom||''), e.id);
   }
-  function getUser(){
-    try { return localStorage.getItem(USER_KEY) || ''; } catch(_) { return ''; }
+  function clearForm(){ ['ta-line','ta-station','ta-equipment','ta-symptom'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; }); }
+  function updateEvent(id, patch, action){ var user=getUser()||'User'; events=events.map(function(e){ if(e.id!==id) return e; var n=Object.assign({},e,patch||{}); n.history=Array.isArray(e.history)?e.history.slice():[]; n.history.push({at:nowIso(),by:user,action:action||'UPDATED'}); return n; }); save(); render(); }
+  function acceptEvent(id){ var user=getUser(); if(!user){ user=prompt('Technician accepting this event:')||''; if(!user.trim()) return; setUser(user); }
+    var row=events.find(function(e){return e.id===id}); if(!row) return; if(row.assigned_to && row.assigned_to!==user && row.status!=='OPEN'){ alert('This event was already taken by: '+row.assigned_to); return; }
+    updateEvent(id,{status:'ASSIGNED',assigned_to:user,accepted_at:row.accepted_at||nowIso()},'ACCEPTED'); }
+  function startEvent(id){ var row=events.find(function(e){return e.id===id})||{}; updateEvent(id,{status:'IN_PROGRESS',started_at:row.started_at||nowIso()},'STARTED'); }
+  function escalateEvent(id){ updateEvent(id,{status:'ESCALATED'},'ESCALATED'); }
+  function cancelEvent(id){ if(confirm('Cancel this Andon event?')) updateEvent(id,{status:'CANCELLED',closed_at:nowIso()},'CANCELLED'); }
+  function closeEvent(id){ var row=events.find(function(e){return e.id===id}); if(!row) return; var finding=prompt('Technical finding / issue found:', row.finding||'')||''; var action=prompt('Action taken:', row.action||'')||''; var parts=prompt('Part used / adjustment:', row.parts||'')||''; var downtime=prompt('Total downtime in minutes:', row.downtime_min||'')||row.downtime_min||''; updateEvent(id,{status:'DONE',finding:finding,action:action,parts:parts,downtime_min:downtime,closed_at:nowIso()},'DONE'); appendDoneToMaintenanceLog(Object.assign({}, row,{status:'DONE',finding:finding,action:action,parts:parts,downtime_min:downtime,closed_at:nowIso()})); }
+
+  function appendDoneToMaintenanceLog(e){
+    var rec={ id:'MNT-'+String(e.id||uid()).replace(/^ANDON-/,'ANDON-'), date:dateOnly(e.closed_at||nowIso()), time:timeOnly(e.closed_at||nowIso()), shift:'', line:e.line||'', machine:e.equipment||e.station||'', station:e.station||'', equipmentType:e.issue_type||'', assetId:'', partReplaced:e.parts||'', partNumber:'', supplier:'', symptom:e.symptom||'', failureMode:e.finding||'', rootCauseNote:e.finding||'', actionTaken:e.action||'', technician:e.assigned_to||getUser()||'', verifiedBy:e.created_by||'', downtimeMin:e.downtime_min||'', recurrence:'No', status:'Closed', sourceType:'Andon', sourceRef:e.id||'', linkedEventId:e.id||'', linkedRccaId:'', impactToQuality:'No', impactToOutput:e.downtime_min?'Yes':'No', evidence:[], notes:'Response min: '+(e.accepted_at?minsBetween(e.created_at,e.accepted_at):'N/D')+'; MTTR min: '+(e.closed_at?minsBetween(e.created_at,e.closed_at):'N/D') };
+    var list=[]; try{ list=JSON.parse(localStorage.getItem(LOG_KEY)||'[]')||[]; }catch(_){ list=[]; }
+    var ix=list.findIndex(function(x){return String(x.sourceRef||'')===String(e.id||'') || String(x.id||'')===String(rec.id||'')});
+    if(ix>=0) list[ix]=Object.assign({},list[ix],rec); else list.unshift(rec);
+    try{ localStorage.setItem(LOG_KEY,JSON.stringify(list)); }catch(_){}
+    try{ window.dispatchEvent(new CustomEvent('traceops-maintenance-log-updated',{detail:{record:rec}})); }catch(_){}
+    persistentAlert('Andon closed and logged', (rec.line||'N/D')+' · '+(rec.machine||'N/D')+' moved to Maintenance History Log.', null);
   }
-  function setUser(v){
-    try { localStorage.setItem(USER_KEY, String(v || '').trim()); } catch(_) {}
-  }
-  function load(){
-    try { events = JSON.parse(localStorage.getItem(KEY) || '[]') || []; }
-    catch(_) { events = []; }
-  }
-  function save(){
-    try { localStorage.setItem(KEY, JSON.stringify(events || [])); } catch(_) {}
-    broadcast({ type:'andon-sync', at: nowIso() });
-  }
-  function broadcast(msg){
-    try {
-      if (window.BroadcastChannel) {
-        var bc = new BroadcastChannel(CHANNEL);
-        bc.postMessage(msg || {});
-        bc.close();
-      }
-    } catch(_) {}
-  }
-  function notify(title, body){
-    renderToast(title, body);
-    try {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, { body: body || '', tag: 'traceops-andon' });
-      }
-    } catch(_) {}
-  }
-  function requestNotifyPermission(){
-    try {
-      if (!('Notification' in window)) return;
-      if (Notification.permission === 'default') Notification.requestPermission();
-    } catch(_) {}
-  }
-  function renderToast(title, body){
-    var old = document.getElementById('traceops-andon-toast');
-    if (old) old.remove();
-    var box = document.createElement('div');
-    box.id = 'traceops-andon-toast';
-    box.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99999;width:min(360px,calc(100vw - 36px));background:#102A43;color:#fff;border:1px solid rgba(255,255,255,.18);box-shadow:0 18px 50px rgba(0,0,0,.24);border-radius:18px;padding:14px 16px;font-family:Inter,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
-    box.innerHTML = '<div style="font-size:12px;font-weight:800;margin-bottom:4px">' + esc(title) + '</div><div style="font-size:11px;line-height:1.45;color:rgba(255,255,255,.78)">' + esc(body || '') + '</div>';
-    document.body.appendChild(box);
-    setTimeout(function(){ try { box.remove(); } catch(_) {} }, 4200);
-  }
-  function minsBetween(a,b){
-    var aa = new Date(a || 0).getTime();
-    var bb = new Date(b || nowIso()).getTime();
-    if (!aa || !bb || bb < aa) return 0;
-    return Math.round((bb-aa)/60000);
-  }
-  function activeRows(){
-    return events.filter(function(e){ return ['OPEN','ASSIGNED','IN_PROGRESS','ESCALATED'].indexOf(e.status) >= 0; });
-  }
-  function filteredRows(){
-    return (events || []).filter(function(e){
-      if (filters.status === 'ACTIVE' && ['DONE','CANCELLED'].indexOf(e.status) >= 0) return false;
-      if (filters.status !== 'ALL' && filters.status !== 'ACTIVE' && e.status !== filters.status) return false;
-      if (filters.line !== 'ALL' && e.line !== filters.line) return false;
-      if (filters.priority !== 'ALL' && e.priority !== filters.priority) return false;
-      return true;
-    });
-  }
-  function uniq(field){
-    var m = {};
-    events.forEach(function(e){ if (e[field]) m[e[field]] = true; });
-    return Object.keys(m).sort();
-  }
-  function priorityColor(p){
-    if (p === 'Critical') return '#C0392B';
-    if (p === 'High') return '#B87820';
-    if (p === 'Medium') return '#2F6FB3';
-    return '#1A7A3C';
-  }
-  function statusLabel(s){
-    return ({OPEN:'Open',ASSIGNED:'Assigned',IN_PROGRESS:'In progress',DONE:'Done',ESCALATED:'Escalated',CANCELLED:'Cancelled'})[s] || s || 'Open';
-  }
-  function kpis(){
-    var open = events.filter(function(e){ return e.status === 'OPEN'; }).length;
-    var progress = events.filter(function(e){ return e.status === 'IN_PROGRESS' || e.status === 'ASSIGNED'; }).length;
-    var doneToday = events.filter(function(e){ return e.status === 'DONE' && dateOnly(e.closed_at) === dateOnly(nowIso()); }).length;
-    var active = activeRows();
-    var avgResponse = 0;
-    var responseRows = events.filter(function(e){ return e.accepted_at; });
-    if (responseRows.length) {
-      avgResponse = Math.round(responseRows.reduce(function(a,e){ return a + minsBetween(e.created_at, e.accepted_at); },0) / responseRows.length);
-    }
-    return { open: open, progress: progress, doneToday: doneToday, active: active.length, avgResponse: avgResponse };
-  }
-  function seedFromForm(){
-    var line = val('ta-line') || val('maintenance_line') || '';
-    var station = val('ta-station') || '';
-    var symptom = val('ta-symptom') || '';
-    var priority = val('ta-priority') || 'Medium';
-    if (!line && !station && !symptom) {
-      alert('Captura al menos Line, Station/Equipment o Symptom.');
-      return;
-    }
-    var e = {
-      id: uid(),
-      status: 'OPEN',
-      priority: priority,
-      line: line,
-      station: station,
-      equipment: val('ta-equipment') || station,
-      issue_type: val('ta-issue-type') || 'Mechanical',
-      symptom: symptom,
-      created_by: getUser() || 'Production',
-      created_at: nowIso(),
-      assigned_to: '', accepted_at: '', started_at: '', closed_at: '',
-      finding: '', action: '', parts: '', downtime_min: '', validation: '', history: []
-    };
-    e.history.push({ at: e.created_at, by: e.created_by, action: 'OPENED' });
-    events.unshift(e);
-    save();
-    clearOpenForm();
-    render();
-    notify('Maintenance Andon abierto', e.line + ' · ' + e.station + ' · ' + e.symptom);
-  }
-  function val(id){ var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
-  function clearOpenForm(){ ['ta-line','ta-station','ta-equipment','ta-symptom'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; }); }
-  function updateEvent(id, patch, action){
-    var user = getUser() || 'User';
-    events = events.map(function(e){
-      if (e.id !== id) return e;
-      var next = Object.assign({}, e, patch || {});
-      next.history = Array.isArray(e.history) ? e.history.slice() : [];
-      next.history.push({ at: nowIso(), by: user, action: action || 'UPDATED' });
-      return next;
-    });
-    save();
-    render();
-  }
-  function acceptEvent(id){
-    var user = getUser();
-    if (!user) {
-      user = prompt('Nombre del técnico que acepta el evento:') || '';
-      if (!user.trim()) return;
-      setUser(user);
-    }
-    var row = events.find(function(e){ return e.id === id; });
-    if (!row) return;
-    if (row.assigned_to && row.assigned_to !== user && row.status !== 'OPEN') {
-      alert('Este evento ya fue tomado por: ' + row.assigned_to);
-      return;
-    }
-    updateEvent(id, { status:'ASSIGNED', assigned_to:user, accepted_at: row.accepted_at || nowIso() }, 'ACCEPTED');
-  }
-  function startEvent(id){ updateEvent(id, { status:'IN_PROGRESS', started_at: nowIso() }, 'STARTED'); }
-  function escalateEvent(id){ updateEvent(id, { status:'ESCALATED' }, 'ESCALATED'); }
-  function closeEvent(id){
-    var finding = prompt('Finding técnico / causa encontrada:') || '';
-    var action = prompt('Acción realizada:') || '';
-    var parts = prompt('Refacción usada / ajuste realizado:', '') || '';
-    var row = events.find(function(e){ return e.id === id; }) || {};
-    var downtime = prompt('Downtime total en minutos:', row.downtime_min || '') || row.downtime_min || '';
-    updateEvent(id, { status:'DONE', finding:finding, action:action, parts:parts, downtime_min:downtime, closed_at: nowIso() }, 'DONE');
-  }
-  function cancelEvent(id){ if (confirm('Cancelar este Andon?')) updateEvent(id, { status:'CANCELLED', closed_at: nowIso() }, 'CANCELLED'); }
-  function exportCsv(){
-    var headers = ['id','status','priority','line','station','equipment','issue_type','symptom','created_by','created_at','assigned_to','accepted_at','started_at','closed_at','finding','action','parts','downtime_min','response_min','mttr_min'];
-    var rows = events.map(function(e){
-      var o = Object.assign({}, e);
-      o.response_min = e.accepted_at ? minsBetween(e.created_at, e.accepted_at) : '';
-      o.mttr_min = e.closed_at ? minsBetween(e.created_at, e.closed_at) : '';
-      return o;
-    });
-    var csv = [headers.join(',')].concat(rows.map(function(r){
-      return headers.map(function(h){ return '"' + String(r[h] == null ? '' : r[h]).replace(/"/g,'""') + '"'; }).join(',');
-    })).join('\n');
-    var blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'traceops_maintenance_andon_' + dateOnly(nowIso()) + '.csv';
-    document.body.appendChild(a); a.click();
-    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
-  }
-  function render(){
-    var root = document.getElementById('traceops-maintenance-andon-root');
-    if (!root) return;
-    var user = getUser();
-    var k = kpis();
-    var rows = filteredRows();
-    var lineOpts = uniq('line').map(function(x){ return '<option value="'+esc(x)+'">'+esc(x)+'</option>'; }).join('');
-    root.innerHTML = ''+
-      '<section class="ta-card">'+
-        '<div class="ta-head">'+
-          '<div><div class="ta-eyebrow">Maintenance Andon</div><h3>Live maintenance response board</h3><p>Open event → technician accepts → registers issue → closes with traceability.</p></div>'+
-          '<div class="ta-user"><label>Current user</label><input id="ta-user" value="'+esc(user)+'" placeholder="Technician / Production"/><button id="ta-save-user">Save</button><button id="ta-notify">Enable alerts</button></div>'+
-        '</div>'+
-        '<div class="ta-kpis">'+
-          metric('Open', k.open, 'Waiting maintenance')+metric('In work', k.progress, 'Assigned / progress')+metric('Done today', k.doneToday, 'Closed today')+metric('Avg response', k.avgResponse+'m', 'Open → accept')+
-        '</div>'+
-        '<div class="ta-open">'+
-          '<div class="ta-open-grid">'+
-            input('ta-line','Line','SMT L18')+input('ta-station','Station / equipment','P21SIAH2 / Printer / AOI')+select('ta-issue-type','Issue type',['Mechanical','Electrical','Pneumatic','Software','Feeder','Printer','AOI','Calibration','Other'])+select('ta-priority','Priority',['Critical','High','Medium','Low'])+
-            '<div class="ta-field ta-span"><label>Symptom observed by production</label><input id="ta-symptom" placeholder="Machine alarm, no read, feeder issue, repeated stop..."/></div>'+
-          '</div>'+
-          '<button id="ta-open-btn" class="ta-primary">Open Andon Event</button>'+
-        '</div>'+
-        '<div class="ta-toolbar">'+
-          '<select id="ta-filter-status"><option value="ACTIVE">Active</option><option value="ALL">All</option><option value="OPEN">Open</option><option value="ASSIGNED">Assigned</option><option value="IN_PROGRESS">In progress</option><option value="DONE">Done</option><option value="ESCALATED">Escalated</option></select>'+
-          '<select id="ta-filter-line"><option value="ALL">All lines</option>'+lineOpts+'</select>'+
-          '<select id="ta-filter-priority"><option value="ALL">All priorities</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>'+
-          '<button id="ta-export">Export CSV</button>'+
-        '</div>'+
-        '<div class="ta-table-wrap"><table class="ta-table"><thead><tr><th>Event</th><th>Status</th><th>Line / Station</th><th>Symptom</th><th>Owner</th><th>Timing</th><th>Actions</th></tr></thead><tbody>'+
-          (rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="7" class="ta-empty">No Andon events for selected filter.</td></tr>')+
-        '</tbody></table></div>'+
-      '</section>';
-    bind();
-  }
-  function metric(title, value, sub){ return '<div class="ta-metric"><div>'+esc(value)+'</div><span>'+esc(title)+'</span><small>'+esc(sub)+'</small></div>'; }
-  function input(id,label,ph){ return '<div class="ta-field"><label>'+esc(label)+'</label><input id="'+id+'" placeholder="'+esc(ph)+'"/></div>'; }
-  function select(id,label,opts){ return '<div class="ta-field"><label>'+esc(label)+'</label><select id="'+id+'">'+opts.map(function(o){ return '<option>'+esc(o)+'</option>'; }).join('')+'</select></div>'; }
-  function rowHtml(e){
-    var age = minsBetween(e.created_at, e.closed_at || nowIso());
-    var response = e.accepted_at ? minsBetween(e.created_at, e.accepted_at)+'m resp.' : 'Pending accept';
-    var mttr = e.closed_at ? minsBetween(e.created_at, e.closed_at)+'m total' : age+'m open';
-    return '<tr data-id="'+esc(e.id)+'">'+
-      '<td><b>'+esc(e.id)+'</b><br><small>'+esc(dateOnly(e.created_at))+' '+esc(timeOnly(e.created_at))+'</small></td>'+
-      '<td><span class="ta-status ta-'+esc(String(e.status||'OPEN').toLowerCase())+'">'+esc(statusLabel(e.status))+'</span><br><span class="ta-priority" style="background:'+priorityColor(e.priority)+'">'+esc(e.priority)+'</span></td>'+
-      '<td><b>'+esc(e.line || 'N/D')+'</b><br><small>'+esc(e.station || e.equipment || 'N/D')+'</small></td>'+
-      '<td>'+esc(e.symptom || '')+'<br><small>'+esc(e.issue_type || '')+'</small></td>'+
-      '<td>'+esc(e.assigned_to || 'Unassigned')+'<br><small>'+esc(e.created_by || '')+'</small></td>'+
-      '<td><b>'+esc(response)+'</b><br><small>'+esc(mttr)+'</small></td>'+
-      '<td class="ta-actions">'+
-        '<button data-action="accept">Accept</button><button data-action="start">Start</button><button data-action="done">Done</button><button data-action="escalate">Escalate</button><button data-action="cancel">Cancel</button>'+
-      '</td></tr>';
-  }
-  function bind(){
-    var user = document.getElementById('ta-user');
-    var saveUser = document.getElementById('ta-save-user');
-    if (saveUser) saveUser.onclick = function(){ setUser(user ? user.value : ''); render(); };
-    var notifyBtn = document.getElementById('ta-notify');
-    if (notifyBtn) notifyBtn.onclick = requestNotifyPermission;
-    var openBtn = document.getElementById('ta-open-btn');
-    if (openBtn) openBtn.onclick = seedFromForm;
-    var exp = document.getElementById('ta-export');
-    if (exp) exp.onclick = exportCsv;
-    [['ta-filter-status','status'],['ta-filter-line','line'],['ta-filter-priority','priority']].forEach(function(pair){
-      var el = document.getElementById(pair[0]);
-      if (el) { el.value = filters[pair[1]]; el.onchange = function(){ filters[pair[1]] = el.value; render(); }; }
-    });
-    Array.prototype.forEach.call(document.querySelectorAll('.ta-table tr[data-id] button'), function(btn){
-      btn.onclick = function(){
-        var tr = btn.closest('tr'); var id = tr ? tr.getAttribute('data-id') : '';
-        var a = btn.getAttribute('data-action');
-        if (a === 'accept') acceptEvent(id);
-        else if (a === 'start') startEvent(id);
-        else if (a === 'done') closeEvent(id);
-        else if (a === 'escalate') escalateEvent(id);
-        else if (a === 'cancel') cancelEvent(id);
-      };
-    });
-  }
-  function injectStyles(){
-    if (document.getElementById('traceops-andon-styles')) return;
-    var st = document.createElement('style');
-    st.id = 'traceops-andon-styles';
-    st.textContent = ''+
-      '#traceops-maintenance-andon-root{font-family:Inter,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;margin:0 0 14px}'+
-      '.ta-card{background:#fff;border:1px solid #D9E6F7;border-radius:20px;box-shadow:0 10px 28px rgba(20,32,51,.06);overflow:hidden;margin-bottom:14px}'+
-      '.ta-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:16px 18px;background:linear-gradient(135deg,#102A43,#1F3A5F);color:#fff;flex-wrap:wrap}.ta-head h3{font-size:18px;margin:2px 0 4px}.ta-head p{font-size:12px;color:rgba(255,255,255,.72);margin:0}.ta-eyebrow{font-size:9px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#7FB3F4}'+
-      '.ta-user{display:flex;gap:6px;align-items:end;flex-wrap:wrap}.ta-user label{font-size:9px;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.62);width:100%}.ta-user input{height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;padding:0 10px;font-size:12px}.ta-user input::placeholder{color:rgba(255,255,255,.45)}.ta-user button,.ta-toolbar button{height:34px;border-radius:10px;border:1px solid #C7DBF7;background:#fff;color:#1F3A5F;font-size:11px;font-weight:800;padding:0 10px;cursor:pointer}'+
-      '.ta-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:14px 16px;background:#F8F7F5;border-bottom:1px solid #EEECEA}.ta-metric{background:#fff;border:1px solid #E5E2DC;border-radius:14px;padding:12px}.ta-metric div{font-size:24px;font-weight:900;color:#1F3A5F}.ta-metric span{display:block;font-size:11px;font-weight:800;color:#1A1714}.ta-metric small{font-size:10px;color:#8A8580}'+
-      '.ta-open{padding:14px 16px;border-bottom:1px solid #EEECEA}.ta-open-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}.ta-field label{display:block;font-size:9px;font-weight:900;text-transform:uppercase;color:#6A6560;margin-bottom:4px}.ta-field input,.ta-field select,.ta-toolbar select{width:100%;height:36px;border:1px solid #D7D3CC;border-radius:10px;padding:0 10px;font-size:12px;background:#fff;color:#1A1714}.ta-span{grid-column:span 4}.ta-primary{height:38px;border:0;border-radius:12px;background:#1F3A5F;color:#fff;font-size:12px;font-weight:900;padding:0 16px;cursor:pointer}'+
-      '.ta-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 16px;background:#fff;border-bottom:1px solid #EEECEA}.ta-toolbar select{width:auto;min-width:140px}'+
-      '.ta-table-wrap{overflow:auto}.ta-table{width:100%;border-collapse:collapse;font-size:11.5px}.ta-table th{background:#F8F7F5;color:#6A6560;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.06em;padding:9px 10px;border-bottom:1px solid #E5E2DC}.ta-table td{padding:10px;border-bottom:1px solid #EEECEA;vertical-align:top;color:#3D3A36}.ta-table small{font-size:9.5px;color:#8A8580}.ta-status{display:inline-block;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:900;background:#EAF2FF;color:#1F3A5F}.ta-open{color:inherit}.ta-status.ta-open{background:#FDF0EE;color:#922B21}.ta-status.ta-assigned,.ta-status.ta-in_progress{background:#FEF6E0;color:#8A5C10}.ta-status.ta-done{background:#EEF6FF;color:#145A28}.ta-status.ta-escalated{background:#F2ECFB;color:#521DA8}.ta-priority{display:inline-block;color:#fff;border-radius:999px;font-size:8.5px;font-weight:900;padding:2px 7px;margin-top:4px}.ta-actions{white-space:nowrap}.ta-actions button{border:1px solid #D7D3CC;background:#fff;border-radius:9px;margin:0 3px 4px 0;padding:5px 8px;font-size:10px;font-weight:800;color:#1F3A5F;cursor:pointer}.ta-empty{text-align:center;color:#8A8580;padding:24px!important}'+
-      '@media(max-width:760px){.ta-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ta-open-grid{grid-template-columns:1fr}.ta-span{grid-column:auto}.ta-head{display:block}.ta-user{margin-top:12px}.ta-toolbar select{width:100%}.ta-actions{white-space:normal}}';
-    document.head.appendChild(st);
-  }
-  function mount(){
-    if (mounted) return;
-    var host = document.getElementById('maintenance-section') || document.getElementById('module-workspace') || document.getElementById('root');
-    if (!host) return;
-    injectStyles();
-    var root = document.createElement('div');
-    root.id = 'traceops-maintenance-andon-root';
-    if (host.id === 'maintenance-section') host.insertBefore(root, host.firstChild);
-    else host.appendChild(root);
-    mounted = true;
-    load();
-    render();
-  }
-  function tryMount(){
-    if (mounted) return;
-    if (document.getElementById('maintenance-section')) mount();
-  }
-  function init(){
-    load();
-    tryMount();
-    var obs = new MutationObserver(tryMount);
-    try { obs.observe(document.body, { childList:true, subtree:true }); } catch(_) {}
-    try {
-      if (window.BroadcastChannel) {
-        var bc = new BroadcastChannel(CHANNEL);
-        bc.onmessage = function(ev){
-          if (ev && ev.data && ev.data.type === 'andon-sync') { load(); render(); }
-        };
-      }
-    } catch(_) {}
-    window.TraceOpsMaintenanceAndon = { mount: mount, render: render, load: load, exportCsv: exportCsv };
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+
+  function exportCsv(){ var headers=['id','status','priority','line','station','equipment','issue_type','symptom','created_by','created_at','assigned_to','accepted_at','started_at','closed_at','finding','action','parts','downtime_min','response_min','mttr_min']; var csv=[headers.join(',')].concat(events.map(function(e){ var o=Object.assign({},e,{response_min:e.accepted_at?minsBetween(e.created_at,e.accepted_at):'',mttr_min:e.closed_at?minsBetween(e.created_at,e.closed_at):''}); return headers.map(function(h){return '"'+String(o[h]==null?'':o[h]).replace(/"/g,'""')+'"'}).join(','); })).join('\n'); var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download='traceops_maintenance_andon_'+dateOnly(nowIso())+'.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500); }
+  function focusBoard(){ try{ var el=document.getElementById('traceops-maintenance-andon-root'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(_){} }
+
+  function metric(t,v,s){ return '<div class="ta-metric"><div>'+esc(v)+'</div><span>'+esc(t)+'</span><small>'+esc(s)+'</small></div>'; }
+  function input(id,label,ph){ return '<div class="ta-field"><label>'+esc(label)+'</label><input id="'+id+'" placeholder="'+esc(ph)+'"></div>'; }
+  function select(id,label,opts){ return '<div class="ta-field"><label>'+esc(label)+'</label><select id="'+id+'">'+opts.map(function(o){return '<option>'+esc(o)+'</option>'}).join('')+'</select></div>'; }
+  function rowHtml(e){ var age=minsBetween(e.created_at,e.closed_at||nowIso()), resp=e.accepted_at?minsBetween(e.created_at,e.accepted_at)+'m resp.':'Pending accept', mttr=e.closed_at?minsBetween(e.created_at,e.closed_at)+'m total':age+'m open'; return '<tr data-id="'+esc(e.id)+'"><td><b>'+esc(e.id)+'</b><br><small>'+esc(dateOnly(e.created_at))+' '+esc(timeOnly(e.created_at))+'</small></td><td><span class="ta-status ta-'+esc(String(e.status||'OPEN').toLowerCase())+'">'+esc(statusLabel(e.status))+'</span><br><span class="ta-priority" style="background:'+priorityColor(e.priority)+'">'+esc(e.priority)+'</span></td><td><b>'+esc(e.line||'N/D')+'</b><br><small>'+esc(e.station||e.equipment||'N/D')+'</small></td><td>'+esc(e.symptom||'')+'<br><small>'+esc(e.issue_type||'')+'</small></td><td>'+esc(e.assigned_to||'Unassigned')+'<br><small>'+esc(e.created_by||'')+'</small></td><td><b>'+esc(resp)+'</b><br><small>'+esc(mttr)+'</small></td><td class="ta-actions"><button data-action="accept">Accept</button><button data-action="start">Start</button><button data-action="done">Done</button><button data-action="escalate">Escalate</button><button data-action="cancel">Cancel</button></td></tr>'; }
+
+  function render(){ var root=document.getElementById('traceops-maintenance-andon-root'); if(!root) return; load(); var user=getUser(), k=kpis(), rows=filtered(); var lineOpts=unique('line').map(function(x){return '<option value="'+esc(x)+'">'+esc(x)+'</option>'}).join(''); root.innerHTML='<section class="ta-card"><div class="ta-head"><div><div class="ta-eyebrow">Maintenance Andon</div><h3>Live maintenance response board</h3><p>Open event -> technician accepts -> registers issue -> closes into Maintenance Log.</p></div><div class="ta-user"><label>Current user</label><input id="ta-user" value="'+esc(user)+'" placeholder="Technician / Production"><button id="ta-save-user">Save</button><button id="ta-notify">Enable alerts</button></div></div><div class="ta-kpis">'+metric('Open',k.open,'Waiting maintenance')+metric('In work',k.work,'Assigned / progress')+metric('Done today',k.done,'Closed today')+metric('Avg response',k.avg+'m','Open -> accept')+'</div><div class="ta-open"><div class="ta-open-grid">'+input('ta-line','Line','SMT L18')+input('ta-station','Station / equipment','P21SIAH2 / Printer / AOI')+select('ta-issue-type','Issue type',['Mechanical','Electrical','Pneumatic','Software','Feeder','Printer','AOI','Calibration','Other'])+select('ta-priority','Priority',['Critical','High','Medium','Low'])+'<div class="ta-field ta-span"><label>Symptom observed by production</label><input id="ta-symptom" placeholder="Machine alarm, no read, feeder issue, repeated stop..."></div></div><button id="ta-open-btn" class="ta-primary">Open Andon Event</button></div><div class="ta-toolbar"><select id="ta-filter-status"><option value="ACTIVE">Active</option><option value="ALL">All</option><option value="OPEN">Open</option><option value="ASSIGNED">Assigned</option><option value="IN_PROGRESS">In work</option><option value="DONE">Done</option><option value="ESCALATED">Escalated</option></select><select id="ta-filter-line"><option value="ALL">All lines</option>'+lineOpts+'</select><select id="ta-filter-priority"><option value="ALL">All priorities</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select><button id="ta-export">Export CSV</button></div><div class="ta-table-wrap"><table class="ta-table"><thead><tr><th>Event</th><th>Status</th><th>Line / Station</th><th>Symptom</th><th>Owner</th><th>Timing</th><th>Actions</th></tr></thead><tbody>'+(rows.length?rows.map(rowHtml).join(''):'<tr><td colspan="7" class="ta-empty">No Andon events for selected filter.</td></tr>')+'</tbody></table></div></section>'; bind(); }
+  function bind(){ var el; el=document.getElementById('ta-save-user'); if(el) el.onclick=function(){setUser(val('ta-user')); render();}; el=document.getElementById('ta-notify'); if(el) el.onclick=requestNotifyPermission; el=document.getElementById('ta-open-btn'); if(el) el.onclick=createEvent; el=document.getElementById('ta-export'); if(el) el.onclick=exportCsv; ['status','line','priority'].forEach(function(k){ var f=document.getElementById('ta-filter-'+k); if(f){ f.value=filters[k]||'ALL'; f.onchange=function(){filters[k]=this.value; render();}; }}); Array.prototype.slice.call(document.querySelectorAll('#traceops-maintenance-andon-root tr[data-id] button[data-action]')).forEach(function(btn){ btn.onclick=function(){ var tr=btn.closest('tr'), id=tr&&tr.getAttribute('data-id'), a=btn.getAttribute('data-action'); if(a==='accept') acceptEvent(id); else if(a==='start') startEvent(id); else if(a==='done') closeEvent(id); else if(a==='escalate') escalateEvent(id); else if(a==='cancel') cancelEvent(id); }; }); }
+
+  function mount(){ var host=document.getElementById('maintenance-section'); if(!host) return false; var root=document.getElementById('traceops-maintenance-andon-root'); if(!root){ root=document.createElement('div'); root.id='traceops-maintenance-andon-root'; root.style.cssText='padding:14px 16px;border-top:1px solid #E7EEF9;background:#FBFDFF'; host.appendChild(root); } mountedHost=host; load(); render(); return true; }
+  function ensure(){ if(!document.getElementById('traceops-maintenance-andon-root')) mount(); }
+  function injectCss(){ if(document.getElementById('traceops-maintenance-andon-css')) return; var st=document.createElement('style'); st.id='traceops-maintenance-andon-css'; st.textContent='.ta-card{background:#fff;border:1px solid #D9E6F7;border-radius:18px;overflow:hidden;font-family:Inter,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}.ta-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 18px;background:#F7FAFF;border-bottom:1px solid #E7EEF9}.ta-eyebrow{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#2F6FB3}.ta-head h3{margin:4px 0;font-size:18px;color:#102A43}.ta-head p{margin:0;font-size:12px;color:#5F766C}.ta-user{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.ta-user label,.ta-field label{display:block;font-size:10px;font-weight:800;text-transform:uppercase;color:#5F766C;margin-bottom:4px}.ta-user input,.ta-field input,.ta-field select,.ta-toolbar select{border:1px solid #D9E6F7;border-radius:12px;padding:9px 10px;background:#fff;color:#102A43;font:12px Inter,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}.ta-user button,.ta-toolbar button,.ta-actions button{border:1px solid #D9E6F7;background:#fff;color:#1F3A5F;border-radius:999px;padding:8px 11px;font-size:11px;font-weight:800;cursor:pointer}.ta-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:14px 18px}.ta-metric{border:1px solid #D9E6F7;border-radius:16px;padding:12px;background:#fff}.ta-metric div{font-size:24px;font-weight:900;color:#102A43}.ta-metric span{display:block;font-size:10px;font-weight:900;color:#5F766C;text-transform:uppercase}.ta-metric small{color:#6A8378}.ta-open{padding:0 18px 16px}.ta-open-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}.ta-span{grid-column:1 / -1}.ta-primary{background:linear-gradient(135deg,#1E8A64,#4A90E2)!important;color:#fff!important;border:none!important;border-radius:999px;padding:10px 16px;font-size:12px;font-weight:900;cursor:pointer}.ta-toolbar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid #E7EEF9;background:#FBFDFF}.ta-table-wrap{overflow:auto}.ta-table{width:100%;border-collapse:collapse;font-size:11px}.ta-table th{background:#F7FAFF;color:#5F766C;text-align:left;font-size:10px;text-transform:uppercase;padding:9px;border-top:1px solid #E7EEF9;border-bottom:1px solid #E7EEF9}.ta-table td{padding:10px 9px;border-bottom:1px solid #EEF3FA;color:#33463F;vertical-align:top}.ta-status,.ta-priority{display:inline-flex;border-radius:999px;padding:3px 7px;font-size:9px;font-weight:900}.ta-status{background:#EEF5FF;color:#1F3A5F}.ta-status.ta_open{background:#FFF7E8;color:#9A6A16}.ta-status.ta_done{background:#EBF8EE;color:#145A28}.ta-priority{color:#fff;margin-top:5px}.ta-actions{display:flex;gap:5px;flex-wrap:wrap}.ta-empty{text-align:center;color:#8A8580;padding:20px!important}@media(max-width:760px){.ta-kpis,.ta-open-grid{grid-template-columns:1fr}.ta-head{display:block}.ta-user{margin-top:10px}.ta-table{min-width:880px}}'; document.head.appendChild(st); }
+  function init(){ injectCss(); load(); mount(); setInterval(ensure,1500); try{ bc=new BroadcastChannel(CHANNEL); bc.onmessage=function(){ load(); render(); }; }catch(_){} }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
