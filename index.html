@@ -17738,11 +17738,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                     });
                                     return (React.createElement("div", null,
                                         React.createElement("div", { style: { fontSize: 30, fontWeight: 800, color: "#102A43", lineHeight: 1, marginBottom: 4 } }, yokoCount),
-                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C", marginBottom: 10 } }, "oportunidades detectadas"),
+                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C", marginBottom: 10 } }, "opportunities detected"),
                                         React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
                                             React.createElement("span", { style: { fontSize: 9, fontWeight: 800, background: "#EEF5FF", color: "#2F6FB3", borderRadius: 999, padding: "4px 8px" } },
                                                 yokoItems.length,
-                                                " soluciones replicables"))));
+                                                " replicable solutions"))));
                                 })())),
                         React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } },
                             rccaList.length > 0 && (function () {
@@ -17750,15 +17750,15 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                 if (lessons.length === 0)
                                     return (React.createElement("div", { style: { background: "linear-gradient(180deg,#FFFFFF,#FFF9EF)", border: "1px solid #F1E2B8", borderRadius: 20, padding: "18px 18px" } },
                                         React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#102A43", marginBottom: 4 } }, "LessonTrace"),
-                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "Todav\u00EDa no hay lecciones registradas para la ventana activa.")));
+                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "No lessons recorded yet for the active window.")));
                                 return (React.createElement("div", { style: { background: "linear-gradient(180deg,#FFFFFF,#FFF9EF)", border: "1px solid #F1E2B8", borderRadius: 20, padding: "18px 18px", boxShadow: "0 2px 12px rgba(20,32,51,.03)" } },
                                     React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" } },
                                         React.createElement("div", null,
                                             React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: "#102A43" } }, "LessonTrace"),
-                                            React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "Lecciones aprendidas reutilizables")),
+                                            React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "Reusable lessons learned")),
                                         React.createElement("span", { style: { fontSize: 10, fontWeight: 800, background: "#FFF3D7", color: "#B87820", borderRadius: 999, padding: "6px 10px" } },
                                             lessons.length,
-                                            " lecciones")),
+                                            " lessons")),
                                     React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 12 } }, lessons.slice(0, 4).map(function (r) {
                                         return (React.createElement("div", { key: r.rcca_id, style: { background: "#fff", border: "1px solid #F1E2B8", borderRadius: 16, padding: "14px 14px", minHeight: 158 } },
                                             React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 } },
@@ -17769,7 +17769,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                                 r.leccion_aprendida.slice(0, 175),
                                                 r.leccion_aprendida.length > 175 ? "..." : ""),
                                             r.causa_raiz && React.createElement("div", { style: { fontSize: 10, color: "#5F766C", lineHeight: 1.45 } },
-                                                React.createElement("strong", { style: { color: "#102A43" } }, "Causa ra\u00EDz:"),
+                                                React.createElement("strong", { style: { color: "#102A43" } }, "Root cause:"),
                                                 " ",
                                                 r.causa_raiz.slice(0, 110),
                                                 r.causa_raiz.length > 110 ? "..." : "")));
@@ -17795,12 +17795,12 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                 if (yokoItems.length === 0)
                                     return (React.createElement("div", { style: { background: "linear-gradient(180deg,#FFFFFF,#F5FAFF)", border: "1px solid #D9ECE3", borderRadius: 20, padding: "18px 18px" } },
                                         React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#102A43", marginBottom: 4 } }, "Yokoten"),
-                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "No hay soluciones replicables detectadas para los eventos visibles.")));
+                                        React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "No replicable solutions detected for visible events.")));
                                 return (React.createElement("div", { style: { background: "linear-gradient(180deg,#FFFFFF,#F5FAFF)", border: "1px solid #D9ECE3", borderRadius: 20, padding: "18px 18px", boxShadow: "0 2px 12px rgba(20,32,51,.03)" } },
                                     React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" } },
                                         React.createElement("div", null,
                                             React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: "#102A43" } }, "Yokoten"),
-                                            React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "Soluciones que podr\u00EDan reaplicarse")),
+                                            React.createElement("div", { style: { fontSize: 11, color: "#5F766C" } }, "Solutions that could be reapplied")),
                                         React.createElement("span", { style: { fontSize: 10, fontWeight: 800, background: "#EEF5FF", color: "#2F6FB3", borderRadius: 999, padding: "6px 10px" } },
                                             yokoItems.length,
                                             " casos")),
@@ -17810,7 +17810,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                                 React.createElement("span", { style: { fontSize: 10, fontFamily: "monospace", fontWeight: 800, color: "#2F6FB3" } }, y.rcca.rcca_id),
                                                 React.createElement("span", { style: { fontSize: 9, fontWeight: 800, background: "#EEF5FF", color: "#2F6FB3", borderRadius: 999, padding: "3px 8px" } },
                                                     y.targets.length,
-                                                    " EVT aplicables")),
+                                                    " applicable EVTs")),
                                             React.createElement("div", { style: { fontSize: 11.2, color: "#102A43", lineHeight: 1.55, marginBottom: 10 } },
                                                 y.rcca.accion_correctiva.slice(0, 175),
                                                 y.rcca.accion_correctiva.length > 175 ? "..." : ""),
@@ -17821,7 +17821,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                                 y.targets.length > 4 && React.createElement("span", { style: { fontSize: 9, color: "#5F766C" } },
                                                     "+",
                                                     y.targets.length - 4,
-                                                    " m\u00E1s"))));
+                                                    " more"))));
                                     }))));
                             })())))),
                 React.createElement("div", { className: "foot" },
@@ -17829,7 +17829,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         React.createElement("strong", null, "TraceOps"),
                         " by SMTintel - ALDA - ",
                         new Date().toLocaleDateString("es-MX")),
-                    React.createElement("button", { className: "dlbtn", style: { padding: "8px 16px", fontSize: 12 }, onClick: download }, "Descargar Excel")))))));
+                    React.createElement("button", { className: "dlbtn", style: { padding: "8px 16px", fontSize: 12 }, onClick: download }, "Download Excel")))))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
 
@@ -17854,5 +17854,6 @@ window.addEventListener("load", function() {
   }, 4500);
 })();
 </script>
+<script src="maintenance-andon-module.js"></script>
 </body>
 </html>
