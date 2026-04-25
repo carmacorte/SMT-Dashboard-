@@ -6486,10 +6486,10 @@ function traceOpsYieldNormalizeBU(value) {
     var v = String(value || '').trim().toUpperCase();
     if (!v)
         return 'N/D';
-    if (v.indexOf('FIELD') >= 0 || v === 'FW' || v.indexOf('FWBU') >= 0)
-        return 'FIELDWORKS';
     if (v.indexOf('NGFW') >= 0)
         return 'NGFWBU';
+    if (v.indexOf('FIELD') >= 0 || v === 'FW' || v.indexOf('FWBU') >= 0)
+        return 'FIELDWORKS';
     return String(value || 'N/D').trim();
 }
 function traceOpsYieldNormFilter(value) { return String(value == null ? '' : value).trim(); }
