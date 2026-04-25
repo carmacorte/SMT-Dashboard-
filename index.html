@@ -15200,7 +15200,30 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         " risk units"),
                     React.createElement("span", { style: { fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.18)" } },
                         traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgLeadHours, 1),
-                        " Stockin/FT"))),
+                        " Stockin/FT"),
+                    React.createElement("button", { type: "button", onClick: function() { var el = document.getElementById("traceops-yield-zip-import"); if(el) el.click(); }, disabled: yieldImportState.status === "loading", style: { width: "100%", border: "1px solid rgba(255,255,255,.5)", background: yieldImportState.status === "loading" ? "rgba(255,255,255,.1)" : "rgba(255,255,255,.22)", color: "#fff", borderRadius: 999, padding: "9px 14px", fontSize: 11.5, fontWeight: 800, cursor: yieldImportState.status === "loading" ? "wait" : "pointer", marginTop: 4 } }, yieldImportState.status === "loading" ? "Importando…" : "⬆ Cargar ZIP/Excel"))),
+            React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
+                React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("importTitle")),
+                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Import local temporal: no conserva el Excel. Valida tama\u00F1o y extrae solo SFC, Work Orders / Build Info y Repair Record.")),
+                    React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+                        React.createElement("input", { id: "traceops-yield-zip-import", type: "file", accept: ".zip,.xlsx,.xlsm,.txt,.tsv,.csv", style: { display: "none" }, onChange: function (e) { if (e && e.preventDefault)
+                                e.preventDefault(); var f = e.target.files && e.target.files[0]; handleYieldFlowZipImport(f); setTimeout(function () { try {
+                                e.target.value = "";
+                            }
+                            catch (_) { } }, 250); } }),
+                        React.createElement("button", { type: "button", onClick: function () { var el = document.getElementById("traceops-yield-zip-import"); if (el)
+                                el.click(); }, disabled: yieldImportState.status === "loading", style: { border: "1px solid #1F3A5F", background: yieldImportState.status === "loading" ? "#D9E6F7" : "#1F3A5F", color: "#fff", borderRadius: 999, padding: "9px 13px", fontSize: 11, fontWeight: 800, cursor: yieldImportState.status === "loading" ? "wait" : "pointer" } }, yieldImportState.status === "loading" ? "Importando..." : "Cargar ZIP/Excel"))),
+                React.createElement("div", { style: { padding: "13px 18px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1.1fr 1fr", gap: 10 } },
+                    React.createElement("div", { style: { background: yieldImportState.status === "error" ? "#FDEEEE" : (yieldImportState.status === "ok" ? "#EEF6FF" : "#FBFDFF"), border: "1px solid " + (yieldImportState.status === "error" ? "#F3D4D4" : (yieldImportState.status === "ok" ? "#D8E6FB" : "#E7EEF9")), borderRadius: 12, padding: "11px 12px" } },
+                        React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: yieldImportState.status === "error" ? "#C44141" : "#1F3A5F", textTransform: "uppercase" } }, "Estado de import"),
+                        React.createElement("div", { style: { fontSize: 11.5, color: "#5F766C", lineHeight: 1.5, marginTop: 6 } }, yieldImportState.message)),
+                    React.createElement("div", { style: { background: "#FBFDFF", border: "1px solid #E7EEF9", borderRadius: 12, padding: "11px 12px" } },
+                        React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#1F3A5F", textTransform: "uppercase" } }, "Datos importados"),
+                        React.createElement("div", { style: { fontSize: 11.5, color: "#5F766C", lineHeight: 1.5, marginTop: 6 } },
+                            "WO/date/line/SKU desde Station On Line Report \u00B7 SFC manda el scope: SN, WO, current event y SKU/modelo disponible \u00B7 DB Model solo enriquece BU/modelo por SKU \u00B7 defecto, referencia, PN y repair time desde Repair Record · pass/fail, test area y failing test name desde Cesium.txt. Regla OJT: SN de SFC que existe en Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.",
+                            yieldImportState.summary && yieldImportState.summary.sheets ? " Hojas: " + yieldImportState.summary.sheets.map(function (x) { return x.name + " (" + x.role + ":" + x.rows + ")"; }).join(" · ") : "")))),
             React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(4,minmax(0,1fr))", gap: 10 } },
                 React.createElement("div", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 14, padding: "14px 15px" } },
                     React.createElement("div", { style: { fontSize: 9.5, fontWeight: 800, color: "#5F766C", textTransform: "uppercase" } }, "Work orders"),
@@ -15298,28 +15321,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                             "Prioridad de calculo: FT si existe; si no, Stockin. Stockin actual: ",
                             React.createElement("b", null, traceOpsYieldFlowFmt(yieldFlowModel.kpi.stockinUnits)),
                             " unidades.")))),
-            React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
-                React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" } },
-                    React.createElement("div", null,
-                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("importTitle")),
-                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Import local temporal: no conserva el Excel. Valida tama\u00F1o y extrae solo SFC, Work Orders / Build Info y Repair Record.")),
-                    React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
-                        React.createElement("input", { id: "traceops-yield-zip-import", type: "file", accept: ".zip,.xlsx,.xlsm,.txt,.tsv,.csv", style: { display: "none" }, onChange: function (e) { if (e && e.preventDefault)
-                                e.preventDefault(); var f = e.target.files && e.target.files[0]; handleYieldFlowZipImport(f); setTimeout(function () { try {
-                                e.target.value = "";
-                            }
-                            catch (_) { } }, 250); } }),
-                        React.createElement("button", { type: "button", onClick: function () { var el = document.getElementById("traceops-yield-zip-import"); if (el)
-                                el.click(); }, disabled: yieldImportState.status === "loading", style: { border: "1px solid #1F3A5F", background: yieldImportState.status === "loading" ? "#D9E6F7" : "#1F3A5F", color: "#fff", borderRadius: 999, padding: "9px 13px", fontSize: 11, fontWeight: 800, cursor: yieldImportState.status === "loading" ? "wait" : "pointer" } }, yieldImportState.status === "loading" ? "Importando..." : "Cargar ZIP/Excel"))),
-                React.createElement("div", { style: { padding: "13px 18px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1.1fr 1fr", gap: 10 } },
-                    React.createElement("div", { style: { background: yieldImportState.status === "error" ? "#FDEEEE" : (yieldImportState.status === "ok" ? "#EEF6FF" : "#FBFDFF"), border: "1px solid " + (yieldImportState.status === "error" ? "#F3D4D4" : (yieldImportState.status === "ok" ? "#D8E6FB" : "#E7EEF9")), borderRadius: 12, padding: "11px 12px" } },
-                        React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: yieldImportState.status === "error" ? "#C44141" : "#1F3A5F", textTransform: "uppercase" } }, "Estado de import"),
-                        React.createElement("div", { style: { fontSize: 11.5, color: "#5F766C", lineHeight: 1.5, marginTop: 6 } }, yieldImportState.message)),
-                    React.createElement("div", { style: { background: "#FBFDFF", border: "1px solid #E7EEF9", borderRadius: 12, padding: "11px 12px" } },
-                        React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#1F3A5F", textTransform: "uppercase" } }, "Datos importados"),
-                        React.createElement("div", { style: { fontSize: 11.5, color: "#5F766C", lineHeight: 1.5, marginTop: 6 } },
-                            "WO/date/line/SKU desde Station On Line Report \u00B7 SFC manda el scope: SN, WO, current event y SKU/modelo disponible \u00B7 DB Model solo enriquece BU/modelo por SKU \u00B7 defecto, referencia, PN y repair time desde Repair Record · pass/fail, test area y failing test name desde Cesium.txt. Regla OJT: SN de SFC que existe en Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.",
-                            yieldImportState.summary && yieldImportState.summary.sheets ? " Hojas: " + yieldImportState.summary.sheets.map(function (x) { return x.name + " (" + x.role + ":" + x.rows + ")"; }).join(" · ") : "")))),
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" } },
                     React.createElement("div", null,
