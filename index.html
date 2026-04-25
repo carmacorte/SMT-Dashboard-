@@ -5196,7 +5196,7 @@ function traceOpsDownloadCsv(filename, rows) {
     a.click();
     URL.revokeObjectURL(a.href);
 }
-var TRACEOPS_YIELD_FLOW_STATIONS = ["Paste", "SPI", "AOI", "Router", "VI", "ICT", "Stocking", "FT1", "FT2", "FT3", "FT4"];
+var TRACEOPS_YIELD_FLOW_STATIONS = ["Paste", "SPI", "AOI", "Router", "VI", "ICT", "Stockin", "FT1", "FT2", "FT3", "FT4"];
 var TRACEOPS_YIELD_FLOW_TRACKER = [
     {
         skuno: "73-20249-06",
@@ -5206,7 +5206,7 @@ var TRACEOPS_YIELD_FLOW_TRACKER = [
         lotQty: 1000,
         startSmt: "2026-04-22 07:00",
         firstFunctional: "2026-04-23 11:30",
-        completedByStation: { Paste: 1000, SPI: 1000, AOI: 980, Router: 980, VI: 980, ICT: 950, Stocking: 950, FT1: 950, FT2: 940, FT3: 940, FT4: 935 },
+        completedByStation: { Paste: 1000, SPI: 1000, AOI: 980, Router: 980, VI: 980, ICT: 950, Stockin: 950, FT1: 950, FT2: 940, FT3: 940, FT4: 935 },
         defectsByStation: { AOI: 20, ICT: 30, FT1: 10, FT2: 10, FT4: 5 },
         recoveryQueue: [
             { station: "AOI", qty: 20, avgHours: 6.5, cause: "AOI defect / review" },
@@ -5222,7 +5222,7 @@ var TRACEOPS_YIELD_FLOW_TRACKER = [
         lotQty: 760,
         startSmt: "2026-03-29 06:40",
         firstFunctional: "2026-03-31 15:10",
-        completedByStation: { Paste: 760, SPI: 760, AOI: 735, Router: 722, VI: 709, ICT: 690, Stocking: 685, FT1: 681, FT2: 676, FT3: 673, FT4: 671 },
+        completedByStation: { Paste: 760, SPI: 760, AOI: 735, Router: 722, VI: 709, ICT: 690, Stockin: 685, FT1: 681, FT2: 676, FT3: 673, FT4: 671 },
         defectsByStation: { AOI: 25, Router: 13, VI: 13, ICT: 19, FT1: 4, FT2: 5, FT3: 3, FT4: 2 },
         recoveryQueue: [
             { station: "AOI", qty: 25, avgHours: 8, cause: "Alignment and solder review" },
@@ -5293,7 +5293,7 @@ var TRACEOPS_YIELD_DB_MODEL_OPTIONS = [];
 var TRACEOPS_YIELD_FT_ROWS = [];
 var TRACEOPS_YIELD_FT_AREA_ROWS = [];
 var TRACEOPS_YIELD_ACTION_TRACKER_ROWS = [];
-var TRACEOPS_YIELD_STATION_ORDER = { Paste: 0, SPI: 1, AOI: 2, Router: 3, VI: 4, ICT: 5, Stocking: 6, FT1: 7, FT2: 8, FT3: 9, FT4: 10 };
+var TRACEOPS_YIELD_STATION_ORDER = { Paste: 0, SPI: 1, AOI: 2, Router: 3, VI: 4, ICT: 5, Stockin: 6, FT1: 7, FT2: 8, FT3: 9, FT4: 10 };
 function traceOpsYieldNorm(value) {
     return String(value == null ? "" : value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
@@ -5475,8 +5475,8 @@ function traceOpsYieldClassifyStation(value) {
         return "VI";
     if (/(ict|in circuit)/.test(t))
         return "ICT";
-    if (/(stock|stocking|almacen|wip|store)/.test(t))
-        return "Stocking";
+    if (/(stock|stockin|almacen|wip|store)/.test(t))
+        return "Stockin";
     if (/(ft4|fct4|functional.*4|funcional.*4)/.test(t))
         return "FT4";
     if (/(ft3|fct3|functional.*3|funcional.*3)/.test(t))
@@ -6185,7 +6185,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
             defectsByStation[st] += 1;
         } });
         var ftTimes = sfcList.filter(function (x) { return /^FT/.test(x.station || "") && x.eventTime; }).map(function (x) { return x.eventTime; }).sort();
-        var stockingTimes = sfcList.filter(function (x) { return (x.station === "Stocking") && x.eventTime; }).map(function (x) { return x.eventTime; }).sort();
+        var stockinTimes = sfcList.filter(function (x) { return (x.station === "Stockin") && x.eventTime; }).map(function (x) { return x.eventTime; }).sort();
         var recoveryMap = {};
         var recoverySeen = {};
         repairList.forEach(function (rep) { var st = rep.station || "Repair"; var key = st + "|" + rep.sn; if (recoverySeen[key])
@@ -6201,7 +6201,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
         var recoveryQueue = Object.keys(recoveryMap).map(function (k) { var r = recoveryMap[k]; return { station: r.station, qty: r.qty, avgHours: r.countHours ? r.totalHours / r.countHours : 0, cause: r.cause }; }).sort(function (a, b) { return b.qty - a.qty; }).slice(0, 3);
         if (!recoveryQueue.length && row.risk)
             recoveryQueue.push({ station: "Repair", qty: row.risk, avgHours: 0, cause: "Repair records imported" });
-        return { skuno: row.sku, sku: row.sku, workOrder: wo, wo: wo, model: row.family, family: row.family, bu: row.bu, week: row.week, line: row.line, lotQty: row.total, startSmt: meta.startSmt || "N/D", firstFunctional: ftTimes[0] || "N/D", firstStocking: stockingTimes[0] || "N/D", completedByStation: completedByStation, defectsByStation: defectsByStation, recoveryQueue: recoveryQueue };
+        return { skuno: row.sku, sku: row.sku, workOrder: wo, wo: wo, model: row.family, family: row.family, bu: row.bu, week: row.week, line: row.line, lotQty: row.total, startSmt: meta.startSmt || "N/D", firstFunctional: ftTimes[0] || "N/D", firstStockin: stockinTimes[0] || "N/D", completedByStation: completedByStation, defectsByStation: defectsByStation, recoveryQueue: recoveryQueue };
     });
     if (rows.length)
         TRACEOPS_YIELD_BY_WO_ROWS = rows;
@@ -6737,11 +6737,11 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
     var weightedYield = totalUnits ? rows.reduce(function (sum, item) { return sum + (Number(item.yield || 0) * Number(item.total || 0)); }, 0) / totalUnits : 0;
     var weightedTouch = totalUnits ? rows.reduce(function (sum, item) { return sum + (Number(item.touch || 0) * Number(item.total || 0)); }, 0) / totalUnits : 0;
     var flowHours = trackerRows.map(function (item) {
-        var target = item.firstFunctional && item.firstFunctional !== 'N/D' ? item.firstFunctional : item.firstStocking;
+        var target = item.firstFunctional && item.firstFunctional !== 'N/D' ? item.firstFunctional : item.firstStockin;
         return traceOpsYieldFlowHoursBetween(item.startSmt, target);
     }).filter(function (v) { return v != null; });
     var ftHours = trackerRows.map(function (item) { return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstFunctional); }).filter(function (v) { return v != null; });
-    var stockingHours = trackerRows.map(function (item) { return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstStocking); }).filter(function (v) { return v != null; });
+    var stockinHours = trackerRows.map(function (item) { return traceOpsYieldFlowHoursBetween(item.startSmt, item.firstStockin); }).filter(function (v) { return v != null; });
     var activeWoMeta = {};
     rows.forEach(function (r) {
         var rawWo = String(r.wo || '');
@@ -6812,7 +6812,7 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
     });
     var ftAreaRows = traceOpsYieldBuildFtAreaRows(ftRows);
     var bgaUnits = riskRows.filter(function (x) { return /BGA|REBALL|U8300|ASIC|CPU|FPGA|UNDERFILL/i.test([x.symptom, x.location, x.family, x.sku].join(' ')); }).reduce(function (a, b) { return a + Number(b.risk || 0); }, 0);
-    var stockingUnits = trackerRows.reduce(function (a, t) { return a + Number((t.completedByStation && t.completedByStation.Stocking) || 0); }, 0);
+    var stockinUnits = trackerRows.reduce(function (a, t) { return a + Number((t.completedByStation && t.completedByStation.Stockin) || 0); }, 0);
     var ftUnits = trackerRows.reduce(function (a, t) { var c = t.completedByStation || {}; return a + Number(c.FT1 || 0) + Number(c.FT2 || 0) + Number(c.FT3 || 0) + Number(c.FT4 || 0); }, 0);
     var reintegrationCandidates = trackerRows.reduce(function (a, t) { return a + ((t.recoveryQueue || []).reduce(function (x, r) { return x + Number(r.qty || 0); }, 0)); }, 0);
     var reintegrationWeightedHours = 0;
@@ -6875,10 +6875,10 @@ function traceOpsBuildYieldFlowModelLocal(filters) {
             touch: weightedTouch,
             avgLeadHours: flowHours.length ? (flowHours.reduce(function (a, b) { return a + b; }, 0) / flowHours.length) : 0,
             avgFtHours: ftHours.length ? (ftHours.reduce(function (a, b) { return a + b; }, 0) / ftHours.length) : null,
-            avgStockingHours: stockingHours.length ? (stockingHours.reduce(function (a, b) { return a + b; }, 0) / stockingHours.length) : null,
+            avgStockinHours: stockinHours.length ? (stockinHours.reduce(function (a, b) { return a + b; }, 0) / stockinHours.length) : null,
             weeklyCount: weeklyTrend.length,
             bgaUnits: bgaUnits,
-            stockingUnits: stockingUnits,
+            stockinUnits: stockinUnits,
             ftUnits: ftUnits,
             reintegrationCandidates: reintegrationCandidates,
             avgReintegrationProxy: avgReintegrationProxy
@@ -7357,6 +7357,16 @@ function App() {
     var yfSerialModalArr = _useState(null);
     var yieldSerialModal = yfSerialModalArr[0];
     var setYieldSerialModal = yfSerialModalArr[1];
+    var YIELD_ACTION_KEY = "traceops_yield_action_log_v1";
+    var yieldActionArr = _useState(function () { try { var raw = localStorage.getItem(YIELD_ACTION_KEY); return raw ? JSON.parse(raw) : []; } catch (_) { return []; } });
+    var yieldActionList = yieldActionArr[0];
+    var setYieldActionList = yieldActionArr[1];
+    var yieldActionFormOpenArr = _useState(false);
+    var yieldActionFormOpen = yieldActionFormOpenArr[0];
+    var setYieldActionFormOpen = yieldActionFormOpenArr[1];
+    var yieldActionFormArr = _useState(traceOpsYieldNewActionForm());
+    var yieldActionForm = yieldActionFormArr[0];
+    var setYieldActionForm = yieldActionFormArr[1];
     var galPageArr = _useState(0);
     var galPage = galPageArr[0];
     var setGalPage = galPageArr[1];
@@ -12269,6 +12279,71 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         a.click();
         URL.revokeObjectURL(a.href);
     }
+    function traceOpsYieldNewActionForm(seed) {
+        var now = new Date();
+        var iso = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+        seed = seed || {};
+        return { id: seed.id || "", date: seed.date || iso, source: seed.source || "Yield Flow", scope: seed.scope || "", workOrder: seed.workOrder || seed.wo || "", sku: seed.sku || "", model: seed.model || seed.family || "", failureMode: seed.failureMode || seed.focus || "", station: seed.station || "", supportArea: seed.supportArea || "Proceso / Test / Mantto", owner: seed.owner || "", actionType: seed.actionType || "Analisis / seguimiento", action: seed.action || "", dueDate: seed.dueDate || "", status: seed.status || "Open", priority: seed.priority || seed.severity || "Medium", comments: seed.comments || "", meta_files: traceOpsNormalizeMetaFiles(seed.meta_files || []) };
+    }
+    function traceOpsYieldPersistActions(next) { try { localStorage.setItem(YIELD_ACTION_KEY, JSON.stringify(next || [])); } catch (_) { } }
+    function traceOpsYieldSetActionField(key, value) { setYieldActionForm(function (prev) { var next = Object.assign({}, prev || traceOpsYieldNewActionForm()); next[key] = value; return next; }); }
+    function traceOpsYieldReadActionFiles(fileList) {
+        var files = Array.prototype.slice.call(fileList || []); if (!files.length) return;
+        Promise.all(files.map(function (file) { return new Promise(function (resolve) { var fr = new FileReader(); fr.onload = function () { resolve({ id: 'yfmeta_' + Math.random().toString(36).slice(2, 10), name: file.name, type: file.type || '', size: file.size || 0, kind: traceOpsMetaTypeLabel(file), data_url: String(fr.result || '') }); }; fr.onerror = function () { resolve(null); }; fr.readAsDataURL(file); }); })).then(function (items) { setYieldActionForm(function (prev) { var base = prev || traceOpsYieldNewActionForm(); return Object.assign({}, base, { meta_files: traceOpsMergeMetaFiles(base.meta_files || [], items.filter(Boolean)) }); }); });
+    }
+    function traceOpsYieldRemoveActionFile(fileId) { setYieldActionForm(function (prev) { var base = prev || traceOpsYieldNewActionForm(); return Object.assign({}, base, { meta_files: (base.meta_files || []).filter(function (f) { return f.id !== fileId; }) }); }); }
+    function traceOpsYieldSaveAction() {
+        var form = yieldActionForm || traceOpsYieldNewActionForm();
+        var nextItem = Object.assign({}, form, { id: form.id || ('YF-M' + String(Date.now()).slice(-7)), updatedAt: new Date().toISOString(), meta_files: traceOpsNormalizeMetaFiles(form.meta_files || []) });
+        var next = (yieldActionList || []).slice(); var idx = next.findIndex(function (x) { return x.id === nextItem.id; }); if (idx >= 0) next[idx] = nextItem; else next.unshift(nextItem);
+        setYieldActionList(next); traceOpsYieldPersistActions(next); setYieldActionForm(traceOpsYieldNewActionForm()); setYieldActionFormOpen(false);
+    }
+    function traceOpsYieldEditAction(item) { setYieldActionForm(traceOpsYieldNewActionForm(item)); setYieldActionFormOpen(true); }
+    function traceOpsYieldDeleteAction(id) { var next = (yieldActionList || []).filter(function (x) { return x.id !== id; }); setYieldActionList(next); traceOpsYieldPersistActions(next); }
+    function traceOpsYieldSeedActionFromSuggestion(suggestion) {
+        var s = suggestion || (actionTracker && actionTracker[0]) || {};
+        setYieldActionForm(traceOpsYieldNewActionForm({ source: s.source || 'Yield Flow', failureMode: s.focus || '', scope: s.context || '', owner: s.owner || '', supportArea: s.owner || 'Proceso / Test / Mantto', actionType: s.actionType || 'Analisis / seguimiento', action: s.action || '', priority: s.severity || 'High', status: 'Open', meta_files: [] }));
+        setYieldActionFormOpen(true);
+    }
+    function traceOpsYieldActionInput(label, node) { var h = React.createElement; return h("label", { style: { fontSize: 10, fontWeight: 800, color: "#5F766C", textTransform: "uppercase" } }, label, node); }
+    function renderYieldActionTracker() {
+        var h = React.createElement;
+        var inputStyle = { width: "100%", marginTop: 5, border: "1px solid #CFE0FB", borderRadius: 10, padding: "8px 10px", boxSizing: "border-box" };
+        var actions = yieldActionList || [];
+        var opt = function (x) { return h("option", { key: x, value: x }, x); };
+        var formNode = yieldActionFormOpen ? h("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#FBFDFF" } },
+            h("div", { style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(4,minmax(0,1fr))", gap: 10 } },
+                traceOpsYieldActionInput("Fecha", h("input", { type: "date", value: yieldActionForm.date || "", onChange: function (e) { traceOpsYieldSetActionField('date', e.target.value); }, style: inputStyle })),
+                traceOpsYieldActionInput("Fuente", h("select", { value: yieldActionForm.source || "Yield Flow", onChange: function (e) { traceOpsYieldSetActionField('source', e.target.value); }, style: inputStyle }, ["Yield Flow", "FT Breakdown", "Pareto", "WO critica", "RCCA", "Mejora"].map(opt))),
+                traceOpsYieldActionInput("Prioridad", h("select", { value: yieldActionForm.priority || "Medium", onChange: function (e) { traceOpsYieldSetActionField('priority', e.target.value); }, style: inputStyle }, ["Critical", "High", "Medium", "Low"].map(opt))),
+                traceOpsYieldActionInput("Estatus", h("select", { value: yieldActionForm.status || "Open", onChange: function (e) { traceOpsYieldSetActionField('status', e.target.value); }, style: inputStyle }, ["Open", "In Progress", "Waiting", "Closed"].map(opt))),
+                traceOpsYieldActionInput("Owner", h("input", { value: yieldActionForm.owner || "", onChange: function (e) { traceOpsYieldSetActionField('owner', e.target.value); }, placeholder: "Nombre / soporte", style: inputStyle })),
+                traceOpsYieldActionInput("Area soporte", h("select", { value: yieldActionForm.supportArea || "Proceso / Test / Mantto", onChange: function (e) { traceOpsYieldSetActionField('supportArea', e.target.value); }, style: inputStyle }, ["PM / Project", "Supervision / Produccion", "Proceso / Test / Mantto", "Calidad", "Materiales / SQE"].map(opt))),
+                traceOpsYieldActionInput("WO", h("input", { value: yieldActionForm.workOrder || "", onChange: function (e) { traceOpsYieldSetActionField('workOrder', e.target.value); }, style: inputStyle })),
+                traceOpsYieldActionInput("Due date", h("input", { type: "date", value: yieldActionForm.dueDate || "", onChange: function (e) { traceOpsYieldSetActionField('dueDate', e.target.value); }, style: inputStyle }))),
+            h("div", { style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(3,minmax(0,1fr))", gap: 10, marginTop: 10 } },
+                h("input", { value: yieldActionForm.model || "", onChange: function (e) { traceOpsYieldSetActionField('model', e.target.value); }, placeholder: "Modelo / Product family", style: inputStyle }),
+                h("input", { value: yieldActionForm.sku || "", onChange: function (e) { traceOpsYieldSetActionField('sku', e.target.value); }, placeholder: "SKU", style: inputStyle }),
+                h("input", { value: yieldActionForm.station || "", onChange: function (e) { traceOpsYieldSetActionField('station', e.target.value); }, placeholder: "Estacion", style: inputStyle })),
+            h("div", { style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1fr 1fr", gap: 10, marginTop: 10 } },
+                h("textarea", { value: yieldActionForm.failureMode || "", onChange: function (e) { traceOpsYieldSetActionField('failureMode', e.target.value); }, placeholder: "Evento / modo de falla / hallazgo", style: Object.assign({}, inputStyle, { minHeight: 72, resize: "vertical" }) }),
+                h("textarea", { value: yieldActionForm.action || "", onChange: function (e) { traceOpsYieldSetActionField('action', e.target.value); }, placeholder: "Accion asignada / seguimiento requerido", style: Object.assign({}, inputStyle, { minHeight: 72, resize: "vertical" }) })),
+            h("textarea", { value: yieldActionForm.comments || "", onChange: function (e) { traceOpsYieldSetActionField('comments', e.target.value); }, placeholder: "Comentarios / validacion / resultado", style: Object.assign({}, inputStyle, { marginTop: 10, minHeight: 60, resize: "vertical" }) }),
+            h("div", { style: { marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } },
+                h("label", { style: { fontSize: 10.5, fontWeight: 800, color: "#1F3A5F", padding: "7px 11px", borderRadius: 999, border: "1px solid #CFE0FB", background: "#EAF2FF", cursor: "pointer" } }, "Adjuntar metadatos", h("input", { type: "file", multiple: true, accept: TRACEOPS_RCCA_META_ACCEPT.join(','), onChange: function (e) { traceOpsYieldReadActionFiles(e.target.files); e.target.value = ''; }, style: { display: "none" } })),
+                h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+                    h("button", { type: "button", onClick: function () { setYieldActionForm(traceOpsYieldNewActionForm()); setYieldActionFormOpen(false); }, style: { fontSize: 10.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "#fff", color: "#5F766C", border: "1px solid #DDE7F3", cursor: "pointer" } }, "Cancelar"),
+                    h("button", { type: "button", onClick: traceOpsYieldSaveAction, style: { fontSize: 10.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "#1F3A5F", color: "#fff", border: "1px solid #1F3A5F", cursor: "pointer" } }, "Guardar accion"))),
+            (yieldActionForm.meta_files || []).length ? h("div", { style: { display: "flex", gap: 7, flexWrap: "wrap", marginTop: 10 } }, (yieldActionForm.meta_files || []).map(function (f) { return h("span", { key: f.id, style: { fontSize: 10, padding: "5px 8px", borderRadius: 999, background: "#F7FAFF", color: "#1F3A5F", border: "1px solid #D9E6F7" } }, f.kind + " " + f.name + " ", h("button", { type: "button", onClick: function () { traceOpsYieldRemoveActionFile(f.id); }, style: { border: 0, background: "transparent", cursor: "pointer", color: "#A43B2E", fontWeight: 900 } }, "x")); })) : null) : null;
+        return h("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
+            h("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" } },
+                h("div", null, h("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Bitacora de acciones Yield Flow"), h("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Registro manual para asignar acciones de soporte, analisis, RCCA e ideas de mejora con metadatos adjuntos.")),
+                h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, h("button", { type: "button", onClick: function () { traceOpsYieldSeedActionFromSuggestion(actionTracker && actionTracker[0]); }, style: { fontSize: 10.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } }, "Usar foco sugerido"), h("button", { type: "button", onClick: function () { setYieldActionForm(traceOpsYieldNewActionForm()); setYieldActionFormOpen(true); }, style: { fontSize: 10.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "linear-gradient(135deg,#2B9C7F,#4A90E2)", color: "#fff", border: "1px solid rgba(255,255,255,.25)", cursor: "pointer" } }, "+ Nueva accion"))),
+            formNode,
+            h("div", { className: "tscroll", style: { padding: "12px 16px" } }, h("table", null,
+                h("thead", null, h("tr", null, ["ID", "Fecha", "Prioridad", "Owner", "Area", "WO / SKU", "Evento", "Accion", "Estatus", "Meta"].map(function (x) { return h("th", { key: x }, x); }), h("th", null, "Editar"))),
+                h("tbody", null, actions.length ? actions.map(function (a) { return h("tr", { key: a.id }, h("td", null, h("strong", null, a.id)), h("td", null, a.date || ""), h("td", null, a.priority || ""), h("td", null, a.owner || "Sin owner"), h("td", null, a.supportArea || ""), h("td", null, h("strong", null, a.workOrder || ""), h("br"), a.sku || a.model || ""), h("td", null, h("strong", null, a.failureMode || a.scope || ""), a.station ? h("div", { style: { fontSize: 10, color: "#5F766C" } }, a.station) : null), h("td", null, a.action || ""), h("td", null, a.status || "Open"), h("td", null, (a.meta_files || []).length ? String((a.meta_files || []).length) + " files" : "-"), h("td", null, h("button", { type: "button", onClick: function () { traceOpsYieldEditAction(a); }, style: { fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#F7FAFF", border: "1px solid #CFE0FB", color: "#1F3A5F", cursor: "pointer" } }, "Editar"), " ", h("button", { type: "button", onClick: function () { traceOpsYieldDeleteAction(a.id); }, style: { fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#FFF7F5", border: "1px solid #F1B5AE", color: "#A43B2E", cursor: "pointer" } }, "x"))); }) : h("tr", null, h("td", { colSpan: 11, style: { color: "#5F766C", padding: "14px" } }, "Sin acciones manuales registradas. Usa + Nueva accion o Usar foco sugerido."))))));
+    }
     function reset() {
         try {
             sessionStorage.removeItem("traceops_last_result");
@@ -15068,7 +15143,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             ws.views = [{ state: "frozen", ySplit: 1 }];
         }
         addSheet("KPI", ["Metric", "Value"], [
-            { Metric: "Work Orders", Value: model.kpi.orders }, { Metric: "Total Units", Value: model.kpi.units }, { Metric: "Clean Units", Value: model.kpi.clean }, { Metric: "Risk Units", Value: model.kpi.risk }, { Metric: "Clean Yield %", Value: traceOpsYieldFlowFmt(model.kpi.yield, 2) }, { Metric: "OJT Touch Rate %", Value: traceOpsYieldFlowFmt(model.kpi.touch, 2) }, { Metric: "Avg Reintegration", Value: traceOpsYieldFlowFmtHoursDays(model.kpi.avgReintegrationProxy, 1) }, { Metric: "Avg SMT to Stocking/FT", Value: traceOpsYieldFlowFmtHoursDays(model.kpi.avgLeadHours, 1) }, { Metric: "Scope Product Family", Value: yieldFilters.family || "ALL" }, { Metric: "Scope SKU", Value: yieldFilters.sku || "ALL" }, { Metric: "Scope Cisco Week", Value: yieldFilters.week || "ALL" }, { Metric: "Scope Line", Value: yieldFilters.line || "ALL" }, { Metric: "Scope Work Order", Value: yieldFilters.wo || "ALL" }, { Metric: "Fecha desde", Value: yieldFilters.from || "ALL" }, { Metric: "Fecha hasta", Value: yieldFilters.to || "ALL" }
+            { Metric: "Work Orders", Value: model.kpi.orders }, { Metric: "Total Units", Value: model.kpi.units }, { Metric: "Clean Units", Value: model.kpi.clean }, { Metric: "Risk Units", Value: model.kpi.risk }, { Metric: "Clean Yield %", Value: traceOpsYieldFlowFmt(model.kpi.yield, 2) }, { Metric: "OJT Touch Rate %", Value: traceOpsYieldFlowFmt(model.kpi.touch, 2) }, { Metric: "Avg Reintegration", Value: traceOpsYieldFlowFmtHoursDays(model.kpi.avgReintegrationProxy, 1) }, { Metric: "Avg SMT to Stockin/FT", Value: traceOpsYieldFlowFmtHoursDays(model.kpi.avgLeadHours, 1) }, { Metric: "Scope Product Family", Value: yieldFilters.family || "ALL" }, { Metric: "Scope SKU", Value: yieldFilters.sku || "ALL" }, { Metric: "Scope Cisco Week", Value: yieldFilters.week || "ALL" }, { Metric: "Scope Line", Value: yieldFilters.line || "ALL" }, { Metric: "Scope Work Order", Value: yieldFilters.wo || "ALL" }, { Metric: "Fecha desde", Value: yieldFilters.from || "ALL" }, { Metric: "Fecha hasta", Value: yieldFilters.to || "ALL" }
         ]);
         addSheet("Yield_by_WO", ["week", "line", "bu", "family", "sku", "wo", "yield", "touch", "total", "clean", "risk", "severity", "riskRate"], (model.rows || []).map(function (r) { var sev = traceOpsYieldWoSeverity(r); return Object.assign({}, r, { severity: sev.level, riskRate: traceOpsYieldFlowFmt(sev.rate, 2) + "%" }); }));
         addSheet("Weekly_Factory_Health", ["week", "orders", "total", "clean", "risk", "ojtPct", "ft", "avgLeadHours"], model.weeklyTrend || []);
@@ -15076,11 +15151,12 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         addSheet("Failure_Pareto", ["pattern", "units", "impact", "cumulativePct", "criticality", "origin", "refs", "serialCount"], (model.failurePatterns || []).map(function (x) { return Object.assign({}, x, { refs: (x.refs || []).join(", "), serialCount: (x.serials || []).length }); }));
         addSheet("Station_FPY", ["station", "expected", "current", "defects", "fpy", "ojt", "woCount", "health"], (model.stationFpy || []).map(function (x) { return Object.assign({}, x, { fpy: x.fpy == null ? "N/D" : traceOpsYieldFlowFmt(x.fpy, 2) + "%", ojt: traceOpsYieldFlowFmt(x.ojt, 2) + "%" }); }));
         addSheet("FT_Breakdown", ["testArea", "pass", "fail", "test", "yieldPct", "goalPct", "frPct", "deltaPct", "passToGoal", "topFails"], (model.ftAreaRows || []).map(function (x) { return Object.assign({}, x, { yieldPct: traceOpsYieldFlowFmt(x.yieldPct, 2) + "%", goalPct: traceOpsYieldFlowFmt(x.goalPct, 2) + "%", frPct: traceOpsYieldFlowFmt(x.frPct, 2) + "%", deltaPct: traceOpsYieldFlowFmt(x.deltaPct, 2) + "%", topFails: (x.topFails || []).map(function (f) { return f.name + " (" + f.count + ")"; }).join("; ") }); }));
-        addSheet("Support_Action_Tracker", ["id", "source", "focus", "context", "units", "owner", "actionType", "action", "status", "severity"], (model.actionTracker || []));
+        addSheet("Support_Action_Tracker", ["id", "date", "source", "scope", "workOrder", "sku", "model", "failureMode", "station", "supportArea", "owner", "actionType", "action", "dueDate", "status", "priority", "comments", "metaFiles"], (yieldActionList || []).map(function (x) { return Object.assign({}, x, { metaFiles: (x.meta_files || []).map(function (f) { return f.name; }).join(", ") }); }));
+        addSheet("Suggested_Actions", ["id", "source", "focus", "context", "units", "owner", "actionType", "action", "status", "severity"], (model.actionTracker || []));
         var serialEvidenceRows = [];
         (model.failurePatterns || []).forEach(function (pat) { (pat.serials || []).forEach(function (r) { serialEvidenceRows.push({ pattern: pat.pattern, sn: r.sn, wo: r.wo, sku: r.sku, family: r.family, bu: r.bu, symptom: r.symptom, location: r.location, station: r.station, week: r.week, line: r.line }); }); });
         addSheet("Serial_Evidence", ["pattern", "sn", "wo", "sku", "family", "bu", "symptom", "location", "station", "week", "line"], serialEvidenceRows);
-        addSheet("Tracker", ["model", "skuno", "workOrder", "line", "lotQty", "startSmt", "firstStocking", "firstFunctional"], (model.trackerRows || []).map(function (t) { return { model: t.model, skuno: t.skuno, workOrder: t.workOrder, line: t.line, lotQty: t.lotQty, startSmt: String(t.startSmt || ""), firstStocking: String(t.firstStocking || ""), firstFunctional: String(t.firstFunctional || "") }; }));
+        addSheet("Tracker", ["model", "skuno", "workOrder", "line", "lotQty", "startSmt", "firstStockin", "firstFunctional"], (model.trackerRows || []).map(function (t) { return { model: t.model, skuno: t.skuno, workOrder: t.workOrder, line: t.line, lotQty: t.lotQty, startSmt: String(t.startSmt || ""), firstStockin: String(t.firstStockin || ""), firstFunctional: String(t.firstFunctional || "") }; }));
         var buf = await wb.xlsx.writeBuffer();
         var blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         var a = document.createElement("a");
@@ -15106,8 +15182,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             React.createElement("div", { style: { background: "linear-gradient(135deg,#102A43 0%,#1F3A5F 56%,#2B5F98 100%)", borderRadius: 18, padding: isMobile() ? "16px 14px" : "18px 20px", color: "#fff", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "minmax(0,1fr) auto", alignItems: "center", gap: isMobile() ? 10 : 14, overflow: "hidden" } },
                 React.createElement("div", { style: { minWidth: 0, width: "100%" } },
                     React.createElement("div", { style: { fontSize: 10, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", opacity: .72, marginBottom: 8 } }, "Yield intelligence"),
-                    React.createElement("div", { style: { fontSize: isMobile() ? 20 : 24, fontWeight: 800, lineHeight: isMobile() ? 1.16 : 1.05, maxWidth: isMobile() ? "100%" : 680, wordBreak: "normal", overflowWrap: "break-word" } }, "Yield Flow: salida de proceso y avance SMT a Stocking/FT"),
-                    React.createElement("div", { style: { fontSize: isMobile() ? 11.5 : 12.5, lineHeight: 1.55, opacity: .84, maxWidth: isMobile() ? "100%" : 800, marginTop: 8 } }, "Visor ejecutivo local para responder: unidades que salen del proceso, causas, tiempo de reincorporacion y avance de WO desde SMT hasta Stocking/FT por BU.")),
+                    React.createElement("div", { style: { fontSize: isMobile() ? 20 : 24, fontWeight: 800, lineHeight: isMobile() ? 1.16 : 1.05, maxWidth: isMobile() ? "100%" : 680, wordBreak: "normal", overflowWrap: "break-word" } }, "Yield Flow: salida de proceso y avance SMT a Stockin/FT"),
+                    React.createElement("div", { style: { fontSize: isMobile() ? 11.5 : 12.5, lineHeight: 1.55, opacity: .84, maxWidth: isMobile() ? "100%" : 800, marginTop: 8 } }, "Visor ejecutivo local para responder: unidades que salen del proceso, causas, tiempo de reincorporacion y avance de WO desde SMT hasta Stockin/FT por BU.")),
                 React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", justifyContent: isMobile() ? "flex-start" : "flex-end", width: isMobile() ? "100%" : "auto" } },
                     React.createElement("span", { style: { fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.18)" } },
                         yieldFlowModel.kpi.orders,
@@ -15117,7 +15193,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         " risk units"),
                     React.createElement("span", { style: { fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.18)" } },
                         traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgLeadHours, 1),
-                        " Stocking/FT"))),
+                        " Stockin/FT"))),
             React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(4,minmax(0,1fr))", gap: 10 } },
                 React.createElement("div", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 14, padding: "14px 15px" } },
                     React.createElement("div", { style: { fontSize: 9.5, fontWeight: 800, color: "#5F766C", textTransform: "uppercase" } }, "Work orders"),
@@ -15195,7 +15271,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF" } },
                     React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("managementTitle")),
-                    React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Lectura directa para gerencia: salida de proceso, reincorporacion y avance SMT a Stocking/FT por BU.")),
+                    React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Lectura directa para gerencia: salida de proceso, reincorporacion y avance SMT a Stockin/FT por BU.")),
                 React.createElement("div", { style: { padding: "13px 18px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1.05fr 1.05fr .9fr", gap: 10 } },
                     React.createElement("div", { style: { border: "1px solid #F5E4A0", background: "#FFFBF0", borderRadius: 14, padding: "14px" } },
                         React.createElement("div", { style: { fontSize: 10, fontWeight: 900, color: "#B87820", textTransform: "uppercase", letterSpacing: ".06em" } }, "1. Piezas fuera de proceso"),
@@ -15209,11 +15285,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: "#102A43", marginTop: 8 } }, traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgReintegrationProxy, 1)),
                         React.createElement("div", { style: { fontSize: 11, color: "#5F766C", lineHeight: 1.45 } }, "Promedio ponderado por piezas del scope filtrado. Cambia con BU, modelo, SKU, semana Cisco y linea; si faltan timestamps queda N/D.")),
                     React.createElement("div", { style: { border: "1px solid #D7C5F7", background: "#FBF8FF", borderRadius: 14, padding: "14px" } },
-                        React.createElement("div", { style: { fontSize: 10, fontWeight: 900, color: "#6B2DA8", textTransform: "uppercase", letterSpacing: ".06em" } }, "2. SMT a Stocking/FT"),
-                        React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: "#102A43", marginTop: 8 } }, yieldFlowModel.kpi.avgStockingHours != null ? traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgStockingHours, 1) : (yieldFlowModel.kpi.avgFtHours != null ? traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgFtHours, 1) : "N/D")),
+                        React.createElement("div", { style: { fontSize: 10, fontWeight: 900, color: "#6B2DA8", textTransform: "uppercase", letterSpacing: ".06em" } }, "2. SMT a Stockin/FT"),
+                        React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: "#102A43", marginTop: 8 } }, yieldFlowModel.kpi.avgStockinHours != null ? traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgStockinHours, 1) : (yieldFlowModel.kpi.avgFtHours != null ? traceOpsYieldFlowFmtHoursDays(yieldFlowModel.kpi.avgFtHours, 1) : "N/D")),
                         React.createElement("div", { style: { fontSize: 11, color: "#5F766C", lineHeight: 1.45 } },
-                            "Prioridad de calculo: FT si existe; si no, Stocking. Stocking actual: ",
-                            React.createElement("b", null, traceOpsYieldFlowFmt(yieldFlowModel.kpi.stockingUnits)),
+                            "Prioridad de calculo: FT si existe; si no, Stockin. Stockin actual: ",
+                            React.createElement("b", null, traceOpsYieldFlowFmt(yieldFlowModel.kpi.stockinUnits)),
                             " unidades.")))),
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" } },
@@ -15233,7 +15309,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: yieldImportState.status === "error" ? "#C44141" : "#1F3A5F", textTransform: "uppercase" } }, "Estado de import"),
                         React.createElement("div", { style: { fontSize: 11.5, color: "#5F766C", lineHeight: 1.5, marginTop: 6 } }, yieldImportState.message)),
                     React.createElement("div", { style: { background: "#FBFDFF", border: "1px solid #E7EEF9", borderRadius: 12, padding: "11px 12px" } },
-                        React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#1F3A5F", textTransform: "uppercase" } }, "Datos jalados"),
+                        React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#1F3A5F", textTransform: "uppercase" } }, "Datos importados"),
                         React.createElement("div", { style: { fontSize: 11.5, color: "#5F766C", lineHeight: 1.5, marginTop: 6 } },
                             "WO/date/line/SKU desde Station On Line Report \u00B7 SFC manda el scope: SN, WO, current event y SKU/modelo disponible \u00B7 DB Model solo enriquece BU/modelo por SKU \u00B7 defecto, referencia, PN y repair time desde Repair Record · pass/fail, test area y failing test name desde Cesium.txt. Regla OJT: SN de SFC que existe en Repair Record. La evidencia queda solo en memoria durante la sesion; no se guarda el Excel. En movil, archivos grandes se bloquean antes de descomprimir.",
                             yieldImportState.summary && yieldImportState.summary.sheets ? " Hojas: " + yieldImportState.summary.sheets.map(function (x) { return x.name + " (" + x.role + ":" + x.rows + ")"; }).join(" · ") : "")))),
@@ -15293,7 +15369,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                     React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
                         React.createElement("div", { style: { border: "1px solid #E7EEF9", borderRadius: 12, padding: "12px 13px", background: "#F7FAFF" } },
                             React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#1F3A5F", textTransform: "uppercase" } }, "Lectura del avance"),
-                            React.createElement("div", { style: { fontSize: 11.5, color: "#5F766C", lineHeight: 1.55, marginTop: 7 } }, "La vista separa produccion limpia contra unidades con intervencion. El avance SMT a Stocking/FT se activa cuando existen timestamps suficientes; si no, el dato queda como N/D sin inferencia artificial.")),
+                            React.createElement("div", { style: { fontSize: 11.5, color: "#5F766C", lineHeight: 1.55, marginTop: 7 } }, "La vista separa produccion limpia contra unidades con intervencion. El avance SMT a Stockin/FT se activa cuando existen timestamps suficientes; si no, el dato queda como N/D sin inferencia artificial.")),
                         React.createElement("div", { style: { border: "1px solid #E7EEF9", borderRadius: 12, padding: "12px 13px", background: "#fff" } },
                             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" } },
                                 React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#A43B2E", textTransform: "uppercase" } }, yieldText("paretoTitle")),
@@ -15302,7 +15378,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                     " modo",
                                     failurePareto.length !== 1 ? "s" : "",
                                     " clave")),
-                            React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", lineHeight: 1.5, marginBottom: 9 } }, "Solo se muestran los modos dominantes que acumulan el 80% del riesgo y se excluyen pipitiyas de baja repeticion."),
+                            React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", lineHeight: 1.5, marginBottom: 9 } }, "Solo se muestran los modos dominantes que acumulan el 80% del riesgo y se excluyen registros menores de baja repeticion."),
                             failurePareto.length ? failurePareto.map(function (c) {
                                 var pct = traceOpsYieldFlowBarPct(c.units, maxCauseRisk);
                                 return React.createElement("div", { key: c.pattern, style: { marginBottom: 11, paddingBottom: 10, borderBottom: "1px solid #F1F4F8" } },
@@ -15376,26 +15452,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         React.createElement("div", { style: { marginTop: 9, display: "flex", flexDirection: "column", gap: 4 } }, (area.topFails || []).slice(0, 3).map(function (f) { return React.createElement("div", { key: f.name, style: { display: "flex", justifyContent: "space-between", gap: 8, fontSize: 10.5, color: "#102A43" } }, React.createElement("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, f.name), React.createElement("strong", null, f.count)); })),
                         area.serials && area.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: area.testArea, subtitle: "FT impacted serials", rows: area.serials.map(function (r) { return Object.assign({}, r, { symptom: r.failingTestName, station: r.testArea, location: r.machine || "N/D" }); }) }); }, style: { marginTop: 9, fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } }, "Ver SN " + traceOpsYieldFlowFmt(area.serials.length)) : null);
                 }) : React.createElement("div", { style: { gridColumn: "1 / -1", border: "1px dashed #D9E6F7", borderRadius: 12, padding: "14px", fontSize: 11.5, color: "#5F766C", background: "#FBFDFF" } }, "No Cesium / FT data for the active SFC scope."))),
-            React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
-                React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF" } },
-                    React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, yieldText("actionTrackerTitle")),
-                    React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, yieldText("actionTrackerSubtitle"))),
-                React.createElement("div", { style: { padding: "12px 16px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(3,minmax(0,1fr))", gap: 10 } }, actionTracker.length ? actionTracker.slice(0, 9).map(function (a) {
-                    var isCritical = a.severity === "Critical";
-                    return React.createElement("div", { key: a.id, style: { border: "1px solid " + (isCritical ? "#F1B5AE" : "#D9E6F7"), borderRadius: 14, padding: "12px 13px", background: isCritical ? "#FFF7F5" : "#FBFDFF" } },
-                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" } },
-                            React.createElement("strong", { style: { color: "#102A43", fontSize: 11.5 } }, a.id),
-                            React.createElement("span", { style: { fontSize: 9, fontWeight: 900, padding: "3px 7px", borderRadius: 999, background: "#fff", color: isCritical ? "#A43B2E" : "#1F3A5F", border: "1px solid " + (isCritical ? "#F1B5AE" : "#CFE0FB") } }, a.severity)),
-                        React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#102A43", marginTop: 8, lineHeight: 1.3 } }, a.focus),
-                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 5, lineHeight: 1.45 } }, a.context),
-                        React.createElement("div", { style: { fontSize: 10.5, color: "#102A43", marginTop: 8 } }, React.createElement("b", null, a.owner), " · ", a.actionType),
-                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 5, lineHeight: 1.45 } }, a.action),
-                        a.serials && a.serials.length ? React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal({ title: a.focus, subtitle: "Action evidence serials", rows: a.serials }); }, style: { marginTop: 9, fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } }, "Ver SN " + traceOpsYieldFlowFmt(a.serials.length)) : null);
-                }) : React.createElement("div", { style: { gridColumn: "1 / -1", border: "1px dashed #D9E6F7", borderRadius: 12, padding: "14px", fontSize: 11.5, color: "#5F766C", background: "#FBFDFF" } }, "No action tracker items for the active scope."))),
+            renderYieldActionTracker(),
             React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
                 React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF" } },
                     React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Capas operativas de Yield Flow"),
-                    React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "La lectura responde dos preguntas de gerencia: piezas que salen del proceso con causas/reincorporacion, y duracion de WOs desde SMT hasta Stocking/FT por BU.")),
+                    React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "La lectura responde dos preguntas de gerencia: piezas que salen del proceso con causas/reincorporacion, y duracion de WOs desde SMT hasta Stockin/FT por BU.")),
                 React.createElement("div", { style: { padding: "14px 18px", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(3,minmax(0,1fr))", gap: 10 } },
                     React.createElement("div", { style: { background: "#FFF9EE", border: "1px solid #F5E4A0", borderRadius: 14, padding: "13px 14px" } },
                         React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#B87820", textTransform: "uppercase" } }, "1. Salida de proceso"),
