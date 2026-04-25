@@ -5736,7 +5736,12 @@ function traceOpsYieldApplyDbModel(sku, family, bu) {
     // DB Model is enrichment only. Do not let catalog/part-number columns replace a real Product Family.
     var outFamily = traceOpsYieldSafeFamily((db && db.family), family, outSku);
     var dbBu = db && db.bu ? traceOpsYieldNormalizeBU(db.bu) : "";
-    var outBu = dbBu || traceOpsYieldInferBU(bu, outFamily, outSku);
+    var explicitBu = bu ? traceOpsYieldNormalizeBU(bu) : "";
+    var key = traceOpsYieldNorm([outFamily, outSku].join(' '));
+    var familyKnown = /westminster|woodside|hyde park|fieldwork|fieldworks|lancer|tuffnel|tufnell|csf|warwick|maryland|brentwood|shenfield|ngfw/.test(key);
+    var inferredBu = traceOpsYieldInferBU(bu, outFamily, outSku);
+    // Priority: explicit SFC BU > known-family inference > DB catalog > fallback inference
+    var outBu = explicitBu || (familyKnown ? inferredBu : (dbBu || inferredBu));
     return { sku: outSku, family: outFamily, bu: outBu, db: db };
 }
 function traceOpsYieldSummarizeRisk(rows) {
@@ -6481,10 +6486,10 @@ function traceOpsYieldNormalizeBU(value) {
     var v = String(value || '').trim().toUpperCase();
     if (!v)
         return 'N/D';
-    if (v.indexOf('FIELD') >= 0 || v === 'FW' || v.indexOf('FWBU') >= 0)
-        return 'FIELDWORKS';
     if (v.indexOf('NGFW') >= 0)
         return 'NGFWBU';
+    if (v.indexOf('FIELD') >= 0 || v === 'FW' || v.indexOf('FWBU') >= 0)
+        return 'FIELDWORKS';
     return String(value || 'N/D').trim();
 }
 function traceOpsYieldNormFilter(value) { return String(value == null ? '' : value).trim(); }
