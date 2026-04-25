@@ -4816,6 +4816,7 @@ async function buildXlsx(result) {
 window.addEventListener('error', function(ev){
   try {
     var msg = (ev && (ev.message || (ev.error && ev.error.message))) || 'Error de carga';
+    if ((msg === 'Script error.' || msg === 'Script error') && !(ev && ev.error)) { return; }
     var box = document.createElement('div');
     box.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:999999;background:#C0392B;color:#fff;padding:10px 12px;border-radius:10px;font:12px/1.35 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;word-break:break-word';
     box.textContent = 'TraceOps error: ' + msg;
@@ -5812,10 +5813,12 @@ function traceOpsYieldSafeFamily(candidate, fallback, sku) {
 function traceOpsYieldApplyDbModel(sku, family, bu) {
     var db = traceOpsYieldDbLookup(sku);
     var outSku = sku || (db && db.sku) || "";
-    // DB Model is enrichment only. Do not let catalog/part-number columns replace a real Product Family.
+    // SFC remains the commanding source. DB Model only enriches missing fields.
+    // Product-family identity is stronger than mixed catalog BU values.
     var outFamily = traceOpsYieldSafeFamily((db && db.family), family, outSku);
     var dbBu = db && db.bu ? traceOpsYieldNormalizeBU(db.bu) : "";
-    var outBu = dbBu || traceOpsYieldInferBU(bu, outFamily, outSku);
+    var inferredBu = traceOpsYieldInferBU(bu || dbBu, outFamily, outSku);
+    var outBu = inferredBu && inferredBu !== "N/D" ? inferredBu : (dbBu || "N/D");
     return { sku: outSku, family: outFamily, bu: outBu, db: db };
 }
 function traceOpsYieldSummarizeRisk(rows) {
@@ -6047,7 +6050,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
         var eventTime = traceOpsYieldParseDate(traceOpsYieldPick(row, ["lasteditdt", "Last Edit DT", "Current Event Time", "Event Time", "Timestamp", "DateTime", "Date Time", "Rec Time", "Fecha Hora", "Fecha"]));
         var line = String(traceOpsYieldPick(row, ["Line ID", "Line", "productionline", "Linea", "Línea"]) || "").trim();
         var station = traceOpsYieldClassifyStation(event);
-        var dbSfc = traceOpsYieldApplyDbModel(sku, family, "");
+        var dbSfc = traceOpsYieldApplyDbModel(sku, family, traceOpsYieldPick(row, ["BU", "Business Unit", "BU Name", "BusinessUnit"]));
         sku = dbSfc.sku || sku;
         family = dbSfc.family || family;
         var clean = { sn: sn, wo: wo, sku: sku, family: family, bu: dbSfc.bu, event: event, eventTime: eventTime, line: line, station: station, week: traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap) };
@@ -12301,7 +12304,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     function traceOpsYieldEditAction(item) { setYieldActionForm(traceOpsYieldNewActionForm(item)); setYieldActionFormOpen(true); }
     function traceOpsYieldDeleteAction(id) { var next = (yieldActionList || []).filter(function (x) { return x.id !== id; }); setYieldActionList(next); traceOpsYieldPersistActions(next); }
     function traceOpsYieldSeedActionFromSuggestion(suggestion) {
-        var s = suggestion || (actionTracker && actionTracker[0]) || {};
+        var suggestions = (yieldFlowModel && yieldFlowModel.actionTracker) || [];
+        var s = suggestion || suggestions[0] || {};
         setYieldActionForm(traceOpsYieldNewActionForm({ source: s.source || 'Yield Flow', failureMode: s.focus || '', scope: s.context || '', owner: s.owner || '', supportArea: s.owner || 'Proceso / Test / Mantto', actionType: s.actionType || 'Analisis / seguimiento', action: s.action || '', priority: s.severity || 'High', status: 'Open', meta_files: [] }));
         setYieldActionFormOpen(true);
     }
@@ -12338,7 +12342,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         return h("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
             h("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" } },
                 h("div", null, h("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Bitacora de acciones Yield Flow"), h("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Registro manual para asignar acciones de soporte, analisis, RCCA e ideas de mejora con metadatos adjuntos.")),
-                h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, h("button", { type: "button", onClick: function () { traceOpsYieldSeedActionFromSuggestion(actionTracker && actionTracker[0]); }, style: { fontSize: 10.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } }, "Usar foco sugerido"), h("button", { type: "button", onClick: function () { setYieldActionForm(traceOpsYieldNewActionForm()); setYieldActionFormOpen(true); }, style: { fontSize: 10.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "linear-gradient(135deg,#2B9C7F,#4A90E2)", color: "#fff", border: "1px solid rgba(255,255,255,.25)", cursor: "pointer" } }, "+ Nueva accion"))),
+                h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, h("button", { type: "button", onClick: function () { traceOpsYieldSeedActionFromSuggestion(((yieldFlowModel && yieldFlowModel.actionTracker) || [])[0]); }, style: { fontSize: 10.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "#EAF2FF", color: "#1F3A5F", border: "1px solid #CFE0FB", cursor: "pointer" } }, "Usar foco sugerido"), h("button", { type: "button", onClick: function () { setYieldActionForm(traceOpsYieldNewActionForm()); setYieldActionFormOpen(true); }, style: { fontSize: 10.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "linear-gradient(135deg,#2B9C7F,#4A90E2)", color: "#fff", border: "1px solid rgba(255,255,255,.25)", cursor: "pointer" } }, "+ Nueva accion"))),
             formNode,
             h("div", { className: "tscroll", style: { padding: "12px 16px" } }, h("table", null,
                 h("thead", null, h("tr", null, ["ID", "Fecha", "Prioridad", "Owner", "Area", "WO / SKU", "Evento", "Accion", "Estatus", "Meta"].map(function (x) { return h("th", { key: x }, x); }), h("th", null, "Editar"))),
@@ -15552,8 +15556,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                     React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF" } },
                         React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Yield por work order"),
                         React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Lectura consolidada por familia, volumen, clean yield y touch rate.")),
-                    React.createElement("div", { style: { padding: "12px 16px" } },
-                        React.createElement("table", { className: "toq-mini-table" },
+                    React.createElement("div", { style: { padding: "12px 16px", overflowX: "auto", WebkitOverflowScrolling: "touch" } },
+                        React.createElement("table", { className: "toq-mini-table", style: { minWidth: isMobile() ? 760 : "100%" } },
                             React.createElement("thead", null,
                                 React.createElement("tr", null,
                                     React.createElement("th", null, "Week"),
@@ -15878,7 +15882,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                     React.createElement("span", { className: "hide-mobile" }, t("downloadXlsx"))))),
         React.createElement("div", { className: "main-content" + ((!sidebarOpen || isMobile()) ? " expanded" : "") },
             yieldSerialModal && (React.createElement("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,.48)", zIndex: 9998, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }, onClick: function () { setYieldSerialModal(null); } },
-                React.createElement("div", { style: { background: "#fff", borderRadius: 18, maxWidth: 920, width: "100%", maxHeight: "86vh", overflow: "hidden", boxShadow: "0 20px 70px rgba(0,0,0,.28)", border: "1px solid #D9E6F7" }, onClick: function (e) { e.stopPropagation(); } },
+                React.createElement("div", { style: { background: "#fff", borderRadius: 18, maxWidth: 920, width: isMobile() ? "96vw" : "100%", maxHeight: "86vh", overflow: "hidden", boxShadow: "0 20px 70px rgba(0,0,0,.28)", border: "1px solid #D9E6F7" }, onClick: function (e) { e.stopPropagation(); } },
                     React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #E7EEF9", background: "#F7FAFF", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 } },
                         React.createElement("div", { style: { minWidth: 0 } },
                             React.createElement("div", { style: { fontSize: 13, fontWeight: 900, color: "#102A43" } }, "Seriales impactados"),
@@ -15896,7 +15900,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                 catch (_) { } }, style: { border: "1px solid #CFE0FB", background: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 11, fontWeight: 800, color: "#1F3A5F", cursor: "pointer" } }, "Copiar tabla"),
                             React.createElement("button", { type: "button", onClick: function () { setYieldSerialModal(null); }, style: { border: "1px solid #DDDBD7", background: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 11, fontWeight: 800, color: "#6A6560", cursor: "pointer" } }, "Cerrar"))),
                     React.createElement("div", { style: { padding: 16, overflow: "auto", maxHeight: "70vh" } },
-                        React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11 } },
+                        React.createElement("table", { style: { width: "100%", minWidth: isMobile() ? 760 : 0, borderCollapse: "collapse", fontSize: 11 } },
                             React.createElement("thead", null,
                                 React.createElement("tr", { style: { background: "#F7FAFF", color: "#5F766C", textTransform: "uppercase", fontSize: 9.5 } },
                                     React.createElement("th", { style: { textAlign: "left", padding: "8px 9px", borderBottom: "1px solid #E7EEF9" } }, "SN"),
