@@ -66,7 +66,13 @@
     var ix=list.findIndex(function(x){return String(x.sourceRef||'')===String(e.id||'') || String(x.id||'')===String(rec.id||'')});
     if(ix>=0) list[ix]=Object.assign({},list[ix],rec); else list.unshift(rec);
     try{ localStorage.setItem(LOG_KEY,JSON.stringify(list)); }catch(_){}
+    try {
+      if (typeof window.traceOpsImportMaintenanceRecord === 'function') {
+        window.traceOpsImportMaintenanceRecord(rec);
+      }
+    } catch(_) {}
     try{ window.dispatchEvent(new CustomEvent('traceops-maintenance-log-updated',{detail:{record:rec}})); }catch(_){}
+    try{ window.dispatchEvent(new StorageEvent('storage',{key:LOG_KEY,newValue:JSON.stringify(list)})); }catch(_){}
     persistentAlert('Andon closed and logged', (rec.line||'N/D')+' · '+(rec.machine||'N/D')+' moved to Maintenance History Log.', null);
   }
 

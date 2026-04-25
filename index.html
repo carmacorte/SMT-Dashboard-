@@ -5197,96 +5197,17 @@ function traceOpsDownloadCsv(filename, rows) {
     URL.revokeObjectURL(a.href);
 }
 var TRACEOPS_YIELD_FLOW_STATIONS = ["AOI", "Router", "VI", "ICT", "Stockin"];
-var TRACEOPS_YIELD_FLOW_TRACKER = [
-    {
-        skuno: "73-20249-06",
-        workOrder: "000001282323",
-        model: "Tuffnel Park Low",
-        line: "L2",
-        lotQty: 1000,
-        startSmt: "2026-04-22 07:00",
-        firstFunctional: "2026-04-23 11:30",
-        completedByStation: { Paste: 1000, SPI: 1000, AOI: 980, Router: 980, VI: 980, ICT: 950, Stockin: 950, FT1: 950, FT2: 940, FT3: 940, FT4: 935 },
-        defectsByStation: { AOI: 20, ICT: 30, FT1: 10, FT2: 10, FT4: 5 },
-        recoveryQueue: [
-            { station: "AOI", qty: 20, avgHours: 6.5, cause: "AOI defect / review" },
-            { station: "ICT", qty: 30, avgHours: 14, cause: "ICT fail / debug" },
-            { station: "FT4", qty: 5, avgHours: 24, cause: "Functional retest" }
-        ]
-    },
-    {
-        skuno: "74-134450-05",
-        workOrder: "000001287162",
-        model: "CSF1230, RM-A",
-        line: "L16",
-        lotQty: 760,
-        startSmt: "2026-03-29 06:40",
-        firstFunctional: "2026-03-31 15:10",
-        completedByStation: { Paste: 760, SPI: 760, AOI: 735, Router: 722, VI: 709, ICT: 690, Stockin: 685, FT1: 681, FT2: 676, FT3: 673, FT4: 671 },
-        defectsByStation: { AOI: 25, Router: 13, VI: 13, ICT: 19, FT1: 4, FT2: 5, FT3: 3, FT4: 2 },
-        recoveryQueue: [
-            { station: "AOI", qty: 25, avgHours: 8, cause: "Alignment and solder review" },
-            { station: "ICT", qty: 19, avgHours: 18, cause: "Electrical debug" },
-            { station: "FT2", qty: 5, avgHours: 22, cause: "Functional retest loop" }
-        ]
-    }
-];
-var TRACEOPS_YIELD_BY_WO_ROWS = [
-    { week: "FY2026 Q3 W-013", date: "4/23/2026", line: "L14", bu: "NGFWBU", family: "Warwick", sku: "73-102435-05", wo: "000001287678", yield: 100, touch: 0, total: 35, clean: 35, risk: 0 },
-    { week: "FY2026 Q3 W-013", date: "4/23/2026", line: "L13", bu: "NGFWBU", family: "Warwick", sku: "73-102433-05", wo: "000001287701", yield: 100, touch: 0, total: 71, clean: 71, risk: 0 },
-    { week: "FY2026 Q3 W-013", date: "4/22/2026", line: "L2", bu: "NGFWBU", family: "Tuffnel Park Low", sku: "73-20249-06", wo: "000001287587", yield: 98.24, touch: 1.76, total: 170, clean: 167, risk: 3 },
-    { week: "FY2026 Q3 W-012", date: "4/17/2026", line: "L13", bu: "NGFWBU", family: "Warwick", sku: "73-102433-05", wo: "000001287544", yield: 88.57, touch: 11.43, total: 70, clean: 62, risk: 8 },
-    { week: "FY2026 Q3 W-012", date: "4/17/2026", line: "L3", bu: "NGFWBU", family: "Tuffnel Park Low", sku: "73-20249-06", wo: "000001287486", yield: 86.88, touch: 13.13, total: 320, clean: 278, risk: 42 },
-    { week: "FY2026 Q3 W-012", date: "4/16/2026", line: "L14", bu: "NGFWBU", family: "Warwick", sku: "73-102435-05", wo: "000001287546", yield: 91.67, touch: 8.33, total: 36, clean: 33, risk: 3 },
-    { week: "FY2026 Q3 W-012", date: "4/16/2026", line: "L12", bu: "NGFWBU", family: "MARYLAND", sku: "73-101944-03", wo: "000001287484", yield: 100, touch: 0, total: 52, clean: 52, risk: 0 },
-    { week: "FY2026 Q3 W-012", date: "4/16/2026", line: "L16", bu: "NGFWBU", family: "CSF1220CX, DT-B", sku: "74-134456-05", wo: "000001287483", yield: 95.15, touch: 4.85, total: 330, clean: 314, risk: 16 },
-    { week: "FY2026 Q3 W-012", date: "4/15/2026", line: "L15", bu: "NGFWBU", family: "BRENTWOOD", sku: "73-101945-03", wo: "000001287485", yield: 100, touch: 0, total: 68, clean: 68, risk: 0 },
-    { week: "FY2026 Q3 W-012", date: "4/14/2026", line: "L16", bu: "NGFWBU", family: "CSF1210CE, DT-A", sku: "74-134454-05", wo: "000001287481", yield: 94.6, touch: 5.4, total: 500, clean: 473, risk: 27 },
-    { week: "FY2026 Q3 W-012", date: "4/13/2026", line: "L7", bu: "NGFWBU", family: "CSF1210CE, DT-A", sku: "74-134454-05", wo: "000001287364", yield: 90.91, touch: 9.09, total: 330, clean: 300, risk: 30 },
-    { week: "FY2026 Q3 W-012", date: "4/12/2026", line: "L16", bu: "NGFWBU", family: "CSF1240, RM-B", sku: "74-134451-05", wo: "000001287363", yield: 91.32, touch: 8.68, total: 380, clean: 347, risk: 33 },
-    { week: "FY2026 Q3 W-012", date: "4/12/2026", line: "L3", bu: "NGFWBU", family: "Tuffnel Park High", sku: "73-20247-06", wo: "000001287329", yield: 83.33, touch: 16.67, total: 120, clean: 100, risk: 20 },
-    { week: "FY2026 Q3 W-011", date: "4/9/2026", line: "L3", bu: "NGFWBU", family: "Tuffnel Park Low", sku: "73-20249-06", wo: "000001287326", yield: 89.5, touch: 10.5, total: 400, clean: 358, risk: 42 },
-    { week: "FY2026 Q3 W-010", date: "3/31/2026", line: "L16", bu: "NGFWBU", family: "CSF1230, RM-A", sku: "74-134450-05", wo: "000001287162", yield: 88.29, touch: 11.71, total: 760, clean: 671, risk: 89 },
-    { week: "FY2026 Q3 W-010", date: "3/30/2026", line: "L3", bu: "NGFWBU", family: "Tuffnel Park High", sku: "73-20247-06", wo: "000001286878", yield: 97.33, touch: 2.67, total: 150, clean: 146, risk: 4 },
-    { week: "FY2026 Q3 W-009", date: "3/27/2026", line: "L13", bu: "NGFWBU", family: "Warwick", sku: "73-102433-05", wo: "000001287022", yield: 93.33, touch: 6.67, total: 90, clean: 84, risk: 6 },
-    { week: "FY2026 Q3 W-009", date: "3/26/2026", line: "L3", bu: "NGFWBU", family: "Tuffnel Park Low", sku: "73-20249-06", wo: "000001286877", yield: 89.75, touch: 10.25, total: 400, clean: 359, risk: 41 },
-    { week: "FY2026 Q3 W-009", date: "3/26/2026", line: "L14", bu: "NGFWBU", family: "Warwick", sku: "73-102435-05", wo: "000001287024", yield: 88.57, touch: 11.43, total: 70, clean: 62, risk: 8 },
-    { week: "FY2026 Q3 W-008", date: "3/19/2026", line: "L12", bu: "NGFWBU", family: "Shenfield", sku: "73-103125-02", wo: "000001286925", yield: 97.92, touch: 2.08, total: 96, clean: 94, risk: 2 }
-];
-var TRACEOPS_RISK_SUMMARY_ROWS = [
-    { bu: "NGFWBU", sku: "73-101944-03", family: "MARYLAND", symptom: "PUNTO DE PRUEBA CON FALTA DE SOLDADURA", location: "U18", risk: 7 },
-    { bu: "NGFWBU", sku: "73-101944-03", family: "MARYLAND", symptom: "IMAGEN CORRUPTA EN TABLILLA", location: "U17", risk: 2 },
-    { bu: "NGFWBU", sku: "73-101945-03", family: "BRENTWOOD", symptom: "SOLDADURA INSUFICIENTE", location: "U100", risk: 4 },
-    { bu: "NGFWBU", sku: "73-102433-05", family: "Warwick", symptom: "COMPONENTE DESALINEADO", location: "CR202", risk: 2 },
-    { bu: "NGFWBU", sku: "73-102433-05", family: "Warwick", symptom: "COMPONENTE DAÑADO/FRACTURADO", location: "CR202", risk: 6 },
-    { bu: "NGFWBU", sku: "73-102433-05", family: "Warwick", symptom: "COMPONENTE EQUIVOCADO", location: "R8_PSTBY", risk: 1 },
-    { bu: "NGFWBU", sku: "73-102435-05", family: "Warwick", symptom: "COMPONENTE DESALINEADO", location: "CR24", risk: 3 },
-    { bu: "NGFWBU", sku: "73-102435-05", family: "Warwick", symptom: "PUENTE/CORTO DE SOLDADURA", location: "P16", risk: 5 },
-    { bu: "NGFWBU", sku: "73-20249-06", family: "Tuffnel Park Low", symptom: "COMPONENTE DESALINEADO", location: "CR50", risk: 5 },
-    { bu: "NGFWBU", sku: "73-20249-06", family: "Tuffnel Park Low", symptom: "COMPONENTE CON PIN DOBLADO", location: "PNM21", risk: 5 },
-    { bu: "NGFWBU", sku: "73-20249-06", family: "Tuffnel Park Low", symptom: "PUENTE/CORTO DE SOLDADURA", location: "U203", risk: 8 },
-    { bu: "NGFWBU", sku: "73-20247-06", family: "Tuffnel Park High", symptom: "PUENTE/CORTO DE SOLDADURA", location: "J9", risk: 6 },
-    { bu: "NGFWBU", sku: "73-20247-06", family: "Tuffnel Park High", symptom: "SOLDADURA ABIERTA", location: "U31", risk: 5 },
-    { bu: "NGFWBU", sku: "73-103125-02", family: "Shenfield", symptom: "PUNTO DE PRUEBA CON FALTA DE SOLDADURA", location: "R257", risk: 2 },
-    { bu: "NGFWBU", sku: "74-134450-05", family: "CSF1230, RM-A", symptom: "PUNTO DE PRUEBA CON FALTA DE SOLDADURA", location: "U18", risk: 7 },
-    { bu: "NGFWBU", sku: "74-134450-05", family: "CSF1230, RM-A", symptom: "SOLDADURA INSUFICIENTE", location: "J19", risk: 8 },
-    { bu: "NGFWBU", sku: "74-134450-05", family: "CSF1230, RM-A", symptom: "PUENTE/CORTO DE SOLDADURA", location: "PCB", risk: 9 },
-    { bu: "NGFWBU", sku: "74-134451-05", family: "CSF1240, RM-B", symptom: "SOLDADURA ABIERTA", location: "U6B_F", risk: 5 },
-    { bu: "NGFWBU", sku: "74-134451-05", family: "CSF1240, RM-B", symptom: "SOLDADURA INSUFICIENTE", location: "U1_A", risk: 7 },
-    { bu: "NGFWBU", sku: "74-134454-05", family: "CSF1210CE, DT-A", symptom: "COMPONENTE DESALINEADO", location: "U25", risk: 5 },
-    { bu: "NGFWBU", sku: "74-134454-05", family: "CSF1210CE, DT-A", symptom: "PUENTE/CORTO DE SOLDADURA", location: "J7", risk: 8 },
-    { bu: "NGFWBU", sku: "74-134454-05", family: "CSF1210CE, DT-A", symptom: "SOLDADURA INSUFICIENTE", location: "U1_C", risk: 9 },
-    { bu: "NGFWBU", sku: "74-134456-05", family: "CSF1220CX, DT-B", symptom: "SOLDADURA ABIERTA", location: "U1", risk: 4 },
-    { bu: "NGFWBU", sku: "74-134456-05", family: "CSF1220CX, DT-B", symptom: "PROBLEMA EN BGA", location: "U1_A", risk: 6 }
-];
+var TRACEOPS_YIELD_FLOW_TRACKER = [];
+var TRACEOPS_YIELD_BY_WO_ROWS = [];
+var TRACEOPS_RISK_SUMMARY_ROWS = [];
 var TRACEOPS_YIELD_IMPORT_META = {
-    source: "Manual / sample",
-    mode: "static",
+    source: "",
+    mode: "empty",
     fileName: "",
     workbookName: "",
     sheets: [],
-    rows: { workOrders: 0, sfc: 0, repairs: 0, dbModel: 0 },
-    notes: "Datos cargados desde arrays base. Usa Import ZIP/Excel para reemplazarlos sin editar codigo."
+    rows: { workOrders: 0, sfc: 0, repairs: 0, dbModel: 0, calendar: 0, cesium: 0 },
+    notes: "Yield Flow starts empty. Import ZIP/Excel to populate dashboard data."
 };
 var TRACEOPS_YIELD_DB_MODEL_MAP = {};
 var TRACEOPS_YIELD_DB_MODEL_OPTIONS = [];
@@ -7077,7 +6998,7 @@ function App() {
     var activeModuleArr = _useState("nccapa");
     var activeModule = activeModuleArr[0];
     var setActiveModule = activeModuleArr[1];
-    var yieldImportArr = _useState({ status: "idle", message: "Sin import Excel", summary: null });
+    var yieldImportArr = _useState({ status: "idle", message: "Yield Flow ready. Import ZIP/Excel to populate dashboard.", summary: null });
     var yieldImportState = yieldImportArr[0];
     var setYieldImportState = yieldImportArr[1];
     var yieldFiltersArr = _useState({ bu: "ALL", family: "ALL", sku: "ALL", week: "ALL", line: "ALL", wo: "ALL", from: "", to: "" });
@@ -14742,6 +14663,39 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         }
         window.addEventListener("traceops-maintenance-log-updated", refreshMaintenanceLogFromStorage);
         return function () { window.removeEventListener("traceops-maintenance-log-updated", refreshMaintenanceLogFromStorage); };
+    }, []);
+    React.useEffect(function () {
+        window.traceOpsImportMaintenanceRecord = function (record) {
+            try {
+                if (!record) return false;
+                setMaintenanceRecords(function (prev) {
+                    var list = Array.isArray(prev) ? prev.slice() : [];
+                    var key = String(record.sourceRef || record.id || "");
+                    var ix = list.findIndex(function (x) {
+                        return String(x.sourceRef || x.id || "") === key || String(x.id || "") === String(record.id || "");
+                    });
+                    if (ix >= 0) list[ix] = Object.assign({}, list[ix], record);
+                    else list.unshift(record);
+                    try { localStorage.setItem(MAINT_KEY, JSON.stringify(list)); } catch (_) { }
+                    return list;
+                });
+                setMaintenanceTab("log");
+                return true;
+            } catch (_) { return false; }
+        };
+        return function () { try { delete window.traceOpsImportMaintenanceRecord; } catch (_) { window.traceOpsImportMaintenanceRecord = null; } };
+    }, []);
+    React.useEffect(function () {
+        function refreshMaintenanceLogFromStorage() {
+            try {
+                var parsed = JSON.parse(localStorage.getItem(MAINT_KEY) || "[]");
+                if (Array.isArray(parsed)) setMaintenanceRecords(parsed);
+            }
+            catch (_) { }
+        }
+        var timer = setInterval(refreshMaintenanceLogFromStorage, 1200);
+        window.addEventListener("storage", refreshMaintenanceLogFromStorage);
+        return function () { clearInterval(timer); window.removeEventListener("storage", refreshMaintenanceLogFromStorage); };
     }, []);
     function traceOpsGenerateMaintenanceId() {
         var now = new Date();
