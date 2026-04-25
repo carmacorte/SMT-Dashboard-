@@ -5967,7 +5967,9 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
         var event = String(traceOpsYieldPick(row, ["currentevent", "Current Event", "Event", "Station", "Current Station", "Proceso Actual", "Current Process"]) || "").trim();
         var eventTime = traceOpsYieldParseDate(traceOpsYieldPick(row, ["lasteditdt", "Last Edit DT", "Current Event Time", "Event Time", "Timestamp", "DateTime", "Date Time", "Rec Time", "Fecha Hora", "Fecha"]));
         var line = String(traceOpsYieldPick(row, ["Line ID", "Line", "productionline", "Linea", "Línea"]) || "").trim();
-        var sfcBu = String(traceOpsYieldPick(row, ["BU", "Business Unit", "bu", "businessunit", "Business_Unit", "BU/Division", "Division"]) || "").trim();
+        var sfcBu = String(traceOpsYieldPick(row, ["BU", "Business Unit", "bu", "businessunit", "Business_Unit", "BU/Division", "Division", "Org", "Organization", "NGFWBU", "Business_Group"]) || "").trim();
+        if (!sfcBu && line) { var _linePfx = line.split('-')[0].trim(); if (_linePfx && _linePfx.length > 2 && !/^\d+$/.test(_linePfx)) sfcBu = _linePfx; }
+        if (!sfcBu && event) { var _evPfx = event.split('-')[0].trim(); if (_evPfx && _evPfx.length > 2 && !/^\d+$/.test(_evPfx) && !/^(stockin|ict|aoi|smt|spi|pth|ft)$/i.test(_evPfx)) sfcBu = _evPfx; }
         var station = traceOpsYieldClassifyStation(event);
         var dbSfc = traceOpsYieldApplyDbModel(sku, family, sfcBu);
         sku = dbSfc.sku || sku;
