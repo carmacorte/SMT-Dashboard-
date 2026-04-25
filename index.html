@@ -5214,6 +5214,8 @@ var TRACEOPS_YIELD_DB_MODEL_OPTIONS = [];
 var TRACEOPS_YIELD_FT_ROWS = [];
 var TRACEOPS_YIELD_FT_AREA_ROWS = [];
 var TRACEOPS_YIELD_ACTION_TRACKER_ROWS = [];
+var TRACEOPS_YIELD_SN_TO_SFC = {};
+var TRACEOPS_YIELD_REPAIRS_BY_SN = {};
 var TRACEOPS_YIELD_STATION_ORDER = { AOI: 0, Router: 1, VI: 2, ICT: 3, Stockin: 4 };
 function traceOpsYieldNorm(value) {
     return String(value == null ? "" : value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -6160,6 +6162,10 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
     });
     if (sfcStoryRows.length)
         TRACEOPS_RISK_SUMMARY_ROWS = traceOpsYieldSummarizeRisk(sfcStoryRows);
+    TRACEOPS_YIELD_SN_TO_SFC = snToSfc;
+    var _repBySn = {};
+    repairsClean.forEach(function(r) { if (r.sn) { if (!_repBySn[r.sn]) _repBySn[r.sn] = []; _repBySn[r.sn].push(r); } });
+    TRACEOPS_YIELD_REPAIRS_BY_SN = _repBySn;
     TRACEOPS_YIELD_IMPORT_META = Object.assign({ source: "ZIP/Excel" }, sourceMeta || {}, { mode: "imported", rows: { workOrders: workRows.length, sfc: sfcRows.length, repairs: repairRows.length, sfcWorkOrders: Object.keys(sfcByWo).length, calendar: (calendarRows || []).length, dbModel: (dbModelRows || []).length, cesium: (cesiumRows || []).length, cesiumInScope: (TRACEOPS_YIELD_FT_ROWS || []).length, validRepairs: validRepairRawRows, validRepairSn: (function () { var m = {}; repairsClean.forEach(function (r) { if (r.sn)
                 m[r.sn] = true; }); return Object.keys(m).length; })(), storySn: sfcStoryRows.length, rejectedRepairs: rejectedRepairRows }, daxRule: "Risk/OJT = DISTINCTCOUNT(SFC[SN]) where SFC[SN] appears in RepairRecord[SN].", storyRule: "Symptom = top Rootcause per SFC[SN] from RepairRecord; Fail Location = distinct RepairRecord[FailLocation] for that SN. Used for the story of why units left the flow.", stationRule: "Breakdown station counts = DISTINCTCOUNT(SFC[SN]) grouped by SFC[currentevent] bucket; non cumulative.", calendarRule: "Cisco Week/FY/Qtr resolved from Cisco Calendary.txt by matching Build Start Date or event date to calendar Date/WFCSY." });
     return TRACEOPS_YIELD_IMPORT_META;
@@ -7327,6 +7333,12 @@ function App() {
     var setLightbox = lbArr[1];
     var yfSerialModalArr = _useState(null);
     var yieldSerialModal = yfSerialModalArr[0];
+    var snSearchInputArr = _useState("");
+    var snSearchInput = snSearchInputArr[0];
+    var setSnSearchInput = snSearchInputArr[1];
+    var snSearchQueryArr = _useState("");
+    var snSearchQuery = snSearchQueryArr[0];
+    var setSnSearchQuery = snSearchQueryArr[1];
     var setYieldSerialModal = yfSerialModalArr[1];
     var YIELD_ACTION_KEY = "traceops_yield_action_log_v1";
     var yieldActionArr = _useState(function () { try { var raw = localStorage.getItem(YIELD_ACTION_KEY); return raw ? JSON.parse(raw) : []; } catch (_) { return []; } });
@@ -15568,8 +15580,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                     React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF" } },
                         React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Yield por work order"),
                         React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Lectura consolidada por familia, volumen, clean yield y touch rate.")),
-                    React.createElement("div", { style: { padding: "12px 16px" } },
-                        React.createElement("table", { className: "toq-mini-table" },
+                    React.createElement("div", { style: { padding: "12px 16px", overflowX: "auto" } },
+                        React.createElement("table", { className: "toq-mini-table", style: { minWidth: 560 } },
                             React.createElement("thead", null,
                                 React.createElement("tr", null,
                                     React.createElement("th", null, "Week"),
@@ -15616,7 +15628,72 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                         "Ver SN ",
                                         traceOpsYieldFlowFmt(item.serials.length)) : null),
                                 React.createElement("div", { style: { fontSize: 18, fontWeight: 800, color: "#A43B2E" } }, traceOpsYieldFlowFmt(item.risk))));
-                    }))))));
+                    })))
+            ), React.createElement("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 16, overflow: "hidden" } },
+                React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#102A43" } }, "Trazabilidad por Núm. de Serie"),
+                        React.createElement("div", { style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Consulta el estado y recorrido de un SN: SFC → Reparación → Cesium FT.")),
+                    React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" } },
+                        React.createElement("input", { type: "text", value: snSearchInput, onChange: function(e) { setSnSearchInput(e.target.value); }, onKeyDown: function(e) { if (e.key === "Enter") setSnSearchQuery(traceOpsYieldCleanSn(snSearchInput)); }, placeholder: "Ingresa SN…", style: { border: "1px solid #C8D8F0", borderRadius: 999, padding: "7px 12px", fontSize: 11, width: 180, outline: "none", fontFamily: "monospace" } }),
+                        React.createElement("button", { type: "button", onClick: function() { setSnSearchQuery(traceOpsYieldCleanSn(snSearchInput)); }, style: { background: "#1F3A5F", color: "#fff", border: "none", borderRadius: 999, padding: "7px 14px", fontSize: 11, fontWeight: 800, cursor: "pointer" } }, "Buscar"),
+                        snSearchQuery ? React.createElement("button", { type: "button", onClick: function() { setSnSearchQuery(""); setSnSearchInput(""); }, style: { background: "#F0EDE9", color: "#5F766C", border: "1px solid #DDD", borderRadius: 999, padding: "7px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, "× Limpiar") : null)),
+                React.createElement("div", { style: { padding: "14px 18px" } },
+                    snSearchQuery ? (function() {
+                        var snKey = snSearchQuery;
+                        var sfcInfo = TRACEOPS_YIELD_SN_TO_SFC[snKey];
+                        var repairs = TRACEOPS_YIELD_REPAIRS_BY_SN[snKey] || [];
+                        var cesiumHist = (TRACEOPS_YIELD_FT_ROWS || []).filter(function(r) { return r.sn === snKey; });
+                        if (!sfcInfo && !repairs.length && !cesiumHist.length) {
+                            return React.createElement("div", { style: { fontSize: 12, color: "#8A8580", padding: "4px 0" } }, "SN “", snKey, "” no encontrado en los datos importados. Verifica que el SN esté en el archivo SFC, Repair Record o Cesium.");
+                        }
+                        return React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } },
+                            sfcInfo ? React.createElement("div", { style: { border: "1px solid #D9E6F7", borderRadius: 14, padding: "13px 15px", background: "#F7FBFF" } },
+                                React.createElement("div", { style: { fontSize: 10, fontWeight: 900, color: "#1F3A5F", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 9 } }, "SFC – Proceso Actual"),
+                                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px,1fr))", gap: 8 } },
+                                    [["Evento / Proceso", sfcInfo.event || sfcInfo.station || "N/D"], ["WO", sfcInfo.wo || "N/D"], ["SKU", sfcInfo.sku || "N/D"], ["Familia", sfcInfo.family || "N/D"], ["BU", sfcInfo.bu || "N/D"], ["Línea", sfcInfo.line || "N/D"], ["Cisco Week", sfcInfo.week || "N/D"], ["Fecha evento", sfcInfo.eventTime || "N/D"]].map(function(pair) {
+                                        return React.createElement("div", { key: pair[0], style: { background: "#fff", borderRadius: 10, padding: "8px 10px", border: "1px solid #E7EEF9" } },
+                                            React.createElement("div", { style: { fontSize: 9.5, fontWeight: 700, color: "#5F766C", textTransform: "uppercase" } }, pair[0]),
+                                            React.createElement("div", { style: { fontSize: 11.5, fontWeight: 800, color: "#102A43", marginTop: 3 } }, pair[1]));
+                                    }))) : null,
+                            repairs.length ? React.createElement("div", { style: { border: "1px solid #F5E4A0", borderRadius: 14, padding: "13px 15px", background: "#FFF9EE" } },
+                                React.createElement("div", { style: { fontSize: 10, fontWeight: 900, color: "#B87820", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 9 } }, "Repair Record – " + repairs.length + " entrada" + (repairs.length !== 1 ? "s" : "")),
+                                React.createElement("div", { style: { overflowX: "auto" } },
+                                    React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 460 } },
+                                        React.createElement("thead", null, React.createElement("tr", { style: { background: "#FEF5DC", color: "#7A5B10", fontSize: 9.5, textTransform: "uppercase" } },
+                                            React.createElement("th", { style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #F5E4A0" } }, "Estación"),
+                                            React.createElement("th", { style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #F5E4A0" } }, "Síntoma"),
+                                            React.createElement("th", { style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #F5E4A0" } }, "Referencia"),
+                                            React.createElement("th", { style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #F5E4A0" } }, "Núm. de Parte"),
+                                            React.createElement("th", { style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #F5E4A0" } }, "Fecha Reparación"))),
+                                        React.createElement("tbody", null, repairs.map(function(rep, i) {
+                                            return React.createElement("tr", { key: i, style: { borderBottom: "1px solid #FEF0C5" } },
+                                                React.createElement("td", { style: { padding: "7px 8px", fontWeight: 700, color: "#102A43" } }, rep.station || "N/D"),
+                                                React.createElement("td", { style: { padding: "7px 8px", color: "#3D3A36" } }, rep.symptom || "N/D"),
+                                                React.createElement("td", { style: { padding: "7px 8px", color: "#5F766C" } }, rep.location || "N/D"),
+                                                React.createElement("td", { style: { padding: "7px 8px", color: "#5F766C", fontFamily: "monospace", fontSize: 10 } }, rep.partNumber || "N/D"),
+                                                React.createElement("td", { style: { padding: "7px 8px", color: "#5F766C" } }, rep.repairTime || "N/D"));
+                                        }))))) : null,
+                            cesiumHist.length ? React.createElement("div", { style: { border: "1px solid #D1C4FB", borderRadius: 14, padding: "13px 15px", background: "#F5F0FE" } },
+                                React.createElement("div", { style: { fontSize: 10, fontWeight: 900, color: "#6B2DA8", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 9 } }, "Cesium FT – " + cesiumHist.length + " registro" + (cesiumHist.length !== 1 ? "s" : "")),
+                                React.createElement("div", { style: { overflowX: "auto" } },
+                                    React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 500 } },
+                                        React.createElement("thead", null, React.createElement("tr", { style: { background: "#EDE5FC", color: "#5A2492", fontSize: 9.5, textTransform: "uppercase" } },
+                                            React.createElement("th", { style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #D1C4FB" } }, "Área de Test"),
+                                            React.createElement("th", { style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #D1C4FB" } }, "Resultado"),
+                                            React.createElement("th", { style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #D1C4FB" } }, "Test fallido"),
+                                            React.createElement("th", { style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #D1C4FB" } }, "Máquina"),
+                                            React.createElement("th", { style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #D1C4FB" } }, "Fecha registro"))),
+                                        React.createElement("tbody", null, cesiumHist.map(function(row, i) {
+                                            var isPass = row.kind === "pass";
+                                            return React.createElement("tr", { key: i, style: { borderBottom: "1px solid #EDE5FC", background: isPass ? undefined : "#FFF5F4" } },
+                                                React.createElement("td", { style: { padding: "7px 8px", fontWeight: 700, color: "#102A43" } }, row.testArea || "N/D"),
+                                                React.createElement("td", { style: { padding: "7px 8px" } }, React.createElement("span", { style: { fontSize: 10, fontWeight: 900, padding: "3px 7px", borderRadius: 999, background: isPass ? "#E6F7EC" : "#FFE9E7", color: isPass ? "#1A6B37" : "#A43B2E", border: "1px solid " + (isPass ? "#B0E0C3" : "#F5BDB8") } }, isPass ? "PASS" : "FAIL")),
+                                                React.createElement("td", { style: { padding: "7px 8px", color: "#5F766C" } }, row.failingTestName || (isPass ? "—" : "N/D")),
+                                                React.createElement("td", { style: { padding: "7px 8px", color: "#5F766C" } }, row.machine || "N/D"),
+                                                React.createElement("td", { style: { padding: "7px 8px", color: "#5F766C" } }, row.recordTime || "N/D"));
+                                        }))))) : null);
+                    })() : React.createElement("div", { style: { fontSize: 12, color: "#8A8580", padding: "4px 0" } }, "Ingresa un número de serie para consultar su estado: proceso actual (SFC), historial de reparación y resultados Cesium.")))));
     }
     function renderModuleIcon(kind) {
         if (kind === "nccapa")
