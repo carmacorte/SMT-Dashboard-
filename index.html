@@ -5967,11 +5967,12 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
         var event = String(traceOpsYieldPick(row, ["currentevent", "Current Event", "Event", "Station", "Current Station", "Proceso Actual", "Current Process"]) || "").trim();
         var eventTime = traceOpsYieldParseDate(traceOpsYieldPick(row, ["lasteditdt", "Last Edit DT", "Current Event Time", "Event Time", "Timestamp", "DateTime", "Date Time", "Rec Time", "Fecha Hora", "Fecha"]));
         var line = String(traceOpsYieldPick(row, ["Line ID", "Line", "productionline", "Linea", "Línea"]) || "").trim();
+        var sfcBu = String(traceOpsYieldPick(row, ["BU", "Business Unit", "bu", "businessunit", "Business_Unit", "BU/Division", "Division"]) || "").trim();
         var station = traceOpsYieldClassifyStation(event);
-        var dbSfc = traceOpsYieldApplyDbModel(sku, family, "");
+        var dbSfc = traceOpsYieldApplyDbModel(sku, family, sfcBu);
         sku = dbSfc.sku || sku;
         family = dbSfc.family || family;
-        var clean = { sn: sn, wo: wo, sku: sku, family: family, bu: dbSfc.bu, event: event, eventTime: eventTime, line: line, station: station, week: traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap) };
+        var clean = { sn: sn, wo: wo, sku: sku, family: family, bu: sfcBu || dbSfc.bu, event: event, eventTime: eventTime, line: line, station: station, week: traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap) };
         if (sn)
             snToSfc[sn] = clean;
         if (wo) {
@@ -5979,7 +5980,7 @@ function traceOpsYieldBuildFromImported(workRows, sfcRows, repairRows, sourceMet
                 sfcByWo[wo] = [];
             sfcByWo[wo].push(clean);
             if (!woMap[wo] && !hasWorkOrderSource)
-                woMap[wo] = { wo: wo, week: traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap), date: "", line: line, bu: traceOpsYieldInferBU("", family, sku), family: family || sku || "N/A", sku: sku, startSmt: "", qty: 0 };
+                woMap[wo] = { wo: wo, week: traceOpsYieldResolveCiscoWeek(row, ciscoCalendarMap), date: "", line: line, bu: sfcBu || traceOpsYieldInferBU("", family, sku), family: family || sku || "N/A", sku: sku, startSmt: "", qty: 0 };
             if (woMap[wo]) {
                 if (!woMap[wo].sku && sku)
                     woMap[wo].sku = sku;
