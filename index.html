@@ -7185,7 +7185,7 @@ function App() {
     var boardImpactContextArr = _useState(null);
     var boardImpactContext = boardImpactContextArr[0];
     var setBoardImpactContext = boardImpactContextArr[1];
-    var boardSelectedRefArr = _useState("R209");
+    var boardSelectedRefArr = _useState("L1_PSW1");
     var boardSelectedRef = boardSelectedRefArr[0];
     var setBoardSelectedRef = boardSelectedRefArr[1];
     var boardSideArr = _useState("top");
@@ -15379,7 +15379,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     function traceOpsBoardTryPdfUrls() {
         return ["./60-104392-04_A0.pdf", "60-104392-04_A0.pdf", "./board-impact-assets/60-104392-04_A0.pdf", "board-impact-assets/60-104392-04_A0.pdf"];
     }
-
     var TRACEOPS_BOARD_REF_BOXES = {
         "L1_PSW1": {
             ref_des: "L1_PSW1",
@@ -15395,11 +15394,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         }
         return null;
     }
-    function traceOpsBoardManualColor(status) {
+    function traceOpsBoardSeverityColor(status) {
         var s = String(status || "").toLowerCase();
-        if (s.indexOf("crit") >= 0) return { fill: "rgba(255,59,48,.24)", stroke: "rgba(255,59,48,.95)", shadow: "rgba(255,59,48,.55)" };
-        if (s.indexOf("alt") >= 0 || s.indexOf("high") >= 0) return { fill: "rgba(255,149,0,.24)", stroke: "rgba(255,149,0,.95)", shadow: "rgba(255,149,0,.55)" };
-        return { fill: "rgba(255,204,0,.28)", stroke: "rgba(184,120,32,.95)", shadow: "rgba(255,204,0,.55)" };
+        if (s.indexOf("crit") >= 0 || s.indexOf("critical") >= 0) return { fill: "rgba(255, 59, 48, .22)", stroke: "rgba(255, 59, 48, .95)", glow: "rgba(255, 59, 48, .55)" };
+        if (s.indexOf("alt") >= 0 || s.indexOf("high") >= 0) return { fill: "rgba(255, 149, 0, .24)", stroke: "rgba(255, 149, 0, .95)", glow: "rgba(255, 149, 0, .55)" };
+        return { fill: "rgba(255, 204, 0, .26)", stroke: "rgba(184, 120, 32, .95)", glow: "rgba(255, 204, 0, .55)" };
     }
     React.useEffect(function () {
         if (activeModule !== "boardimpact") return;
@@ -15446,18 +15445,21 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                 var pdf = loaded.pdf;
                 var desiredPage = boardSide === "bottom" ? 2 : 1;
                 var ref = traceOpsBoardNormalizeRef(boardSelectedRef || (boardImpactContext && boardImpactContext.refdes) || "");
-                var hit = ref ? await searchPdf(pdf, ref) : null;
+                var manualBox = ref ? traceOpsBoardGetManualBox(ref) : null;
+                var manualPage = manualBox && manualBox.bounding_box && manualBox.bounding_box.page ? Number(manualBox.bounding_box.page) : null;
+                var hit = ref && !manualBox ? await searchPdf(pdf, ref) : null;
                 if (cancelled || window.__traceopsBoardPdfSeq !== renderSeq) return;
-                if (hit && hit.pageNo && hit.pageNo !== desiredPage) { setBoardSide(hit.pageNo === 2 ? "bottom" : "top"); return; }
-                var pageNo = hit && hit.pageNo ? hit.pageNo : desiredPage;
+                if (manualPage && manualPage !== desiredPage) { setBoardSide(manualPage === 2 ? "bottom" : "top"); return; }
+                if (!manualBox && hit && hit.pageNo && hit.pageNo !== desiredPage) { setBoardSide(hit.pageNo === 2 ? "bottom" : "top"); return; }
+                var pageNo = manualPage || (hit && hit.pageNo ? hit.pageNo : desiredPage);
                 var page = await pdf.getPage(pageNo);
                 var container = document.getElementById("traceops-board-pdf-stage");
                 var canvas = document.getElementById("traceops-board-pdf-canvas");
                 var overlay = document.getElementById("traceops-board-pdf-overlay");
                 if (!container || !canvas || !overlay) return;
                 var baseViewport = page.getViewport({ scale: 1 });
-                var available = Math.max(320, Math.min(container.clientWidth || 900, 1180));
-                var scale = Math.max(.55, Math.min(2.25, available / baseViewport.width));
+                var available = Math.max(280, Math.min((container.clientWidth || 900) - (isMobile() ? 28 : 46), 1180));
+                var scale = Math.max(.45, Math.min(isMobile() ? 1.15 : 2.0, available / baseViewport.width));
                 var viewport = page.getViewport({ scale: scale });
                 canvas.width = Math.floor(viewport.width); canvas.height = Math.floor(viewport.height);
                 canvas.style.width = Math.floor(viewport.width) + "px"; canvas.style.height = Math.floor(viewport.height) + "px";
@@ -15471,12 +15473,30 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                 var over = overlay.getContext("2d");
                 over.clearRect(0,0,overlay.width,overlay.height);
                 var foundItem = hit && hit.item;
-                var manualBox = (!foundItem && ref) ? traceOpsBoardGetManualBox(ref) : null;
-                if (manualBox && manualBox.bounding_box && manualBox.bounding_box.page && manualBox.bounding_box.page !== pageNo) {
-                    setBoardSide(manualBox.bounding_box.page === 2 ? "bottom" : "top");
-                    return;
-                }
-                if (foundItem) {
+                var manualFound = false;
+                if (manualBox && manualBox.bounding_box) {
+                    try {
+                        var b = manualBox.bounding_box;
+                        var rect = viewport.convertToViewportRectangle([Number(b.x), Number(b.y), Number(b.x) + Number(b.width), Number(b.y) + Number(b.height)]);
+                        var rx = Math.min(rect[0], rect[2]);
+                        var ry = Math.min(rect[1], rect[3]);
+                        var rw = Math.max(8, Math.abs(rect[2] - rect[0]));
+                        var rh = Math.max(8, Math.abs(rect[3] - rect[1]));
+                        var color = traceOpsBoardSeverityColor(manualBox.metadata && manualBox.metadata.status);
+                        var padBox = Math.max(8, Math.min(18, rw * .55));
+                        over.save();
+                        over.fillStyle = color.fill;
+                        over.strokeStyle = color.stroke;
+                        over.lineWidth = Math.max(2.5, scale * 1.6);
+                        over.shadowColor = color.glow;
+                        over.shadowBlur = 18;
+                        if (over.roundRect) { over.beginPath(); over.roundRect(rx - padBox, ry - padBox, rw + padBox * 2, rh + padBox * 2, 8); over.fill(); over.stroke(); }
+                        else { over.fillRect(rx - padBox, ry - padBox, rw + padBox * 2, rh + padBox * 2); over.strokeRect(rx - padBox, ry - padBox, rw + padBox * 2, rh + padBox * 2); }
+                        over.restore();
+                        manualFound = true;
+                        try { container.scrollTo({ left: Math.max(0, rx - container.clientWidth / 2), top: Math.max(0, ry - container.clientHeight / 2), behavior: "smooth" }); } catch (_) {}
+                    } catch (_) {}
+                } else if (foundItem) {
                     try {
                         var tx = window.pdfjsLib.Util.transform(viewport.transform, foundItem.transform);
                         var x = tx[4], y = tx[5];
@@ -15492,32 +15512,11 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         if (over.roundRect) { over.beginPath(); over.roundRect(x - pad, y - hgt - pad, wdt + pad * 2, hgt + pad * 2, 8); over.fill(); over.stroke(); }
                         else { over.fillRect(x - pad, y - hgt - pad, wdt + pad * 2, hgt + pad * 2); over.strokeRect(x - pad, y - hgt - pad, wdt + pad * 2, hgt + pad * 2); }
                         over.restore();
-                        try { container.scrollTo({ left: Math.max(0, x - container.clientWidth / 2), top: Math.max(0, y - container.clientHeight / 2), behavior: "smooth" }); } catch (_) {}
+                        try { if (!isMobile()) container.scrollTo({ left: Math.max(0, x - container.clientWidth / 2), top: Math.max(0, y - container.clientHeight / 2), behavior: "smooth" }); } catch (_) {}
                     } catch (_) {}
                 }
-                if (!foundItem && manualBox && manualBox.bounding_box) {
-                    try {
-                        var box = manualBox.bounding_box;
-                        var meta = manualBox.metadata || {};
-                        var c = traceOpsBoardManualColor(meta.status);
-                        var bx = box.x * scale;
-                        var by = box.y * scale;
-                        var bw = Math.max(26, box.width * scale);
-                        var bh = Math.max(18, box.height * scale);
-                        var bpad = Math.max(8, 6 * scale);
-                        over.save();
-                        over.fillStyle = c.fill;
-                        over.strokeStyle = c.stroke;
-                        over.lineWidth = Math.max(2, scale * 1.6);
-                        over.shadowColor = c.shadow;
-                        over.shadowBlur = 18;
-                        if (over.roundRect) { over.beginPath(); over.roundRect(bx - bpad, by - bpad, bw + bpad * 2, bh + bpad * 2, 8); over.fill(); over.stroke(); }
-                        else { over.fillRect(bx - bpad, by - bpad, bw + bpad * 2, bh + bpad * 2); over.strokeRect(bx - bpad, by - bpad, bw + bpad * 2, bh + bpad * 2); }
-                        over.restore();
-                        try { container.scrollTo({ left: Math.max(0, bx - container.clientWidth / 2), top: Math.max(0, by - container.clientHeight / 2), behavior: "smooth" }); } catch (_) {}
-                    } catch (_) {}
-                }
-                setBoardPdfState({ status: "ok", message: foundItem ? ("Referencia localizada en PDF: " + ref) : (manualBox ? ("Referencia localizada por coordenada manual: " + ref) : (ref ? ("No se encontro texto exacto para " + ref + "; mostrando lado seleccionado.") : "PDF renderizado")), page: pageNo, found: !!foundItem || !!manualBox, url: loaded.url });
+                var metaDesc = manualBox && manualBox.metadata && manualBox.metadata.description ? (" · " + manualBox.metadata.description) : "";
+                setBoardPdfState({ status: "ok", message: manualFound ? ("Referencia localizada por coordenadas: " + ref + metaDesc) : (foundItem ? ("Referencia localizada en PDF: " + ref) : (ref ? ("No se encontro texto exacto para " + ref + "; mostrando lado seleccionado.") : "PDF renderizado")), page: pageNo, found: !!(manualFound || foundItem), url: loaded.url, manual: manualFound });
             }
             catch (err) { if (!cancelled) setBoardPdfState({ status: "error", message: "No se pudo renderizar el PDF: " + ((err && err.message) || String(err)), page: boardSide === "bottom" ? 2 : 1, found: false }); }
         }
@@ -16227,9 +16226,17 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                             ["top", "bottom"].map(function (side) { return h("button", { key: side, type: "button", onClick: function () { setBoardSide(side); }, style: { border: 0, padding: "9px 15px", background: boardSide === side ? "#1F6FEB" : "#fff", color: boardSide === side ? "#fff" : "#1F3A5F", fontSize: 11, fontWeight: 900, cursor: "pointer" } }, side.toUpperCase()); })),
                         h("input", { value: selectedRef, onChange: function (e) { setBoardSelectedRef(e.target.value); }, onKeyDown: function (e) { if (e.key === "Enter") setBoardSelectedRef(e.currentTarget.value.trim()); }, placeholder: "Buscar RefDes", style: { height: 38, border: "1px solid #C9DAF5", borderRadius: 999, padding: "0 12px", fontSize: 12, fontWeight: 800, color: "#102A43", outline: "none", minWidth: 150 } }))),
                 h("div", { style: { padding: isMobile() ? "12px" : "16px" } },
-                    h("div", { id: "traceops-board-pdf-stage", style: { position: "relative", width: "100%", height: isMobile() ? 430 : 620, overflow: "auto", border: "1px solid #D9E6F7", borderRadius: 18, background: "#EEF1F6", display: "block", textAlign: "center", WebkitOverflowScrolling: "touch" } },
-                        h("canvas", { id: "traceops-board-pdf-canvas", style: { display: "inline-block", background: "#fff", borderRadius: 10, margin: 12, boxShadow: "0 18px 40px rgba(16,42,67,.12)" } }),
-                        h("canvas", { id: "traceops-board-pdf-overlay", style: { position: "absolute", pointerEvents: "none" } })),
+                    h("div", { id: "traceops-board-pdf-stage", style: { position: "relative", width: "100%", height: isMobile() ? "72svh" : 680, maxHeight: isMobile() ? "760px" : 680, overflow: "auto", border: "1px solid #D8D8DC", borderRadius: isMobile() ? 26 : 22, background: "#D1D1D6", display: "block", textAlign: "center", WebkitOverflowScrolling: "touch", boxShadow: "inset 0 1px 0 rgba(255,255,255,.45)", overscrollBehavior: "contain" } },
+                        h("div", { style: { position: "sticky", top: 14, left: 0, width: "100%", zIndex: 3, display: "flex", justifyContent: "center", pointerEvents: "none" } },
+                            h("div", { style: { display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "rgba(255,255,255,.72)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", color: "#6B6B70", fontSize: 12, fontWeight: 900, boxShadow: "0 8px 22px rgba(0,0,0,.10)" } }, "▦ ", String(boardPdfState.page || (boardSide === "bottom" ? 2 : 1)), " de 2")),
+                        h("canvas", { id: "traceops-board-pdf-canvas", style: { display: "inline-block", background: "#fff", borderRadius: 2, margin: isMobile() ? "52px 8px 92px" : "58px 18px 92px", boxShadow: "0 14px 34px rgba(0,0,0,.16)" } }),
+                        h("canvas", { id: "traceops-board-pdf-overlay", style: { position: "absolute", pointerEvents: "none" } }),
+                        h("div", { style: { position: "sticky", bottom: 14, left: 0, width: "100%", zIndex: 4, display: "flex", justifyContent: "center", pointerEvents: "none", padding: "0 12px" } },
+                            h("div", { style: { pointerEvents: "auto", display: "flex", alignItems: "center", gap: 8, maxWidth: 620, width: isMobile() ? "100%" : "auto", padding: "8px", borderRadius: 999, background: "rgba(248,248,250,.82)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)", border: "1px solid rgba(255,255,255,.72)", boxShadow: "0 12px 34px rgba(0,0,0,.18)" } },
+                                h("button", { type: "button", onClick: function () { setBoardSide(boardSide === "bottom" ? "top" : "bottom"); }, style: { width: 44, height: 44, borderRadius: 999, border: 0, background: "#0A84FF", color: "#fff", fontSize: 18, fontWeight: 900, cursor: "pointer" } }, "✓"),
+                                h("input", { value: selectedRef, onChange: function (e) { setBoardSelectedRef(e.target.value); }, onKeyDown: function (e) { if (e.key === "Enter") setBoardSelectedRef(e.currentTarget.value.trim()); }, placeholder: "RefDes", style: { flex: 1, minWidth: 0, height: isMobile() ? 42 : 44, border: 0, background: "#fff", color: "#111", outline: "none", borderRadius: 999, padding: "0 14px", fontSize: isMobile() ? 14 : 16, fontWeight: 900, boxShadow: "inset 0 0 0 1px rgba(0,0,0,.08)" } }),
+                                h("button", { type: "button", onClick: function () { setBoardSide("top"); }, style: { width: 42, height: 42, borderRadius: 999, border: 0, background: boardSide === "top" ? "#E9E9EE" : "#fff", color: "#6B6B70", fontSize: 18, fontWeight: 900, cursor: "pointer" } }, "⌃"),
+                                h("button", { type: "button", onClick: function () { setBoardSide("bottom"); }, style: { width: 42, height: 42, borderRadius: 999, border: 0, background: boardSide === "bottom" ? "#E9E9EE" : "#fff", color: "#6B6B70", fontSize: 18, fontWeight: 900, cursor: "pointer" } }, "⌄")))),
                     h("div", { style: { fontSize: 11.5, color: boardPdfState.status === "error" ? "#A43B2E" : "#5F766C", marginTop: 10, lineHeight: 1.45 } }, boardPdfState.message || "PDF listo"),
                     h("div", { style: { fontSize: 10, fontWeight: 900, color: "#8B98B8", marginTop: 10, letterSpacing: ".12em", textTransform: "uppercase" } }, "Fuente: 60-104392-04_A0.pdf"))),
             h("section", { style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, overflow: "hidden" } },
