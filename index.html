@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TraceOps | Board Impact View</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#060915;
+      --panel:#0b1220;
+      --panel-2:#10192d;
+      --line:#1a2440;
+      --text:#f4f7ff;
+      --muted:#8a96ba;
+      --blue:#5766ff;
+      --blue-2:#7c8bff;
+      --red:#ff4d5e;
+      --orange:#ff9a3d;
+      --amber:#f0c04b;
+      --steel:#b4bdd9;
+      --shadow:0 18px 50px rgba(0,0,0,.45);
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:
+      radial-gradient(circle at top left, rgba(70,96,255,.18), transparent 26%),
+      radial-gradient(circle at right 20%, rgba(255,77,94,.08), transparent 18%),
+      #050813;
+      color:var(--text);
+      font-family:Inter,system-ui,sans-serif}
+
+    body{display:flex;min-height:100vh}
+    .sidebar{
+      width:250px;
+      background:linear-gradient(180deg, rgba(10,14,29,.98), rgba(7,11,23,.98));
+      border-right:1px solid rgba(138,150,186,.12);
+      padding:20px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+    .brand{
+      display:flex;align-items:center;gap:10px;padding:4px 8px 18px;border-bottom:1px solid rgba(138,150,186,.12)
+    }
+    .brand-badge{
+      width:28px;height:28px;border-radius:9px;display:grid;place-items:center;
+      background:linear-gradient(145deg,#6675ff,#303dad);box-shadow:0 10px 24px rgba(87,102,255,.35);font-weight:900
+    }
+    .brand-copy strong{display:block;font-size:20px}
+    .brand-copy span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+    .group-title{
+      font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:#647095;margin:0 8px 4px
+    }
+    .nav,.nav-group{display:flex;flex-direction:column;gap:6px}
+    .nav button{
+      appearance:none;border:0;background:transparent;color:#d6ddfb;text-align:left;
+      padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer;
+      transition:.2s ease;
+    }
+    .nav button:hover{background:rgba(255,255,255,.04)}
+    .nav button.active{
+      background:linear-gradient(90deg, rgba(87,102,255,.3), rgba(87,102,255,.08));
+      color:#fff;box-shadow:inset 0 0 0 1px rgba(124,139,255,.35);
+    }
+    .sidebar-footer{
+      margin-top:auto;padding:12px 10px 4px;font-size:11px;color:var(--muted);line-height:1.5;
+      border-top:1px solid rgba(138,150,186,.12)
+    }
+
+    .app{flex:1;display:flex;flex-direction:column;min-width:0}
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:18px 22px;border-bottom:1px solid rgba(138,150,186,.12);
+      backdrop-filter:blur(16px);background:rgba(5,8,19,.74);position:sticky;top:0;z-index:20;
+    }
+    .topbar h1{margin:0;font-size:15px;font-weight:700}
+    .breadcrumb{font-size:12px;color:var(--muted);margin-bottom:4px}
+    .topbar-controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .pill{
+      display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:14px;
+      background:rgba(16,25,45,.9);border:1px solid rgba(138,150,186,.16);
+      color:#eef2ff;font-size:12px;font-weight:600;
+    }
+    .pill span{color:var(--muted);font-weight:500}
+
+    .workspace{padding:20px;display:grid;grid-template-columns:310px minmax(0,1fr) 320px;gap:16px;min-width:0}
+    .panel{
+      background:linear-gradient(180deg, rgba(10,16,30,.98), rgba(8,13,25,.98));
+      border:1px solid rgba(138,150,186,.12);
+      border-radius:24px;box-shadow:var(--shadow);min-width:0;
+    }
+    .panel-head{
+      padding:18px 18px 14px;border-bottom:1px solid rgba(138,150,186,.1)
+    }
+    .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6d7aa0;font-weight:700}
+    .panel-head h2,.panel-head h3{margin:8px 0 0;font-size:24px;line-height:1.06}
+    .panel-subtitle{margin-top:8px;color:var(--muted);font-size:12px;line-height:1.5}
+
+    .left-col{display:flex;flex-direction:column;gap:16px}
+    .kpi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:16px}
+    .kpi{
+      padding:14px 14px 12px;border-radius:18px;background:rgba(255,255,255,.025);
+      border:1px solid rgba(138,150,186,.12)
+    }
+    .kpi.tone-red{box-shadow:inset 0 0 0 1px rgba(255,77,94,.18)}
+    .kpi.tone-blue{box-shadow:inset 0 0 0 1px rgba(124,139,255,.18)}
+    .kpi.tone-amber{box-shadow:inset 0 0 0 1px rgba(240,192,75,.18)}
+    .kpi-label{font-size:11px;color:var(--muted);margin-bottom:8px}
+    .kpi-value{font-size:30px;font-weight:900;line-height:1}
+    .kpi-meta{margin-top:8px;font-size:11px;color:#aab5d5}
+
+    .failure-list{padding:12px;display:flex;flex-direction:column;gap:10px}
+    .failure-card{
+      border:1px solid rgba(138,150,186,.12);background:rgba(255,255,255,.02);border-radius:18px;
+      padding:14px;cursor:pointer;transition:.18s ease;position:relative;
+    }
+    .failure-card:hover{transform:translateY(-1px);border-color:rgba(138,150,186,.28)}
+    .failure-card.active{
+      background:linear-gradient(180deg, rgba(86,15,26,.65), rgba(59,12,23,.72));
+      border-color:rgba(255,77,94,.42);box-shadow:0 16px 26px rgba(255,77,94,.14);
+    }
+    .failure-name{font-size:14px;font-weight:700}
+    .failure-meta{margin-top:6px;font-size:12px;color:#b6c0df;display:flex;justify-content:space-between;gap:10px}
+    .failure-card.active .failure-meta{color:#ffe3e6}
+
+    .center-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+    .board-shell{padding:16px}
+    .board-toolbar{
+      display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px
+    }
+    .legend,.toolbar-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+    .legend-dot{width:10px;height:10px;border-radius:50%}
+    .legend-dot.critical{background:var(--red);box-shadow:0 0 14px rgba(255,77,94,.8)}
+    .legend-dot.high{background:var(--orange);box-shadow:0 0 14px rgba(255,154,61,.7)}
+    .legend-dot.medium{background:var(--amber);box-shadow:0 0 14px rgba(240,192,75,.7)}
+    .legend-dot.low{background:var(--steel)}
+    .segmented{
+      display:inline-flex;background:#10192d;border:1px solid rgba(138,150,186,.18);padding:4px;border-radius:999px
+    }
+    .segmented button{
+      border:0;background:transparent;color:#bfc7e6;padding:8px 14px;border-radius:999px;
+      cursor:pointer;font-size:11px;font-weight:800;letter-spacing:.08em
+    }
+    .segmented button.active{background:linear-gradient(180deg,#6a79ff,#4b59df);color:white}
+    .search-wrap{
+      display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+      padding:10px 12px;border-radius:18px;background:rgba(16,25,45,.92);
+      border:1px solid rgba(138,150,186,.16)
+    }
+    .search-label{
+      font-size:10px;color:#7d8ab0;text-transform:uppercase;letter-spacing:.12em;font-weight:800
+    }
+    .search-input{
+      min-width:140px;flex:1;border:0;outline:none;background:transparent;color:#fff;
+      font-size:14px;font-weight:700;text-transform:uppercase
+    }
+    .search-input::placeholder{color:#7784aa}
+    .search-btn{
+      border:0;border-radius:12px;padding:10px 14px;cursor:pointer;
+      background:linear-gradient(180deg,#6270ff,#4b59df);color:#fff;font-weight:800;font-size:12px
+    }
+
+    .board-stage{
+      position:relative;border-radius:24px;overflow:hidden;border:1px solid rgba(138,150,186,.12);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)),
+        linear-gradient(90deg, rgba(124,139,255,.06) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(124,139,255,.06) 1px, transparent 1px),
+        #0b1220;
+      background-size:auto, 26px 26px, 26px 26px, auto;
+      min-height:530px;
+      display:flex;align-items:center;justify-content:center;
+      padding:28px;
+    }
+    .board-viewer{
+      position:relative;width:min(100%,960px);display:flex;justify-content:center;
+      filter:drop-shadow(0 30px 35px rgba(0,0,0,.45));
+    }
+    .board-canvas{
+      display:block;max-width:100%;height:auto;border-radius:18px;background:#fff
+    }
+    .board-highlight-layer{
+      position:absolute;inset:0;pointer-events:none
+    }
+    .board-highlight{
+      position:absolute;border:2px solid rgba(255,226,92,.95);
+      background:rgba(255,226,92,.28);box-shadow:0 0 0 1px rgba(255,248,207,.55),0 0 24px rgba(255,226,92,.3);
+      border-radius:4px
+    }
+    .board-status{
+      display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+      margin-top:12px;font-size:11px;color:#aab5d5
+    }
+    .board-status strong{color:#fff}
+    .board-source{
+      color:#7d8ab0;text-transform:uppercase;letter-spacing:.12em;font-size:10px;font-weight:800
+    }
+
+    .ref-table-wrap{padding:0 16px 16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:12px 10px;border-top:1px solid rgba(138,150,186,.1);text-align:left;font-size:12px}
+    th{color:#7d8ab0;font-size:10px;text-transform:uppercase;letter-spacing:.12em}
+    td strong{font-size:13px}
+    .sev{
+      display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em
+    }
+    .sev.critical{background:rgba(255,77,94,.16);color:#ff6d7c}
+    .sev.high{background:rgba(255,154,61,.14);color:#ffb066}
+    .sev.medium{background:rgba(240,192,75,.14);color:#ffd465}
+    .trend{color:#ffb066;font-size:18px;letter-spacing:1px}
+
+    .detail-col{display:flex;flex-direction:column;gap:16px}
+    .detail-body{padding:16px}
+    .detail-kicker{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+    .detail-id{font-size:30px;font-weight:900;letter-spacing:-.04em}
+    .tag{
+      display:inline-flex;padding:7px 10px;border-radius:999px;font-size:10px;font-weight:800;
+      text-transform:uppercase;letter-spacing:.08em
+    }
+    .tag.critical{background:rgba(255,77,94,.16);color:#ff6d7c}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .detail-item{padding:12px 0;border-top:1px solid rgba(138,150,186,.12)}
+    .detail-item span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+    .detail-item strong{font-size:14px;line-height:1.45}
+    .detail-item.full{grid-column:1/-1}
+    .wo-list{margin-top:14px;border:1px solid rgba(138,150,186,.12);border-radius:18px;overflow:hidden;background:rgba(255,255,255,.02)}
+    .wo-head,.wo-row{
+      display:grid;grid-template-columns:1.2fr .8fr .8fr;padding:10px 12px;gap:8px;align-items:center
+    }
+    .wo-head{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#7d8ab0;background:rgba(255,255,255,.03)}
+    .wo-row{font-size:12px;border-top:1px solid rgba(138,150,186,.1)}
+    .thumb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+    .thumb{
+      border-radius:16px;overflow:hidden;border:1px solid rgba(138,150,186,.14);background:#0d1528
+    }
+    .thumb-copy{padding:12px}
+    .thumb strong{display:block;font-size:12px;color:#eef2ff}
+    .thumb span{display:block;padding-top:8px;font-size:10px;color:#b8c1df;line-height:1.5}
+    .cta{
+      margin-top:16px;width:100%;border:0;border-radius:16px;padding:14px 16px;cursor:pointer;
+      background:linear-gradient(180deg,#6270ff,#4b59df);color:#fff;font-weight:800;font-size:13px;
+      box-shadow:0 18px 28px rgba(87,102,255,.26)
+    }
+
+    @media (max-width: 1200px){
+      .workspace{grid-template-columns:300px minmax(0,1fr)}
+      .detail-col{grid-column:1/-1}
+    }
+
+    @media (max-width: 920px){
+      body{display:block}
+      .sidebar{width:100%;position:static;border-right:0;border-bottom:1px solid rgba(138,150,186,.12)}
+      .workspace{grid-template-columns:1fr;padding:14px}
+      .topbar{padding:14px}
+      .board-stage{min-height:440px;padding:16px}
+      .kpi-grid{grid-template-columns:1fr 1fr}
+    }
+
+    @media (max-width: 640px){
+      .detail-grid,.kpi-grid{grid-template-columns:1fr}
+      .topbar-controls{justify-content:flex-start}
+      .board-stage{min-height:320px}
+      .panel-head h2,.panel-head h3{font-size:20px}
+      .thumb-grid{grid-template-columns:1fr}
+      .wo-head,.wo-row{grid-template-columns:1fr 1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-badge">T</div>
+      <div class="brand-copy">
+        <strong>TraceOps</strong>
+        <span>Board impact workspace</span>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <p class="group-title">Yield Flow</p>
+      <div class="nav">
+        <button>Overview</button>
+        <button>Risk Units</button>
+        <button>Top Offenders</button>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <p class="group-title">Análisis</p>
+      <div class="nav">
+        <button>WO Explorer</button>
+        <button>Pareto por Falla</button>
+        <button>Estaciones</button>
+        <button>OJT Explorer</button>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <p class="group-title">Visualización</p>
+      <div class="nav">
+        <button class="active">Board Impact View</button>
+        <button>Serial Explorer</button>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      Vista demo construida desde el PDF de tablilla y el look&feel de la referencia enviada.
+    </div>
+  </aside>
+
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <div class="breadcrumb">Yield Flow &nbsp;›&nbsp; Board Impact View</div>
+        <h1>Mapa de impacto en tablilla</h1>
+      </div>
+      <div class="topbar-controls">
+        <div class="pill"><span>Modelo / SKU</span> VICTORIA RM-A</div>
+        <div class="pill"><span>Semana</span> May 06 - May 12, 2024</div>
+        <div class="pill"><span>Filtro</span> AOI / BGA / Top side</div>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <div class="left-col">
+        <section class="panel">
+          <div class="panel-head">
+            <div class="eyebrow">Resumen</div>
+            <h2>Impacto actual</h2>
+            <div class="panel-subtitle">Concentrado de volumen afectado para el modo de falla seleccionado.</div>
+          </div>
+          <div class="kpi-grid">
+            <article class="kpi tone-red">
+              <div class="kpi-label">WOs impactadas</div>
+              <div class="kpi-value">128</div>
+              <div class="kpi-meta">16,842 piezas</div>
+            </article>
+            <article class="kpi tone-blue">
+              <div class="kpi-label">Tablillas inspeccionadas</div>
+              <div class="kpi-value">3,246</div>
+              <div class="kpi-meta">17.4% del flujo</div>
+            </article>
+            <article class="kpi tone-amber">
+              <div class="kpi-label">Seriales afectados</div>
+              <div class="kpi-value">642</div>
+              <div class="kpi-meta">19.8% del scope</div>
+            </article>
+            <article class="kpi tone-blue">
+              <div class="kpi-label">Refs únicas afectadas</div>
+              <div class="kpi-value">14</div>
+              <div class="kpi-meta">Top y bottom side</div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div class="eyebrow">1. Selecciona modo de falla</div>
+            <h3>Componentes dañados</h3>
+            <div class="panel-subtitle">El listado cambia el foco del tablero, el detalle y la tabla inferior.</div>
+          </div>
+          <div class="failure-list" id="failureList"></div>
+        </section>
+      </div>
+
+      <div class="center-col">
+        <section class="panel">
+          <div class="panel-head">
+            <div class="eyebrow">2. Localización de referencias afectadas</div>
+            <h3 id="boardTitle">Mapa interactivo</h3>
+            <div class="panel-subtitle" id="boardSubtitle">Severidad visible sobre la tablilla real del ensamble.</div>
+          </div>
+          <div class="board-shell">
+            <div class="board-toolbar">
+              <div class="legend">
+                <div class="legend-item"><span class="legend-dot critical"></span> Crítica</div>
+                <div class="legend-item"><span class="legend-dot high"></span> Alta</div>
+                <div class="legend-item"><span class="legend-dot medium"></span> Media</div>
+                <div class="legend-item"><span class="legend-dot low"></span> Baja</div>
+              </div>
+              <div class="toolbar-actions">
+                <form class="search-wrap" id="boardSearchForm">
+                  <span class="search-label">RefDes</span>
+                  <input class="search-input" id="boardSearchInput" type="search" placeholder="Buscar U85, R209, C71..." autocomplete="off" />
+                  <button class="search-btn" type="submit">Buscar</button>
+                </form>
+                <div class="segmented" id="sideToggle">
+                  <button class="active" data-side="top">TOP</button>
+                  <button data-side="bottom">BOTTOM</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="board-stage">
+              <div class="board-viewer" id="boardViewer">
+                <canvas class="board-canvas" id="boardCanvas"></canvas>
+                <div class="board-highlight-layer" id="boardHighlightLayer"></div>
+              </div>
+            </div>
+            <div class="board-status">
+              <div id="boardStatusText">Cargando PDF de tablilla...</div>
+              <div class="board-source">Fuente: 60-104392-04_A0.pdf</div>
+            </div>
+          </div>
+
+          <div class="ref-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>RefDes</th>
+                  <th>Descripción</th>
+                  <th>Paquete</th>
+                  <th>Lado</th>
+                  <th>Cantidad afectada</th>
+                  <th>% Placas</th>
+                  <th>Severidad</th>
+                  <th>Tendencia</th>
+                </tr>
+              </thead>
+              <tbody id="refTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <aside class="detail-col">
+        <section class="panel">
+          <div class="panel-head">
+            <div class="eyebrow">3. Detalle de referencia</div>
+            <h3>Inspector lateral</h3>
+            <div class="panel-subtitle">Snapshot rápido para priorizar debug, contención y trazabilidad.</div>
+          </div>
+          <div class="detail-body">
+            <div class="detail-kicker">
+              <div class="detail-id" id="detailId">U8300</div>
+              <span class="tag critical" id="detailSeverity">Crítico</span>
+            </div>
+
+            <div class="detail-grid">
+              <div class="detail-item full">
+                <span>Descripción</span>
+                <strong id="detailDesc">PMIC / Power Management IC</strong>
+              </div>
+              <div class="detail-item">
+                <span>Paquete</span>
+                <strong id="detailPackage">BGA 256</strong>
+              </div>
+              <div class="detail-item">
+                <span>Lado</span>
+                <strong id="detailSide">TOP</strong>
+              </div>
+              <div class="detail-item">
+                <span>Cantidad afectada</span>
+                <strong id="detailQty">14 piezas</strong>
+              </div>
+              <div class="detail-item">
+                <span>% placas impactadas</span>
+                <strong id="detailPct">4.3%</strong>
+              </div>
+              <div class="detail-item">
+                <span>WOs impactadas</span>
+                <strong id="detailWo">28</strong>
+              </div>
+              <div class="detail-item">
+                <span>Seriales afectados</span>
+                <strong id="detailSerials">142</strong>
+              </div>
+              <div class="detail-item full">
+                <span>Modo de falla dominante</span>
+                <strong id="detailMode">Componente dañado</strong>
+              </div>
+              <div class="detail-item">
+                <span>Estación de detección</span>
+                <strong id="detailStation">AOI 2D</strong>
+              </div>
+              <div class="detail-item">
+                <span>Tendencia</span>
+                <strong id="detailTrend">Incremental</strong>
+              </div>
+            </div>
+
+            <div class="wo-list">
+              <div class="wo-head">
+                <div>Top WOs</div>
+                <div>Cantidad</div>
+                <div>% Impacto</div>
+              </div>
+              <div id="woRows"></div>
+            </div>
+
+            <div class="thumb-grid">
+              <div class="thumb">
+                <div class="thumb-copy">
+                  <strong>Página 1 · Primary Side</strong>
+                  <span>TOP ahora renderiza la página 1 del PDF original. No depende de `board-top.jpg`.</span>
+                </div>
+              </div>
+              <div class="thumb">
+                <div class="thumb-copy">
+                  <strong>Página 2 · Secondary Side</strong>
+                  <span>BOTTOM renderiza la página 2 y la búsqueda cambia sola de lado cuando encuentra la referencia.</span>
+                </div>
+              </div>
+            </div>
+
+            <button class="cta">Ver en Serial Explorer</button>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    const references = {
+      top: [
+        { id: "R209", name: "Resistor de red de arranque", pkg: "0402", side: "TOP", qty: 7, pct: 2.1, serials: 84, wo: 17, severity: "high", station: "AOI 2D", trend: "Volátil", mode: "Puente / corto de soldadura", description: "Exceso de pasta y corrimiento en el área de arranque detectado en la cara primaria.", topWos: [["WO-240506-0178", 3, 4.2],["WO-240507-0121", 2, 3.1],["WO-240505-0190", 2, 2.8]] },
+        { id: "U55_NTX0", name: "Controlador NTX0", pkg: "BGA 256", side: "TOP", qty: 14, pct: 4.3, serials: 142, wo: 28, severity: "critical", station: "AOI 2D", trend: "Incremental", mode: "Componente dañado", description: "Variación térmica y daño visible alrededor del encapsulado principal en la cara primaria.", topWos: [["WO-240506-0178", 6, 8.1],["WO-240507-0214", 4, 5.3],["WO-240508-0102", 3, 4.7]] },
+        { id: "J4500", name: "High-speed connector", pkg: "CONN 64", side: "TOP", qty: 5, pct: 1.6, serials: 61, wo: 9, severity: "critical", x: 86, y: 60.5, station: "Visual / ICT", trend: "Sostenida", mode: "Pines deformados", description: "Zona de conexión con deformación mecánica y falso contacto intermitente.", topWos: [["WO-240509-0008", 2, 3.8],["WO-240507-0214", 2, 2.9],["WO-240506-0052", 1, 2.1]] },
+        { id: "C71", name: "Capacitor de desacople", pkg: "0603", side: "TOP", qty: 5, pct: 1.6, serials: 55, wo: 12, severity: "medium", station: "AOI 2D", trend: "Estable", mode: "Tombstone", description: "Levantamiento parcial en zona de regulación secundaria sobre la cara primaria.", topWos: [["WO-240507-0214", 2, 2.2],["WO-240508-0102", 2, 2.0],["WO-240505-0190", 1, 1.4]] },
+        { id: "TP2103", name: "Test point rail", pkg: "TP ARRAY", side: "TOP", qty: 3, pct: 1.1, serials: 23, wo: 6, severity: "medium", x: 45.5, y: 84.5, station: "ICT", trend: "Descendente", mode: "Soldadura abierta", description: "Puntos de prueba con mojado insuficiente que afectan lectura en ICT.", topWos: [["WO-240504-0175", 2, 1.7],["WO-240505-0190", 1, 1.4],["WO-240506-0052", 1, 1.0]] },
+        { id: "L0802", name: "I/O choke", pkg: "0805", side: "TOP", qty: 2, pct: 0.7, serials: 19, wo: 4, severity: "low", x: 19.5, y: 74.5, station: "Visual", trend: "Controlada", mode: "Componente desalineado", description: "Desalineación leve en área de I/O sin daño funcional confirmado.", topWos: [["WO-240503-0120", 1, 1.2],["WO-240504-0175", 1, 0.9],["WO-240505-0031", 1, 0.8]] }
+      ],
+      bottom: [
+        { id: "U60_NTX0", name: "Controlador secundario NTX0", pkg: "BGA 196", side: "BOTTOM", qty: 11, pct: 3.7, serials: 97, wo: 18, severity: "critical", station: "X-Ray", trend: "Incremental", mode: "Void / solder collapse", description: "Colapso parcial de unión BGA visible en radiografía del lado secundario.", topWos: [["WO-240508-0188", 4, 6.0],["WO-240507-0160", 3, 4.5],["WO-240506-0094", 2, 3.2]] },
+        { id: "R2137", name: "Resistor de control secundario", pkg: "0201", side: "BOTTOM", qty: 6, pct: 1.9, serials: 43, wo: 8, severity: "high", station: "AOI 3D", trend: "Estable", mode: "Puente fino entre pads", description: "Corto microscópico detectado alrededor de la red de control en la cara secundaria.", topWos: [["WO-240508-0188", 2, 2.8],["WO-240507-0160", 2, 2.3],["WO-240506-0094", 1, 1.6]] },
+        { id: "U60", name: "PHY / controlador de red", pkg: "QFN 64", side: "BOTTOM", qty: 4, pct: 1.2, serials: 31, wo: 5, severity: "medium", station: "AOI 3D", trend: "Volátil", mode: "Soldadura abierta", description: "Pines laterales con insuficiencia de filete en lote mixto.", topWos: [["WO-240505-0114", 2, 1.7],["WO-240506-0094", 1, 1.4],["WO-240507-0160", 1, 1.2]] },
+        { id: "R2234", name: "Resistor de realimentación", pkg: "0201", side: "BOTTOM", qty: 6, pct: 1.7, serials: 29, wo: 7, severity: "high", station: "AOI 3D", trend: "Estable", mode: "Desbalance de soldadura", description: "Variación repetitiva en la cara secundaria cerca de la zona de potencia.", topWos: [["WO-240508-0188", 2, 2.5],["WO-240507-0160", 2, 2.1],["WO-240506-0094", 1, 1.7]] },
+        { id: "C727", name: "Capacitor de desacople secundario", pkg: "0201", side: "BOTTOM", qty: 3, pct: 0.9, serials: 18, wo: 3, severity: "low", station: "AOI 3D", trend: "Controlada", mode: "Missing / skip", description: "Componente ausente por alimentación irregular del feeder.", topWos: [["WO-240504-0031", 1, 1.0],["WO-240505-0114", 1, 0.8],["WO-240507-0160", 1, 0.6]] }
+      ]
+    };
+
+    const failureModes = [
+      { key: "damaged", label: "Componentes dañados", pct: "32.4%", serials: 642, side: "top", focus: "U55_NTX0" },
+      { key: "bridge", label: "Puente / corto de soldadura", pct: "22.1%", serials: 438, side: "top", focus: "R209" },
+      { key: "open", label: "Soldadura abierta", pct: "17.3%", serials: 343, side: "bottom", focus: "U60" },
+      { key: "missing", label: "Falta de soldadura", pct: "12.6%", serials: 251, side: "bottom", focus: "C727" },
+      { key: "misaligned", label: "Componentes desalineados", pct: "6.8%", serials: 135, side: "top", focus: "L0802" },
+      { key: "other", label: "Otros", pct: "8.8%", serials: 177, side: "top", focus: "C71" }
+    ];
+
+    let currentSide = "top";
+    let currentMode = "damaged";
+    let currentReference = references.top.find((item) => item.id === "U55_NTX0") || references.top[0];
+
+    const failureList = document.getElementById("failureList");
+    const boardCanvas = document.getElementById("boardCanvas");
+    const boardViewer = document.getElementById("boardViewer");
+    const boardHighlightLayer = document.getElementById("boardHighlightLayer");
+    const boardStatusText = document.getElementById("boardStatusText");
+    const boardSearchForm = document.getElementById("boardSearchForm");
+    const boardSearchInput = document.getElementById("boardSearchInput");
+    const refTableBody = document.getElementById("refTableBody");
+    const woRows = document.getElementById("woRows");
+    const boardTitle = document.getElementById("boardTitle");
+    const boardSubtitle = document.getElementById("boardSubtitle");
+    const boardPdfPath = "./board-impact-assets/60-104392-04_A0.pdf";
+    const boardPageMap = { top: 1, bottom: 2 };
+    const boardSideByPage = { 1: "top", 2: "bottom" };
+    const pdfState = {
+      doc: null,
+      pages: {},
+      textIndex: {},
+      renderToken: 0,
+      activeMatch: null
+    };
+
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+
+    function severityLabel(level){
+      return level === "critical" ? "Crítico" : level === "high" ? "Alta" : level === "medium" ? "Media" : "Baja";
+    }
+
+    function renderFailureModes(){
+      failureList.innerHTML = "";
+      failureModes.forEach((mode) => {
+        const button = document.createElement("button");
+        button.className = "failure-card" + (mode.key === currentMode ? " active" : "");
+        button.innerHTML = `
+          <div class="failure-name">${mode.label}</div>
+          <div class="failure-meta">
+            <span>${mode.pct}</span>
+            <span>${mode.serials} seriales</span>
+          </div>
+        `;
+        button.addEventListener("click", () => {
+          currentMode = mode.key;
+          currentSide = mode.side;
+          currentReference = references[currentSide].find((item) => item.id === mode.focus) || references[currentSide][0];
+          syncSideButtons();
+          renderFailureModes();
+          renderBoard();
+          renderDetails();
+          renderTable();
+          searchRefInBoardPdf(currentReference.id);
+        });
+        failureList.appendChild(button);
+      });
+    }
+
+    function renderBoard(){
+      const modeName = failureModes.find((mode) => mode.key === currentMode)?.label || "Modo seleccionado";
+      boardTitle.textContent = `${currentSide === "top" ? "TOP / Primary Side" : "BOTTOM / Secondary Side"} · ${modeName}`;
+      boardSubtitle.textContent = `${references[currentSide].length} referencias en tabla. El canvas usa el PDF original y resalta el RefDes encontrado.`;
+      renderBoardPdfPage(boardPageMap[currentSide], pdfState.activeMatch);
+    }
+
+    function renderDetails(){
+      const ref = currentReference;
+      document.getElementById("detailId").textContent = ref.id;
+      const sevNode = document.getElementById("detailSeverity");
+      sevNode.textContent = severityLabel(ref.severity);
+      sevNode.className = `tag ${ref.severity}`;
+      document.getElementById("detailDesc").textContent = ref.name;
+      document.getElementById("detailPackage").textContent = ref.pkg;
+      document.getElementById("detailSide").textContent = ref.side;
+      document.getElementById("detailQty").textContent = `${ref.qty} piezas`;
+      document.getElementById("detailPct").textContent = `${ref.pct}%`;
+      document.getElementById("detailWo").textContent = ref.wo;
+      document.getElementById("detailSerials").textContent = ref.serials;
+      document.getElementById("detailMode").textContent = ref.mode;
+      document.getElementById("detailStation").textContent = ref.station;
+      document.getElementById("detailTrend").textContent = ref.trend;
+
+      woRows.innerHTML = "";
+      ref.topWos.forEach((row) => {
+        const node = document.createElement("div");
+        node.className = "wo-row";
+        node.innerHTML = `<div>${row[0]}</div><div>${row[1]}</div><div>${row[2]}%</div>`;
+        woRows.appendChild(node);
+      });
+    }
+
+    function renderTable(){
+      refTableBody.innerHTML = "";
+      references[currentSide].forEach((item) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${item.id}</strong></td>
+          <td>${item.name}</td>
+          <td>${item.pkg}</td>
+          <td>${item.side}</td>
+          <td>${item.qty} piezas</td>
+          <td>${item.pct}%</td>
+          <td><span class="sev ${item.severity}">${severityLabel(item.severity)}</span></td>
+          <td class="trend">${item.severity === "critical" ? "∿∿∿" : item.severity === "high" ? "∿∿" : item.severity === "medium" ? "∼∼" : "∼"}</td>
+        `;
+        tr.addEventListener("click", () => {
+          currentReference = item;
+          renderBoard();
+          renderDetails();
+          renderTable();
+          searchRefInBoardPdf(item.id);
+        });
+        tr.style.cursor = "pointer";
+        tr.style.background = item.id === currentReference.id ? "rgba(87,102,255,.08)" : "transparent";
+        refTableBody.appendChild(tr);
+      });
+    }
+
+    function syncSideButtons(){
+      document.querySelectorAll("#sideToggle button").forEach((button) => {
+        button.classList.toggle("active", button.dataset.side === currentSide);
+      });
+    }
+
+    document.querySelectorAll("#sideToggle button").forEach((button) => {
+      button.addEventListener("click", () => {
+        currentSide = button.dataset.side;
+        currentReference = references[currentSide][0];
+        pdfState.activeMatch = null;
+        syncSideButtons();
+        renderBoard();
+        renderDetails();
+        renderTable();
+        updateBoardStatus(`${currentSide === "top" ? "TOP" : "BOTTOM"} seleccionado manualmente.`);
+      });
+    });
+
+    function updateBoardStatus(message){
+      boardStatusText.innerHTML = message;
+    }
+
+    async function ensureBoardPdfLoaded(){
+      if (pdfState.doc) return pdfState.doc;
+      if (!window.pdfjsLib) {
+        throw new Error("PDF.js no está disponible.");
+      }
+      updateBoardStatus("Cargando PDF de tablilla...");
+      pdfState.doc = await window.pdfjsLib.getDocument(boardPdfPath).promise;
+      updateBoardStatus(`PDF cargado. ${pdfState.doc.numPages} páginas disponibles para TOP/BOTTOM.`);
+      return pdfState.doc;
+    }
+
+    async function getBoardPage(pageNumber){
+      await ensureBoardPdfLoaded();
+      if (!pdfState.pages[pageNumber]) {
+        pdfState.pages[pageNumber] = await pdfState.doc.getPage(pageNumber);
+      }
+      return pdfState.pages[pageNumber];
+    }
+
+    async function getBoardTextIndex(pageNumber){
+      await ensureBoardPdfLoaded();
+      if (pdfState.textIndex[pageNumber]) return pdfState.textIndex[pageNumber];
+
+      const page = await getBoardPage(pageNumber);
+      const viewport = page.getViewport({ scale: 1 });
+      const textContent = await page.getTextContent();
+      const items = (textContent.items || []).map((item) => {
+        const tx = window.pdfjsLib.Util.transform(viewport.transform, item.transform);
+        const width = item.width * viewport.scale;
+        const height = Math.abs(item.height || tx[3] || 10);
+        return {
+          str: String(item.str || ""),
+          strUpper: String(item.str || "").toUpperCase(),
+          x: tx[4],
+          y: tx[5],
+          width: width,
+          height: height
+        };
+      });
+
+      pdfState.textIndex[pageNumber] = { viewport, items };
+      return pdfState.textIndex[pageNumber];
+    }
+
+    function normalizeRef(ref){
+      return String(ref || "").trim().toUpperCase();
+    }
+
+    async function findRefInPage(pageNumber, ref){
+      const needle = normalizeRef(ref);
+      if (!needle) return null;
+
+      const pageIndex = await getBoardTextIndex(pageNumber);
+      for (const item of pageIndex.items) {
+        if (item.strUpper === needle || item.strUpper.includes(needle)) {
+          return {
+            pageNumber,
+            ref: needle,
+            x: item.x,
+            y: item.y,
+            width: Math.max(item.width, needle.length * 6),
+            height: Math.max(item.height, 10)
+          };
+        }
+      }
+      return null;
+    }
+
+    async function searchRefInBoardPdf(ref){
+      const needle = normalizeRef(ref);
+      if (!needle) {
+        updateBoardStatus("Escribe un RefDes para buscar en el PDF.");
+        return null;
+      }
+
+      updateBoardStatus(`Buscando <strong>${needle}</strong> en el PDF...`);
+      for (const pageNumber of [1, 2]) {
+        const match = await findRefInPage(pageNumber, needle);
+        if (match) {
+          currentSide = boardSideByPage[pageNumber];
+          const refData = references[currentSide].find((item) => item.id.toUpperCase() === needle);
+          if (refData) currentReference = refData;
+          pdfState.activeMatch = match;
+          syncSideButtons();
+          renderBoard();
+          renderDetails();
+          renderTable();
+          boardSearchInput.value = needle;
+          updateBoardStatus(`RefDes <strong>${needle}</strong> encontrado en página ${pageNumber} · ${currentSide === "top" ? "TOP" : "BOTTOM"}.`);
+          return match;
+        }
+      }
+
+      pdfState.activeMatch = null;
+      renderBoard();
+      updateBoardStatus(`No se encontró <strong>${needle}</strong> en las páginas TOP/BOTTOM del PDF.`);
+      return null;
+    }
+
+    async function renderBoardPdfPage(pageNumber, match){
+      const token = ++pdfState.renderToken;
+      try {
+        const page = await getBoardPage(pageNumber);
+        const containerWidth = Math.min(boardStageWidth(), 960);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = containerWidth / baseViewport.width;
+        const viewport = page.getViewport({ scale });
+        const context = boardCanvas.getContext("2d");
+
+        boardCanvas.width = viewport.width;
+        boardCanvas.height = viewport.height;
+        boardCanvas.style.width = viewport.width + "px";
+        boardCanvas.style.height = viewport.height + "px";
+        boardViewer.style.width = viewport.width + "px";
+        boardHighlightLayer.style.width = viewport.width + "px";
+        boardHighlightLayer.style.height = viewport.height + "px";
+
+        await page.render({ canvasContext: context, viewport }).promise;
+        if (token !== pdfState.renderToken) return;
+
+        boardHighlightLayer.innerHTML = "";
+        if (match && match.pageNumber === pageNumber) {
+          const highlight = document.createElement("div");
+          const ratio = viewport.width / baseViewport.width;
+          highlight.className = "board-highlight";
+          highlight.style.left = (match.x * ratio - 6) + "px";
+          highlight.style.top = (viewport.height - ((match.y + match.height) * ratio) - 4) + "px";
+          highlight.style.width = (match.width * ratio + 12) + "px";
+          highlight.style.height = (match.height * ratio + 8) + "px";
+          boardHighlightLayer.appendChild(highlight);
+        }
+      } catch (error) {
+        updateBoardStatus(`No se pudo renderizar el PDF: ${error.message}`);
+      }
+    }
+
+    function boardStageWidth(){
+      const stage = document.querySelector(".board-stage");
+      return Math.max((stage && stage.clientWidth ? stage.clientWidth : 960) - 56, 280);
+    }
+
+    boardSearchForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      searchRefInBoardPdf(boardSearchInput.value);
+    });
+
+    window.addEventListener("resize", () => {
+      renderBoard();
+    });
+
+    window.searchRefInBoardPdf = searchRefInBoardPdf;
+
+    renderFailureModes();
+    syncSideButtons();
+    renderBoard();
+    renderDetails();
+    renderTable();
+    boardSearchInput.value = currentReference.id;
+    searchRefInBoardPdf(currentReference.id);
+  </script>
+</body>
+</html>
