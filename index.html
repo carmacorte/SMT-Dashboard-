@@ -15525,6 +15525,71 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     }, [activeModule, boardSide, boardSelectedRef, boardImpactContext && boardImpactContext.refdes]);
     window.searchRefInBoardPdf = function(ref) { var clean = String(ref || "").trim(); if (!clean) return; try { setBoardSelectedRef(clean); setActiveModule("boardimpact"); } catch (_) {} };
 
+
+    function traceOpsBuildRecoveryFlowIntelligence(model) {
+        model = model || {};
+        var kpi = model.kpi || {};
+        var serialMap = {};
+        function cleanSn(v) {
+            try { if (typeof traceOpsYieldCleanSn === 'function') return traceOpsYieldCleanSn(v); } catch (_) {}
+            return String(v || '').replace(/\s+/g,'').toUpperCase();
+        }
+        function addSerial(row, source, pattern) {
+            if (!row) return;
+            var sn = cleanSn(row.sn || row.SN || row.serial || row.serialNumber || row.serial_number);
+            if (!sn) sn = cleanSn([row.wo || row.workOrder || '', row.location || row.ref || row.refdes || '', pattern || source || '', Math.random().toString(36).slice(2,7)].join('|'));
+            if (!serialMap[sn]) {
+                serialMap[sn] = { sn: sn, wo: row.wo || row.workOrder || row.WO || '', sku: row.sku || row.SKU || '', family: row.family || row.model || row.Model || '', bu: row.bu || row.buLabel || '', line: row.line || row.Line || '', station: row.station || row.currentEvent || row.event || row.testArea || row.area || 'Repair / Test', failureMode: row.failureMode || row.symptom || row.mode || pattern || 'Pending failure mode', location: row.location || row.ref || row.refdes || row.RefDes || '', eventTime: row.eventTime || row.recordTime || row.date || row.time || '', repairTime: row.repairTime || row.closeTime || '', source: source || 'Yield Flow', hits: 0, reentry: 0, recovered: false };
+            }
+            var item = serialMap[sn];
+            item.hits += 1;
+            if (!item.failureMode || item.failureMode === 'Pending failure mode') item.failureMode = row.failureMode || row.symptom || row.mode || pattern || item.failureMode;
+            if (!item.location) item.location = row.location || row.ref || row.refdes || row.RefDes || '';
+            if (!item.station || item.station === 'Repair / Test') item.station = row.station || row.currentEvent || row.event || row.testArea || row.area || item.station;
+            if (!item.wo) item.wo = row.wo || row.workOrder || row.WO || '';
+            if (!item.sku) item.sku = row.sku || row.SKU || '';
+            if (!item.family) item.family = row.family || row.model || row.Model || '';
+            if (!item.bu) item.bu = row.bu || row.buLabel || '';
+            if (!item.eventTime) item.eventTime = row.eventTime || row.recordTime || row.date || row.time || '';
+            if (row.repairTime || /REPAIR|RETEST|DEBUG|REWORK/i.test([row.station,row.currentEvent,row.event,row.symptom,row.failureMode].join(' '))) item.reentry += 1;
+            if (/PASS|STOCKIN|COMPLETE|RECOVER/i.test([row.result,row.currentEvent,row.event,row.status].join(' '))) item.recovered = true;
+        }
+        (model.failurePatterns || []).forEach(function(fp) { (fp.serials || fp.rows || []).forEach(function(r) { addSerial(r, 'Failure Pattern', fp.pattern || fp.cause || 'Failure pattern'); }); });
+        (model.topRiskSku || []).forEach(function(x) { (x.serials || []).forEach(function(r) { addSerial(r, 'Top Risk SKU', x.topSymptom || x.family || 'Risk SKU'); }); });
+        (model.causeSummary || []).forEach(function(c) { (c.serials || c.rows || []).forEach(function(r) { addSerial(r, 'Cause Summary', c.cause || c.pattern || 'Cause'); }); });
+        var serials = Object.keys(serialMap).map(function(key) {
+            var x = serialMap[key];
+            var stateClass = x.recovered ? 'recovered' : (x.reentry > 0 ? 'reentry_failure' : 'fresh_or_pending');
+            var state = x.recovered ? 'RECOVERED' : (x.reentry > 0 ? 'RETEST / REPAIR LOOP' : 'PENDING / FRESH FAILURE');
+            var agingHours = null;
+            try { var dt = x.eventTime ? new Date(x.eventTime) : null; if (dt && !isNaN(dt.getTime())) agingHours = Math.max(0, (Date.now() - dt.getTime()) / 36e5); } catch (_) {}
+            return Object.assign({}, x, { stateClass: stateClass, currentState: state, agingHours: agingHours });
+        }).sort(function(a,b) { return (b.reentry - a.reentry) || String(a.sn).localeCompare(String(b.sn)); });
+        var activePool = Number(kpi.risk || serials.filter(function(x){ return !x.recovered; }).length || 0);
+        var reentryUnits = serials.filter(function(x){ return x.reentry > 0 && !x.recovered; }).length;
+        var recoveredUnits = serials.filter(function(x){ return x.recovered; }).length;
+        var freshFailures = Math.max(0, serials.filter(function(x){ return x.reentry === 0 && !x.recovered; }).length);
+        var pendingUnits = Math.max(0, activePool - reentryUnits - freshFailures);
+        var netBleeding = freshFailures + reentryUnits - recoveredUnits;
+        var byFailure = {};
+        serials.forEach(function(x) {
+            var key = x.failureMode || 'Pending failure mode';
+            if (!byFailure[key]) byFailure[key] = { failureMode: key, active: 0, fresh: 0, reentry: 0, recovered: 0, locations: {}, stations: {} };
+            if (x.recovered) byFailure[key].recovered += 1; else byFailure[key].active += 1;
+            if (x.reentry > 0) byFailure[key].reentry += 1; else if (!x.recovered) byFailure[key].fresh += 1;
+            if (x.location) byFailure[key].locations[x.location] = (byFailure[key].locations[x.location] || 0) + 1;
+            if (x.station) byFailure[key].stations[x.station] = (byFailure[key].stations[x.station] || 0) + 1;
+        });
+        var failureRows = Object.keys(byFailure).map(function(key) {
+            var r = byFailure[key];
+            var loc = Object.keys(r.locations).sort(function(a,b){ return r.locations[b]-r.locations[a]; })[0] || 'N/D';
+            var st = Object.keys(r.stations).sort(function(a,b){ return r.stations[b]-r.stations[a]; })[0] || 'N/D';
+            var risk = r.active >= 8 || r.reentry >= 3 ? 'Critical' : (r.active >= 3 || r.reentry >= 1 ? 'High' : 'Medium');
+            return Object.assign({}, r, { location: loc, station: st, risk: risk });
+        }).sort(function(a,b){ return b.active - a.active || b.reentry - a.reentry; });
+        return { serials: serials, failureRows: failureRows, kpi: { activePool: activePool, freshFailures: freshFailures, reentryUnits: reentryUnits, recoveredUnits: recoveredUnits, pendingUnits: pendingUnits, netBleeding: netBleeding, topFailure: failureRows[0] ? failureRows[0].failureMode : 'N/D', topStation: failureRows[0] ? failureRows[0].station : 'N/D', topLocation: failureRows[0] ? failureRows[0].location : 'N/D' } };
+    }
+
     var yieldFlowModel = traceOpsBuildYieldFlowModelLocal(yieldFilters);
     async function exportYieldFlowXlsx() {
         await window.ensureExcelTools();
@@ -16287,6 +16352,89 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
     }
 
 
+
+    function renderRecoveryIntelligenceSection() {
+        var h = React.createElement;
+        var rec = traceOpsBuildRecoveryFlowIntelligence(yieldFlowModel);
+        var k = rec.kpi || {};
+        var serialRows = (rec.serials || []).slice(0, 80);
+        var failureRows = rec.failureRows || [];
+        function badge(text, bg, color) {
+            return h("span", { style: { display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: bg || "#EAF2FF", color: color || "#1F3A5F", fontSize: 9.5, fontWeight: 900, whiteSpace: "nowrap" } }, text);
+        }
+        function kpiCard(label, value, meta, color) {
+            return h("div", { key: label, style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, padding: "14px 16px", boxShadow: "0 8px 18px rgba(16,42,67,.045)" } }, [
+                h("div", { key: "l", style: { fontSize: 9.5, fontWeight: 900, letterSpacing: ".10em", textTransform: "uppercase", color: "#5F766C" } }, label),
+                h("div", { key: "v", style: { fontSize: 34, fontWeight: 900, color: color || "#102A43", lineHeight: 1, marginTop: 8 } }, value),
+                h("div", { key: "m", style: { fontSize: 10.5, color: "#5F766C", marginTop: 6, lineHeight: 1.35 } }, meta || "")
+            ]);
+        }
+        var flowNodes = [
+            { label: "WO / SN scope", value: traceOpsYieldFlowFmt(yieldFlowModel.kpi.orders || 0), hot: false },
+            { label: "Failure pool", value: traceOpsYieldFlowFmt(k.activePool || 0), hot: true },
+            { label: "Repair", value: traceOpsYieldFlowFmt(k.reentryUnits || 0), hot: false },
+            { label: "Retest", value: traceOpsYieldFlowFmt(k.pendingUnits || 0), hot: false },
+            { label: "Recovered / Re-entry", value: traceOpsYieldFlowFmt(k.recoveredUnits || 0), hot: false }
+        ];
+        return h("div", { id: "recovery-section", style: { display: "flex", flexDirection: "column", gap: 14, marginBottom: 14 } }, [
+            h("section", { key: "hero", style: { background: "linear-gradient(135deg,#071827 0%,#102A43 58%,#1F3A5F 100%)", borderRadius: 18, padding: isMobile() ? "16px 14px" : "18px 20px", color: "#fff", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "minmax(0,1fr) auto", gap: 12, alignItems: "center" } }, [
+                h("div", { key: "copy" }, [
+                    h("div", { key: "eyebrow", style: { fontSize: 10, fontWeight: 900, letterSpacing: ".12em", textTransform: "uppercase", opacity: .74 } }, "Yield Flow drilldown"),
+                    h("div", { key: "title", style: { fontSize: isMobile() ? 22 : 26, fontWeight: 900, lineHeight: 1.05, marginTop: 7 } }, "Recovery Intelligence"),
+                    h("div", { key: "sub", style: { fontSize: 12, lineHeight: 1.55, opacity: .82, maxWidth: 760, marginTop: 8 } }, "Seguimiento local derivado del ZIP de Yield Flow para separar backlog, fallas frescas, re-entry y recuperacion visible por Serial Number.")
+                ]),
+                h("div", { key: "actions", style: { display: "flex", gap: 8, flexWrap: "wrap", justifyContent: isMobile() ? "flex-start" : "flex-end" } }, [
+                    badge("Source: Yield Flow ZIP", "rgba(255,255,255,.12)", "#fff"),
+                    badge("Local session", "rgba(255,255,255,.12)", "#fff"),
+                    h("button", { key: "back", type: "button", onClick: function(){ setActiveModule("yieldflow"); setTimeout(function(){ scrollToSection("yieldflow-section"); }, 60); }, style: { border: "1px solid rgba(255,255,255,.35)", background: "rgba(255,255,255,.14)", color: "#fff", borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 900, cursor: "pointer" } }, "Regresar a Yield Flow")
+                ])
+            ]),
+            h("section", { key: "kpis", style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(6,minmax(0,1fr))", gap: 12 } }, [
+                kpiCard("Active Bonepile", traceOpsYieldFlowFmt(k.activePool || 0), "unidades activas fuera de flujo", "#A43B2E"),
+                kpiCard("Fresh failures", "+" + traceOpsYieldFlowFmt(k.freshFailures || 0), "entrada nueva al pool", "#D64545"),
+                kpiCard("Re-entry", traceOpsYieldFlowFmt(k.reentryUnits || 0), "fallaron despues de repair/retest", "#B87820"),
+                kpiCard("Recovered", traceOpsYieldFlowFmt(k.recoveredUnits || 0), "salida visible del loop", "#1A7A3C"),
+                kpiCard("Pending", traceOpsYieldFlowFmt(k.pendingUnits || 0), "sin cierre / sin retest visible", "#1F3A5F"),
+                kpiCard("Net bleeding", (k.netBleeding > 0 ? "+" : "") + traceOpsYieldFlowFmt(k.netBleeding || 0), "fresh + re-entry - recovered", k.netBleeding > 0 ? "#A43B2E" : "#1A7A3C")
+            ]),
+            h("section", { key: "logic", style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1.25fr .75fr", gap: 14 } }, [
+                h("div", { key: "flow", style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, overflow: "hidden" } }, [
+                    h("div", { key: "fh", style: { padding: "14px 18px", background: "#F7FAFF", borderBottom: "1px solid #ECF3FF" } }, [
+                        h("div", { key: "t", style: { fontSize: 14, fontWeight: 900, color: "#102A43" } }, "Logica de flujo aging / bonepile"),
+                        h("div", { key: "s", style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "No es un segundo importador: consume el analisis ya construido por Yield Flow.")
+                    ]),
+                    h("div", { key: "nodes", style: { padding: 18, display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(5,minmax(0,1fr))", gap: 10, alignItems: "center" } }, flowNodes.map(function(x){ return h("div", { key: x.label, style: { border: "1px solid #D9E6F7", borderRadius: 16, padding: "14px 12px", background: x.hot ? "#FFF7F5" : "#FBFDFF", minHeight: 82 } }, [ h("div", { key: "v", style: { fontSize: 20, fontWeight: 900, color: x.hot ? "#A43B2E" : "#1F3A5F" } }, x.value), h("div", { key: "l", style: { fontSize: 11, fontWeight: 800, color: "#102A43", marginTop: 8 } }, x.label) ]); })),
+                    h("div", { key: "note", style: { padding: "0 18px 18px", fontSize: 11.5, color: "#5F766C", lineHeight: 1.55 } }, "Lectura: si Active Bonepile no baja pero existen Fresh failures o Re-entry, la recuperacion esta siendo neutralizada por sangrado nuevo o loop de reparacion.")
+                ]),
+                h("div", { key: "focus", style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, overflow: "hidden" } }, [
+                    h("div", { key: "dh", style: { padding: "14px 18px", background: "#F7FAFF", borderBottom: "1px solid #ECF3FF" } }, h("div", { style: { fontSize: 14, fontWeight: 900, color: "#102A43" } }, "Decision focus")),
+                    h("div", { key: "db", style: { padding: 18, display: "flex", flexDirection: "column", gap: 10 } }, [
+                        h("div", { key: "label", style: { fontSize: 10, fontWeight: 900, color: "#5F766C", textTransform: "uppercase", letterSpacing: ".08em" } }, "Top driver"),
+                        h("div", { key: "driver", style: { fontSize: 20, fontWeight: 900, color: "#102A43", lineHeight: 1.1 } }, k.topFailure || "N/D"),
+                        h("div", { key: "meta", style: { fontSize: 12, color: "#5F766C", lineHeight: 1.45 } }, ["Station: ", h("strong", { key: "s" }, k.topStation || "N/D"), " - Location: ", h("strong", { key: "l" }, k.topLocation || "N/D")]),
+                        h("button", { key: "board", type: "button", onClick: function(){ openBoardImpactFromYield({ type: "Recovery Intelligence", title: k.topFailure, mode: k.topFailure, rows: serialRows, ref: k.topLocation }); }, style: { border: 0, background: "#1F6FEB", color: "#fff", borderRadius: 14, padding: "11px 12px", fontSize: 12, fontWeight: 900, cursor: "pointer" } }, "Abrir Board Impact"),
+                        h("button", { key: "sn", type: "button", onClick: function(){ setYieldSerialModal({ title: "Recovery Intelligence", subtitle: "Serial-level recovery / re-entry view", rows: serialRows }); }, style: { border: "1px solid #C9DAF5", background: "#fff", color: "#1F3A5F", borderRadius: 14, padding: "10px 12px", fontSize: 12, fontWeight: 900, cursor: "pointer" } }, "Ver Serial Explorer")
+                    ])
+                ])
+            ]),
+            h("section", { key: "breakdown", style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, overflow: "hidden" } }, [
+                h("div", { key: "bh", style: { padding: "14px 18px", background: "#F7FAFF", borderBottom: "1px solid #ECF3FF" } }, [h("div", { key: "t", style: { fontSize: 14, fontWeight: 900, color: "#102A43" } }, "Failure mode recovery breakdown"), h("div", { key: "s", style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Agrupa unidades activas, fresh, re-entry y recuperadas por modo de falla.")]),
+                h("div", { key: "bt", className: "tscroll" }, h("table", null, [
+                    h("thead", { key: "h" }, h("tr", null, ["Failure mode","Active","Fresh","Re-entry","Recovered","Station","Location","Risk"].map(function(x){ return h("th", { key: x }, x); }))),
+                    h("tbody", { key: "b" }, failureRows.length ? failureRows.slice(0, 12).map(function(r){ return h("tr", { key: r.failureMode }, [h("td", { key: "f" }, h("strong", null, r.failureMode)), h("td", { key: "a" }, r.active), h("td", { key: "fr" }, r.fresh), h("td", { key: "re" }, r.reentry), h("td", { key: "rc" }, r.recovered), h("td", { key: "st" }, r.station), h("td", { key: "lo" }, r.location), h("td", { key: "ri" }, badge(r.risk, r.risk === 'Critical' ? '#FDEEEE' : '#FFF7E8', r.risk === 'Critical' ? '#C44141' : '#9A6A16'))]); }) : h("tr", null, h("td", { colSpan: 8, style: { padding: 16, color: "#5F766C" } }, "Carga y procesa un ZIP de Yield Flow para construir el desglose.")))
+                ]))
+            ]),
+            h("section", { key: "serials", style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, overflow: "hidden" } }, [
+                h("div", { key: "sh", style: { padding: "14px 18px", background: "#F7FAFF", borderBottom: "1px solid #ECF3FF" } }, [h("div", { key: "t", style: { fontSize: 14, fontWeight: 900, color: "#102A43" } }, "Serial recovery table"), h("div", { key: "s", style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "Vista granular por SN derivada de SFC, Repair Record, Cesium y WO importados en Yield Flow.")]),
+                h("div", { key: "st", className: "tscroll" }, h("table", null, [
+                    h("thead", { key: "h" }, h("tr", null, ["SN","WO","SKU / Model","State","Station","Failure mode","Location","Re-entry","Class"].map(function(x){ return h("th", { key: x }, x); }))),
+                    h("tbody", { key: "b" }, serialRows.length ? serialRows.map(function(x){ return h("tr", { key: x.sn }, [h("td", { key: "sn" }, h("strong", null, x.sn)), h("td", { key: "wo" }, x.wo || ""), h("td", { key: "sku" }, [h("strong", { key: "s" }, x.sku || ""), h("div", { key: "m", style: { fontSize: 10, color: "#5F766C" } }, x.family || "")]), h("td", { key: "state" }, x.currentState), h("td", { key: "station" }, x.station || ""), h("td", { key: "fm" }, x.failureMode || ""), h("td", { key: "loc" }, x.location || ""), h("td", { key: "re" }, x.reentry || 0), h("td", { key: "class" }, badge(x.stateClass, x.stateClass === 'reentry_failure' ? '#FFF7E8' : (x.stateClass === 'recovered' ? '#EEF6FF' : '#FDEEEE'), x.stateClass === 'reentry_failure' ? '#9A6A16' : (x.stateClass === 'recovered' ? '#145A28' : '#C44141')))]); }) : h("tr", null, h("td", { colSpan: 9, style: { padding: 16, color: "#5F766C" } }, "Sin seriales recuperables en el scope actual. Revisa filtros o importa ZIP con SFC + Repair Record.")))
+                ]))
+            ])
+        ]);
+    }
+
+
     function renderModuleIcon(kind) {
         if (kind === "nccapa")
             return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
@@ -16313,6 +16461,12 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                 React.createElement("path", { d: "M9 13l3 3" }),
                 React.createElement("path", { d: "M9 13l-3-3" }),
                 React.createElement("path", { d: "M12 16l8-8" }));
+        if (kind === "recovery")
+            return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+                React.createElement("path", { d: "M4 7h10a4 4 0 0 1 0 8H8" }),
+                React.createElement("path", { d: "M8 11l-4 4 4 4" }),
+                React.createElement("path", { d: "M18 5v4h4" }),
+                React.createElement("path", { d: "M18 19v-4h4" }));
         if (kind === "boardimpact")
             return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
                 React.createElement("rect", { x: "4", y: "5", width: "16", height: "14", rx: "2" }),
@@ -16357,6 +16511,14 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             count: yieldFlowModel.kpi.orders,
             anchorId: "yieldflow-section",
             tone: { bg: "#EAF2FF", border: "#C7DBF7", color: "#1F3A5F" }
+        },
+        {
+            key: "recovery",
+            label: "Recovery Intelligence",
+            shortLabel: "Seguimiento aging/bonepile por SN, re-entry y salida real",
+            count: yieldFlowModel.kpi.risk,
+            anchorId: "recovery-section",
+            tone: { bg: "#FFF7E8", border: "#F5E4A0", color: "#9A6A16" }
         },
         {
             key: "boardimpact",
@@ -18135,6 +18297,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                             React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "#A43B2E", textTransform: "uppercase" } }, "Bloqueo de cierre"),
                                             React.createElement("div", { style: { fontSize: 11.5, color: "#6E4038", lineHeight: 1.55, marginTop: 6 } }, "No habilitar aprobacion final si falta D6, evidencia de implementacion, owner responsable o monitoreo de recurrencia. Si aparece recurrencia post-cierre, el caso debe reabrirse o vincular una nueva NC.")))))),
                         activeModule === "yieldflow" && renderYieldFlowSection(),
+                        activeModule === "recovery" && renderRecoveryIntelligenceSection(),
                         activeModule === "boardimpact" && renderBoardImpactSection(),
                         activeModule === "maintenance" && renderMaintenanceSection(),
                         activeModule === "rcca" && React.createElement("div", { id: "rcca-section", style: { background: "#fff", border: "1px solid #DDDBD7", borderRadius: 14, overflow: "hidden", marginBottom: 14 } },
