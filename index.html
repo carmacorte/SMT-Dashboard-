@@ -15197,7 +15197,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                 React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
                     React.createElement("button", { className: "table-reset-btn", onClick: exportMaintenanceXlsx }, "Export XLSX"),
                     maintenanceRecords.length > 0 && React.createElement("button", { className: "table-reset-btn", onClick: clearMaintenanceLog }, "Clear all"))),
-            React.createElement("div", { style: { padding: "12px 16px", borderBottom: "1px solid #EEECEA", background: "#FBFCFE", display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(6,minmax(0,1fr))", gap: 10 } },
+            React.createElement("div", { style: { padding: "12px 16px", borderBottom: "1px solid #EEECEA", background: "#FBFCFE", display: "grid", gridTemplateColumns: isMobile() ? "repeat(2,minmax(0,1fr))" : "repeat(6,minmax(0,1fr))", gap: 10 } },
                 React.createElement("select", { className: "api-input", value: maintenanceFilters.line, onChange: function (e) { setMaintenanceFilters(Object.assign({}, maintenanceFilters, { line: e.target.value })); } },
                     React.createElement("option", { value: "ALL" }, "All lines"),
                     maintenanceUnique("line").map(function (v) { return React.createElement("option", { key: v, value: v }, v); })),
@@ -15565,11 +15565,15 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             try { var dt = x.eventTime ? new Date(x.eventTime) : null; if (dt && !isNaN(dt.getTime())) agingHours = Math.max(0, (Date.now() - dt.getTime()) / 36e5); } catch (_) {}
             return Object.assign({}, x, { stateClass: stateClass, currentState: state, agingHours: agingHours });
         }).sort(function(a,b) { return (b.reentry - a.reentry) || String(a.sn).localeCompare(String(b.sn)); });
-        var activePool = Number(kpi.risk || serials.filter(function(x){ return !x.recovered; }).length || 0);
+        var totalRiskUnits = Number(kpi.risk || 0);
+        var serialOpenUnits = serials.filter(function(x){ return !x.recovered; }).length;
+        var serialRecoveredUnits = serials.filter(function(x){ return x.recovered; }).length;
+        var recoveredUnits = serialRecoveredUnits || Number(kpi.clean || 0);
+        var activePool = serials.length ? serialOpenUnits : Math.max(0, totalRiskUnits - recoveredUnits);
+        var failurePool = totalRiskUnits || (serialOpenUnits + serialRecoveredUnits);
         var reentryUnits = serials.filter(function(x){ return x.reentry > 0 && !x.recovered; }).length;
-        var recoveredUnits = serials.filter(function(x){ return x.recovered; }).length;
-        var freshFailures = Math.max(0, serials.filter(function(x){ return x.reentry === 0 && !x.recovered; }).length);
-        var pendingUnits = Math.max(0, activePool - reentryUnits - freshFailures);
+        var freshFailures = Math.max(0, activePool - reentryUnits);
+        var pendingUnits = freshFailures;
         var netBleeding = freshFailures + reentryUnits - recoveredUnits;
         var byFailure = {};
         serials.forEach(function(x) {
@@ -15587,7 +15591,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             var risk = r.active >= 8 || r.reentry >= 3 ? 'Critical' : (r.active >= 3 || r.reentry >= 1 ? 'High' : 'Medium');
             return Object.assign({}, r, { location: loc, station: st, risk: risk });
         }).sort(function(a,b){ return b.active - a.active || b.reentry - a.reentry; });
-        return { serials: serials, failureRows: failureRows, kpi: { activePool: activePool, freshFailures: freshFailures, reentryUnits: reentryUnits, recoveredUnits: recoveredUnits, pendingUnits: pendingUnits, netBleeding: netBleeding, topFailure: failureRows[0] ? failureRows[0].failureMode : 'N/D', topStation: failureRows[0] ? failureRows[0].station : 'N/D', topLocation: failureRows[0] ? failureRows[0].location : 'N/D' } };
+        return { serials: serials, failureRows: failureRows, kpi: { failurePool: failurePool, activePool: activePool, freshFailures: freshFailures, reentryUnits: reentryUnits, recoveredUnits: recoveredUnits, pendingUnits: pendingUnits, netBleeding: netBleeding, topFailure: failureRows[0] ? failureRows[0].failureMode : 'N/D', topStation: failureRows[0] ? failureRows[0].station : 'N/D', topLocation: failureRows[0] ? failureRows[0].location : 'N/D' } };
     }
 
     var yieldFlowModel = traceOpsBuildYieldFlowModelLocal(yieldFilters);
@@ -16357,7 +16361,8 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         var h = React.createElement;
         var rec = traceOpsBuildRecoveryFlowIntelligence(yieldFlowModel);
         var k = rec.kpi || {};
-        var serialRows = (rec.serials || []).slice(0, 80);
+        var serialRowsAll = (rec.serials || []);
+        var serialRows = serialRowsAll.slice(0, isMobile() ? 10 : 80);
         var failureRows = rec.failureRows || [];
         function badge(text, bg, color) {
             return h("span", { style: { display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: bg || "#EAF2FF", color: color || "#1F3A5F", fontSize: 9.5, fontWeight: 900, whiteSpace: "nowrap" } }, text);
@@ -16371,7 +16376,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         }
         var flowNodes = [
             { label: "WO / SN scope", value: traceOpsYieldFlowFmt(yieldFlowModel.kpi.orders || 0), hot: false },
-            { label: "Failure pool", value: traceOpsYieldFlowFmt(k.activePool || 0), hot: true },
+            { label: "Failure pool", value: traceOpsYieldFlowFmt(k.failurePool || 0), hot: true },
             { label: "Repair", value: traceOpsYieldFlowFmt(k.reentryUnits || 0), hot: false },
             { label: "Retest", value: traceOpsYieldFlowFmt(k.pendingUnits || 0), hot: false },
             { label: "Recovered / Re-entry", value: traceOpsYieldFlowFmt(k.recoveredUnits || 0), hot: false }
@@ -16389,12 +16394,12 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                     h("button", { key: "back", type: "button", onClick: function(){ setActiveModule("yieldflow"); setTimeout(function(){ scrollToSection("yieldflow-section"); }, 60); }, style: { border: "1px solid rgba(255,255,255,.35)", background: "rgba(255,255,255,.14)", color: "#fff", borderRadius: 999, padding: "8px 12px", fontSize: 11, fontWeight: 900, cursor: "pointer" } }, "Regresar a Yield Flow")
                 ])
             ]),
-            h("section", { key: "kpis", style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(6,minmax(0,1fr))", gap: 12 } }, [
+            h("section", { key: "kpis", style: { display: "grid", gridTemplateColumns: isMobile() ? "repeat(2,minmax(0,1fr))" : "repeat(6,minmax(0,1fr))", gap: 12 } }, [
                 kpiCard("Active Bonepile", traceOpsYieldFlowFmt(k.activePool || 0), "unidades activas fuera de flujo", "#A43B2E"),
                 kpiCard("Fresh failures", "+" + traceOpsYieldFlowFmt(k.freshFailures || 0), "entrada nueva al pool", "#D64545"),
                 kpiCard("Re-entry", traceOpsYieldFlowFmt(k.reentryUnits || 0), "fallaron despues de repair/retest", "#B87820"),
                 kpiCard("Recovered", traceOpsYieldFlowFmt(k.recoveredUnits || 0), "salida visible del loop", "#1A7A3C"),
-                kpiCard("Pending", traceOpsYieldFlowFmt(k.pendingUnits || 0), "sin cierre / sin retest visible", "#1F3A5F"),
+                kpiCard("Fresh / Pending", "+" + traceOpsYieldFlowFmt(k.freshFailures || 0), "entrada o pendiente de recuperacion", "#1F3A5F"),
                 kpiCard("Net bleeding", (k.netBleeding > 0 ? "+" : "") + traceOpsYieldFlowFmt(k.netBleeding || 0), "fresh + re-entry - recovered", k.netBleeding > 0 ? "#A43B2E" : "#1A7A3C")
             ]),
             h("section", { key: "logic", style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1.25fr .75fr", gap: 14 } }, [
@@ -16404,7 +16409,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         h("div", { key: "s", style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "No es un segundo importador: consume el analisis ya construido por Yield Flow.")
                     ]),
                     h("div", { key: "nodes", style: { padding: 18, display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(5,minmax(0,1fr))", gap: 10, alignItems: "center" } }, flowNodes.map(function(x){ return h("div", { key: x.label, style: { border: "1px solid #D9E6F7", borderRadius: 16, padding: "14px 12px", background: x.hot ? "#FFF7F5" : "#FBFDFF", minHeight: 82 } }, [ h("div", { key: "v", style: { fontSize: 20, fontWeight: 900, color: x.hot ? "#A43B2E" : "#1F3A5F" } }, x.value), h("div", { key: "l", style: { fontSize: 11, fontWeight: 800, color: "#102A43", marginTop: 8 } }, x.label) ]); })),
-                    h("div", { key: "note", style: { padding: "0 18px 18px", fontSize: 11.5, color: "#5F766C", lineHeight: 1.55 } }, "Lectura: si Active Bonepile no baja pero existen Fresh failures o Re-entry, la recuperacion esta siendo neutralizada por sangrado nuevo o loop de reparacion.")
+                    h("div", { key: "note", style: { padding: "0 18px 18px", fontSize: 11.5, color: "#5F766C", lineHeight: 1.55 } }, "Lectura: el Failure Pool muestra el impacto total; Open Bonepile muestra lo que sigue sin cierre visible. Si Open Bonepile no baja mientras aparecen Fresh/Pending o Re-entry, la recuperacion esta siendo neutralizada por sangrado nuevo o loop de reparacion.")
                 ]),
                 h("div", { key: "focus", style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, overflow: "hidden" } }, [
                     h("div", { key: "dh", style: { padding: "14px 18px", background: "#F7FAFF", borderBottom: "1px solid #ECF3FF" } }, h("div", { style: { fontSize: 14, fontWeight: 900, color: "#102A43" } }, "Decision focus")),
