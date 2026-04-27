@@ -9,7 +9,7 @@ window.TRACEOPS_SUPABASE = {
   anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV"
 };
 </script>
-<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only | blue palette fused | ppt palette fused | ppt grid glow fused | ppt addShape fix | safari pptx guard | pptx ref fix complete | d0-d2 improvement pack | premium shell css consolidated | ops-hero patch A | hdr patch B | main-content patch C | a11y P5-P6 | console guards P3-P4 | ppt-trust -->
+<meta charset="UTF-8"/><!-- TraceOps v2026-03-22 openai-only | recovery icon cards fused | blue palette fused | ppt palette fused | ppt grid glow fused | ppt addShape fix | safari pptx guard | pptx ref fix complete | d0-d2 improvement pack | premium shell css consolidated | ops-hero patch A | hdr patch B | main-content patch C | a11y P5-P6 | console guards P3-P4 | ppt-trust -->
 <script>
 window.__traceopsZipReady = null;
 window.__traceopsExcelReady = null;
@@ -16457,10 +16457,66 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         function recoveryClassBadge(v) {
             return badge(recoveryClassLabel(v), v === 'reentry_failure' ? '#FFF7E8' : (v === 'recovered' ? '#EEF6FF' : '#FDEEEE'), v === 'reentry_failure' ? '#9A6A16' : (v === 'recovered' ? '#145A28' : '#C44141'));
         }
-        function kpiCard(label, value, meta, color) {
-            return h("div", { key: label, style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, padding: "14px 16px", boxShadow: "0 8px 18px rgba(16,42,67,.045)" } }, [
-                h("div", { key: "l", style: { fontSize: 9.5, fontWeight: 900, letterSpacing: ".10em", textTransform: "uppercase", color: "#5F766C" } }, label),
-                h("div", { key: "v", style: { fontSize: 34, fontWeight: 900, color: color || "#102A43", lineHeight: 1, marginTop: 8 } }, value),
+
+        function recoveryIcon(type, size, color, bg) {
+            var iconSize = size || 34;
+            var stroke = color || '#1F3A5F';
+            var fillBg = bg || '#EEF5FF';
+            var common = { width: iconSize, height: iconSize, viewBox: '0 0 24 24', fill: 'none', stroke: stroke, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' };
+            var shapes;
+            if (type === 'bonepile') {
+                shapes = [
+                    h('path', { key: 'b1', d: 'M4 16.5 12 21l8-4.5' }),
+                    h('path', { key: 'b2', d: 'M4 11.5 12 16l8-4.5' }),
+                    h('path', { key: 'b3', d: 'M4 6.5 12 11l8-4.5L12 2 4 6.5Z' })
+                ];
+            } else if (type === 'reentry') {
+                shapes = [
+                    h('path', { key: 'r1', d: 'M20 11a8 8 0 0 0-14.2-5' }),
+                    h('path', { key: 'r2', d: 'M4 5v5h5' }),
+                    h('path', { key: 'r3', d: 'M4 13a8 8 0 0 0 14.2 5' }),
+                    h('path', { key: 'r4', d: 'M20 19v-5h-5' })
+                ];
+            } else if (type === 'pass') {
+                shapes = [
+                    h('path', { key: 'p1', d: 'M20 6 9 17l-5-5' }),
+                    h('circle', { key: 'p2', cx: 12, cy: 12, r: 9 })
+                ];
+            } else if (type === 'fresh') {
+                shapes = [
+                    h('path', { key: 'f1', d: 'M12 3 3 20h18L12 3Z' }),
+                    h('path', { key: 'f2', d: 'M12 9v5' }),
+                    h('path', { key: 'f3', d: 'M12 17h.01' })
+                ];
+            } else if (type === 'scope') {
+                shapes = [
+                    h('rect', { key: 's1', x: 4, y: 4, width: 16, height: 16, rx: 3 }),
+                    h('path', { key: 's2', d: 'M8 9h8M8 13h8M8 17h5' })
+                ];
+            } else {
+                shapes = [h('circle', { key: 'd1', cx: 12, cy: 12, r: 8 }), h('path', { key: 'd2', d: 'M12 8v4l3 2' })];
+            }
+            return h('div', { style: { width: iconSize + 14, height: iconSize + 14, borderRadius: 16, background: fillBg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(31,58,95,.10)' } }, h('svg', common, shapes));
+        }
+        function recoveryIconKey(label) {
+            label = String(label || '').toLowerCase();
+            if (/bonepile|pool hoy|pool ayer|failure pool|open/.test(label)) return 'bonepile';
+            if (/fresh/.test(label)) return 'fresh';
+            if (/re-entry|reentry|retest|loop/.test(label)) return 'reentry';
+            if (/pass|recover/.test(label)) return 'pass';
+            if (/wo|sn|scope/.test(label)) return 'scope';
+            return 'status';
+        }
+        function kpiCard(label, value, meta, color, iconKey) {
+            var icon = iconKey || recoveryIconKey(label);
+            return h("div", { key: label, style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, padding: "14px 16px", boxShadow: "0 8px 18px rgba(16,42,67,.045)", minHeight: 126, display: "flex", flexDirection: "column", justifyContent: "space-between" } }, [
+                h("div", { key: "top", style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 } }, [
+                    h("div", { key: "txt", style: { minWidth: 0 } }, [
+                        h("div", { key: "l", style: { fontSize: 9.5, fontWeight: 900, letterSpacing: ".10em", textTransform: "uppercase", color: "#5F766C" } }, label),
+                        h("div", { key: "v", style: { fontSize: 34, fontWeight: 900, color: color || "#102A43", lineHeight: 1, marginTop: 8 } }, value)
+                    ]),
+                    recoveryIcon(icon, isMobile() ? 22 : 26, color || "#1F3A5F", icon === 'fresh' ? '#FDEEEE' : (icon === 'pass' ? '#EEF6FF' : (icon === 'reentry' ? '#FFF7E8' : '#EEF5FF')))
+                ]),
                 h("div", { key: "m", style: { fontSize: 10.5, color: "#5F766C", marginTop: 6, lineHeight: 1.35 } }, meta || "")
             ]);
         }
@@ -16482,9 +16538,13 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         var poolDelta = openPoolToday - startPool;
         var flatPool = poolDelta === 0;
         var flowStatus = poolDelta > 0 ? ("Pool subio +" + traceOpsYieldFlowFmt(Math.abs(poolDelta))) : (poolDelta < 0 ? ("Pool bajo -" + traceOpsYieldFlowFmt(Math.abs(poolDelta))) : "Mismo input vs ayer");
-        function flowMiniCard(label, value, color, subtitle) {
+        function flowMiniCard(label, value, color, subtitle, iconKey) {
+            var icon = iconKey || recoveryIconKey(label);
             return h("div", { key: label, style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 14, padding: isMobile() ? "10px 10px" : "12px 12px", minWidth: 0, boxShadow: "0 6px 16px rgba(16,42,67,.05)" } }, [
-                h("div", { key: "l", style: { fontSize: 9, fontWeight: 900, letterSpacing: ".08em", textTransform: "uppercase", color: "#5F766C" } }, label),
+                h("div", { key: "top", style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } }, [
+                    h("div", { key: "l", style: { fontSize: 9, fontWeight: 900, letterSpacing: ".08em", textTransform: "uppercase", color: "#5F766C" } }, label),
+                    recoveryIcon(icon, 20, color || "#102A43", icon === 'fresh' ? '#FDEEEE' : (icon === 'pass' ? '#EEF6FF' : (icon === 'reentry' ? '#FFF7E8' : '#EEF5FF')))
+                ]),
                 h("div", { key: "v", style: { fontSize: isMobile() ? 20 : 26, fontWeight: 900, color: color || "#102A43", lineHeight: 1, marginTop: 7 } }, traceOpsYieldFlowFmt(value || 0)),
                 subtitle ? h("div", { key: "s", style: { fontSize: 10.5, color: "#5F766C", marginTop: 5, lineHeight: 1.35 } }, subtitle) : null
             ]);
@@ -16512,12 +16572,12 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                 ])
             ]),
             h("section", { key: "kpis", style: { display: "grid", gridTemplateColumns: isMobile() ? "repeat(2,minmax(0,1fr))" : "repeat(6,minmax(0,1fr))", gap: 12 } }, [
-                kpiCard("Failure Pool", traceOpsYieldFlowFmt(k.failurePool || k.activePool || 0), "impacto total detectado", "#A43B2E"),
-                kpiCard("Fresh failures", "+" + traceOpsYieldFlowFmt(k.freshFailures || 0), "entrada nueva al pool", "#D64545"),
-                kpiCard("Active Re-entry", traceOpsYieldFlowFmt(k.reentryUnits || 0), "fallaron despues de repair/retest", "#B87820"),
-                kpiCard("Recovered", traceOpsYieldFlowFmt(k.recoveredUnits || 0), "salida visible del loop", "#1A7A3C"),
-                kpiCard("Open Bonepile", traceOpsYieldFlowFmt(k.activePool || 0), "sin cierre / stockin visible", "#1F3A5F"),
-                kpiCard("Net bleeding", (k.netBleeding > 0 ? "+" : "") + traceOpsYieldFlowFmt(k.netBleeding || 0), "fresh + active re-entry - recovered", k.netBleeding > 0 ? "#A43B2E" : "#1A7A3C")
+                kpiCard("Failure Pool", traceOpsYieldFlowFmt(k.failurePool || k.activePool || 0), "impacto total detectado", "#A43B2E", "bonepile"),
+                kpiCard("Fresh failures", "+" + traceOpsYieldFlowFmt(k.freshFailures || 0), "entrada nueva al pool", "#D64545", "fresh"),
+                kpiCard("Active Re-entry", traceOpsYieldFlowFmt(k.reentryUnits || 0), "fallaron despues de repair/retest", "#B87820", "reentry"),
+                kpiCard("Recovered", traceOpsYieldFlowFmt(k.recoveredUnits || 0), "salida visible del loop", "#1A7A3C", "pass"),
+                kpiCard("Open Bonepile", traceOpsYieldFlowFmt(k.activePool || 0), "sin cierre / stockin visible", "#1F3A5F", "bonepile"),
+                kpiCard("Net bleeding", (k.netBleeding > 0 ? "+" : "") + traceOpsYieldFlowFmt(k.netBleeding || 0), "fresh + active re-entry - recovered", k.netBleeding > 0 ? "#A43B2E" : "#1A7A3C", k.netBleeding > 0 ? "fresh" : "pass")
             ]),
             h("section", { key: "recoveryDiagram", id: "recovery-flow-diagram", style: { background: "#FFFFFF", border: "1px solid #C9DAF5", borderRadius: 20, overflow: "hidden", boxShadow: "0 18px 36px rgba(16,42,67,.08)" } }, [
                 h("div", { key: "rdh", style: { padding: isMobile() ? "12px 12px" : "16px 18px", background: "linear-gradient(135deg,#F7FAFF 0%,#EEF5FF 100%)", borderBottom: "1px solid #D9E6F7", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" } }, [
@@ -16530,10 +16590,10 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                 ]),
                 h("div", { key: "diagram", style: { padding: isMobile() ? 10 : 18, background: "linear-gradient(180deg,#FFFFFF 0%,#FBFDFF 100%)", display: "flex", flexDirection: "column", gap: 12 } }, [
                     h("div", { key: "formula", style: { display: "grid", gridTemplateColumns: isMobile() ? "repeat(2,minmax(0,1fr))" : "repeat(4,minmax(0,1fr))", gap: 10 } }, [
-                        flowMiniCard("Pool ayer", startPool, "#1F3A5F", "open bonepile reportado ayer"),
-                        flowMiniCard("Movidas a Pass", recoveredToday, "#1A7A3C", "salieron del pool hoy"),
-                        flowMiniCard("Fresh failures", freshToday, "#D64545", "entraron hoy al pool"),
-                        flowMiniCard("Pool hoy", openPoolToday, "#102A43", flatPool ? "mismo input que ayer" : (poolDelta > 0 ? "termina arriba vs ayer" : "termina abajo vs ayer"))
+                        flowMiniCard("Pool ayer", startPool, "#1F3A5F", "open bonepile reportado ayer", "bonepile"),
+                        flowMiniCard("Movidas a Pass", recoveredToday, "#1A7A3C", "salieron del pool hoy", "pass"),
+                        flowMiniCard("Fresh failures", freshToday, "#D64545", "entraron hoy al pool", "fresh"),
+                        flowMiniCard("Pool hoy", openPoolToday, "#102A43", flatPool ? "mismo input que ayer" : (poolDelta > 0 ? "termina arriba vs ayer" : "termina abajo vs ayer"), "bonepile")
                     ]),
                     h("div", { key: "mainFlow", style: { border: "1px solid #D9E6F7", borderRadius: 18, padding: isMobile() ? 10 : 14, background: "#FCFDFF" } }, [
                         !isMobile() ? h("div", { key: "desktopflow", style: { display: "grid", gridTemplateColumns: "1.05fr 44px 1.15fr 44px 1.35fr", gridTemplateRows: "auto auto", gap: 12, alignItems: "stretch" } }, [
@@ -16629,7 +16689,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         h("div", { key: "t", style: { fontSize: 14, fontWeight: 900, color: "#102A43" } }, "Closed-loop aging / bonepile flow"),
                         h("div", { key: "s", style: { fontSize: 10.5, color: "#5F766C", marginTop: 3 } }, "No es un segundo importador: consume el analisis ya construido por Yield Flow y lo traduce a flujo por SN.")
                     ]),
-                    h("div", { key: "nodes", style: { padding: 18, display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(5,minmax(0,1fr))", gap: 10, alignItems: "center" } }, flowNodes.map(function(x){ return h("div", { key: x.label, style: { border: "1px solid #D9E6F7", borderRadius: 16, padding: "14px 12px", background: x.hot ? "#FFF7F5" : "#FBFDFF", minHeight: 82 } }, [ h("div", { key: "v", style: { fontSize: 20, fontWeight: 900, color: x.hot ? "#A43B2E" : "#1F3A5F" } }, x.value), h("div", { key: "l", style: { fontSize: 11, fontWeight: 800, color: "#102A43", marginTop: 8 } }, x.label) ]); })),
+                    h("div", { key: "nodes", style: { padding: 18, display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(5,minmax(0,1fr))", gap: 10, alignItems: "center" } }, flowNodes.map(function(x){ var icon = recoveryIconKey(x.label); var color = x.hot ? "#A43B2E" : (icon === "pass" ? "#1A7A3C" : (icon === "reentry" ? "#B87820" : "#1F3A5F")); return h("div", { key: x.label, style: { border: "1px solid #D9E6F7", borderRadius: 16, padding: "14px 12px", background: x.hot ? "#FFF7F5" : "#FBFDFF", minHeight: 112, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 10 } }, [ h("div", { key: "ic", style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } }, [recoveryIcon(icon, 24, color, icon === "pass" ? "#EEF6FF" : (icon === "reentry" ? "#FFF7E8" : (icon === "bonepile" ? "#FFF7F5" : "#EEF5FF"))), h("div", { key: "v", style: { fontSize: 24, fontWeight: 900, color: color, lineHeight: 1 } }, x.value)]), h("div", { key: "l", style: { fontSize: 11, fontWeight: 900, color: "#102A43", lineHeight: 1.25 } }, x.label) ]); })),
                     h("div", { key: "note", style: { padding: "0 18px 18px", fontSize: 11.5, color: "#5F766C", lineHeight: 1.55 } }, "Lectura ejecutiva: Failure Pool es impacto total detectado; Open Bonepile es lo que sigue sin cierre visible. Si Open Bonepile no baja mientras aparecen Fresh failures o Active Re-entry, la recuperacion esta siendo neutralizada por sangrado nuevo o loop de reparacion.")
                 ]),
                 h("div", { key: "focus", style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, overflow: "hidden" } }, [
