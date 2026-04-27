@@ -16472,43 +16472,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             { label: "Recovered", value: traceOpsYieldFlowFmt(k.recoveredUnits || 0), hot: false }
         ];
         var netPositive = Number(k.netBleeding || 0) > 0;
-        var processStats = [
-            { label: "WO", value: traceOpsYieldFlowFmt(yieldFlowModel.kpi.units || yieldFlowModel.kpi.orders || 0), meta: "scope actual", tone: "blue" },
-            { label: "Bonepile inicial", value: traceOpsYieldFlowFmt(k.failurePool || 0), meta: "pool detectado", tone: "amber" },
-            { label: "Pendientes en pool", value: traceOpsYieldFlowFmt(k.pendingUnits || 0), meta: "abiertos visibles", tone: "navy" },
-            { label: "Nuevas fallas", value: "+" + traceOpsYieldFlowFmt(k.freshFailures || 0), meta: "sangrado nuevo", tone: "red" },
-            { label: "Recuperadas", value: traceOpsYieldFlowFmt(k.recoveredUnits || 0), meta: "salen del loop", tone: "green" }
-        ];
-        function processMetricCard(item) {
-            var palette = item.tone === "red"
-                ? { bg: "#FFF3F2", border: "#F5D2CE", accent: "#D64545" }
-                : item.tone === "green"
-                    ? { bg: "#F3FBF7", border: "#CFE9DA", accent: "#168453" }
-                    : item.tone === "amber"
-                        ? { bg: "#FFF9EE", border: "#F3E1B3", accent: "#B87820" }
-                        : item.tone === "navy"
-                            ? { bg: "#F2F7FF", border: "#D7E6FB", accent: "#1F3A5F" }
-                            : { bg: "#F7FAFF", border: "#D9E6F7", accent: "#2F6FB3" };
-            return h("div", { key: item.label, style: { background: palette.bg, border: "1px solid " + palette.border, borderRadius: 16, padding: "14px 15px", minHeight: 92 } }, [
-                h("div", { key: "label", style: { fontSize: 9.5, fontWeight: 900, letterSpacing: ".08em", textTransform: "uppercase", color: "#5F766C" } }, item.label),
-                h("div", { key: "value", style: { fontSize: 32, fontWeight: 900, lineHeight: 1, color: palette.accent, marginTop: 10 } }, item.value),
-                h("div", { key: "meta", style: { fontSize: 10.5, color: "#5F766C", marginTop: 7, lineHeight: 1.35 } }, item.meta)
-            ]);
-        }
-        function processNode(title, value, tone, meta) {
-            var palette = tone === "red"
-                ? { bg: "#FFF4F3", border: "#F3CBC7", accent: "#D64545" }
-                : tone === "green"
-                    ? { bg: "#F2FBF7", border: "#CAE8D6", accent: "#168453" }
-                    : tone === "amber"
-                        ? { bg: "#FFF9EF", border: "#F3E1B3", accent: "#B87820" }
-                        : { bg: "#F7FAFF", border: "#D9E6F7", accent: "#1F3A5F" };
-            return h("div", { style: { border: "1px solid " + palette.border, background: palette.bg, borderRadius: 16, padding: "14px 14px 13px", minHeight: 104, display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 8px 18px rgba(16,42,67,.04)" } }, [
-                h("div", { key: "title", style: { fontSize: 11.5, fontWeight: 900, color: "#102A43", lineHeight: 1.25 } }, title),
-                h("div", { key: "value", style: { fontSize: 30, fontWeight: 900, color: palette.accent, lineHeight: 1, marginTop: 10 } }, value),
-                meta ? h("div", { key: "meta", style: { fontSize: 10.5, color: "#5F766C", marginTop: 8, lineHeight: 1.35 } }, meta) : null
-            ]);
-        }
         var actionRows = failureRows.slice(0, 6).map(function(r, idx) {
             var category = idx === 0 ? "Fresh bleeding" : (r.reentry > 0 ? "Repair loop" : "Bonepile reduction");
             var owner = r.station && /PTH|REPAIR|DEBUG/i.test(r.station) ? "Repair" : "Process / Quality";
@@ -16539,51 +16502,30 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                 kpiCard("Open Bonepile", traceOpsYieldFlowFmt(k.pendingUnits || 0), "sin cierre / stockin visible", "#1F3A5F"),
                 kpiCard("Net bleeding", (k.netBleeding > 0 ? "+" : "") + traceOpsYieldFlowFmt(k.netBleeding || 0), "fresh + active re-entry - recovered", k.netBleeding > 0 ? "#A43B2E" : "#1A7A3C")
             ]),
-            h("section", { key: "processConcept", style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 18, overflow: "hidden", boxShadow: "0 10px 24px rgba(16,42,67,.05)" } }, [
-                h("div", { key: "head", style: { padding: "14px 18px", background: "#F7FAFF", borderBottom: "1px solid #ECF3FF", display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" } }, [
+            h("section", { key: "recoveryDiagram", id: "recovery-flow-diagram", style: { background: "#FFFFFF", border: "1px solid #C9DAF5", borderRadius: 20, overflow: "hidden", boxShadow: "0 18px 36px rgba(16,42,67,.08)" } }, [
+                h("div", { key: "rdh", style: { padding: isMobile() ? "14px 14px" : "16px 18px", background: "linear-gradient(135deg,#F7FAFF 0%,#EEF5FF 100%)", borderBottom: "1px solid #D9E6F7", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" } }, [
                     h("div", { key: "copy" }, [
-                        h("div", { key: "title", style: { fontSize: 14, fontWeight: 900, color: "#102A43" } }, "Lógica del proceso (flujo dinámico y cerrado)"),
-                        h("div", { key: "sub", style: { fontSize: 10.5, color: "#5F766C", marginTop: 3, maxWidth: 760 } }, "El concepto ya queda integrado en HTML y conectado al modelo de Recovery Intelligence para que el flujo cambie con los datos cargados.")
+                        h("div", { key: "ey", style: { fontSize: 9.5, fontWeight: 900, letterSpacing: ".12em", textTransform: "uppercase", color: "#1F3A5F" } }, "Diagrama visible"),
+                        h("div", { key: "ti", style: { fontSize: 16, fontWeight: 900, color: "#102A43", marginTop: 4 } }, "Recovery closed-loop flow"),
+                        h("div", { key: "su", style: { fontSize: 11, color: "#5F766C", marginTop: 3, lineHeight: 1.45 } }, "Mapa compacto del flujo: entrada de fallas, reparacion/retest, pool abierto y salida recuperada.")
                     ]),
-                    h("div", { key: "note", style: { fontSize: 10, fontWeight: 800, color: "#8B6A1E", background: "#FFF8EA", border: "1px solid #F3E1B3", borderRadius: 12, padding: "8px 10px", maxWidth: isMobile() ? "100%" : 320, lineHeight: 1.4 } }, "Los conteos planos sin trazabilidad por SN pueden ocultar o exagerar el sangrado real.")
+                    h("div", { key: "tag", style: { display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 999, background: netPositive ? "#FDEEEE" : "#EEF6FF", color: netPositive ? "#C44141" : "#145A28", fontSize: 10.5, fontWeight: 900 } }, netPositive ? "Pool creciendo" : "Pool bajo control")
                 ]),
-                h("div", { key: "body", style: { padding: "16px 18px 18px", display: "flex", flexDirection: "column", gap: 14 } }, [
-                    h("div", { key: "stats", style: { display: "grid", gridTemplateColumns: isMobile() ? "repeat(2,minmax(0,1fr))" : "repeat(5,minmax(0,1fr))", gap: 10 } }, processStats.map(processMetricCard)),
-                    h("div", { key: "diagram", style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1.18fr .82fr", gap: 14 } }, [
-                        h("div", { key: "left", style: { display: "flex", flexDirection: "column", gap: 12 } }, [
-                            h("div", { key: "row1", style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1fr 34px 1fr 34px 1fr", gap: 10, alignItems: "center" } }, [
-                                processNode("WO liberada", traceOpsYieldFlowFmt(yieldFlowModel.kpi.units || yieldFlowModel.kpi.orders || 0), "blue", "scope visible"),
-                                !isMobile() ? h("div", { key: "a1", style: { textAlign: "center", fontSize: 22, fontWeight: 900, color: "#2F6FB3" } }, "→") : null,
-                                processNode("Prueba / validación", traceOpsYieldFlowFmt((Number(k.recoveredUnits || 0) + Number(k.reentryUnits || 0))), "blue", "unidades re-evaluadas"),
-                                !isMobile() ? h("div", { key: "a2", style: { textAlign: "center", fontSize: 22, fontWeight: 900, color: "#168453" } }, "→") : null,
-                                processNode("Pasan", traceOpsYieldFlowFmt(k.recoveredUnits || 0), "green", "recuperadas")
+                h("div", { key: "diagram", style: { padding: isMobile() ? 14 : 18, background: "linear-gradient(180deg,#FFFFFF 0%,#FBFDFF 100%)" } }, [
+                    h("div", { key: "nodes", style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(5,minmax(0,1fr))", gap: isMobile() ? 10 : 12, alignItems: "stretch" } }, flowNodes.map(function(x, idx) {
+                        var nodeColor = x.hot ? "#A43B2E" : (x.label === "Recovered" ? "#1A7A3C" : "#1F3A5F");
+                        return h("div", { key: x.label, style: { position: "relative", minWidth: 0 } }, [
+                            h("div", { key: "card", style: { height: "100%", minHeight: isMobile() ? 76 : 112, border: "1px solid " + (x.hot ? "#F3D4D4" : "#D9E6F7"), borderRadius: 18, padding: isMobile() ? "12px 12px" : "16px 14px", background: x.hot ? "linear-gradient(180deg,#FFF7F5,#FFFFFF)" : "linear-gradient(180deg,#F7FAFF,#FFFFFF)", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "center", boxShadow: x.hot ? "0 10px 22px rgba(164,59,46,.09)" : "0 10px 22px rgba(31,58,95,.07)" } }, [
+                                h("div", { key: "step", style: { width: 28, height: 28, borderRadius: 999, background: nodeColor, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, margin: "0 auto 8px" } }, String(idx + 1)),
+                                h("div", { key: "value", style: { fontSize: isMobile() ? 22 : 28, fontWeight: 900, color: nodeColor, lineHeight: 1 } }, x.value),
+                                h("div", { key: "label", style: { fontSize: 11, fontWeight: 900, color: "#102A43", marginTop: 8, lineHeight: 1.25 } }, x.label)
                             ]),
-                            h("div", { key: "row2", style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "1fr 34px 1fr", gap: 10, alignItems: "center" } }, [
-                                processNode("Bonepile / pendientes", traceOpsYieldFlowFmt(k.failurePool || 0), "amber", "pool inicial"),
-                                !isMobile() ? h("div", { key: "a3", style: { textAlign: "center", fontSize: 22, fontWeight: 900, color: "#D64545" } }, "→") : null,
-                                processNode("Retest / re-entry", traceOpsYieldFlowFmt(k.reentryUnits || 0), "red", "volvieron a fallar")
-                            ]),
-                            h("div", { key: "loop", style: { border: "1px dashed #C9DAF5", borderRadius: 16, background: "#FBFDFF", padding: "12px 14px" } }, [
-                                h("div", { key: "loopTitle", style: { fontSize: 10, fontWeight: 900, color: "#1F3A5F", textTransform: "uppercase", letterSpacing: ".08em" } }, "Flujo re-entrante / closed loop"),
-                                h("div", { key: "loopCopy", style: { fontSize: 11.5, color: "#5F766C", marginTop: 6, lineHeight: 1.5 } }, "Si el pool abierto no baja al mismo ritmo que las unidades recuperadas, el proceso sigue absorbiendo fallas nuevas o seriales que regresan al loop.")
-                            ])
-                        ]),
-                        h("div", { key: "right", style: { display: "flex", flexDirection: "column", gap: 10 } }, [
-                            processNode("Total actual en pool", traceOpsYieldFlowFmt(k.pendingUnits || 0), "blue", traceOpsYieldFlowFmt(k.failurePool || 0) + " iniciales - " + traceOpsYieldFlowFmt(k.recoveredUnits || 0) + " recuperadas + " + traceOpsYieldFlowFmt(k.freshFailures || 0) + " nuevas"),
-                            h("div", { key: "split", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [
-                                processNode("Pass", traceOpsYieldFlowFmt(k.recoveredUnits || 0), "green", "salida del pool"),
-                                processNode("Fail", traceOpsYieldFlowFmt(k.reentryUnits || 0), "red", "reingreso al loop")
-                            ]),
-                            h("div", { key: "pending", style: { border: "1px solid #D9E6F7", borderRadius: 16, background: "#FFFFFF", padding: "13px 14px" } }, [
-                                h("div", { key: "pendingLabel", style: { fontSize: 10, fontWeight: 900, color: "#5F766C", textTransform: "uppercase", letterSpacing: ".08em" } }, "Pendientes visibles"),
-                                h("div", { key: "pendingValue", style: { fontSize: 30, fontWeight: 900, color: "#1F3A5F", lineHeight: 1, marginTop: 8 } }, traceOpsYieldFlowFmt(k.pendingUnits || 0)),
-                                h("div", { key: "pendingMeta", style: { fontSize: 10.5, color: "#5F766C", marginTop: 7, lineHeight: 1.35 } }, "backlog abierto con cierre pendiente")
-                            ])
-                        ])
-                    ]),
-                    h("div", { key: "freshStrip", style: { border: "1px solid #F3CBC7", background: "linear-gradient(180deg,#FFF7F6,#FFF2F0)", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" } }, [
-                        h("div", { key: "freshTitle", style: { fontSize: 12, fontWeight: 900, color: "#D64545" } }, "+" + traceOpsYieldFlowFmt(k.freshFailures || 0) + " nuevas con falla"),
-                        h("div", { key: "freshMeta", style: { fontSize: 10.5, color: "#7D4A46", lineHeight: 1.45 } }, "Sangrado reciente que vuelve a alimentar el pool y modifica la lectura del cierre real.")
+                            (!isMobile() && idx < flowNodes.length - 1) ? h("div", { key: "arrow", style: { position: "absolute", right: -15, top: "50%", transform: "translateY(-50%)", zIndex: 2, width: 30, height: 30, borderRadius: 999, background: "#FFFFFF", border: "1px solid #C9DAF5", display: "flex", alignItems: "center", justifyContent: "center", color: "#1F3A5F", fontSize: 18, fontWeight: 900, boxShadow: "0 6px 14px rgba(16,42,67,.10)" } }, "\u2192") : null
+                        ]);
+                    })),
+                    h("div", { key: "logicline", style: { marginTop: 14, border: "1px dashed #C9DAF5", borderRadius: 14, padding: isMobile() ? "10px 11px" : "12px 14px", background: "#F7FAFF", color: "#5F766C", fontSize: 11.5, lineHeight: 1.55 } }, [
+                        h("strong", { key: "b", style: { color: "#102A43" } }, "Lectura del flujo: "),
+                        "Fresh failures y Active Re-entry alimentan el pool; Recovered lo reduce. El objetivo operativo es que Open Bonepile baje y que Net bleeding no vuelva positivo."
                     ])
                 ])
             ]),
