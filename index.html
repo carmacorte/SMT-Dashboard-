@@ -1900,24 +1900,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
   .sentinel-raven-svg{transform:translateY(6px) scale(.98)}
   .sentinel-kpis{grid-template-columns:1fr!important}
 }
-/* === Huginn & Muninn nav icon system === */
-.hm-sidebar-pair{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 14px 8px;margin:4px 0 -2px}
-.hm-sidebar-pair-bird{display:flex;flex-direction:column;align-items:center;gap:3px}
-.hm-sidebar-pair-label{font-size:7.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
-.hm-sidebar-pair-label.h{color:#4A90E2}
-.hm-sidebar-pair-label.m{color:#27AE60}
-.hm-sidebar-pair-sep{font-size:10px;color:rgba(255,255,255,.12);line-height:1}
-.hm-nav-badge{display:inline-flex;align-items:center;gap:3px;border-radius:999px;padding:2px 6px;font-size:7px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-.hm-nav-badge.huginn{background:rgba(74,144,226,.13);color:#4A90E2;border:1px solid rgba(74,144,226,.22)}
-.hm-nav-badge.muninn{background:rgba(39,174,96,.13);color:#27AE60;border:1px solid rgba(39,174,96,.22)}
-.hm-engine-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;font-size:10px;font-weight:700;cursor:default;transition:all .2s}
-.hm-engine-pill.huginn{background:rgba(47,111,179,.09);color:#2F6FB3;border:1px solid rgba(47,111,179,.18)}
-.hm-engine-pill.muninn{background:rgba(26,122,60,.09);color:#1A7A3C;border:1px solid rgba(26,122,60,.18)}
-.hm-module-engine{display:flex;align-items:center;gap:6px;margin-bottom:8px}
-.hm-module-engine-label{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-.hm-module-engine-label.huginn{color:#2F6FB3}
-.hm-module-engine-label.muninn{color:#1A7A3C}
-@keyframes hm-eye-glow{0%,100%{opacity:.75}50%{opacity:1}}
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16486,10 +16468,27 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             { label: "WO / SN scope", value: traceOpsYieldFlowFmt(yieldFlowModel.kpi.orders || 0), hot: false },
             { label: "Failure pool", value: traceOpsYieldFlowFmt(k.failurePool || 0), hot: true },
             { label: "Active Re-entry", value: traceOpsYieldFlowFmt(k.reentryUnits || 0), hot: false },
-            { label: "Open Bonepile", value: traceOpsYieldFlowFmt(k.pendingUnits || 0), hot: true },
+            { label: "Open Bonepile", value: traceOpsYieldFlowFmt(k.activePool || 0), hot: true },
             { label: "Recovered", value: traceOpsYieldFlowFmt(k.recoveredUnits || 0), hot: false }
         ];
         var netPositive = Number(k.netBleeding || 0) > 0;
+        var openPoolToday = Number(k.activePool || 0);
+        var freshToday = Number(k.freshFailures || 0);
+        var recoveredToday = Number(k.recoveredUnits || 0);
+        var reentryToday = Number(k.reentryUnits || 0);
+        var startPool = Math.max(0, openPoolToday + recoveredToday - freshToday);
+        var testedToday = Math.min(startPool, recoveredToday + reentryToday);
+        var untouchedFromInitial = Math.max(0, startPool - testedToday);
+        var poolDelta = openPoolToday - startPool;
+        var flatPool = poolDelta === 0;
+        var flowStatus = poolDelta > 0 ? ("Pool subio +" + traceOpsYieldFlowFmt(Math.abs(poolDelta))) : (poolDelta < 0 ? ("Pool bajo -" + traceOpsYieldFlowFmt(Math.abs(poolDelta))) : "Mismo input vs ayer");
+        function flowMiniCard(label, value, color, subtitle) {
+            return h("div", { key: label, style: { background: "#fff", border: "1px solid #D9E6F7", borderRadius: 14, padding: isMobile() ? "10px 10px" : "12px 12px", minWidth: 0, boxShadow: "0 6px 16px rgba(16,42,67,.05)" } }, [
+                h("div", { key: "l", style: { fontSize: 9, fontWeight: 900, letterSpacing: ".08em", textTransform: "uppercase", color: "#5F766C" } }, label),
+                h("div", { key: "v", style: { fontSize: isMobile() ? 20 : 26, fontWeight: 900, color: color || "#102A43", lineHeight: 1, marginTop: 7 } }, traceOpsYieldFlowFmt(value || 0)),
+                subtitle ? h("div", { key: "s", style: { fontSize: 10.5, color: "#5F766C", marginTop: 5, lineHeight: 1.35 } }, subtitle) : null
+            ]);
+        }
         var actionRows = failureRows.slice(0, 6).map(function(r, idx) {
             var category = idx === 0 ? "Fresh bleeding" : (r.reentry > 0 ? "Repair loop" : "Bonepile reduction");
             var owner = r.station && /PTH|REPAIR|DEBUG/i.test(r.station) ? "Repair" : "Process / Quality";
@@ -16517,33 +16516,110 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                 kpiCard("Fresh failures", "+" + traceOpsYieldFlowFmt(k.freshFailures || 0), "entrada nueva al pool", "#D64545"),
                 kpiCard("Active Re-entry", traceOpsYieldFlowFmt(k.reentryUnits || 0), "fallaron despues de repair/retest", "#B87820"),
                 kpiCard("Recovered", traceOpsYieldFlowFmt(k.recoveredUnits || 0), "salida visible del loop", "#1A7A3C"),
-                kpiCard("Open Bonepile", traceOpsYieldFlowFmt(k.pendingUnits || 0), "sin cierre / stockin visible", "#1F3A5F"),
+                kpiCard("Open Bonepile", traceOpsYieldFlowFmt(k.activePool || 0), "sin cierre / stockin visible", "#1F3A5F"),
                 kpiCard("Net bleeding", (k.netBleeding > 0 ? "+" : "") + traceOpsYieldFlowFmt(k.netBleeding || 0), "fresh + active re-entry - recovered", k.netBleeding > 0 ? "#A43B2E" : "#1A7A3C")
             ]),
             h("section", { key: "recoveryDiagram", id: "recovery-flow-diagram", style: { background: "#FFFFFF", border: "1px solid #C9DAF5", borderRadius: 20, overflow: "hidden", boxShadow: "0 18px 36px rgba(16,42,67,.08)" } }, [
-                h("div", { key: "rdh", style: { padding: isMobile() ? "14px 14px" : "16px 18px", background: "linear-gradient(135deg,#F7FAFF 0%,#EEF5FF 100%)", borderBottom: "1px solid #D9E6F7", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" } }, [
+                h("div", { key: "rdh", style: { padding: isMobile() ? "12px 12px" : "16px 18px", background: "linear-gradient(135deg,#F7FAFF 0%,#EEF5FF 100%)", borderBottom: "1px solid #D9E6F7", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" } }, [
                     h("div", { key: "copy" }, [
-                        h("div", { key: "ey", style: { fontSize: 9.5, fontWeight: 900, letterSpacing: ".12em", textTransform: "uppercase", color: "#1F3A5F" } }, "Diagrama visible"),
-                        h("div", { key: "ti", style: { fontSize: 16, fontWeight: 900, color: "#102A43", marginTop: 4 } }, "Recovery closed-loop flow"),
-                        h("div", { key: "su", style: { fontSize: 11, color: "#5F766C", marginTop: 3, lineHeight: 1.45 } }, "Mapa compacto del flujo: entrada de fallas, reparacion/retest, pool abierto y salida recuperada.")
+                        h("div", { key: "ey", style: { fontSize: 9.5, fontWeight: 900, letterSpacing: ".12em", textTransform: "uppercase", color: "#1F3A5F" } }, "Operational flow"),
+                        h("div", { key: "ti", style: { fontSize: isMobile() ? 14 : 18, fontWeight: 900, color: "#102A43", marginTop: 4, lineHeight: 1.12 } }, "Why the pool can stay flat even after moving units to Pass"),
+                        h("div", { key: "su", style: { fontSize: 11, color: "#5F766C", marginTop: 3, lineHeight: 1.45, maxWidth: 900 } }, "La lectura correcta no es solo cuantas salieron a Pass, sino cuantas frescas entraron el mismo dia. Si recuperas 3 y entran 3 fallas frescas, el Open Bonepile de hoy se queda igual que ayer.")
                     ]),
-                    h("div", { key: "tag", style: { display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 999, background: netPositive ? "#FDEEEE" : "#EEF6FF", color: netPositive ? "#C44141" : "#145A28", fontSize: 10.5, fontWeight: 900 } }, netPositive ? "Pool creciendo" : "Pool bajo control")
+                    h("div", { key: "tag", style: { display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 999, background: flatPool ? "#EEF6FF" : (poolDelta > 0 ? "#FDEEEE" : "#EEF9F1"), color: flatPool ? "#1F3A5F" : (poolDelta > 0 ? "#C44141" : "#145A28"), fontSize: 10.5, fontWeight: 900 } }, flowStatus)
                 ]),
-                h("div", { key: "diagram", style: { padding: isMobile() ? 14 : 18, background: "linear-gradient(180deg,#FFFFFF 0%,#FBFDFF 100%)" } }, [
-                    h("div", { key: "nodes", style: { display: "grid", gridTemplateColumns: isMobile() ? "1fr" : "repeat(5,minmax(0,1fr))", gap: isMobile() ? 10 : 12, alignItems: "stretch" } }, flowNodes.map(function(x, idx) {
-                        var nodeColor = x.hot ? "#A43B2E" : (x.label === "Recovered" ? "#1A7A3C" : "#1F3A5F");
-                        return h("div", { key: x.label, style: { position: "relative", minWidth: 0 } }, [
-                            h("div", { key: "card", style: { height: "100%", minHeight: isMobile() ? 76 : 112, border: "1px solid " + (x.hot ? "#F3D4D4" : "#D9E6F7"), borderRadius: 18, padding: isMobile() ? "12px 12px" : "16px 14px", background: x.hot ? "linear-gradient(180deg,#FFF7F5,#FFFFFF)" : "linear-gradient(180deg,#F7FAFF,#FFFFFF)", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "center", boxShadow: x.hot ? "0 10px 22px rgba(164,59,46,.09)" : "0 10px 22px rgba(31,58,95,.07)" } }, [
-                                h("div", { key: "step", style: { width: 28, height: 28, borderRadius: 999, background: nodeColor, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, margin: "0 auto 8px" } }, String(idx + 1)),
-                                h("div", { key: "value", style: { fontSize: isMobile() ? 22 : 28, fontWeight: 900, color: nodeColor, lineHeight: 1 } }, x.value),
-                                h("div", { key: "label", style: { fontSize: 11, fontWeight: 900, color: "#102A43", marginTop: 8, lineHeight: 1.25 } }, x.label)
+                h("div", { key: "diagram", style: { padding: isMobile() ? 10 : 18, background: "linear-gradient(180deg,#FFFFFF 0%,#FBFDFF 100%)", display: "flex", flexDirection: "column", gap: 12 } }, [
+                    h("div", { key: "formula", style: { display: "grid", gridTemplateColumns: isMobile() ? "repeat(2,minmax(0,1fr))" : "repeat(4,minmax(0,1fr))", gap: 10 } }, [
+                        flowMiniCard("Pool ayer", startPool, "#1F3A5F", "open bonepile reportado ayer"),
+                        flowMiniCard("Movidas a Pass", recoveredToday, "#1A7A3C", "salieron del pool hoy"),
+                        flowMiniCard("Fresh failures", freshToday, "#D64545", "entraron hoy al pool"),
+                        flowMiniCard("Pool hoy", openPoolToday, "#102A43", flatPool ? "mismo input que ayer" : (poolDelta > 0 ? "termina arriba vs ayer" : "termina abajo vs ayer"))
+                    ]),
+                    h("div", { key: "mainFlow", style: { border: "1px solid #D9E6F7", borderRadius: 18, padding: isMobile() ? 10 : 14, background: "#FCFDFF" } }, [
+                        !isMobile() ? h("div", { key: "desktopflow", style: { display: "grid", gridTemplateColumns: "1.05fr 44px 1.15fr 44px 1.35fr", gridTemplateRows: "auto auto", gap: 12, alignItems: "stretch" } }, [
+                            h("div", { key: "scope", style: { gridColumn: "1", gridRow: "1", border: "2px solid #C9DAF5", borderRadius: 16, background: "#FFFFFF", padding: "14px 12px", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "center" } }, [
+                                h("div", { key: "l1", style: { fontSize: 11, fontWeight: 900, color: "#102A43", lineHeight: 1.25 } }, "WO / SN scope"),
+                                h("div", { key: "v1", style: { fontSize: 28, fontWeight: 900, color: "#1F3A5F", lineHeight: 1, marginTop: 8 } }, traceOpsYieldFlowFmt(yieldFlowModel.kpi.orders || 0)),
+                                h("div", { key: "s1", style: { fontSize: 10.5, color: "#5F766C", marginTop: 6 } }, "scope total observado")
                             ]),
-                            (!isMobile() && idx < flowNodes.length - 1) ? h("div", { key: "arrow", style: { position: "absolute", right: -15, top: "50%", transform: "translateY(-50%)", zIndex: 2, width: 30, height: 30, borderRadius: 999, background: "#FFFFFF", border: "1px solid #C9DAF5", display: "flex", alignItems: "center", justifyContent: "center", color: "#1F3A5F", fontSize: 18, fontWeight: 900, boxShadow: "0 6px 14px rgba(16,42,67,.10)" } }, "\u2192") : null
-                        ]);
-                    })),
-                    h("div", { key: "logicline", style: { marginTop: 14, border: "1px dashed #C9DAF5", borderRadius: 14, padding: isMobile() ? "10px 11px" : "12px 14px", background: "#F7FAFF", color: "#5F766C", fontSize: 11.5, lineHeight: 1.55 } }, [
-                        h("strong", { key: "b", style: { color: "#102A43" } }, "Lectura del flujo: "),
-                        "Fresh failures y Active Re-entry alimentan el pool; Recovered lo reduce. El objetivo operativo es que Open Bonepile baje y que Net bleeding no vuelva positivo."
+                            h("div", { key: "a1", style: { gridColumn: "2", gridRow: "1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, color: "#1F3A5F", fontWeight: 900 } }, "→"),
+                            h("div", { key: "start", style: { gridColumn: "3", gridRow: "1", border: "2px solid #E7C58E", borderRadius: 16, background: "#FFF9F0", padding: "14px 12px", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "center" } }, [
+                                h("div", { key: "l2", style: { fontSize: 11, fontWeight: 900, color: "#A56B12", lineHeight: 1.25 } }, "Open Bonepile ayer"),
+                                h("div", { key: "v2", style: { fontSize: 30, fontWeight: 900, color: "#A56B12", lineHeight: 1, marginTop: 8 } }, traceOpsYieldFlowFmt(startPool)),
+                                h("div", { key: "s2", style: { fontSize: 10.5, color: "#7A6338", marginTop: 6 } }, "input base para hoy")
+                            ]),
+                            h("div", { key: "a2", style: { gridColumn: "4", gridRow: "1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, color: "#1F3A5F", fontWeight: 900 } }, "→"),
+                            h("div", { key: "test", style: { gridColumn: "5", gridRow: "1", border: "2px solid #D9E6F7", borderRadius: 16, background: "#FFFFFF", padding: "14px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, [
+                                h("div", { key: "tested", style: { borderRight: "1px dashed #D9E6F7", paddingRight: 12 } }, [
+                                    h("div", { key: "l3", style: { fontSize: 11, fontWeight: 900, color: "#102A43" } }, "Se movieron hoy"),
+                                    h("div", { key: "v3", style: { fontSize: 28, fontWeight: 900, color: "#1F3A5F", lineHeight: 1, marginTop: 8 } }, traceOpsYieldFlowFmt(testedToday)),
+                                    h("div", { key: "s3", style: { fontSize: 10.5, color: "#5F766C", marginTop: 6, lineHeight: 1.35 } }, "procesadas desde el pool inicial")
+                                ]),
+                                h("div", { key: "split", style: { display: "flex", flexDirection: "column", gap: 10 } }, [
+                                    h("div", { key: "pass", style: { border: "1.5px solid #B8E0C2", borderRadius: 14, background: "#F4FBF6", padding: "10px 10px", textAlign: "center" } }, [
+                                        h("div", { key: "lp", style: { fontSize: 10, fontWeight: 900, color: "#1A7A3C", textTransform: "uppercase", letterSpacing: ".06em" } }, "Pass / recovered"),
+                                        h("div", { key: "vp", style: { fontSize: 24, fontWeight: 900, color: "#1A7A3C", lineHeight: 1, marginTop: 6 } }, traceOpsYieldFlowFmt(recoveredToday)),
+                                        h("div", { key: "sp", style: { fontSize: 10, color: "#4F6F58", marginTop: 4 } }, "salen del pool")
+                                    ]),
+                                    h("div", { key: "fail", style: { border: "1.5px solid #F0C5C5", borderRadius: 14, background: "#FFF6F6", padding: "10px 10px", textAlign: "center" } }, [
+                                        h("div", { key: "lf", style: { fontSize: 10, fontWeight: 900, color: "#C44141", textTransform: "uppercase", letterSpacing: ".06em" } }, "Fail / active re-entry"),
+                                        h("div", { key: "vf", style: { fontSize: 24, fontWeight: 900, color: "#C44141", lineHeight: 1, marginTop: 6 } }, traceOpsYieldFlowFmt(reentryToday)),
+                                        h("div", { key: "sf", style: { fontSize: 10, color: "#7C5555", marginTop: 4 } }, "siguen dentro del loop")
+                                    ])
+                                ])
+                            ]),
+                            h("div", { key: "untouched", style: { gridColumn: "3", gridRow: "2", border: "1.5px dashed #E7C58E", borderRadius: 16, background: "#FFFDF7", padding: "12px 12px", textAlign: "center" } }, [
+                                h("div", { key: "lu", style: { fontSize: 10.5, fontWeight: 900, color: "#A56B12" } }, "Pendientes del pool inicial"),
+                                h("div", { key: "vu", style: { fontSize: 24, fontWeight: 900, color: "#A56B12", lineHeight: 1, marginTop: 8 } }, traceOpsYieldFlowFmt(untouchedFromInitial)),
+                                h("div", { key: "su", style: { fontSize: 10.5, color: "#7A6338", marginTop: 6 } }, "siguen abiertos sin procesar hoy")
+                            ]),
+                            h("div", { key: "merge", style: { gridColumn: "4", gridRow: "2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, color: "#1F3A5F", fontWeight: 900 } }, "+"),
+                            h("div", { key: "end", style: { gridColumn: "5", gridRow: "2", border: "2px solid #C9DAF5", borderRadius: 16, background: "#F7FAFF", padding: "14px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } }, [
+                                h("div", { key: "fresh", style: { borderRight: "1px dashed #D9E6F7", paddingRight: 12 } }, [
+                                    h("div", { key: "lf2", style: { fontSize: 10.5, fontWeight: 900, color: "#C44141" } }, "+ Fresh failures hoy"),
+                                    h("div", { key: "vf2", style: { fontSize: 28, fontWeight: 900, color: "#C44141", lineHeight: 1, marginTop: 8 } }, traceOpsYieldFlowFmt(freshToday)),
+                                    h("div", { key: "sf2", style: { fontSize: 10.5, color: "#7C5555", marginTop: 6 } }, "entradas nuevas")
+                                ]),
+                                h("div", { key: "poolnow" }, [
+                                    h("div", { key: "ln", style: { fontSize: 10.5, fontWeight: 900, color: "#102A43" } }, "Open Bonepile hoy"),
+                                    h("div", { key: "vn", style: { fontSize: 30, fontWeight: 900, color: "#1F3A5F", lineHeight: 1, marginTop: 8 } }, traceOpsYieldFlowFmt(openPoolToday)),
+                                    h("div", { key: "sn", style: { fontSize: 10.5, color: "#5F766C", marginTop: 6, lineHeight: 1.35 } }, flatPool ? "mismo input que ayer" : (poolDelta > 0 ? "termina arriba vs ayer" : "termina abajo vs ayer"))
+                                ])
+                            ])
+                        ]) : h("div", { key: "mobileflow", style: { display: "grid", gridTemplateColumns: "1fr", gap: 10 } }, [
+                            h("div", { key: "m1", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, [
+                                flowMiniCard("Pool ayer", startPool, "#A56B12", "apertura"),
+                                flowMiniCard("Se movieron hoy", testedToday, "#1F3A5F", "procesadas")
+                            ]),
+                            h("div", { key: "m2", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, [
+                                flowMiniCard("Pass / recovered", recoveredToday, "#1A7A3C", "salen del pool"),
+                                flowMiniCard("Fail / re-entry", reentryToday, "#C44141", "siguen dentro")
+                            ]),
+                            h("div", { key: "m3", style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, [
+                                flowMiniCard("Fresh failures", freshToday, "#D64545", "entran hoy"),
+                                flowMiniCard("Pool hoy", openPoolToday, "#102A43", flatPool ? "igual vs ayer" : (poolDelta > 0 ? "subio" : "bajo"))
+                            ]),
+                            h("div", { key: "m4", style: { border: "1px dashed #C9DAF5", borderRadius: 14, padding: "10px 11px", background: "#F7FAFF", color: "#5F766C", fontSize: 11.5, lineHeight: 1.55 } }, [
+                                h("strong", { key: "sm", style: { color: "#102A43" } }, "Lectura: "),
+                                "Pool hoy = Pool ayer - Recovered + Fresh failures. Si recuperas ",
+                                traceOpsYieldFlowFmt(recoveredToday),
+                                " y entran ",
+                                traceOpsYieldFlowFmt(freshToday),
+                                ", el input se queda ",
+                                flatPool ? "igual" : (poolDelta > 0 ? "mas alto" : "mas bajo"),
+                                "."
+                            ])
+                        ])
+                    ]),
+                    h("div", { key: "logicline", style: { marginTop: 0, border: "1px dashed #C9DAF5", borderRadius: 14, padding: isMobile() ? "10px 11px" : "12px 14px", background: "#F7FAFF", color: "#5F766C", fontSize: 11.5, lineHeight: 1.55 } }, [
+                        h("strong", { key: "b", style: { color: "#102A43" } }, "Formula operativa: "),
+                        "Open Bonepile hoy = Open Bonepile ayer - Recovered + Fresh failures. Active Re-entry no suma entradas nuevas; solo explica cuantas del pool inicial fueron reprocesadas y siguieron abiertas.",
+                        h("div", { key: "formula2", style: { marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 } }, [
+                            badge("Ayer: " + traceOpsYieldFlowFmt(startPool), "#FFF9F0", "#A56B12"),
+                            badge("- Recovered: " + traceOpsYieldFlowFmt(recoveredToday), "#F4FBF6", "#1A7A3C"),
+                            badge("+ Fresh: " + traceOpsYieldFlowFmt(freshToday), "#FFF6F6", "#C44141"),
+                            badge("= Hoy: " + traceOpsYieldFlowFmt(openPoolToday), "#EEF6FF", "#1F3A5F")
+                        ])
                     ])
                 ])
             ]),
@@ -16664,35 +16740,55 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
         ]);
     }
 
-    function renderBirdIconSVG(kind, size) {
-        var isH = kind !== "muninn";
-        var s = size || 20;
-        var base = isH ? "#0D2244" : "#0D2420";
-        var strk = isH ? "#2F6FB3" : "#1A7A3C";
-        var f1   = isH ? "#1A4080" : "#0D4028";
-        var f2   = isH ? "#1E5599" : "#155C30";
-        var face = isH ? "#2F6FB3" : "#1A7A3C";
-        var beak = isH ? "#1A3A6F" : "#0A2A18";
-        var eg   = isH ? "#2F6FB3" : "#1A7A3C";
-        var ec   = isH ? "#7FC3FF" : "#5BC99E";
-        var tl   = isH ? "#4A90E2" : "#27AE60";
-        return React.createElement("svg", { width: s, height: s, viewBox: "0 0 20 20", fill: "none", "aria-label": isH ? "Huginn" : "Muninn", style: { display: "block", flexShrink: 0 } },
-            React.createElement("polygon", { points: "14,3 12,2 9,2 6,4 4,6 2,8 4,11 5,14 9,17 13,17 17,14 18,10 18,6", fill: base, stroke: strk, strokeWidth: "0.5", strokeLinejoin: "round" }),
-            React.createElement("polygon", { points: "14,3 18,6 15,5 12,2", fill: f1, opacity: "0.9" }),
-            React.createElement("polygon", { points: "9,2 6,4 9,6 12,4", fill: f2, opacity: "0.8" }),
-            React.createElement("polygon", { points: "9,6 7,9 9,13 13,11 13,7", fill: face, opacity: "0.55" }),
-            React.createElement("polygon", { points: "6,4 4,6 2,8 4,11 5,9 6,7", fill: beak, stroke: strk, strokeWidth: "0.4" }),
-            React.createElement("polygon", { points: "7,13 5,14 9,17 12,15", fill: base }),
-            React.createElement("circle", { cx: "12", cy: "7", r: "2", fill: eg, opacity: "0.75" }),
-            React.createElement("circle", { cx: "12", cy: "7", r: "1", fill: ec }),
-            React.createElement("path", { d: "M12,9 L11,12 L10,14", stroke: tl, strokeWidth: "0.5", opacity: "0.55", fill: "none", strokeLinecap: "round" })
-        );
-    }
-    var HM_MUNINN_KEYS = { yieldflow: true, recovery: true, maintenance: true };
-    function hmEngine(key) { return HM_MUNINN_KEYS[key] ? "muninn" : "huginn"; }
-
     function renderModuleIcon(kind) {
-        return renderBirdIconSVG(hmEngine(kind), 16);
+        if (kind === "sentinelux")
+            return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+                React.createElement("path", { d: "M7 20c2-4 3-7 2-12 3 1 5 1 8 0-1 5 0 8 2 12" }),
+                React.createElement("path", { d: "M5 9c2-3 5-5 7-5s5 2 7 5" }),
+                React.createElement("path", { d: "M9 13h6" }),
+                React.createElement("path", { d: "M12 13v7" }));
+        if (kind === "nccapa")
+            return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+                React.createElement("path", { d: "M9 3h6l1 2h4v16H4V5h4l1-2z" }),
+                React.createElement("path", { d: "M9 10h6" }),
+                React.createElement("path", { d: "M9 14h6" }),
+                React.createElement("path", { d: "M9 18h4" }),
+                React.createElement("path", { d: "M17 10l2 2 3-3" }));
+        if (kind === "rcca")
+            return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+                React.createElement("circle", { cx: "12", cy: "12", r: "10" }),
+                React.createElement("path", { d: "M12 8v4l3 3" }));
+        if (kind === "yieldflow")
+            return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+                React.createElement("path", { d: "M4 19h16" }),
+                React.createElement("path", { d: "M7 16V8" }),
+                React.createElement("path", { d: "M12 16V5" }),
+                React.createElement("path", { d: "M17 16v-3" }),
+                React.createElement("path", { d: "M5 8l3-3 4 2 5-4 2 2" }));
+        if (kind === "maintenance")
+            return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+                React.createElement("path", { d: "M14 7l3-3 3 3-3 3-3-3" }),
+                React.createElement("path", { d: "M2 20l7-7" }),
+                React.createElement("path", { d: "M9 13l3 3" }),
+                React.createElement("path", { d: "M9 13l-3-3" }),
+                React.createElement("path", { d: "M12 16l8-8" }));
+        if (kind === "recovery")
+            return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+                React.createElement("path", { d: "M4 7h10a4 4 0 0 1 0 8H8" }),
+                React.createElement("path", { d: "M8 11l-4 4 4 4" }),
+                React.createElement("path", { d: "M18 5v4h4" }),
+                React.createElement("path", { d: "M18 19v-4h4" }));
+        if (kind === "boardimpact")
+            return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+                React.createElement("rect", { x: "4", y: "5", width: "16", height: "14", rx: "2" }),
+                React.createElement("circle", { cx: "9", cy: "10", r: "1.5" }),
+                React.createElement("circle", { cx: "15", cy: "14", r: "1.5" }),
+                React.createElement("path", { d: "M9 10h6v4" }));
+        return React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+            React.createElement("path", { d: "M9 3h6l1 2h4v16H4V5h4l1-2z" }),
+            React.createElement("path", { d: "M9 10h6" }),
+            React.createElement("path", { d: "M9 14h6" }),
+            React.createElement("path", { d: "M9 18h4" }));
     }
     var moduleNavItems = [
         {
@@ -16821,12 +16917,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                     React.createElement("div", { className: "brand-copy" },
                         React.createElement("h2", null,
                             "TraceOps Sentinel",
-                            React.createElement("span", null, "by SMTintel")))),
-                        React.createElement("div", { className: "hm-sidebar-pair" },
-                            React.createElement("div", { className: "hm-sidebar-pair-bird" }, renderBirdIconSVG("huginn", 26), React.createElement("span", { className: "hm-sidebar-pair-label h" }, "Huginn")),
-                            React.createElement("span", { className: "hm-sidebar-pair-sep" }, "◆"),
-                            React.createElement("div", { className: "hm-sidebar-pair-bird" }, renderBirdIconSVG("muninn", 26), React.createElement("span", { className: "hm-sidebar-pair-label m" }, "Muninn"))
-                        )),
+                            React.createElement("span", null, "by SMTintel"))))),
             React.createElement("div", { className: "sidebar-section" },
                 React.createElement("div", { className: "sidebar-section-title" }, "API Key"),
                 React.createElement("input", { "aria-label": "API Key de OpenAI o Anthropic", className: "sidebar-api-input", type: "password", placeholder: "Pega tu API key aqui", value: apiKey, onChange: function (e) { saveKey(e.target.value); } }),
@@ -16893,9 +16984,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         return (React.createElement("button", { key: item.key, className: "sidebar-btn" + (state === "done" && activeModule === item.key ? " active" : ""), onClick: function () { openModule(item.key); } },
                             renderModuleIcon(item.key),
                             React.createElement("span", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%" } },
-                                React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 5 } },
-                                    item.label,
-                                    React.createElement("span", { className: "hm-nav-badge " + hmEngine(item.key) }, hmEngine(item.key) === "huginn" ? "H" : "M")),
+                                React.createElement("span", null, item.label),
                                 React.createElement("span", { style: { fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: state === "done" && activeModule === item.key ? "rgba(255,255,255,.10)" : item.tone.bg, color: state === "done" && activeModule === item.key ? "#FFFFFF" : item.tone.color, border: "1px solid " + (state === "done" && activeModule === item.key ? "rgba(255,255,255,.08)" : item.tone.border) } }, item.count))));
                     }))),
             React.createElement("div", { className: "sidebar-section" },
@@ -16931,9 +17020,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                         React.createElement("div", { className: "saas-topbar-title" }, "TraceOps Sentinel"),
                         React.createElement("div", { className: "saas-topbar-subtitle" }, t("brandSubtitle"))))),
             React.createElement("div", { className: "saas-topbar-actions" },
-                React.createElement("div", { className: "hm-engine-pill " + hmEngine(activeModule), title: hmEngine(activeModule) === "huginn" ? "Huginn · Motor de Análisis en Tiempo Real" : "Muninn · Archivo de Memoria Trazable" },
-                    renderBirdIconSVG(hmEngine(activeModule), 14),
-                    React.createElement("span", { className: "hide-mobile" }, hmEngine(activeModule) === "huginn" ? "Huginn" : "Muninn")),
                 React.createElement("div", { className: "saas-header-pill", title: t("langLabel"), style: { gap: 6, padding: "6px 8px" } },
                     React.createElement("span", { className: "hide-mobile", style: { fontSize: 10, fontWeight: 700, color: "#6A6560", marginRight: 2 } }, t("langLabel")),
                     React.createElement("button", { type: "button", onClick: function () { setLang("en"); }, style: { border: "none", background: lang === "en" ? "#1F3A5F" : "transparent", color: lang === "en" ? "#fff" : "#6A6560", borderRadius: 999, padding: "4px 8px", fontSize: 10, fontWeight: 700, cursor: "pointer" } }, "EN"),
@@ -18300,9 +18386,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                     React.createElement("div", { style: { padding: "18px 20px", borderBottom: "1px solid #ECF3FF", background: "#F7FAFF", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, flexWrap: "wrap" } },
                         React.createElement("div", { style: { minWidth: 0, flex: 1 } },
                             React.createElement("div", { style: { fontSize: 10, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", color: "#5F766C", marginBottom: 6 } }, "Module workspace"),
-                            React.createElement("div", { className: "hm-module-engine" },
-                                renderBirdIconSVG(hmEngine(activeModule), 18),
-                                React.createElement("span", { className: "hm-module-engine-label " + hmEngine(activeModule) }, hmEngine(activeModule) === "huginn" ? "Huginn · Análisis" : "Muninn · Memoria")),
                             React.createElement("div", { style: { fontSize: 22, fontWeight: 800, color: "#102A43", letterSpacing: "-.03em", lineHeight: 1.05 } }, activeModuleMeta.label),
                             React.createElement("div", { style: { fontSize: 12, color: "#5F766C", marginTop: 6, maxWidth: 720, lineHeight: 1.55 } }, activeModuleMeta.shortLabel)),
                         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
@@ -18330,7 +18413,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
                                     boxShadow: active ? "0 10px 24px rgba(20,32,51,.06)" : "none"
                                 } },
                                 React.createElement("span", { style: { display: "flex", gap: 10, minWidth: 0, flex: 1 } },
-                                    React.createElement("span", { style: { width: 36, height: 36, borderRadius: 12, background: active ? "#FFFFFF" : "#F7FAFF", border: "1px solid " + (active ? item.tone.border : "#D9E6F7"), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, renderBirdIconSVG(hmEngine(item.key), 28)),
+                                    React.createElement("span", { style: { width: 36, height: 36, borderRadius: 12, background: active ? "#FFFFFF" : "#F7FAFF", border: "1px solid " + (active ? item.tone.border : "#D9E6F7"), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, renderModuleIcon(item.key)),
                                     React.createElement("span", { style: { minWidth: 0, flex: 1 } },
                                         React.createElement("span", { style: { display: "block", fontSize: 13, fontWeight: 800, lineHeight: 1.2 } }, item.label),
                                         React.createElement("span", { style: { display: "block", fontSize: 10.5, color: active ? item.tone.color : "#5F766C", lineHeight: 1.45, marginTop: 4 } }, item.shortLabel))),
