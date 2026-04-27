@@ -2238,15 +2238,15 @@ async function signUp(email, password){
 @media (min-width:1101px){
   #boardimpact-section{
     display:grid !important;
-    grid-template-columns:minmax(0,65fr) minmax(340px,35fr) !important;
+    grid-template-columns:minmax(0,65fr) minmax(360px,35fr) !important;
     gap:14px !important;
     align-items:stretch !important;
   }
   #boardimpact-section > div{
     grid-column:1 / -1 !important;
   }
-  #boardimpact-section > section:nth-of-type(1){
-    grid-column:1 / 2 !important;
+  #boardimpact-section > section:nth-of-type(1),
+  #boardimpact-section > section:nth-of-type(2){
     grid-row:3 !important;
     height:calc(100vh - 260px) !important;
     min-height:640px !important;
@@ -2255,15 +2255,15 @@ async function signUp(email, password){
     flex-direction:column !important;
     min-width:0 !important;
   }
+  #boardimpact-section > section:nth-of-type(1){
+    grid-column:1 / 2 !important;
+  }
   #boardimpact-section > section:nth-of-type(2){
     grid-column:2 / 3 !important;
-    grid-row:3 !important;
-    height:calc(100vh - 260px) !important;
-    min-height:640px !important;
-    max-height:780px !important;
-    display:flex !important;
-    flex-direction:column !important;
-    min-width:0 !important;
+  }
+  #boardimpact-section > section:nth-of-type(1) > div:nth-child(1),
+  #boardimpact-section > section:nth-of-type(2) > div:nth-child(1){
+    flex:0 0 auto !important;
   }
   #boardimpact-section > section:nth-of-type(1) > div:nth-child(2){
     flex:1 1 auto !important;
@@ -2278,17 +2278,14 @@ async function signUp(email, password){
     max-height:none !important;
     min-height:0 !important;
   }
-  #boardimpact-section > section:nth-of-type(2) > div:first-child{
-    flex:0 0 auto !important;
-  }
   #boardimpact-section > section:nth-of-type(2) > .tscroll{
     flex:1 1 auto !important;
     min-height:0 !important;
     overflow:auto !important;
-    -webkit-overflow-scrolling:touch;
+    -webkit-overflow-scrolling:touch !important;
   }
   #boardimpact-section > section:nth-of-type(2) table{
-    min-width:660px !important;
+    min-width:680px !important;
     font-size:10.5px !important;
   }
   #boardimpact-section > section:nth-of-type(2) th,
@@ -9529,90 +9526,6 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
 @media(max-width:640px){.toq-kpi-strip{grid-template-columns:1fr}.toq-header-main h2{font-size:20px}}
 
 </style>
-
-<style id="traceops-boardimpact-dual-pane-same-height-fix">
-/* Board Impact: PDF + referencias en el mismo plano visual 65% / 35% */
-@media (min-width:1101px){
-  #boardimpact-section{
-    display:grid !important;
-    grid-template-columns:minmax(0,65fr) minmax(340px,35fr) !important;
-    gap:14px !important;
-    align-items:stretch !important;
-  }
-  #boardimpact-section > div{
-    grid-column:1 / -1 !important;
-  }
-  #boardimpact-section > section:nth-of-type(1){
-    grid-column:1 / 2 !important;
-    grid-row:3 !important;
-    height:calc(100vh - 260px) !important;
-    min-height:640px !important;
-    max-height:780px !important;
-    display:flex !important;
-    flex-direction:column !important;
-    min-width:0 !important;
-  }
-  #boardimpact-section > section:nth-of-type(2){
-    grid-column:2 / 3 !important;
-    grid-row:3 !important;
-    height:calc(100vh - 260px) !important;
-    min-height:640px !important;
-    max-height:780px !important;
-    display:flex !important;
-    flex-direction:column !important;
-    min-width:0 !important;
-  }
-  #boardimpact-section > section:nth-of-type(1) > div:nth-child(2){
-    flex:1 1 auto !important;
-    min-height:0 !important;
-    display:flex !important;
-    flex-direction:column !important;
-    padding:12px !important;
-  }
-  #traceops-board-pdf-stage{
-    flex:1 1 auto !important;
-    height:auto !important;
-    max-height:none !important;
-    min-height:0 !important;
-  }
-  #boardimpact-section > section:nth-of-type(2) > div:first-child{
-    flex:0 0 auto !important;
-  }
-  #boardimpact-section > section:nth-of-type(2) > .tscroll{
-    flex:1 1 auto !important;
-    min-height:0 !important;
-    overflow:auto !important;
-    -webkit-overflow-scrolling:touch;
-  }
-  #boardimpact-section > section:nth-of-type(2) table{
-    min-width:660px !important;
-    font-size:10.5px !important;
-  }
-  #boardimpact-section > section:nth-of-type(2) th,
-  #boardimpact-section > section:nth-of-type(2) td{
-    padding:9px 10px !important;
-    line-height:1.35 !important;
-  }
-  #boardimpact-section > section:nth-of-type(3){
-    grid-column:1 / 2 !important;
-    grid-row:4 !important;
-    min-width:0 !important;
-  }
-  #boardimpact-section > section:nth-of-type(4){
-    grid-column:2 / 3 !important;
-    grid-row:4 !important;
-    align-self:start !important;
-    min-width:0 !important;
-  }
-}
-@media (max-width:1100px){
-  #boardimpact-section{
-    display:flex !important;
-    flex-direction:column !important;
-  }
-}
-</style>
-
 </head>
 <body>
   <div class="page">
@@ -12395,91 +12308,7 @@ body.traceops-premium-shell .toq-card-head,body.traceops-premium-shell .toq-focu
             + '.to-chip-muted{background:#F2F1EF;color:#67615B;border-color:#DDD9D3}'
             + '@media print{.to-actions{display:none}.to-wrap{padding:0}.to-hero{box-shadow:none}.to-card{break-inside:avoid;box-shadow:none}}'
             + '@media (max-width:680px){.to-head{font-size:28px}.to-grid{grid-template-columns:1fr}.to-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-            + '</style>
-<style id="traceops-boardimpact-dual-pane-same-height-fix">
-/* Board Impact: PDF + referencias en el mismo plano visual 65% / 35% */
-@media (min-width:1101px){
-  #boardimpact-section{
-    display:grid !important;
-    grid-template-columns:minmax(0,65fr) minmax(340px,35fr) !important;
-    gap:14px !important;
-    align-items:stretch !important;
-  }
-  #boardimpact-section > div{
-    grid-column:1 / -1 !important;
-  }
-  #boardimpact-section > section:nth-of-type(1){
-    grid-column:1 / 2 !important;
-    grid-row:3 !important;
-    height:calc(100vh - 260px) !important;
-    min-height:640px !important;
-    max-height:780px !important;
-    display:flex !important;
-    flex-direction:column !important;
-    min-width:0 !important;
-  }
-  #boardimpact-section > section:nth-of-type(2){
-    grid-column:2 / 3 !important;
-    grid-row:3 !important;
-    height:calc(100vh - 260px) !important;
-    min-height:640px !important;
-    max-height:780px !important;
-    display:flex !important;
-    flex-direction:column !important;
-    min-width:0 !important;
-  }
-  #boardimpact-section > section:nth-of-type(1) > div:nth-child(2){
-    flex:1 1 auto !important;
-    min-height:0 !important;
-    display:flex !important;
-    flex-direction:column !important;
-    padding:12px !important;
-  }
-  #traceops-board-pdf-stage{
-    flex:1 1 auto !important;
-    height:auto !important;
-    max-height:none !important;
-    min-height:0 !important;
-  }
-  #boardimpact-section > section:nth-of-type(2) > div:first-child{
-    flex:0 0 auto !important;
-  }
-  #boardimpact-section > section:nth-of-type(2) > .tscroll{
-    flex:1 1 auto !important;
-    min-height:0 !important;
-    overflow:auto !important;
-    -webkit-overflow-scrolling:touch;
-  }
-  #boardimpact-section > section:nth-of-type(2) table{
-    min-width:660px !important;
-    font-size:10.5px !important;
-  }
-  #boardimpact-section > section:nth-of-type(2) th,
-  #boardimpact-section > section:nth-of-type(2) td{
-    padding:9px 10px !important;
-    line-height:1.35 !important;
-  }
-  #boardimpact-section > section:nth-of-type(3){
-    grid-column:1 / 2 !important;
-    grid-row:4 !important;
-    min-width:0 !important;
-  }
-  #boardimpact-section > section:nth-of-type(4){
-    grid-column:2 / 3 !important;
-    grid-row:4 !important;
-    align-self:start !important;
-    min-width:0 !important;
-  }
-}
-@media (max-width:1100px){
-  #boardimpact-section{
-    display:flex !important;
-    flex-direction:column !important;
-  }
-}
-</style>
-
-</head><body><div class="to-wrap"><section class="to-hero"><div class="to-over">TraceOps • RCCA Visual Export</div><h1 class="to-head">'
+            + '</style></head><body><div class="to-wrap"><section class="to-hero"><div class="to-over">TraceOps • RCCA Visual Export</div><h1 class="to-head">'
             + traceOpsEsc(title)
             + '</h1><div class="to-subhead">'
             + traceOpsEsc(subtitle)
