@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YieldFlowLoader - Demo Interactivo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a0e27 0%, #0d1624 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      color: #fff;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      max-width: 800px;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #1e90ff, #24c3a2);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header p {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 1.1em;
+    }
+
+    .demo-container {
+      width: 100%;
+      max-width: 600px;
+      background: linear-gradient(135deg, #1a2a4a 0%, #1a1f3a 100%);
+      border: 1px solid rgba(30, 144, 255, 0.2);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      margin-bottom: 40px;
+    }
+
+    .loader-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      max-width: 320px;
+      margin: 0 auto 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 8px 24px rgba(30, 144, 255, 0.15));
+    }
+
+    .raven-left {
+      animation: orbitLeft 3s linear infinite;
+      transform-origin: 50% 50%;
+    }
+
+    .raven-right {
+      animation: orbitRight 3s linear infinite;
+      transform-origin: 50% 50%;
+    }
+
+    @keyframes orbitLeft {
+      from {
+        transform: rotate(0deg) translateX(60px) rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg) translateX(60px) rotate(-360deg);
+      }
+    }
+
+    @keyframes orbitRight {
+      from {
+        transform: rotate(180deg) translateX(60px) rotate(180deg);
+      }
+      to {
+        transform: rotate(540deg) translateX(60px) rotate(-180deg);
+      }
+    }
+
+    .shield {
+      animation: shieldPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes shieldPulse {
+      0%,
+      100% {
+        opacity: 0.4;
+        filter: drop-shadow(0 0 12px rgba(30, 144, 255, 0.3));
+      }
+      50% {
+        opacity: 0.8;
+        filter: drop-shadow(0 0 24px rgba(30, 144, 255, 0.6));
+      }
+    }
+
+    .core {
+      animation: corePulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes corePulse {
+      0%,
+      100% {
+        opacity: 0.3;
+        r: 12;
+      }
+      50% {
+        opacity: 0.7;
+        r: 18;
+      }
+    }
+
+    .status-text {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      background: linear-gradient(135deg, #1e90ff, #24c3a2);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+      text-align: center;
+      margin: 20px 0 0;
+    }
+
+    .progress-wrapper {
+      width: 100%;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 99px;
+      overflow: hidden;
+      border: 1px solid rgba(30, 144, 255, 0.2);
+      margin-bottom: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #1e90ff, #24c3a2);
+      box-shadow: 0 0 12px rgba(30, 144, 255, 0.5);
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .progress-text {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      text-align: center;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .upload-zone {
+      width: 100%;
+      padding: 28px 20px;
+      border: 2px dashed rgba(30, 144, 255, 0.3);
+      border-radius: 12px;
+      background: rgba(30, 144, 255, 0.05);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .upload-zone:hover {
+      border-color: #1e90ff;
+      background: rgba(30, 144, 255, 0.1);
+    }
+
+    .upload-zone.active {
+      border-color: #1e90ff;
+      background: rgba(30, 144, 255, 0.15);
+      box-shadow: 0 0 16px rgba(30, 144, 255, 0.2);
+    }
+
+    .upload-text {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      margin: 0;
+    }
+
+    input[type='file'] {
+      display: none;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid rgba(30, 144, 255, 0.2);
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .control-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #24c3a2;
+    }
+
+    button {
+      background: #1e90ff;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 20px;
+      font-size: 13px;
+    }
+
+    button:hover {
+      background: #1a7acc;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(30, 144, 255, 0.3);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .completion-state {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(1);
+      background: linear-gradient(135deg, #1a2a4a, #1a1f3a);
+      padding: 40px;
+      border-radius: 20px;
+      border: 1px solid rgba(36, 195, 162, 0.3);
+      z-index: 1000;
+      text-align: center;
+      animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      display: none;
+    }
+
+    .completion-state.show {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    .checkmark {
+      width: 60px;
+      height: 60px;
+      color: #24c3a2;
+    }
+
+    .completion-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: #24c3a2;
+      letter-spacing: 0.05em;
+    }
+
+    .info-panel {
+      background: rgba(30, 144, 255, 0.05);
+      border: 1px solid rgba(30, 144, 255, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 40px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .info-panel h3 {
+      font-size: 13px;
+      margin-bottom: 10px;
+      color: #1e90ff;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    code {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      color: #24c3a2;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      border-bottom: 1px solid rgba(30, 144, 255, 0.2);
+      padding-bottom: 15px;
+    }
+
+    .tab-btn {
+      padding: 8px 16px;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      font-weight: 600;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s ease;
+      margin-top: 0;
+    }
+
+    .tab-btn.active {
+      color: #1e90ff;
+      border-bottom-color: #1e90ff;
+    }
+
+    .tab-content {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @media (max-width: 640px) {
+      .demo-container {
+        padding: 24px;
+      }
+
+      .header h1 {
+        font-size: 1.8em;
+      }
+
+      .status-text {
+        font-size: 20px;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>⚡ YieldFlowLoader</h1>
+    <p>Demo interactivo — Animación premium con carga de archivos</p>
+  </div>
+
+  <div class="demo-container">
+    <div class="loader-wrapper">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <!-- Orbits -->
+        <circle cx="100" cy="100" r="70" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.2" style="color: #1e90ff" />
+        <circle cx="100" cy="100" r="50" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.15" style="color: #1e90ff" />
+
+        <!-- Left Raven (Blue) -->
+        <g class="raven-left" style="color: #1e90ff">
+          <g>
+            <path d="M 40 90 Q 36 82 40 75 L 44 71 Q 48 77 44 90 Z" fill="currentColor" />
+            <circle cx="41" cy="74" r="1.5" fill="currentColor" />
+            <path d="M 44 76 L 51 75 L 50 80 Z" fill="currentColor" />
+          </g>
+        </g>
+
+        <!-- Right Raven (Green) -->
+        <g class="raven-right" style="color: #24c3a2">
+          <g>
+            <path d="M 160 90 Q 164 82 160 75 L 156 71 Q 152 77 156 90 Z" fill="currentColor" />
+            <circle cx="159" cy="74" r="1.5" fill="currentColor" />
+            <path d="M 156 76 L 149 75 L 150 80 Z" fill="currentColor" />
+          </g>
+        </g>
+
+        <!-- Shield -->
+        <g class="shield">
+          <path d="M 100 60 L 120 70 L 120 110 Q 100 130 80 110 L 80 70 Z" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.6" style="color: #1e90ff" />
+          <circle cx="100" cy="90" r="15" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4" style="color: #1e90ff" />
+          <circle class="core" cx="100" cy="90" r="10" fill="none" stroke="currentColor" stroke-width="0.8" style="color: #1e90ff" />
+        </g>
+
+        <!-- Glow rings -->
+        <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" stroke-width="0.3" opacity="0.1" style="color: #1e90ff" />
+      </svg>
+
+      <h2 class="status-text" id="statusText">YIELD FLOW</h2>
+
+      <div class="progress-wrapper">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <p class="progress-text" id="progressText">0%</p>
+      </div>
+
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <p class="upload-text">Arrastra aquí o haz clic para cargar</p>
+        <input type="file" id="fileInput" />
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label class="control-label">Velocidad</label>
+          <select id="speedControl" style="padding: 6px; border-radius: 4px; border: 1px solid #1e90ff; background: rgba(30, 144, 255, 0.1); color: #fff">
+            <option value="1.5">Rápida (1.5s)</option>
+            <option value="3" selected>Normal (3s)</option>
+            <option value="5">Lenta (5s)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Color Primario</label>
+          <input type="color" id="colorControl" value="#1e90ff" style="width: 100%; height: 36px; border: 1px solid #1e90ff; border-radius: 4px; cursor: pointer" />
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Color Secundario</label>
+          <input type="color" id="secondaryColorControl" value="#24c3a2" style="width: 100%; height: 36px; border: 1px solid #1e90ff; border-radius: 4px; cursor: pointer" />
+        </div>
+      </div>
+
+      <button onclick="simulateUpload()">Simular Carga</button>
+      <button onclick="resetLoader()" style="background: #666">Reiniciar</button>
+    </div>
+  </div>
+
+  <div class="info-panel">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('features')">Características</button>
+      <button class="tab-btn" onclick="switchTab('usage')">Uso</button>
+      <button class="tab-btn" onclick="switchTab('props')">Props</button>
+    </div>
+
+    <div id="features" class="tab-content active">
+      <h3>✨ Características</h3>
+      <ul>
+        <li><strong>Animaciones GPU:</strong> Órbitas de cuervos geométricos en 60fps</li>
+        <li><strong>Escudo pulsante:</strong> Efecto de brillo dinámico y anillos de glow</li>
+        <li><strong>Tema oscuro premium:</strong> Gradientes y efectos de profundidad</li>
+        <li><strong>Barra de progreso:</strong> Seguimiento en tiempo real 0-100%</li>
+        <li><strong>Responsive:</strong> Adapta a móvil, tablet y escritorio</li>
+        <li><strong>Drag & Drop:</strong> Carga de archivos intuitiva</li>
+      </ul>
+    </div>
+
+    <div id="usage" class="tab-content">
+      <h3>💻 Cómo usar</h3>
+      <p>
+        Importa el componente en tu aplicación React:
+      </p>
+      <code>import { YieldFlowLoader } from './components';</code>
+      <p style="margin-top: 10px">
+        Luego úsalo en tu JSX con las props deseadas. Ver pestaña "Props" para opciones disponibles.
+      </p>
+    </div>
+
+    <div id="props" class="tab-content">
+      <h3>⚙️ Props disponibles</h3>
+      <ul style="margin-top: 10px">
+        <li><code>animationSpeed</code> (number): 1-10 segundos (default: 3)</li>
+        <li><code>accentColor</code> (string): Color primario (default: #1E90FF)</li>
+        <li><code>secondaryColor</code> (string): Color secundario (default: #24C3A2)</li>
+        <li><code>statusText</code> (string): Texto de estado (default: YIELD FLOW)</li>
+        <li><code>uploadProgress</code> (number): 0-100% de progreso</li>
+        <li><code>isLoading</code> (boolean): Mostrar estado de carga</li>
+        <li><code>onUploadComplete</code> (callback): Al completar carga</li>
+        <li><code>onProgressChange</code> (callback): Al cambiar progreso</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="completion-state" id="completionState">
+    <svg class="checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+      <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    <p class="completion-text">Carga Completada ✓</p>
+  </div>
+
+  <script>
+    let isLoading = false;
+    let currentProgress = 0;
+
+    // Event listeners
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      if (e.target.files.length > 0) {
+        simulateUpload();
+      }
+    });
+
+    document.getElementById('uploadZone').addEventListener('dragover', (e) => {
+      e.preventDefault();
+      document.getElementById('uploadZone').classList.add('active');
+    });
+
+    document.getElementById('uploadZone').addEventListener('dragleave', () => {
+      document.getElementById('uploadZone').classList.remove('active');
+    });
+
+    document.getElementById('uploadZone').addEventListener('drop', (e) => {
+      e.preventDefault();
+      document.getElementById('uploadZone').classList.remove('active');
+      if (e.dataTransfer.files.length > 0) {
+        simulateUpload();
+      }
+    });
+
+    // Speed control
+    document.getElementById('speedControl').addEventListener('change', (e) => {
+      const speed = e.target.value;
+      updateAnimationSpeed(speed);
+    });
+
+    // Color controls
+    document.getElementById('colorControl').addEventListener('change', (e) => {
+      updateColors(e.target.value, document.getElementById('secondaryColorControl').value);
+    });
+
+    document.getElementById('secondaryColorControl').addEventListener('change', (e) => {
+      updateColors(document.getElementById('colorControl').value, e.target.value);
+    });
+
+    function updateAnimationSpeed(speed) {
+      const svg = document.querySelector('svg');
+      const ravenLeft = document.querySelector('.raven-left');
+      const ravenRight = document.querySelector('.raven-right');
+
+      ravenLeft.style.animationDuration = speed + 's';
+      ravenRight.style.animationDuration = speed + 's';
+    }
+
+    function updateColors(primary, secondary) {
+      const ravenLeft = document.querySelector('.raven-left');
+      const ravenRight = document.querySelector('.raven-right');
+      const shield = document.querySelector('.shield');
+
+      ravenLeft.style.color = primary;
+      shield.style.color = primary;
+      ravenRight.style.color = secondary;
+    }
+
+    function simulateUpload() {
+      if (isLoading) return;
+
+      isLoading = true;
+      currentProgress = 0;
+      document.getElementById('uploadZone').style.opacity = '0.5';
+      document.getElementById('uploadZone').style.pointerEvents = 'none';
+
+      const interval = setInterval(() => {
+        currentProgress += Math.random() * 35;
+        if (currentProgress >= 100) {
+          currentProgress = 100;
+          clearInterval(interval);
+          updateProgress(100);
+          setTimeout(() => showCompletion(), 500);
+        } else {
+          updateProgress(currentProgress);
+        }
+      }, 400);
+    }
+
+    function updateProgress(value) {
+      const fill = document.getElementById('progressFill');
+      const text = document.getElementById('progressText');
+      fill.style.width = value + '%';
+      text.textContent = Math.round(value) + '%';
+    }
+
+    function showCompletion() {
+      const completion = document.getElementById('completionState');
+      completion.classList.add('show');
+      setTimeout(() => {
+        completion.classList.remove('show');
+        resetLoader();
+      }, 2500);
+    }
+
+    function resetLoader() {
+      isLoading = false;
+      currentProgress = 0;
+      updateProgress(0);
+      document.getElementById('uploadZone').style.opacity = '1';
+      document.getElementById('uploadZone').style.pointerEvents = 'auto';
+      document.getElementById('fileInput').value = '';
+    }
+
+    function switchTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach((el) => {
+        el.classList.remove('active');
+      });
+      document.querySelectorAll('.tab-btn').forEach((el) => {
+        el.classList.remove('active');
+      });
+
+      // Show selected tab
+      document.getElementById(tabName).classList.add('active');
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
