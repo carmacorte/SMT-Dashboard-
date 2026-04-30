@@ -139,91 +139,63 @@ export const YieldFlowLoader: React.FC<YieldFlowLoaderProps> = ({
         {/* SVG Canvas */}
         <svg
           className={styles.animationCanvas}
-          viewBox="0 0 400 400"
+          viewBox="0 0 300 240"
+          preserveAspectRatio="xMidYMid meet"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Outer orbit rings */}
-          <circle
-            cx="200"
-            cy="200"
-            r="140"
-            className={styles.orbitRing}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            opacity="0.3"
-          />
-          <circle
-            cx="200"
-            cy="200"
-            r="100"
-            className={styles.orbitRing}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            opacity="0.2"
-          />
+          <defs>
+            <radialGradient id="leftEyeGlow" cx="50%" cy="50%" r="60%">
+              <stop offset="0%" stopColor="#b7f7ff" />
+              <stop offset="55%" stopColor="#22D3EE" />
+              <stop offset="100%" stopColor="#22D3EE" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="rightEyeGlow" cx="50%" cy="50%" r="60%">
+              <stop offset="0%" stopColor="#cbe6ff" />
+              <stop offset="55%" stopColor="#1E90FF" />
+              <stop offset="100%" stopColor="#1E90FF" stopOpacity="0" />
+            </radialGradient>
+          </defs>
 
-          {/* Left Raven (Blue) */}
-          <g className={styles.ravenLeft} style={{ color: accentColor }}>
-            <g className={styles.ravenBody}>
-              <path
-                d="M 80 180 Q 75 170 80 160 L 85 155 Q 90 160 85 175 Z"
-                fill="currentColor"
-              />
-              <circle cx="82" cy="158" r="3" fill="currentColor" className={styles.ravenEye} />
-              <path d="M 85 160 L 95 158 L 93 165 Z" fill="currentColor" className={styles.ravenBeak} />
+          <ellipse cx="150" cy="120" rx="108" ry="78" className={styles.orbitRing} />
+          <ellipse cx="150" cy="120" rx="88" ry="62" className={styles.orbitRingSoft} />
+
+          <g className={styles.ravenLeft}>
+            <g className={styles.ravenBody} transform="translate(82 120) scale(1.02)">
+              <path d="M-27 0 C-24 -12 -16 -19 -6 -19 C5 -19 15 -12 17 -2 C11 4 2 7 -11 8 C-18 8 -24 6 -27 0Z" fill="#020305" />
+              <path d="M11 -4 L23 -8 L13 2 Z" fill="#0b141d" className={styles.ravenBeak} />
+              <path d="M-24 -2 C-13 6 3 7 16 0" fill="none" stroke="#22D3EE" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M-20 -11 L-10 -16 L0 -13 L8 -7" fill="none" stroke="#22D3EE" strokeWidth="1.2" strokeLinecap="round" opacity="0.95" />
+              <path d="M-17 3 L-6 -1 L4 2 L13 -1" fill="none" stroke="#22D3EE" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+              <circle cx="8" cy="-8" r="2.6" fill="url(#leftEyeGlow)" className={styles.ravenEye} />
             </g>
           </g>
 
-          {/* Right Raven (Green) */}
-          <g className={styles.ravenRight} style={{ color: secondaryColor }}>
-            <g className={styles.ravenBody}>
-              <path
-                d="M 320 180 Q 325 170 320 160 L 315 155 Q 310 160 315 175 Z"
-                fill="currentColor"
-              />
-              <circle cx="318" cy="158" r="3" fill="currentColor" className={styles.ravenEye} />
-              <path d="M 315 160 L 305 158 L 307 165 Z" fill="currentColor" className={styles.ravenBeak} />
+          <g className={styles.ravenRight}>
+            <g className={styles.ravenBody} transform="translate(218 120) scale(1.02, -1.02)">
+              <path d="M-27 0 C-24 -12 -16 -19 -6 -19 C5 -19 15 -12 17 -2 C11 4 2 7 -11 8 C-18 8 -24 6 -27 0Z" fill="#001a33" />
+              <path d="M11 -4 L23 -8 L13 2 Z" fill="#0c2442" className={styles.ravenBeak} />
+              <path d="M-24 -2 C-13 6 3 7 16 0" fill="none" stroke="#1E90FF" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M-20 -11 L-10 -16 L0 -13 L8 -7" fill="none" stroke="#1E90FF" strokeWidth="1.2" strokeLinecap="round" opacity="0.95" />
+              <path d="M-17 3 L-6 -1 L4 2 L13 -1" fill="none" stroke="#22B573" strokeWidth="0.95" strokeLinecap="round" opacity="0.8" />
+              <circle cx="8" cy="-8" r="2.6" fill="url(#rightEyeGlow)" className={styles.ravenEye} />
             </g>
           </g>
 
           {/* Central Shield */}
           <g className={styles.shield}>
             <path
-              d="M 200 120 L 240 140 L 240 220 Q 200 260 160 220 L 160 140 Z"
+              d="M 150 72 L 182 90 L 182 142 Q 150 171 118 142 L 118 90 Z"
               fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+              stroke="#22D3EE"
+              strokeWidth="1.8"
               opacity="0.6"
               className={styles.shieldOutline}
             />
-            {/* Pulsing shield core */}
-            <circle cx="200" cy="180" r="30" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4" className={styles.shieldCore} />
-            <circle cx="200" cy="180" r="20" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3" className={styles.shieldCore} />
+            <path d="M 150 92 L 166 100 L 166 133 Q 150 148 134 133 L 134 100 Z" fill="#061321" opacity="0.9" />
+            <circle cx="150" cy="118" r="15" fill="none" stroke="#1E90FF" strokeWidth="1.2" opacity="0.5" className={styles.shieldCore} />
+            <circle cx="150" cy="118" r="9" fill="none" stroke="#22B573" strokeWidth="1" opacity="0.5" className={styles.shieldCore} />
           </g>
-
-          {/* Glow rings */}
-          <circle
-            cx="200"
-            cy="200"
-            r="160"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="0.5"
-            opacity="0.15"
-            className={styles.glowRing}
-          />
-          <circle
-            cx="200"
-            cy="200"
-            r="180"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="0.5"
-            opacity="0.08"
-            className={styles.glowRing}
-          />
+          <ellipse cx="150" cy="120" rx="120" ry="86" className={styles.glowRing} />
         </svg>
 
         {/* Status Text */}
