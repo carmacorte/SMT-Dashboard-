@@ -35,30 +35,28 @@
 /* Orbital Animations */
 .ravenLeft {
   animation: orbitLeft var(--animation-speed) linear infinite;
-  transform-origin: 200px 200px;
+  transform-origin: 150px 120px;
 }
 
 .ravenRight {
   animation: orbitRight var(--animation-speed) linear infinite;
-  transform-origin: 200px 200px;
+  transform-origin: 150px 120px;
 }
 
 @keyframes orbitLeft {
-  from {
-    transform: rotate(0deg) translateX(120px) rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg) translateX(120px) rotate(-360deg);
-  }
+  0% { transform: rotate(0deg) translateX(92px) translateY(0px) rotate(0deg); }
+  25% { transform: rotate(90deg) translateX(92px) translateY(-4px) rotate(-90deg); }
+  50% { transform: rotate(180deg) translateX(92px) translateY(0px) rotate(-180deg); }
+  75% { transform: rotate(270deg) translateX(92px) translateY(4px) rotate(-270deg); }
+  100% { transform: rotate(360deg) translateX(92px) translateY(0px) rotate(-360deg); }
 }
 
 @keyframes orbitRight {
-  from {
-    transform: rotate(180deg) translateX(120px) rotate(180deg);
-  }
-  to {
-    transform: rotate(540deg) translateX(120px) rotate(-180deg);
-  }
+  0% { transform: rotate(180deg) translateX(92px) translateY(0px) rotate(180deg); }
+  25% { transform: rotate(270deg) translateX(92px) translateY(4px) rotate(90deg); }
+  50% { transform: rotate(360deg) translateX(92px) translateY(0px) rotate(0deg); }
+  75% { transform: rotate(450deg) translateX(92px) translateY(-4px) rotate(-90deg); }
+  100% { transform: rotate(540deg) translateX(92px) translateY(0px) rotate(-180deg); }
 }
 
 /* Raven Details */
