@@ -137,7 +137,12 @@ export const YieldFlowLoader: React.FC<YieldFlowLoaderProps> = ({
     >
       <div className={styles.loaderWrapper}>
         {/* SVG Canvas */}
-        <svg className={styles.animationCanvas} viewBox="0 0 300 240" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          className={styles.animationCanvas}
+          viewBox="0 0 300 240"
+          preserveAspectRatio="xMidYMid meet"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <defs>
             <radialGradient id="leftEyeGlow" cx="50%" cy="50%" r="60%">
               <stop offset="0%" stopColor="#b7f7ff" />
@@ -155,7 +160,7 @@ export const YieldFlowLoader: React.FC<YieldFlowLoaderProps> = ({
           <ellipse cx="150" cy="120" rx="88" ry="62" className={styles.orbitRingSoft} />
 
           <g className={styles.ravenLeft}>
-            <g transform="translate(82 120) scale(1.02)">
+            <g className={styles.ravenBody} transform="translate(82 120) scale(1.02)">
               <path d="M-27 0 C-24 -12 -16 -19 -6 -19 C5 -19 15 -12 17 -2 C11 4 2 7 -11 8 C-18 8 -24 6 -27 0Z" fill="#020305" />
               <path d="M11 -4 L23 -8 L13 2 Z" fill="#0b141d" className={styles.ravenBeak} />
               <path d="M-24 -2 C-13 6 3 7 16 0" fill="none" stroke="#22D3EE" strokeWidth="1.6" strokeLinecap="round" />
@@ -166,7 +171,7 @@ export const YieldFlowLoader: React.FC<YieldFlowLoaderProps> = ({
           </g>
 
           <g className={styles.ravenRight}>
-            <g transform="translate(218 120) scale(1.02, -1.02)">
+            <g className={styles.ravenBody} transform="translate(218 120) scale(1.02, -1.02)">
               <path d="M-27 0 C-24 -12 -16 -19 -6 -19 C5 -19 15 -12 17 -2 C11 4 2 7 -11 8 C-18 8 -24 6 -27 0Z" fill="#001a33" />
               <path d="M11 -4 L23 -8 L13 2 Z" fill="#0c2442" className={styles.ravenBeak} />
               <path d="M-24 -2 C-13 6 3 7 16 0" fill="none" stroke="#1E90FF" strokeWidth="1.6" strokeLinecap="round" />
