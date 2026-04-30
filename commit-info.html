@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TraceOps - Commit Info</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #f5f5f2 0%, #f9f9f7 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: #1e1b18;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .header h1 {
+      font-size: 2.2em;
+      font-weight: 900;
+      margin-bottom: 10px;
+      color: #0b1f33;
+    }
+
+    .header p {
+      font-size: 1em;
+      color: #5f766c;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #d9e6f7;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 4px 20px rgba(16, 35, 28, 0.06);
+    }
+
+    .card h2 {
+      font-size: 1.2em;
+      font-weight: 700;
+      color: #102a43;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-primary {
+      display: inline-block;
+      background: #eef6ff;
+      border: 1px solid #cfe0fb;
+      color: #1f3a5f;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.8em;
+      font-weight: 700;
+    }
+
+    .badge-success {
+      display: inline-block;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.8em;
+      font-weight: 700;
+    }
+
+    .commit-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .info-row {
+      padding: 12px 0;
+      border-bottom: 1px solid #e2ddd7;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      font-size: 0.85em;
+      font-weight: 700;
+      color: #5f766c;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    .info-value {
+      font-size: 0.95em;
+      color: #102a43;
+      font-weight: 600;
+      font-family: 'Courier New', monospace;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: #f0fdf4;
+      border-left: 4px solid #22b573;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22b573;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(34, 181, 115, 0.7);
+      }
+      50% {
+        opacity: 0.8;
+        box-shadow: 0 0 0 6px rgba(34, 181, 115, 0);
+      }
+    }
+
+    .status-text {
+      font-size: 0.95em;
+      font-weight: 600;
+      color: #166534;
+    }
+
+    .features-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: #f8f7f5;
+      border-radius: 6px;
+      font-size: 0.9em;
+      color: #4a4540;
+    }
+
+    .feature-item:before {
+      content: "✓";
+      color: #22b573;
+      font-weight: 700;
+    }
+
+    .code-block {
+      background: #f8f7f5;
+      border: 1px solid #e2ddd7;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85em;
+      color: #4a4540;
+      margin: 12px 0;
+      overflow-x: auto;
+    }
+
+    .branch-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #eef6ff;
+      border: 1px solid #cfe0fb;
+      color: #1f3a5f;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      font-weight: 600;
+      font-family: 'Courier New', monospace;
+    }
+
+    .branch-badge:before {
+      content: "🌳";
+    }
+
+    .commit-hash {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1px solid #d9e6f7;
+      color: #1f3a5f;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .commit-hash:hover {
+      background: #eef6ff;
+      border-color: #cfe0fb;
+    }
+
+    .commit-hash:before {
+      content: "#";
+      color: #2f6fb3;
+    }
+
+    .timeline {
+      position: relative;
+      padding: 20px 0;
+    }
+
+    .timeline-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e2ddd7;
+    }
+
+    .timeline-item:last-child {
+      border-bottom: none;
+    }
+
+    .timeline-marker {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #1f6fe5;
+      border: 3px solid #fff;
+      box-shadow: 0 0 0 2px #1f6fe5;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .timeline-content h3 {
+      font-size: 0.95em;
+      font-weight: 700;
+      color: #102a43;
+      margin-bottom: 4px;
+    }
+
+    .timeline-content p {
+      font-size: 0.85em;
+      color: #5f766c;
+      margin: 0;
+    }
+
+    .footer {
+      background: #f8f7f5;
+      border: 1px solid #e2ddd7;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      font-size: 0.85em;
+      color: #5f766c;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .commit-info {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 TraceOps — Commit Info</h1>
+      <p>Estado actual del repositorio y última versión desplegada</p>
+    </div>
+
+    <div class="grid">
+      <!-- Información del Commit -->
+      <div class="card">
+        <h2>
+          <span>📦</span> Información del Commit
+        </h2>
+
+        <div class="status-indicator">
+          <div class="status-dot"></div>
+          <div class="status-text">PRODUCTION READY</div>
+        </div>
+
+        <div class="commit-info">
+          <div>
+            <div class="info-label">Hash</div>
+            <div class="info-value">bfc8004</div>
+          </div>
+          <div>
+            <div class="info-label">Rama</div>
+            <div class="info-value">
+              <span class="branch-badge">claude/refactor-yield-flow-loader-jXMP9</span>
+            </div>
+          </div>
+          <div>
+            <div class="info-label">Autor</div>
+            <div class="info-value">Claude (Anthropic)</div>
+          </div>
+          <div>
+            <div class="info-label">Fecha</div>
+            <div class="info-value">2026-04-30</div>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-label">Mensaje del Commit</div>
+          <div class="info-value" style="margin-top: 8px">
+            refactor: Revert to TraceOps loader with commit info badge
+          </div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-label">Hash Completo</div>
+          <div class="code-block">
+            bfc80044e40a0cc82661ffd13a11aacf0a5c8fad
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado y Features -->
+      <div class="card">
+        <h2>
+          <span>✨</span> Features
+        </h2>
+
+        <div class="features-list">
+          <div class="feature-item">YieldFlowLoader Component</div>
+          <div class="feature-item">TraceOps Integration</div>
+          <div class="feature-item">Commit Info Badge</div>
+          <div class="feature-item">Real-time Progress</div>
+          <div class="feature-item">Dynamic Status</div>
+          <div class="feature-item">TypeScript Support</div>
+        </div>
+
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2ddd7">
+          <div style="margin-bottom: 12px">
+            <span class="badge-success">✓ Listo para Producción</span>
+          </div>
+          <div>
+            <span class="badge-primary">Acorde a PR</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline de Cambios -->
+    <div class="card" style="margin-bottom: 24px">
+      <h2>
+        <span>📋</span> Historial de Cambios
+      </h2>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <h3>Integración en index.html</h3>
+            <p>2026-04-30 — YieldFlowLoader integrado en el loader de producción</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <h3>Componente React completado</h3>
+            <p>2026-04-30 — YieldFlowLoader.tsx, CSS modules y test suite</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <h3>Demos y documentación</h3>
+            <p>2026-04-30 — HTML demos interactivos, guía de integración</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Información de Despliegue -->
+    <div class="card" style="margin-bottom: 24px">
+      <h2>
+        <span>🔧</span> Información de Despliegue
+      </h2>
+
+      <div class="info-row">
+        <div class="info-label">Estado del Sistema</div>
+        <div style="margin-top: 8px">
+          <span class="badge-success">HEALTHY</span>
+        </div>
+      </div>
+
+      <div class="info-row">
+        <div class="info-label">Última Actualización</div>
+        <div class="info-value">2026-04-30 02:37:00 UTC</div>
+      </div>
+
+      <div class="info-row">
+        <div class="info-label">Archivos Modificados</div>
+        <div style="margin-top: 8px">
+          <div class="code-block">
+            index.html (47 inserciones, 43 eliminaciones)
+          </div>
+        </div>
+      </div>
+
+      <div class="info-row">
+        <div class="info-label">Tests</div>
+        <div style="margin-top: 8px">
+          <span class="badge-success">✓ Passing</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>
+        <strong>TraceOps Dashboard</strong> — Última versión desplegada
+        <br />
+        Rama: <code style="background: #f5f5f2; padding: 2px 6px; border-radius: 3px">claude/refactor-yield-flow-loader-jXMP9</code>
+        <br />
+        Commit: <code style="background: #f5f5f2; padding: 2px 6px; border-radius: 3px">bfc8004</code> —
+        2026-04-30
+      </p>
+    </div>
+  </div>
+</body>
+</html>
