@@ -29,41 +29,47 @@
   width: 100%;
   height: 100%;
   max-width: 320px;
-  filter: drop-shadow(0 8px 24px rgba(30, 144, 255, 0.15));
+  filter: drop-shadow(0 10px 28px rgba(30, 144, 255, 0.18));
 }
 
 /* Orbital Animations */
 .ravenLeft {
   animation: orbitLeft var(--animation-speed) linear infinite;
-  transform-origin: 200px 200px;
+  transform-origin: 150px 120px;
 }
 
 .ravenRight {
   animation: orbitRight var(--animation-speed) linear infinite;
-  transform-origin: 200px 200px;
+  transform-origin: 150px 120px;
 }
 
 @keyframes orbitLeft {
   from {
-    transform: rotate(0deg) translateX(120px) rotate(0deg);
+    transform: rotate(0deg) translateX(68px) rotate(0deg);
   }
   to {
-    transform: rotate(360deg) translateX(120px) rotate(-360deg);
+    transform: rotate(360deg) translateX(68px) rotate(-360deg);
   }
 }
 
 @keyframes orbitRight {
   from {
-    transform: rotate(180deg) translateX(120px) rotate(180deg);
+    transform: rotate(180deg) translateX(68px) rotate(180deg);
   }
   to {
-    transform: rotate(540deg) translateX(120px) rotate(-180deg);
+    transform: rotate(540deg) translateX(68px) rotate(-180deg);
   }
+}
+
+@keyframes bobMotion {
+  0%, 100% { transform: translateY(-1px); }
+  50% { transform: translateY(3px); }
 }
 
 /* Raven Details */
 .ravenBody {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.22));
+  animation: bobMotion calc(var(--animation-speed) * 0.55) ease-in-out infinite;
 }
 
 .ravenEye {
@@ -145,6 +151,10 @@
 /* Glow Effects */
 .glowRing {
   animation: glowExpand var(--animation-speed) ease-out infinite;
+  fill: none;
+  stroke: #1e90ff;
+  stroke-width: 0.8;
+  opacity: 0.15;
 }
 
 @keyframes glowExpand {
@@ -158,6 +168,17 @@
 
 .orbitRing {
   animation: orbitGlow calc(var(--animation-speed) * 1.5) ease-in-out infinite;
+  fill: none;
+  stroke: #22d3ee;
+  stroke-width: 1.2;
+  opacity: 0.35;
+}
+
+.orbitRingSoft {
+  fill: none;
+  stroke: #22b573;
+  stroke-width: 1;
+  opacity: 0.2;
 }
 
 @keyframes orbitGlow {
