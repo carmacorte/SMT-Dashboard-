@@ -1,222 +1,224 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMTinel · Command Center v2.6</title>
-    
-    <!-- CONFIGURACIÓN NÚCLEO (Configuración de Supabase) -->
     <script>
-        window.TRACEOPS_CONFIG = {
-            enabled: true,
-            url: "https://irjaljqlijpfwkljusbu.supabase.co",
-            anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV",
-            version: "2.6.0-HuginnMuninn"
-        };
-
-        // Cargador de Dependencias Críticas (Excel, PPTX, Zip)[span_0](start_span)[span_0](end_span)
-        const scripts = [
-            "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
-            "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js",
-            "https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"
-        ];
-
-        function loadEngine() {
-            scripts.forEach(src => {
-                const script = document.createElement('script');
-                script.src = src;
-                script.async = false;
-                document.head.appendChild(script);
-            });
-            console.log("🚀 SMTinel Engine: Componentes cargados.");
-        }
-        loadEngine();
+    window.TRACEOPS_SUPABASE = {
+      enabled: true,
+      url: "https://irjaljqlijpfwkljusbu.supabase.co",
+      anonKey: "sb_publishable_FRi9eaXD-6TYVXLCCUCWkg_1VuvcIhV"
+    };
+    </script>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>SMTinel · Command Center</title>
+    
+    <!-- Scripts de Soporte y Librerías Core (TraceOps)[span_1](start_span)[span_1](end_span) -->
+    <script>
+    // Manejo de errores global y carga de dependencias (JSZip, ExcelJS, PptxGenJS)
+    function traceOpsShowError(t,h,b){try{var e=document.createElement("div");e.style.cssText="position:fixed;top:0;left:0;right:0;background:"+(b||"#C0392B")+";color:#fff;padding:16px;font-family:monospace;z-index:99999";e.innerHTML="<strong>"+t+"</strong><br>"+h;document.body.appendChild(e)}catch(n){}}
+    window.onerror=function(m,s,l,c,e){traceOpsShowError("ERROR SYSTEM",m+"<br>"+s+" line:"+l,"#7F1D1D");return false;};
     </script>
 
     <style>
         :root {
-            --mfg-blue: #007AFF; /* Huginn: Logic/Blue */
-            --mfg-green: #34C759; /* Muninn: Memory/Green */
-            --industrial-dark: #09090b;
-            --panel-bg: rgba(22, 22, 26, 0.8);
-            --accent-glow: rgba(0, 122, 255, 0.15);
+            --bg-dark: #0a0e14;
+            --panel-bg: rgba(20, 26, 35, 0.8);
+            --accent-blue: #00d2ff;  /* Huginn - Pensamiento/Lógica */
+            --accent-green: #00ff87; /* Muninn - Memoria/Datos */
+            --text-main: #e0e6ed;
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
 
         body {
-            background-color: var(--industrial-dark);
-            color: #f4f4f5;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Segoe UI', system-ui, sans-serif;
             margin: 0;
-            display: flex;
-            height: 100vh;
             overflow: hidden;
+            height: 100vh;
         }
 
         /* Layout Command Center */
-        .app-container {
-            display: flex;
-            width: 100%;
-            height: 100%;
+        .command-center {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            grid-template-rows: 80px 1fr 60px;
+            height: 100vh;
+            gap: 15px;
+            padding: 15px;
+            box-sizing: border-box;
         }
 
-        .sidebar-terminal {
-            width: 70px;
-            background: #000;
-            border-right: 1px solid #27272a;
+        /* Header Premium[span_2](start_span)[span_2](end_span) */
+        header {
+            grid-column: 1 / -1;
+            background: var(--panel-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Sidebar - Módulos */
+        .sidebar {
+            grid-column: 1;
+            background: var(--panel-bg);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+        }
+
+        /* Central Hub: Shield & Ravens */
+        .central-hub {
+            grid-column: 2;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-top: 20px;
-            gap: 25px;
-        }
-
-        .main-view {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2px;
-            background: #27272a; /* Divisor visual */
+            justify-content: center;
             position: relative;
         }
 
-        /* Panel Huginn (Izquierda) */
-        .panel-huginn {
-            background: linear-gradient(135deg, #09090b 0%, #0d1117 100%);
-            padding: 40px;
-            border-right: 1px solid var(--mfg-blue);
-            box-shadow: inset -20px 0 50px var(--accent-glow);
-        }
-
-        /* Panel Muninn (Derecha) */
-        .panel-muninn {
-            background: linear-gradient(225deg, #09090b 0%, #0d1117 100%);
-            padding: 40px;
-            border-left: 1px solid var(--mfg-green);
-        }
-
-        /* Centro: El Escudo (Shield) */
-        .shield-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-            pointer-events: none;
-        }
-
-        .shield-ring {
-            width: 180px;
-            height: 180px;
-            border: 2px double var(--mfg-blue);
-            border-radius: 50%;
+        .shield-container {
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(0,210,255,0.1) 0%, transparent 70%);
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(9, 9, 11, 0.9);
-            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            border-radius: 50%;
+            border: 2px solid var(--glass-border);
+            position: relative;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
 
-        /* Estilos de Contenido */
-        .header-tag {
-            font-size: 10px;
+        /* Huginn (Izquierda - Azul) */
+        .raven-logic {
+            position: absolute;
+            left: -120px;
+            color: var(--accent-blue);
+            text-align: center;
+            filter: drop-shadow(0 0 10px var(--accent-blue));
+        }
+
+        /* Muninn (Derecha - Verde) */
+        .raven-memory {
+            position: absolute;
+            right: -120px;
+            color: var(--accent-green);
+            text-align: center;
+            filter: drop-shadow(0 0 10px var(--accent-green));
+        }
+
+        .shield-icon {
+            font-size: 80px;
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.3));
+        }
+
+        /* Data Visualization Panels */
+        .data-panel {
+            grid-column: 3;
+            background: var(--panel-bg);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+        }
+
+        .status-pill {
+            background: rgba(0, 255, 135, 0.1);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 3px;
-            margin-bottom: 8px;
-        }
-
-        .data-stream {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
-            color: #71717a;
-            margin-top: 20px;
-            border-top: 1px solid #27272a;
-            padding-top: 10px;
-        }
-
-        .btn-industrial {
-            background: transparent;
-            border: 1px solid #3f3f46;
-            color: white;
-            padding: 10px 20px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .btn-industrial:hover {
-            border-color: var(--mfg-blue);
-            background: var(--accent-glow);
         }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <aside class="sidebar-terminal">
-            <div style="color: var(--mfg-blue)">◈</div>
-            <div>▤</div>
-            <div>⚙</div>
-        </aside>
+<div class="command-center">
+    <!-- Header: Información de Operaciones -->
+    <header>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5rem; font-weight: bold; letter-spacing: 2px;">SMTinel</span>
+            <span class="status-pill">System Online</span>
+        </div>
+        <div id="live-clock" style="font-family: monospace; font-size: 1.2rem; color: var(--accent-blue);">--:--:--</div>
+    </header>
 
-        <main class="main-view">
-            <!-- HUGINN: Pensamiento / Acción Inmediata -->
-            <section class="panel-huginn">
-                <div class="header-tag" style="color: var(--mfg-blue)">Sector: Huginn // Logic</div>
-                <h1 style="font-weight: 200;">Trazabilidad</h1>
-                <p>Captura de incidentes y análisis RCCA activo.</p>
-                
-                <button class="btn-industrial" onclick="runTraceability()">EJECUTAR ESCANEO</button>
-                
-                <div class="data-stream" id="log-huginn">
-                    > Esperando entrada de datos...
-                </div>
-            </section>
+    <!-- Sidebar: Control de Módulos (TraceOps) -->
+    <aside class="sidebar">
+        <h3 style="color: var(--accent-blue); border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">Módulos de Calidad</h3>
+        <nav style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+            <div style="padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer;">📋 Reportes 8D</div>
+            <div style="padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer;">🔍 Root Cause (RCCA)</div>
+            <div style="padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer;">📉 Yield Flow</div>
+            <div style="padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer;">⚡ Board Impact</div>
+        </nav>
+    </aside>
 
-            <!-- MUNINN: Memoria / Historial / Reportes -->
-            <section class="panel-muninn">
-                <div class="header-tag" style="color: var(--mfg-green)">Sector: Muninn // Memory</div>
-                <h1 style="font-weight: 200;">Inteligencia</h1>
-                <p>Generación de reportes 8D y memoria histórica de fallas.</p>
-                
-                <button class="btn-industrial" onclick="generateReport()">GENERAR REPORTE GLOBAL</button>
-
-                <div class="data-stream" id="log-muninn">
-                    > Acceso a base de datos: OK
-                </div>
-            </section>
-
-            <!-- SHIELD NUCLEUS -->
-            <div class="shield-overlay">
-                <div class="shield-ring">
-                    <span style="font-size: 2rem;">🛡️</span>
-                </div>
+    <!-- Centro: El Nexo de Huginn y Muninn -->
+    <main class="central-hub">
+        <div class="shield-container">
+            <!-- Representación Huginn: Trazabilidad/Pensamiento -->
+            <div class="raven-logic">
+                <div style="font-size: 40px;">🐦</div>
+                <small style="text-transform: uppercase; letter-spacing: 1px;">Huginn</small><br>
+                <b style="font-size: 0.7rem;">LOGIC GATE</b>
             </div>
-        </main>
-    </div>
 
-    <script>
-        // Lógica de Integración de Mejoras
-        async function runTraceability() {
-            const log = document.getElementById('log-huginn');
-            log.innerHTML += "<br>> Iniciando motor de búsqueda TraceOps...";
-            // Aquí se llama a la lógica de procesamiento de mensajes/datos[span_1](start_span)[span_1](end_span)
-        }
+            <!-- Shield Central -->
+            <div class="shield-icon">🛡️</div>
 
-        async function generateReport() {
-            const log = document.getElementById('log-muninn');
-            log.innerHTML += "<br>> Extrayendo datos históricos para 8D...";
-            
-            // Verificación de librerías cargadas antes de procesar
-            if (typeof ExcelJS !== 'undefined') {
-                log.innerHTML += "<br><span style='color:var(--mfg-green)'>> Motor ExcelJS: Listo.</span>";
-            } else {
-                log.innerHTML += "<br><span style='color:red'>> Error: Motor de reportes no cargado.</span>";
-            }
-        }
+            <!-- Representación Muninn: Memoria/Historial -->
+            <div class="raven-memory">
+                <div style="font-size: 40px;">🐦</div>
+                <small style="text-transform: uppercase; letter-spacing: 1px;">Muninn</small><br>
+                <b style="font-size: 0.7rem;">MEMORY BANK</b>
+            </div>
+        </div>
+        <h2 style="margin-top: 40px; font-weight: 300; letter-spacing: 5px;">QUALITY INTELLIGENCE</h2>
+    </main>
 
-        // Inicialización del sistema
-        window.onload = () => {
-            console.log("SMTinel Command Center Iniciado Correctamente.");
-        };
-    </script>
+    <!-- Panel Derecho: Live Feed Manufacturing -->
+    <section class="data-panel">
+        <h3 style="color: var(--accent-green); border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">Producción Real-Time</h3>
+        <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
+            <div style="border-left: 3px solid var(--accent-blue); padding-left: 10px;">
+                <div style="font-size: 0.8rem; opacity: 0.6;">SÍNTOMA DETECTADO (SMT-L1)</div>
+                <div style="color: var(--accent-blue);">Misalignment R102</div>
+            </div>
+            <div style="border-left: 3px solid var(--accent-green); padding-left: 10px;">
+                <div style="font-size: 0.8rem; opacity: 0.6;">ACCIÓN PREVENTIVA</div>
+                <div style="color: var(--accent-green);">Feeder Calibration</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer[span_3](start_span)[span_3](end_span) -->
+    <footer style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; font-size: 0.7rem; opacity: 0.5;">
+        SMTinel v2026.05 | POWERED BY TRACEOPS MANUFACTURING INTELLIGENCE
+    </footer>
+</div>
+
+<script>
+    // Reloj dinámico para el Command Center
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('live-clock').innerText = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Precarga de herramientas de datos TraceOps[span_4](start_span)[span_4](end_span)
+    window.onload = function() {
+        if (window.preloadExcelTools) window.preloadExcelTools();
+        console.log("SMTinel Command Center Initialized.");
+    };
+</script>
+
 </body>
 </html>
