@@ -193,12 +193,12 @@ window.addEventListener("unhandledrejection", function(ev) {
   --smti-success:    #00ff88;
   --smti-void:       #050507;
   --smti-cream:      #F2F1F0;
-  --smti-slate:      var(--smti-slate);
-  --smti-sage:       var(--smti-sage);
+  --smti-slate:      #1F3A5F;
+  --smti-sage:       #5F766C;
 
   --smti-bg-main:    var(--smti-cream);
   --smti-surface:    #FFFFFF;
-  --smti-ink:        var(--smti-ink);
+  --smti-ink:        #102A43;
   --smti-line:       rgba(20, 32, 51, 0.1);
 
   --smti-font-sans:  'Inter', sans-serif;
@@ -1954,6 +1954,187 @@ body.traceops-premium-shell .ops-hero-chips span{background:rgba(255,255,255,.12
 .smtinel-minirow{display:flex;gap:8px;margin-top:14px}.smtinel-minirow div{flex:1;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.11);border-radius:12px;padding:9px}.smtinel-minirow b{display:block;font-size:18px}.smtinel-minirow small{font-size:9px;color:rgba(255,255,255,.62);text-transform:uppercase;font-weight:800}
 @media(max-width:1000px){.smtinel-carousel{grid-template-columns:1fr;}.smtinel-card,.smtinel-card.feature{min-height:150px}}
 
+
+
+/* =========================================================
+   SMTinel Contrast + Export Hardening Patch v2026.05.1
+   Purpose: prevent washed/overexposed render in PDF/export and
+   lock dark industrial contrast for hero + intelligence modules.
+   ========================================================= */
+:root {
+  --smti-export-dark: #050507;
+  --smti-export-dark-2: #081119;
+  --smti-export-card: #0B1623;
+  --smti-export-text: #FFFFFF;
+  --smti-export-muted: rgba(255,255,255,.74);
+}
+
+html,
+body,
+#root,
+.main-content,
+body.traceops-premium-shell {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+body.traceops-premium-shell .ops-hero,
+body.traceops-premium-shell .smtinel-card,
+body.traceops-premium-shell .smtinel-card.feature {
+  background-color: var(--smti-export-dark) !important;
+  color: var(--smti-export-text) !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+body.traceops-premium-shell .ops-hero {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(76,184,196,.20), transparent 34%),
+    radial-gradient(circle at 18% 72%, rgba(0,255,136,.12), transparent 28%),
+    linear-gradient(180deg, #0B1623 0%, #050507 100%) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  box-shadow: 0 24px 72px rgba(5,5,7,.36) !important;
+}
+
+body.traceops-premium-shell .ops-hero::before,
+body.traceops-premium-shell .ops-hero::after {
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+body.traceops-premium-shell .ops-hero-content,
+body.traceops-premium-shell .ops-hero-content *,
+body.traceops-premium-shell .smtinel-card,
+body.traceops-premium-shell .smtinel-card * {
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  text-shadow: none;
+}
+
+body.traceops-premium-shell .ops-hero-title::before,
+body.traceops-premium-shell .ops-hero-title,
+body.traceops-premium-shell .smtinel-title {
+  color: #FFFFFF !important;
+}
+
+body.traceops-premium-shell .ops-hero-subtitle::before,
+body.traceops-premium-shell .smtinel-copy {
+  color: rgba(255,255,255,.78) !important;
+}
+
+body.traceops-premium-shell .ops-hero-chips::before {
+  color: rgba(255,255,255,.56) !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.primary,
+body.traceops-premium-shell .ops-hero-btn.primary::before {
+  color: #FFFFFF !important;
+}
+
+body.traceops-premium-shell .ops-hero-btn.ghost,
+body.traceops-premium-shell .ops-hero-btn.ghost::before {
+  color: #102A43 !important;
+}
+
+body.traceops-premium-shell .smtinel-card {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(76,184,196,.28), transparent 34%),
+    radial-gradient(circle at 88% 72%, rgba(242,184,7,.12), transparent 36%),
+    linear-gradient(135deg, #050507 0%, #0B1623 58%, #123D62 100%) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  box-shadow: 0 16px 44px rgba(5,5,7,.28) !important;
+}
+
+body.traceops-premium-shell .smtinel-card.feature {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(76,184,196,.34), transparent 36%),
+    linear-gradient(135deg, #050507 0%, #0B1623 52%, #123D62 100%) !important;
+  border-top: 2px solid var(--smti-cyan) !important;
+}
+
+body.traceops-premium-shell .smtinel-card[data-smti-rail="muninn"],
+body.traceops-premium-shell .smtinel-card:nth-child(2) {
+  border-top: 2px solid var(--smti-gold) !important;
+}
+
+body.traceops-premium-shell .smtinel-card[data-smti-role="health"],
+body.traceops-premium-shell .smtinel-card:nth-child(3) {
+  border-top: 2px solid var(--smti-success) !important;
+}
+
+body.traceops-premium-shell .smtinel-kicker {
+  color: var(--smti-cyan) !important;
+}
+
+body.traceops-premium-shell .smtinel-card:nth-child(2) .smtinel-kicker {
+  color: var(--smti-gold) !important;
+}
+
+body.traceops-premium-shell .smtinel-card:nth-child(3) .smtinel-kicker {
+  color: var(--smti-success) !important;
+}
+
+body.traceops-premium-shell .smtinel-pill,
+body.traceops-premium-shell .smtinel-minirow div {
+  background: rgba(255,255,255,.10) !important;
+  border-color: rgba(255,255,255,.18) !important;
+  color: #FFFFFF !important;
+}
+
+body.traceops-premium-shell .smtinel-radar,
+body.traceops-premium-shell .smtinel-board {
+  opacity: 1 !important;
+  filter: none !important;
+  background-color: rgba(255,255,255,.08) !important;
+}
+
+body.traceops-premium-shell .smtinel-bars i {
+  opacity: 1 !important;
+  background: linear-gradient(180deg, var(--smti-success), #4A90E2) !important;
+}
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.traceops-premium-shell .ops-hero,
+  body.traceops-premium-shell .smtinel-card,
+  body.traceops-premium-shell .smtinel-card.feature {
+    background-color: #050507 !important;
+    color: #FFFFFF !important;
+    opacity: 1 !important;
+    filter: none !important;
+    box-shadow: none !important;
+  }
+
+  body.traceops-premium-shell .ops-hero {
+    background: linear-gradient(180deg, #0B1623 0%, #050507 100%) !important;
+  }
+
+  body.traceops-premium-shell .smtinel-card,
+  body.traceops-premium-shell .smtinel-card.feature {
+    background: linear-gradient(135deg, #050507 0%, #0B1623 58%, #123D62 100%) !important;
+  }
+
+  body.traceops-premium-shell .ops-hero-title::before,
+  body.traceops-premium-shell .smtinel-title,
+  body.traceops-premium-shell .smtinel-kicker {
+    color: #FFFFFF !important;
+  }
+
+  body.traceops-premium-shell .ops-hero-subtitle::before,
+  body.traceops-premium-shell .ops-hero-chips::before,
+  body.traceops-premium-shell .smtinel-copy {
+    color: rgba(255,255,255,.78) !important;
+  }
+}
 </style>
 
 <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
