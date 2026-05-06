@@ -14,15 +14,15 @@
 }
 
 html, body {
-    width: 100%;
-    height: 100%;
-    font-family: 'Segoe UI', 'Inter', sans-serif;
-    background: radial-gradient(circle at top, #0B1220, #050A0F);
-    color: #E8F0FF;
-    overflow: hidden;
-    -webkit-font-smoothing: antialiased;
-    -webkit-touch-callout: none;
-    user-select: none;
+    width: 100% !important;
+    height: 100% !important;
+    font-family: 'Segoe UI', 'Inter', sans-serif !important;
+    background: radial-gradient(circle at top, #0B1220, #050A0F) !important;
+    color: #E8F0FF !important;
+    overflow: hidden !important;
+    -webkit-font-smoothing: antialiased !important;
+    -webkit-touch-callout: none !important;
+    user-select: none !important;
 }
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -30,12 +30,12 @@ html, body {
 /* ─────────────────────────────────────────────────────────────── */
 
 .viewport {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 #binaryCanvas {
@@ -280,13 +280,13 @@ html, body {
 /* ─────────────────────────────────────────────────────────────── */
 
 .dashboard {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-    opacity: 1;
-    transition: opacity 1s ease-in;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1 !important;
+    opacity: 1 !important;
+    transition: opacity 1s ease-in !important;
 }
 
 .dashboard.hidden {
@@ -296,18 +296,18 @@ html, body {
 
 /* TOP NAVBAR - STICKY & PREMIUM */
 .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 70px;
-    padding: 0 28px;
-    background: rgba(10, 18, 32, 0.5);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(0, 210, 255, 0.15);
-    gap: 40px;
-    flex-shrink: 0;
-    z-index: 100;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 70px !important;
+    padding: 0 28px !important;
+    background: rgba(10, 18, 32, 0.5) !important;
+    backdrop-filter: blur(12px) !important;
+    border-bottom: 1px solid rgba(0, 210, 255, 0.15) !important;
+    gap: 40px !important;
+    flex-shrink: 0 !important;
+    z-index: 100 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
 }
 
 .topbar-left {
@@ -424,14 +424,14 @@ html, body {
 
 /* DASHBOARD GRID LAYOUT - 3 COLUMNS */
 .dashboard-grid {
-    display: grid;
-    grid-template-columns: 280px 1fr 360px;
-    grid-template-rows: 1fr;
-    gap: 16px;
-    padding: 16px;
-    flex: 1;
-    overflow: hidden;
-    height: calc(100vh - 70px);
+    display: grid !important;
+    grid-template-columns: 280px 1fr 360px !important;
+    grid-template-rows: 1fr !important;
+    gap: 16px !important;
+    padding: 16px !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+    height: calc(100vh - 70px) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────── */
