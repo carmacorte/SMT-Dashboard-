@@ -2,213 +2,354 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMTinel IO - Interactive Cinematic Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>SMTinel IO - Operative Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Main Viewport Container -->
-    <div id="viewport">
-        <!-- Canvas Layer for Binary Rain -->
-        <canvas id="binaryCanvas"></canvas>
+    <!-- Main Viewport -->
+    <div id="viewport" class="viewport">
+        <!-- Binary Rain Canvas -->
+        <canvas id="binaryCanvas" class="binary-rain"></canvas>
 
-        <!-- Boot Sequence Overlay -->
-        <div id="bootSequence" class="boot-overlay active">
+        <!-- Boot Sequence -->
+        <div id="bootSequence" class="boot-sequence active">
             <div class="boot-container">
                 <div class="boot-logo">
-                    <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
-                        <circle cx="60" cy="60" r="55" stroke="#00D2FF" stroke-width="2" opacity="0.5"/>
-                        <circle cx="60" cy="60" r="45" stroke="#00D2FF" stroke-width="1" opacity="0.3"/>
-                        <text x="60" y="75" text-anchor="middle" fill="#00D2FF" font-size="48" font-family="monospace" font-weight="bold">IO</text>
-                    </svg>
+                    <div class="logo-core"></div>
+                    <div class="logo-ring ring-1"></div>
+                    <div class="logo-ring ring-2"></div>
+                    <div class="logo-text">IO</div>
                 </div>
-                <div class="boot-text">
-                    <p class="boot-title">SMTINEL TRACEOPS</p>
-                    <p class="boot-subtitle">Initializing Intelligence Protocols...</p>
+
+                <div class="boot-info">
+                    <h1 class="boot-title">SMTINEL TRACEOPS</h1>
+                    <p class="boot-subtitle">Intelligence Protocols Initializing</p>
                 </div>
-                <div class="boot-progress">
+
+                <div class="boot-progress-container">
                     <div class="progress-bar">
                         <div class="progress-fill"></div>
+                        <div class="progress-glow"></div>
                     </div>
-                    <p class="progress-text"><span id="bootPercent">0</span>%</p>
+                    <div class="progress-stats">
+                        <span class="progress-percent"><span id="bootPercent">0</span>%</span>
+                        <span class="progress-status" id="bootStatus">SYSTEM BOOT</span>
+                    </div>
                 </div>
-                <div class="boot-status">
-                    <p id="bootStatus">SYSTEM BOOT...</p>
+
+                <div class="boot-subsystems">
+                    <div class="subsystem active"><span class="dot"></span>Core Memory</div>
+                    <div class="subsystem"><span class="dot"></span>Data Networks</div>
+                    <div class="subsystem"><span class="dot"></span>AI Guardian</div>
                 </div>
             </div>
         </div>
 
-        <!-- Main Dashboard Container -->
-        <div id="mainDashboard" class="dashboard-container hidden">
-            <!-- Header -->
-            <header class="dashboard-header">
-                <div class="header-left">
-                    <div class="logo-section">
-                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                            <circle cx="20" cy="20" r="18" stroke="#00D2FF" stroke-width="1.5"/>
-                            <text x="20" y="26" text-anchor="middle" fill="#00D2FF" font-size="16" font-family="monospace" font-weight="bold">IO</text>
-                        </svg>
-                        <span class="brand-text">SMTINEL IO</span>
+        <!-- Main Dashboard -->
+        <div id="mainDashboard" class="dashboard hidden">
+            <!-- Top Navigation Bar -->
+            <nav class="topbar">
+                <div class="topbar-left">
+                    <div class="logo-mini">
+                        <div class="logo-mini-core"></div>
+                        <div class="logo-mini-text">IO</div>
                     </div>
+                    <span class="brand-name">SMTINEL</span>
                 </div>
-                <nav class="header-nav">
-                    <a href="#" class="nav-item active">DASHBOARD</a>
-                    <a href="#" class="nav-item">TRACEABILITY</a>
-                    <a href="#" class="nav-item">REPAIR IQ</a>
-                </nav>
-                <div class="header-right">
-                    <div class="status-indicator">
-                        <div class="status-dot"></div>
-                        <span>ACTIVE</span>
-                    </div>
-                </div>
-            </header>
 
-            <!-- Main Content Area -->
-            <main class="dashboard-main">
+                <div class="topbar-nav">
+                    <a href="#" class="nav-link active">DASHBOARD</a>
+                    <a href="#" class="nav-link">TRACEABILITY</a>
+                    <a href="#" class="nav-link">INTELLIGENCE</a>
+                </div>
+
+                <div class="topbar-right">
+                    <div class="status-badge">
+                        <span class="status-pulse"></span>
+                        <span class="status-text">ACTIVE</span>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content Grid -->
+            <div class="dashboard-grid">
                 <!-- Left Sidebar -->
                 <aside class="sidebar">
-                    <div class="sidebar-item active">
-                        <div class="sidebar-icon">⊙</div>
-                        <span>COMMAND CENTER</span>
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">MODULES</h3>
+                        <div class="menu-items">
+                            <div class="menu-item active">
+                                <div class="menu-icon">◉</div>
+                                <span>COMMAND CENTER</span>
+                            </div>
+                            <div class="menu-item">
+                                <div class="menu-icon">⊙</div>
+                                <span>PLANT STATUS</span>
+                            </div>
+                            <div class="menu-item">
+                                <div class="menu-icon">◈</div>
+                                <span>TRACE ENGINE</span>
+                            </div>
+                            <div class="menu-item">
+                                <div class="menu-icon">⟡</div>
+                                <span>YIELD CORE</span>
+                            </div>
+                            <div class="menu-item">
+                                <div class="menu-icon">⊕</div>
+                                <span>PUZZLE ZONE</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="sidebar-item">
-                        <div class="sidebar-icon">◉</div>
-                        <span>PLANT HEALTH</span>
-                    </div>
-                    <div class="sidebar-item">
-                        <div class="sidebar-icon">◈</div>
-                        <span>TRACE ENGINE</span>
-                    </div>
-                    <div class="sidebar-item">
-                        <div class="sidebar-icon">⟡</div>
-                        <span>YIELD IQ</span>
-                    </div>
-                    <div class="sidebar-item">
-                        <div class="sidebar-icon">⊕</div>
-                        <span>PUZZLE ZONE</span>
+
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">SYSTEM</h3>
+                        <div class="menu-items">
+                            <div class="menu-item">
+                                <div class="menu-icon">⚙</div>
+                                <span>Settings</span>
+                            </div>
+                            <div class="menu-item">
+                                <div class="menu-icon">⚡</div>
+                                <span>Performance</span>
+                            </div>
+                        </div>
                     </div>
                 </aside>
 
-                <!-- Center Content -->
-                <section class="center-content">
-                    <!-- SMTinelito Avatar -->
-                    <div class="avatar-section">
-                        <div id="smtinelito" class="smtinelito">
-                            <svg width="240" height="280" viewBox="0 0 240 280" fill="none">
-                                <!-- Eye glow -->
-                                <circle cx="120" cy="80" r="20" fill="#00D2FF" opacity="0.6" class="eye-glow"/>
-                                <!-- Head -->
-                                <ellipse cx="120" cy="85" rx="35" ry="40" stroke="#00D2FF" stroke-width="2" fill="none"/>
-                                <!-- Eye -->
-                                <circle cx="120" cy="80" r="12" stroke="#00D2FF" stroke-width="2" fill="none"/>
-                                <circle cx="120" cy="80" r="6" fill="#00D2FF"/>
-                                <!-- Beak -->
-                                <path d="M 130 85 L 155 90 L 130 95" stroke="#FFB800" stroke-width="2" fill="none"/>
-                                <!-- Body -->
-                                <ellipse cx="120" cy="150" rx="45" ry="55" stroke="#00D2FF" stroke-width="2" fill="none"/>
-                                <!-- Wings lines -->
-                                <path d="M 75 140 Q 50 120 40 90" stroke="#00D2FF" stroke-width="2" fill="none" opacity="0.7"/>
-                                <path d="M 165 140 Q 190 120 200 90" stroke="#00D2FF" stroke-width="2" fill="none" opacity="0.7"/>
-                                <!-- Shield -->
-                                <path d="M 100 130 L 120 115 L 140 130 L 140 160 Q 120 175 100 160 Z" stroke="#FFB800" stroke-width="2" fill="none"/>
-                                <!-- Legs -->
-                                <line x1="100" y1="200" x2="90" y2="240" stroke="#00D2FF" stroke-width="2"/>
-                                <line x1="140" y1="200" x2="150" y2="240" stroke="#00D2FF" stroke-width="2"/>
-                            </svg>
+                <!-- Center Content Area -->
+                <main class="main-content">
+                    <!-- Guardian Section -->
+                    <section class="card guardian-card">
+                        <div class="card-header">
+                            <h2 class="card-title">AI GUARDIAN</h2>
+                            <div class="card-status">NIVEL 03</div>
                         </div>
-                        <div class="avatar-status">
-                            <p class="status-name">SMTinelito</p>
-                            <p class="status-level">IO GUARDIAN - NIVEL 03</p>
-                            <div class="xp-bar">
-                                <div class="xp-fill" style="width: 65%;"></div>
+
+                        <div class="guardian-display">
+                            <!-- SMTinelito Premium -->
+                            <div class="smtinelito-container">
+                                <div class="smtinelito">
+                                    <!-- Shield Layer -->
+                                    <div class="shield-layer">
+                                        <div class="shield-inner"></div>
+                                        <div class="shield-glow"></div>
+                                    </div>
+
+                                    <!-- Body Layer -->
+                                    <div class="body-layer">
+                                        <!-- Head -->
+                                        <div class="head">
+                                            <div class="eye left-eye">
+                                                <div class="pupil"></div>
+                                                <div class="eye-glow"></div>
+                                            </div>
+                                            <div class="eye right-eye">
+                                                <div class="pupil"></div>
+                                                <div class="eye-glow"></div>
+                                            </div>
+                                            <div class="beak"></div>
+                                        </div>
+
+                                        <!-- Wing Left -->
+                                        <div class="wing left-wing">
+                                            <div class="feather feather-1"></div>
+                                            <div class="feather feather-2"></div>
+                                            <div class="feather feather-3"></div>
+                                        </div>
+
+                                        <!-- Wing Right -->
+                                        <div class="wing right-wing">
+                                            <div class="feather feather-1"></div>
+                                            <div class="feather feather-2"></div>
+                                            <div class="feather feather-3"></div>
+                                        </div>
+
+                                        <!-- Body -->
+                                        <div class="body-core"></div>
+
+                                        <!-- Legs -->
+                                        <div class="leg left-leg"></div>
+                                        <div class="leg right-leg"></div>
+                                    </div>
+
+                                    <!-- Scan Lines -->
+                                    <div class="scan-overlay"></div>
+                                </div>
                             </div>
-                            <p class="xp-text">2,450 / 3,800 XP</p>
+
+                            <!-- Status Panel -->
+                            <div class="guardian-status">
+                                <div class="status-item">
+                                    <span class="label">SMTinelito</span>
+                                    <span class="value">IO GUARDIAN</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="label">Experience</span>
+                                    <div class="xp-bar">
+                                        <div class="xp-fill"></div>
+                                        <div class="xp-text">2,450 / 3,800 XP</div>
+                                    </div>
+                                </div>
+                                <div class="status-item">
+                                    <span class="label">Status</span>
+                                    <span class="value status-healthy">OPERATIONAL</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </section>
 
                     <!-- Puzzle Section -->
-                    <div class="puzzle-section">
-                        <h3>PUZZLE DE CORRELACIÓN</h3>
-                        <div class="puzzle-container">
-                            <div class="puzzle-node" id="node-ict" data-node="ICT">
-                                <div class="node-label">ICT FAIL</div>
-                                <div class="node-value">1610</div>
-                            </div>
-                            <div class="puzzle-connector"></div>
-                            <div class="puzzle-node" id="node-aoi" data-node="AOI">
-                                <div class="node-label">AOI DEFECT</div>
-                                <div class="node-value">1210</div>
-                            </div>
-                            <div class="puzzle-connector"></div>
-                            <div class="puzzle-node active" id="node-reflow" data-node="REFLOW">
-                                <div class="node-label">REFLOW PROFILE</div>
-                                <div class="node-value">2170°C</div>
-                            </div>
-                            <div class="puzzle-connector"></div>
-                            <div class="puzzle-node" id="node-solder" data-node="SOLDER">
-                                <div class="node-label">SOLDER PASTE SPI</div>
-                                <div class="node-value">WARN</div>
-                            </div>
-                            <div class="puzzle-node locked" id="node-unknown" data-node="MYSTERY">
-                                <div class="node-label">?</div>
-                            </div>
+                    <section class="card puzzle-card">
+                        <div class="card-header">
+                            <h2 class="card-title">PUZZLE CORRELACIÓN</h2>
+                            <div class="card-status">ACTIVE</div>
                         </div>
-                        <button class="puzzle-button" id="resolveBtn">RESOLVER</button>
-                    </div>
-                </section>
 
-                <!-- Right Panel -->
-                <aside class="right-panel">
-                    <!-- Plant Health -->
-                    <div class="panel-section">
-                        <h4>PLANT HEALTH MAP</h4>
+                        <div class="puzzle-wrapper">
+                            <div class="puzzle-nodes">
+                                <div class="puzzle-node" data-node="ICT">
+                                    <div class="node-glow"></div>
+                                    <div class="node-inner">
+                                        <div class="node-label">ICT</div>
+                                        <div class="node-value">1610</div>
+                                    </div>
+                                </div>
+
+                                <div class="node-connector"></div>
+
+                                <div class="puzzle-node" data-node="AOI">
+                                    <div class="node-glow"></div>
+                                    <div class="node-inner">
+                                        <div class="node-label">AOI</div>
+                                        <div class="node-value">1210</div>
+                                    </div>
+                                </div>
+
+                                <div class="node-connector"></div>
+
+                                <div class="puzzle-node active" data-node="REFLOW">
+                                    <div class="node-glow"></div>
+                                    <div class="node-inner">
+                                        <div class="node-label">REFLOW</div>
+                                        <div class="node-value">2170°</div>
+                                    </div>
+                                </div>
+
+                                <div class="node-connector"></div>
+
+                                <div class="puzzle-node" data-node="SOLDER">
+                                    <div class="node-glow"></div>
+                                    <div class="node-inner">
+                                        <div class="node-label">SOLDER</div>
+                                        <div class="node-value">WARN</div>
+                                    </div>
+                                </div>
+
+                                <div class="node-connector locked"></div>
+
+                                <div class="puzzle-node locked" data-node="MYSTERY">
+                                    <div class="node-glow"></div>
+                                    <div class="node-inner">
+                                        <div class="node-label">?</div>
+                                        <div class="node-value">???</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button class="btn-resolve" id="resolveBtn">
+                                <span class="btn-text">RESOLVER</span>
+                                <span class="btn-glow"></span>
+                            </button>
+                        </div>
+                    </section>
+                </main>
+
+                <!-- Right Sidebar -->
+                <aside class="sidebar-right">
+                    <!-- Plant Health Widget -->
+                    <section class="card health-card">
+                        <div class="card-header">
+                            <h3 class="card-title">PLANT HEALTH</h3>
+                        </div>
+
                         <div class="health-display">
-                            <div class="health-number">68%</div>
-                            <div class="health-chart">
-                                <svg width="100%" height="60" viewBox="0 0 200 60">
+                            <div class="health-meter">
+                                <div class="health-value">68%</div>
+                                <svg class="health-chart" viewBox="0 0 200 60" preserveAspectRatio="none">
+                                    <defs>
+                                        <linearGradient id="healthGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#00E5A8;stop-opacity:0.6" />
+                                            <stop offset="100%" style="stop-color:#00D2FF;stop-opacity:0" />
+                                        </linearGradient>
+                                    </defs>
                                     <polyline points="0,45 25,35 50,30 75,40 100,20 125,35 150,25 175,40 200,15"
-                                             stroke="#00D2FF" stroke-width="2" fill="none"/>
+                                              stroke="#00D2FF" stroke-width="2" fill="none"/>
                                     <polyline points="0,45 25,35 50,30 75,40 100,20 125,35 150,25 175,40 200,15"
-                                             stroke="#00D2FF" stroke-width="2" fill="url(#healthGradient)" opacity="0.3"/>
+                                              stroke="url(#healthGrad)" stroke-width="2" fill="url(#healthGrad)"/>
                                 </svg>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Mission Status -->
-                    <div class="panel-section">
-                        <h4>MISIÓN ACTUAL</h4>
-                        <div class="mission-item completed">
-                            <span class="mission-check">✓</span>
-                            <span>Recolecta datos dispersos</span>
+                            <div class="health-status">
+                                <div class="status-item small">
+                                    <span class="dot healthy"></span>
+                                    <span>Operativo</span>
+                                </div>
+                                <div class="status-item small">
+                                    <span class="dot warning"></span>
+                                    <span>Monitoreo</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="mission-item completed">
-                            <span class="mission-check">✓</span>
-                            <span>Sincroniza eventos</span>
+                    </section>
+
+                    <!-- Mission Progress -->
+                    <section class="card mission-card">
+                        <div class="card-header">
+                            <h3 class="card-title">MISIÓN ACTUAL</h3>
                         </div>
-                        <div class="mission-item completed">
-                            <span class="mission-check">✓</span>
-                            <span>Identifica patrones</span>
+
+                        <div class="mission-list">
+                            <div class="mission-item completed">
+                                <div class="mission-check">✓</div>
+                                <span>Recolecta datos</span>
+                            </div>
+                            <div class="mission-item completed">
+                                <div class="mission-check">✓</div>
+                                <span>Sincroniza eventos</span>
+                            </div>
+                            <div class="mission-item completed">
+                                <div class="mission-check">✓</div>
+                                <span>Identifica patrones</span>
+                            </div>
+                            <div class="mission-item active">
+                                <div class="mission-check">→</div>
+                                <span>Resuelve puzzle</span>
+                            </div>
                         </div>
-                        <div class="mission-item">
-                            <span class="mission-check">→</span>
-                            <span>Resuelve el puzzle</span>
-                        </div>
-                    </div>
+                    </section>
 
                     <!-- Intelligence Progress -->
-                    <div class="panel-section">
-                        <h4>PROGRESO DE INTELIGENCIA</h4>
-                        <div class="progress-large">
-                            <div class="progress-bar-large">
-                                <div class="progress-fill-large" style="width: 72%;"></div>
-                            </div>
-                            <p class="progress-percent">72%</p>
+                    <section class="card intelligence-card">
+                        <div class="card-header">
+                            <h3 class="card-title">INTELIGENCIA</h3>
                         </div>
-                    </div>
+
+                        <div class="intel-display">
+                            <div class="intel-meter">72%</div>
+                            <div class="intel-bar">
+                                <div class="intel-fill"></div>
+                                <div class="intel-glow"></div>
+                            </div>
+                        </div>
+                    </section>
                 </aside>
-            </main>
+            </div>
         </div>
     </div>
 
