@@ -388,3 +388,163 @@
     transform: translateZ(0);
   }
 }
+
+/* Image-inspired SMTinel loader variants */
+.posterCanvas,
+.wideCanvas,
+.imageCanvas {
+  border: 1px solid rgba(34, 211, 238, 0.14);
+  border-radius: 24px;
+  background: #000;
+  box-shadow:
+    0 0 0 1px rgba(36, 195, 162, 0.08),
+    0 24px 70px rgba(0, 0, 0, 0.45),
+    0 0 60px rgba(30, 144, 255, 0.16);
+  object-fit: cover;
+  overflow: hidden;
+}
+
+.posterCanvas {
+  max-width: 300px;
+  height: auto;
+  aspect-ratio: 3 / 4;
+}
+
+.wideCanvas {
+  max-width: 420px;
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+
+.imageCanvas {
+  display: block;
+  max-height: 420px;
+  animation: imageLoaderFloat calc(var(--animation-speed) * 1.5) ease-in-out infinite;
+}
+
+.starField {
+  animation: starfieldDrift calc(var(--animation-speed) * 2) linear infinite;
+  transform-origin: 150px 150px;
+}
+
+.spiralPath {
+  stroke-dasharray: 12 16;
+  animation: spiralTrace var(--animation-speed) linear infinite;
+}
+
+.candles,
+.loaderNodes,
+.dashboardTiles,
+.timelineNode {
+  animation: telemetryPulse calc(var(--animation-speed) * 0.9) ease-in-out infinite;
+}
+
+.loaderNodes > g:nth-child(even),
+.timelineNode:nth-child(even) {
+  animation-delay: calc(var(--animation-speed) * -0.18);
+}
+
+.rotatingRadar {
+  animation: radarRotate calc(var(--animation-speed) * 4) linear infinite;
+  transform-origin: 150px 150px;
+}
+
+.networkCore {
+  animation: networkBreathe calc(var(--animation-speed) * 1.15) ease-in-out infinite;
+  transform-origin: 150px 184px;
+}
+
+@keyframes imageLoaderFloat {
+  0%, 100% {
+    opacity: 0.86;
+    transform: translateY(0) scale(1);
+    filter: saturate(1.05) drop-shadow(0 8px 24px rgba(30, 144, 255, 0.18));
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.01);
+    filter: saturate(1.2) drop-shadow(0 16px 36px rgba(36, 195, 162, 0.25));
+  }
+}
+
+@keyframes starfieldDrift {
+  0% {
+    opacity: 0.4;
+    transform: rotate(0deg) scale(0.98);
+  }
+  50% {
+    opacity: 0.9;
+    transform: rotate(8deg) scale(1.03);
+  }
+  100% {
+    opacity: 0.4;
+    transform: rotate(16deg) scale(0.98);
+  }
+}
+
+@keyframes spiralTrace {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0.62;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -140;
+    opacity: 0.62;
+  }
+}
+
+@keyframes telemetryPulse {
+  0%, 100% {
+    opacity: 0.62;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes radarRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes networkBreathe {
+  0%, 100% {
+    transform: scale(0.98);
+    opacity: 0.82;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .posterCanvas {
+    max-width: 230px;
+  }
+
+  .wideCanvas {
+    max-width: 260px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .starField,
+  .spiralPath,
+  .candles,
+  .loaderNodes,
+  .dashboardTiles,
+  .timelineNode,
+  .rotatingRadar,
+  .networkCore,
+  .imageCanvas {
+    animation: none;
+  }
+}

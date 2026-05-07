@@ -6,6 +6,8 @@ A premium, reusable React component for file uploads with animated geometric rav
 
 ✨ **Premium Design**
 - Geometric raven silhouettes with orbital animations
+- Image-inspired SMTinel loader variants (particle spiral, brand orbit, analytics grid, trace network)
+- Custom image loader mode for uploaded artwork
 - Pulsing shield with glow effects
 - Dark theme with gradient accents
 - Smooth 60fps animations
@@ -14,6 +16,7 @@ A premium, reusable React component for file uploads with animated geometric rav
 - Custom animation speeds (default: 3s)
 - Customizable accent colors (blue/green)
 - Status text control
+- Loader visual selection and custom image source support
 - Upload progress tracking (0-100%)
 - Loading state management
 
@@ -72,6 +75,9 @@ function App() {
 | `onProgressChange` | function | - | Callback for progress updates |
 | `enableUpload` | boolean | true | Enable file upload zone |
 | `uploadEndpoint` | string | "/api/upload" | Upload API endpoint |
+| `visual` | `YieldFlowLoaderVisual` | "ravens" | Built-in loader artwork: `ravens`, `particle-spiral`, `smtinel-orbit`, `analytics-grid`, `trace-network`, or `custom-image` |
+| `loaderImageSrc` | string | - | URL/path for a supplied image to render as the loader visual |
+| `loaderImageAlt` | string | "SMTinel loader artwork" | Accessible alt text for the supplied image loader |
 
 ## Usage Examples
 
@@ -107,6 +113,36 @@ function UploadComponent() {
     />
   );
 }
+```
+
+
+### Image-Inspired SMTinel Loaders
+
+Use one of the built-in visuals inspired by the supplied SMTinel loader artwork:
+
+```tsx
+<YieldFlowLoader
+  statusText="TRACE OPS"
+  visual="particle-spiral"
+  isLoading={true}
+/>
+
+<YieldFlowLoader
+  statusText="SMTinel"
+  visual="analytics-grid"
+  enableUpload={false}
+/>
+```
+
+To use an uploaded image directly, pass `visual="custom-image"` and `loaderImageSrc`. The component keeps the image animated with the same loader timing and progress UI:
+
+```tsx
+<YieldFlowLoader
+  statusText="LOADING"
+  visual="custom-image"
+  loaderImageSrc="/assets/loaders/smtinel-flow-loader.jpg"
+  loaderImageAlt="SMTinel blue particle spiral loader"
+/>
 ```
 
 ### Custom Colors & Animation Speed
@@ -205,11 +241,13 @@ onUploadComplete={(result: { success: boolean; message?: string }) => {
 The component features multiple synchronized animations:
 
 1. **Orbital Animations** - Ravens orbit around the shield
-2. **Pulsing Shield** - Central shield pulses with glow
-3. **Eye Glow** - Raven eyes pulse with intensity
-4. **Beak Flutter** - Subtle beak movement
-5. **Glow Rings** - Expanding rings around orbits
-6. **Progress Fill** - Smooth gradient progress bar
+2. **Image Loader Float** - Custom images breathe with subtle opacity, scale, and glow
+3. **Particle Trace** - SMTinel spiral variants animate stroke-dash and telemetry pulses
+4. **Pulsing Shield** - Central shield pulses with glow
+5. **Eye Glow** - Raven eyes pulse with intensity
+6. **Beak Flutter** - Subtle beak movement
+7. **Glow Rings** - Expanding rings around orbits
+8. **Progress Fill** - Smooth gradient progress bar
 
 All animations are GPU-accelerated using CSS transforms and opacity changes for smooth 60fps performance.
 
