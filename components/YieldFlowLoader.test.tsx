@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { YieldFlowLoader, YieldFlowLoaderProps } from './YieldFlowLoader';
+import { YieldFlowLoader, type YieldFlowLoaderProps } from './YieldFlowLoader';
 
 /**
  * Test suite for YieldFlowLoader component
@@ -48,6 +48,25 @@ describe('YieldFlowLoader', () => {
       const { container } = render(<YieldFlowLoader {...defaultProps} />);
       const svg = container.querySelector('svg');
       expect(svg).toBeInTheDocument();
+    });
+
+    it('should render built-in SMTinel image-inspired visuals', () => {
+      const { container } = render(<YieldFlowLoader {...defaultProps} visual="particle-spiral" />);
+      const wrapper = container.querySelector('[data-loader-visual="particle-spiral"]');
+      expect(wrapper).toBeInTheDocument();
+      expect(container.querySelector('svg[aria-label="SMTinel particle spiral loader"]')).toBeInTheDocument();
+    });
+
+    it('should render a supplied image as a custom loader', () => {
+      render(
+        <YieldFlowLoader
+          {...defaultProps}
+          visual="custom-image"
+          loaderImageSrc="/assets/loaders/smtinel-flow-loader.jpg"
+          loaderImageAlt="SMTinel flow loader"
+        />
+      );
+      expect(screen.getByAltText('SMTinel flow loader')).toHaveAttribute('src', '/assets/loaders/smtinel-flow-loader.jpg');
     });
   });
 
