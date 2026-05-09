@@ -1,0 +1,32 @@
+[
+  {
+    "id": "noise-texture",
+    "type": "image",
+    "file": "noise-texture.png",
+    "usage": "Tileable grain overlay at 2-3% opacity across dark backgrounds to add analog texture"
+  },
+  {
+    "id": "mission-command-center",
+    "type": "video",
+    "file": "mission-command-center.mp4",
+    "usage": "Mission section right-column video - cinematic command center dolly shot"
+  },
+  {
+    "id": "feature-command-center",
+    "type": "video",
+    "file": "feature-command-center.mp4",
+    "usage": "Features panel 1 background - aerial manufacturing floor"
+  },
+  {
+    "id": "feature-anomaly-detection",
+    "type": "video",
+    "file": "feature-anomaly-detection.mp4",
+    "usage": "Features panel 2 background - abstract boxplot data visualization"
+  },
+  {
+    "id": "feature-pattern-intelligence",
+    "type": "video",
+    "file": "feature-pattern-intelligence.mp4",
+    "usage": "Features panel 3 background - abstract data clustering visualization"
+  }
+]
