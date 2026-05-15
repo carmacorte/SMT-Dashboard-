@@ -1,0 +1,23 @@
+# TraceOps Live - Requirements
+# Core dependencies
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.0.0
+python-multipart>=0.0.6
+
+# Database
+# sqlite3 is built-in (no extra package needed)
+
+# Optional: Supabase sync
+# supabase>=2.0.0  # Uncomment if using Supabase
+
+# Optional: Media processing
+# Pillow>=10.0.0  # Uncomment if processing images
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+httpx>=0.25.0
+
+# Development
+python-dotenv>=1.0.0
